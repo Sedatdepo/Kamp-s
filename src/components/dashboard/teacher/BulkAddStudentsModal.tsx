@@ -38,7 +38,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
 
     const lines = studentList.trim().split('\n');
     const studentsToAdd = lines.map(line => {
-      const parts = line.trim().split(' ');
+      const parts = line.trim().split(/\s+/); // Split by any whitespace
       if (parts.length < 2) return null;
       const number = parts[0];
       const name = parts.slice(1).join(' ');
@@ -54,10 +54,11 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     try {
       const batch = writeBatch(db);
       const salt = await bcrypt.genSalt(10);
-      
+
+      // Use a for...of loop to correctly handle async operations inside the loop
       for (const student of studentsToAdd) {
         if (student) {
-          // Hash the password for each student individually and wait for it
+          // Correctly await the hashing of the password for each student
           const hashedPassword = await bcrypt.hash('1234', salt);
           
           const studentId = `${classId}_${student.number}`;
@@ -68,7 +69,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
             classId: classId,
             behaviorScore: 100,
             needsPasswordChange: true,
-            password: hashedPassword, // Varsayılan şifre
+            password: hashedPassword, // Use the correctly awaited hashed password
             assignedLesson: null,
             grades: { term1: null, term2: null },
             projectPreferences: [],
@@ -83,7 +84,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
       setStudentList('');
       onOpenChange(false);
     } catch (error) {
-      console.error(error);
+      console.error("Bulk add error:", error);
       toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenciler eklenemedi.' });
     } finally {
       setIsLoading(false);
