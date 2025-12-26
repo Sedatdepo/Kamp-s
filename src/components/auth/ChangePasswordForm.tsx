@@ -13,10 +13,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import bcrypt from 'bcryptjs';
 
 const formSchema = z.object({
-  newPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
+  newPassword: z.string().min(1, 'Şifre boş olamaz.'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Şifreler eşleşmiyor",
@@ -47,11 +46,8 @@ export function ChangePasswordForm() {
     try {
       const studentRef = doc(db, 'students', appUser.data.id);
       
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(values.newPassword, salt);
-
       await updateDoc(studentRef, {
-        password: hashedPassword,
+        password: values.newPassword,
         needsPasswordChange: false,
       });
 
@@ -59,9 +55,6 @@ export function ChangePasswordForm() {
         title: 'Şifre Güncellendi',
         description: 'Artık panonuza erişebilirsiniz.',
       });
-      // Force a re-authentication or data refresh in the context
-      // This is a simplified approach; a more robust solution might involve re-signing in
-      // For now, we rely on the onSnapshot listener in AuthContext to pick up the change.
       router.push('/dashboard/student');
     } catch (error: any) {
         console.error("Şifre güncelleme hatası:", error);

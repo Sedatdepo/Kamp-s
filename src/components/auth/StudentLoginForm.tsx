@@ -17,8 +17,8 @@ import { Skeleton } from '../ui/skeleton';
 
 const formSchema = z.object({
   classId: z.string().min(1, { message: 'Lütfen sınıfınızı seçin.' }),
-  studentNumber: z.string().min(1, { message: 'Öğrenci numarası gereklidir.' }),
-  password: z.string().min(1, { message: 'Şifre gereklidir.' }),
+  studentName: z.string().min(1, { message: 'Öğrenci adı gereklidir.' }),
+  studentNumber: z.string().min(1, { message: 'Şifre olarak öğrenci numarası gereklidir.' }),
 });
 
 export function StudentLoginForm() {
@@ -31,15 +31,15 @@ export function StudentLoginForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       classId: '',
+      studentName: '',
       studentNumber: '',
-      password: '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classId, values.studentNumber, values.password);
+      await signInStudent(values.classId, values.studentName, values.studentNumber);
       toast({
         title: 'Giriş Başarılı',
         description: 'Hoş geldin! Panele yönlendiriliyorsun...',
@@ -91,12 +91,12 @@ export function StudentLoginForm() {
         />
         <FormField
           control={form.control}
-          name="studentNumber"
+          name="studentName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Öğrenci Numarası</FormLabel>
+              <FormLabel>Ad Soyad</FormLabel>
               <FormControl>
-                <Input placeholder="örn. 123" {...field} />
+                <Input placeholder="örn. Ahmet Yılmaz" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -104,10 +104,10 @@ export function StudentLoginForm() {
         />
         <FormField
           control={form.control}
-          name="password"
+          name="studentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Şifre</FormLabel>
+              <FormLabel>Şifre (Öğrenci Numaranız)</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>

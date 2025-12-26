@@ -2,12 +2,11 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import bcrypt from 'bcryptjs';
 
 export type AppUser = 
   | { type: 'teacher'; data: User; profile: TeacherProfile | null }
@@ -16,7 +15,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classId: string, studentNumber: string, password: string) => Promise<void>;
+  signInStudent: (classId: string, studentName: string, passwordAsNumber: string) => Promise<void>;
   signOut: () => Promise<void>;
   // Teacher auth functions could be added here if not handled by a dedicated form
 }
@@ -111,24 +110,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [appUser, loading, pathname, router]);
 
 
-  const signInStudent = async (classId: string, studentNumber: string, password: string) => {
-    const studentId = `${classId}_${studentNumber}`;
-    const studentRef = doc(db, 'students', studentId);
-    const studentDoc = await getDoc(studentRef);
-  
-    if (!studentDoc.exists()) {
-      throw new Error('Invalid student details or password.');
-    }
-  
-    const studentDataDb = studentDoc.data();
-    if (!studentDataDb.password) {
-        throw new Error('Student account not properly configured.');
+  const signInStudent = async (classId: string, studentName: string, passwordAsNumber: string) => {
+    const studentsRef = collection(db, 'students');
+    const q = query(studentsRef, where('classId', '==', classId), where('name', '==', studentName));
+    
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new Error('Geçersiz öğrenci adı veya şifre.');
     }
 
-    const passwordMatch = await bcrypt.compare(password, studentDataDb.password);
-  
-    if (!passwordMatch) {
-      throw new Error('Invalid student details or password.');
+    const studentDoc = querySnapshot.docs[0];
+    const studentDataDb = studentDoc.data();
+
+    // The password is the student number
+    if (studentDataDb.password !== passwordAsNumber) {
+        throw new Error('Geçersiz öğrenci adı veya şifre.');
     }
   
     const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
