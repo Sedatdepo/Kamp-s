@@ -60,6 +60,8 @@ export async function seedDatabase() {
 
   } catch (error) {
     console.error("Error seeding database:", error);
-    return { success: false, message: "Failed to seed database." };
+    // Ensure that even in case of an error, a structured response is returned.
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, message: `Failed to seed database: ${errorMessage}` };
   }
 }
