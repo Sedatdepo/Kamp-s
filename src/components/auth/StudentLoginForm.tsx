@@ -51,7 +51,11 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classId, values.studentName, values.studentNumber);
+      const selectedStudent = studentsInClass.find(s => s.name === values.studentName);
+      if (!selectedStudent) {
+        throw new Error("Öğrenci bulunamadı.");
+      }
+      await signInStudent(selectedStudent.id, values.studentNumber);
       toast({
         title: 'Giriş Başarılı',
         description: 'Hoş geldin! Panele yönlendiriliyorsun...',
@@ -76,7 +80,7 @@ export function StudentLoginForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Sınıf</FormLabel>
-              <Select onValueChange={(value) => { field.onChange(value); form.setValue('studentName', ''); }} defaultValue={field.value} disabled={classesLoading}>
+              <Select onValueChange={(value) => { field.onChange(value); form.setValue('studentName', ''); }} value={field.value} disabled={classesLoading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sınıfınızı seçin..." />

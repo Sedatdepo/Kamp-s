@@ -31,7 +31,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function StudentListTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  
+  const studentsQuery = useMemo(() => 
+    query(collection(db, 'students'), where('classId', '==', classId)), 
+    [classId]
+  );
   const { data: students, loading } = useFirestore<Student>('students', studentsQuery);
   const { data: classes } = useFirestore<Class>('classes');
 
@@ -48,7 +52,6 @@ export function StudentListTab({ classId }: { classId: string }) {
   const handleResetPassword = async (student: Student) => {
     try {
         const studentRef = doc(db, 'students', student.id);
-        // Reset password to student number
         await updateDoc(studentRef, { password: student.number, needsPasswordChange: true });
         toast({ title: "Başarılı", description: `${student.name} adlı öğrencinin şifresi kendi öğrenci numarası olarak sıfırlandı.`});
     } catch (error) {
@@ -56,7 +59,7 @@ export function StudentListTab({ classId }: { classId: string }) {
     }
   };
 
-  const currentClass = classes.find(c => c.id === classId);
+  const currentClass = useMemo(() => classes.find(c => c.id === classId), [classes, classId]);
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : currentClass?.teacherId;
 
   return (

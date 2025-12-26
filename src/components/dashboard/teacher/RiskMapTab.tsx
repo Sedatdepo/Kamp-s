@@ -25,10 +25,16 @@ export function RiskMapTab({ classId }: { classId: string }) {
   const [newRiskFactorWeight, setNewRiskFactorWeight] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => 
+    query(collection(db, 'students'), where('classId', '==', classId)),
+    [classId]
+  );
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const riskFactorsQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'riskFactors'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const riskFactorsQuery = useMemo(() => 
+    appUser?.type === 'teacher' ? query(collection(db, 'riskFactors'), where('teacherId', '==', appUser.data.uid)) : null,
+    [appUser]
+  );
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const handleRiskChange = async (studentId: string, riskId: string, isChecked: boolean) => {

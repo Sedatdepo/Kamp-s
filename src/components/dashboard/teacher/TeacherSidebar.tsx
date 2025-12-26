@@ -66,7 +66,10 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const classesQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'classes'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const classesQuery = useMemo(() => 
+    appUser?.type === 'teacher' ? query(collection(db, 'classes'), where('teacherId', '==', appUser.data.uid)) : null, 
+    [appUser]
+  );
   const { data: classes, loading: classesLoading } = useFirestore<Class>('classes', classesQuery);
 
   const handleAddClass = async () => {

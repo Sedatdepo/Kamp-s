@@ -46,11 +46,17 @@ const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm })
 
 export function InfoFormsTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => 
+    query(collection(db, 'students'), where('classId', '==', classId)), 
+    [classId]
+  );
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
   const studentIds = useMemo(() => students.map(s => s.id), [students]);
-  const infoFormsQuery = useMemo(() => studentIds.length > 0 ? query(collection(db, 'infoForms'), where('studentId', 'in', studentIds)) : null, [studentIds]);
+  const infoFormsQuery = useMemo(() => 
+    studentIds.length > 0 ? query(collection(db, 'infoForms'), where('studentId', 'in', studentIds)) : null, 
+    [studentIds]
+  );
   const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery);
 
   const getFormForStudent = (studentId: string) => infoForms.find(f => f.studentId === studentId);

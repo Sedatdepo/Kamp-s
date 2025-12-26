@@ -15,9 +15,8 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classId: string, studentName: string, passwordAsNumber: string) => Promise<void>;
+  signInStudent: (studentId: string, passwordAsNumber: string) => Promise<void>;
   signOut: () => Promise<void>;
-  // Teacher auth functions could be added here if not handled by a dedicated form
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     return () => unsubscribe();
-  }, [appUser?.type, appUser && appUser.type === 'student' ? appUser.data.id : null]);
+  }, [appUser]);
   
     // Real-time updates for teacher profile
   useEffect(() => {
@@ -85,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     return () => unsubscribe();
-  }, [appUser?.type, appUser && appUser.type === 'teacher' ? appUser.data.uid : null]);
+  }, [appUser]);
 
   useEffect(() => {
     if (loading) return;
@@ -110,22 +109,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [appUser, loading, pathname, router]);
 
 
-  const signInStudent = async (classId: string, studentName: string, passwordAsNumber: string) => {
-    const studentsRef = collection(db, 'students');
-    const q = query(studentsRef, where('classId', '==', classId), where('name', '==', studentName));
-    
-    const querySnapshot = await getDocs(q);
+  const signInStudent = async (studentId: string, passwordAsNumber: string) => {
+    const studentRef = doc(db, 'students', studentId);
+    const studentDoc = await getDoc(studentRef);
 
-    if (querySnapshot.empty) {
-      throw new Error('Geçersiz öğrenci adı veya şifre.');
+    if (!studentDoc.exists()) {
+        throw new Error('Öğrenci bulunamadı.');
     }
-
-    const studentDoc = querySnapshot.docs[0];
+    
     const studentDataDb = studentDoc.data();
 
     // The password is the student number
     if (studentDataDb.password !== passwordAsNumber) {
-        throw new Error('Geçersiz öğrenci adı veya şifre.');
+        throw new Error('Geçersiz şifre.');
     }
   
     const studentData = { id: studentDoc.id, ...studentDataDb } as Student;

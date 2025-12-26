@@ -29,10 +29,16 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
   const [newLessonQuota, setNewLessonQuota] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => 
+    query(collection(db, 'students'), where('classId', '==', classId)),
+    [classId]
+  );
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const lessonsQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'lessons'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const lessonsQuery = useMemo(() => 
+    appUser?.type === 'teacher' ? query(collection(db, 'lessons'), where('teacherId', '==', appUser.data.uid)) : null, 
+    [appUser]
+  );
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleAssignmentChange = async (studentId: string, lessonId: string) => {
