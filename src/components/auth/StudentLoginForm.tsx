@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
+import { collection, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   classId: z.string().min(1, { message: 'Lütfen sınıfınızı seçin.' }),
@@ -25,8 +27,8 @@ export function StudentLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { signInStudent } = useAuth();
+  
   const { data: classes, loading: classesLoading } = useFirestore<Class>('classes');
-  const { data: allStudents, loading: studentsLoading } = useFirestore<Student>('students');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,10 +41,12 @@ export function StudentLoginForm() {
 
   const selectedClassId = form.watch('classId');
 
-  const studentsInClass = useMemo(() => {
-    if (!selectedClassId) return [];
-    return allStudents.filter(s => s.classId === selectedClassId);
-  }, [selectedClassId, allStudents]);
+  const studentsQuery = useMemo(() => {
+    if (!selectedClassId) return null;
+    return query(collection(db, 'students'), where('classId', '==', selectedClassId));
+  }, [selectedClassId]);
+
+  const { data: studentsInClass, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
