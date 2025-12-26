@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
   const { appUser, loading } = useAuth();
-  const router = useRouter();
 
-  // If the user is authenticated, AuthProvider will redirect them.
-  // This page should only show a loading state or the login form.
+  // AuthProvider yönlendirmeyi hallederken, bu sayfa sadece bir yükleme durumu göstermelidir.
+  // Kullanıcı zaten doğrulanmışsa, AuthProvider onu zaten yönlendirmiş olacaktır.
   if (loading || appUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
