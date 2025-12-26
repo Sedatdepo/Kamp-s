@@ -59,12 +59,16 @@ export function ChangePasswordForm() {
         title: 'Şifre Güncellendi',
         description: 'Artık panonuza erişebilirsiniz.',
       });
+      // Force a re-authentication or data refresh in the context
+      // This is a simplified approach; a more robust solution might involve re-signing in
+      // For now, we rely on the onSnapshot listener in AuthContext to pick up the change.
       router.push('/dashboard/student');
     } catch (error: any) {
+        console.error("Şifre güncelleme hatası:", error);
       toast({
         variant: 'destructive',
         title: 'Güncelleme Başarısız',
-        description: 'Bilinmeyen bir hata oluştu.',
+        description: error.message || 'Bilinmeyen bir hata oluştu.',
       });
     } finally {
       setIsLoading(false);
