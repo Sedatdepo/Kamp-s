@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,14 +14,20 @@ import { seedDatabase } from '@/lib/actions';
 export default function LoginPage() {
   const { appUser, loading } = useAuth();
   const router = useRouter();
+  const seedCalled = useRef(false);
 
   useEffect(() => {
-    // Seed the database on initial load if it's empty
-    seedDatabase().then(result => {
-        if (result) {
-            console.log(result.message);
-        }
-    });
+    // Ensure this runs only once, even in StrictMode
+    if (!seedCalled.current) {
+      seedCalled.current = true;
+      seedDatabase().then(result => {
+          if (result) {
+              console.log(result.message);
+          }
+      }).catch(error => {
+          console.error("Seeding database failed:", error);
+      });
+    }
   }, []);
 
   useEffect(() => {
