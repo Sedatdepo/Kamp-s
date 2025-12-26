@@ -45,7 +45,6 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
 
       const firstSpaceIndex = trimmedLine.indexOf(' ');
       if (firstSpaceIndex === -1) {
-        // Line doesn't contain a space, invalid format
         toast({ variant: 'destructive', title: 'Geçersiz Format', description: `Satır "${trimmedLine}" "Numara Ad Soyad" formatında değil.` });
         setIsLoading(false);
         return;
@@ -73,18 +72,20 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
       const batch = writeBatch(db);
       const salt = await bcrypt.genSalt(10);
       const defaultPassword = '1234';
-      const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
       for (const student of studentsToAdd) {
         const studentId = `${classId}_${student.number}`;
         const studentRef = doc(db, 'students', studentId);
+        // Hash the password for each student and wait for it
+        const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+        
         batch.set(studentRef, {
           name: student.name,
           number: student.number,
           classId: classId,
-          behaviorScore: 100,
+          password: hashedPassword, // Use the correctly awaited hashed password
           needsPasswordChange: true,
-          password: hashedPassword,
+          behaviorScore: 100,
           assignedLesson: null,
           grades: { term1: null, term2: null },
           projectPreferences: [],
