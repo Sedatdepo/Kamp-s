@@ -1,3 +1,4 @@
+// StudentDashboard.tsx
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -119,11 +120,16 @@ function Chat() {
     const messagesQuery = useMemo(() => teacherId ? query(
         collection(db, 'messages'), 
         where('participants', 'array-contains', studentId),
-        orderBy('timestamp', 'asc')
     ) : null, [teacherId, studentId]);
     
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-    const filteredMessages = useMemo(() => messages.filter(m => m.participants.includes(teacherId || '')), [messages, teacherId]);
+    
+    const filteredAndSortedMessages = useMemo(() => {
+        return messages
+            .filter(m => m.participants.includes(teacherId || ''))
+            .sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+    }, [messages, teacherId]);
+
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !teacherId) return;
@@ -159,7 +165,7 @@ function Chat() {
                 <div className="flex flex-col h-96">
                     <ScrollArea className="flex-1 p-4 border rounded-md">
                         {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-                            filteredMessages.map(msg => (
+                            filteredAndSortedMessages.map(msg => (
                                 <div key={msg.id} className={`flex my-2 ${msg.senderId === studentId ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === studentId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                         <p>{msg.text}</p>
@@ -168,7 +174,7 @@ function Chat() {
                                 </div>
                             ))
                         )}
-                         {filteredMessages.length === 0 && !messagesLoading && (
+                         {filteredAndSortedMessages.length === 0 && !messagesLoading && (
                             <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
                         )}
                     </ScrollArea>

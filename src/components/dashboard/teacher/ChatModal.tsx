@@ -26,11 +26,15 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
   const messagesQuery = useMemo(() => query(
     collection(db, 'messages'),
     where('participants', 'array-contains', student.id),
-    orderBy('timestamp', 'asc')
   ), [student.id]);
   
   const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-  const filteredMessages = useMemo(() => messages.filter(m => m.participants.includes(teacherId)), [messages, teacherId]);
+  
+  const filteredAndSortedMessages = useMemo(() => {
+      return messages
+          .filter(m => m.participants.includes(teacherId))
+          .sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+  }, [messages, teacherId]);
 
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
             scrollable.scrollTop = scrollable.scrollHeight;
         }
     }
-  }, [filteredMessages]);
+  }, [filteredAndSortedMessages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -66,7 +70,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
             {messagesLoading ? (
               <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             ) : (
-                filteredMessages.map(msg => (
+                filteredAndSortedMessages.map(msg => (
                 <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                   <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     <p>{msg.text}</p>
@@ -75,7 +79,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
                 </div>
               ))
             )}
-            {filteredMessages.length === 0 && !messagesLoading && (
+            {filteredAndSortedMessages.length === 0 && !messagesLoading && (
                 <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
             )}
           </ScrollArea>
