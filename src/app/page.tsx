@@ -17,7 +17,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     // Seed the database on initial load if it's empty
-    seedDatabase().then(result => console.log(result.message));
+    seedDatabase().then(result => {
+        if (result) {
+            console.log(result.message);
+        }
+    });
   }, []);
 
   useEffect(() => {
