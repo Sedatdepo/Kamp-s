@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Header } from "@/components/dashboard/Header";
 
 export default function StudentDashboardLayout({
   children,
@@ -41,8 +40,7 @@ export default function StudentDashboardLayout({
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/40">
-        <Header />
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1">
             {children}
         </main>
     </div>

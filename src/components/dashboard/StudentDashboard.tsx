@@ -20,11 +20,11 @@ export function StudentDashboard() {
         <div className="flex flex-col flex-1">
           <Header />
           <main className="flex-1 p-4 sm:p-6">
-            <Tabs defaultValue={activeTab} className="w-full">
+            <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
               <TabsList>
-                <TabsTrigger value="home" onClick={() => setActiveTab('home')}>Anasayfa</TabsTrigger>
-                <TabsTrigger value="risks" onClick={() => setActiveTab('risks')}>Risk Formu</TabsTrigger>
-                <TabsTrigger value="info" onClick={() => setActiveTab('info')}>Bilgi Formu</TabsTrigger>
+                <TabsTrigger value="home">Anasayfa</TabsTrigger>
+                <TabsTrigger value="risks">Risk Formu</TabsTrigger>
+                <TabsTrigger value="info">Bilgi Formu</TabsTrigger>
               </TabsList>
               <TabsContent value="home" className="mt-4">
                 <HomeTab />
