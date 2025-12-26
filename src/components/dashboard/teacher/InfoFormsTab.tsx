@@ -1,0 +1,125 @@
+"use client";
+
+import { useFirestore } from '@/hooks/useFirestore';
+import { Student, InfoForm, TeacherProfile } from '@/lib/types';
+import { collection, query, where, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Loader2, Eye } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { exportStudentInfoToDoc } from '@/lib/word-export';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { format } from 'date-fns';
+
+const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm }) => {
+    if (!form || !form.submitted) {
+        return <p>This form has not been filled out yet.</p>
+    }
+    return (
+        <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-4">
+            <h3 className="font-bold font-headline">Personal Information</h3>
+            <p><strong>Date of Birth:</strong> {form.birthDate ? format(form.birthDate.toDate(), 'PPP') : 'N/A'}</p>
+            <p><strong>Place of Birth:</strong> {form.birthPlace || 'N/A'}</p>
+            <p><strong>Address:</strong> {form.address || 'N/A'}</p>
+            <p><strong>Health Issues:</strong> {form.healthIssues || 'None'}</p>
+            <p><strong>Hobbies:</strong> {form.hobbies || 'N/A'}</p>
+            <p><strong>Tech Usage:</strong> {form.techUsage || 'N/A'}</p>
+
+            <h3 className="font-bold font-headline mt-4">Parent Information</h3>
+            <p><strong>Mother's Status:</strong> {form.motherStatus || 'N/A'}</p>
+            <p><strong>Mother's Education:</strong> {form.motherEducation || 'N/A'}</p>
+            <p><strong>Mother's Job:</strong> {form.motherJob || 'N/A'}</p>
+            <p><strong>Father's Status:</strong> {form.fatherStatus || 'N/A'}</p>
+            <p><strong>Father's Education:</strong> {form.fatherEducation || 'N/A'}</p>
+            <p><strong>Father's Job:</strong> {form.fatherJob || 'N/A'}</p>
+
+            <h3 className="font-bold font-headline mt-4">Family Information</h3>
+            <p><strong>Siblings:</strong> {form.siblingsInfo || 'N/A'}</p>
+            <p><strong>Economic Status:</strong> {form.economicStatus || 'N/A'}</p>
+        </div>
+    )
+}
+
+export function InfoFormsTab({ classId }: { classId: string }) {
+  const { appUser } = useAuth();
+  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+
+  const studentIds = students.map(s => s.id);
+  const infoFormsQuery = studentIds.length > 0 ? query(collection(db, 'infoForms'), where('studentId', 'in', studentIds)) : null;
+  const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery!);
+
+  const getFormForStudent = (studentId: string) => infoForms.find(f => f.studentId === studentId);
+
+  const handleExport = (student: Student) => {
+    const form = getFormForStudent(student.id);
+    if (appUser?.type === 'teacher' && appUser.profile && form) {
+      exportStudentInfoToDoc(student, form, appUser.profile);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-headline">Information Forms</CardTitle>
+        <CardDescription>View and export student information forms.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Student</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {studentsLoading || formsLoading ? (
+                 <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
+              ) : (
+                students.map(student => {
+                  const form = getFormForStudent(student.id);
+                  return (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={form?.submitted ? 'default' : 'secondary'} className={form?.submitted ? 'bg-green-600' : ''}>
+                          {form?.submitted ? 'Filled' : 'Empty'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle className="font-headline">Info Form: {student.name}</DialogTitle>
+                                </DialogHeader>
+                                <ViewFormModal student={student} form={form} />
+                            </DialogContent>
+                        </Dialog>
+                        <Button
+                          onClick={() => handleExport(student)}
+                          disabled={!form?.submitted}
+                          variant="outline"
+                          size="icon"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,0 +1,144 @@
+"use client";
+
+import { useState } from 'react';
+import { useFirestore } from '@/hooks/useFirestore';
+import { Student } from '@/lib/types';
+import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MoreVertical, Plus, Minus, UserPlus, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { BulkAddStudentsModal } from './BulkAddStudentsModal';
+import { useToast } from '@/hooks/use-toast';
+
+export function StudentListTab({ classId }: { classId: string }) {
+  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const { data: students, loading } = useFirestore<Student>('students', studentsQuery);
+  const [isBulkAddOpen, setBulkAddOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleBehaviorScoreChange = async (studentId: string, currentScore: number, change: number) => {
+    const studentRef = doc(db, 'students', studentId);
+    await updateDoc(studentRef, { behaviorScore: currentScore + change });
+  };
+  
+  const handleResetPassword = async (studentId: string) => {
+    try {
+        const studentRef = doc(db, 'students', studentId);
+        await updateDoc(studentRef, { password: '1234', needsPasswordChange: true });
+        toast({ title: "Success", description: "Student's password has been reset to '1234'."});
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Error", description: "Failed to reset password."});
+    }
+  };
+
+
+  return (
+    <>
+      <BulkAddStudentsModal classId={classId} isOpen={isBulkAddOpen} onOpenChange={setBulkAddOpen} />
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle className="font-headline">Students</CardTitle>
+                <CardDescription>Manage the students in this class.</CardDescription>
+            </div>
+            <Button onClick={() => setBulkAddOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Bulk Add
+            </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="text-center">Behavior Score</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell className="h-16 w-1/3 bg-muted/30 animate-pulse rounded-md"></TableCell>
+                            <TableCell className="h-16 w-1/3 bg-muted/30 animate-pulse rounded-md"></TableCell>
+                            <TableCell className="h-16 w-1/3 bg-muted/30 animate-pulse rounded-md"></TableCell>
+                        </TableRow>
+                    ))
+                ) : students.length > 0 ? (
+                  students.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage src={PlaceHolderImages[0].imageUrl} data-ai-hint="student portrait" />
+                            <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{student.name}</p>
+                            <p className="text-sm text-muted-foreground">#{student.number}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleBehaviorScoreChange(student.id, student.behaviorScore, -1)}>
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="font-bold text-lg w-8 text-center">{student.behaviorScore}</span>
+                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleBehaviorScoreChange(student.id, student.behaviorScore, 1)}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem>
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Open Chat
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleResetPassword(student.id)}>
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Reset Password
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-center h-24">
+                            No students found in this class. Use 'Bulk Add' to add them.
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}

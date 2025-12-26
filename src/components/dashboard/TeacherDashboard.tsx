@@ -1,0 +1,66 @@
+"use client";
+
+import { useState } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { TeacherSidebar } from './teacher/TeacherSidebar';
+import { Header } from './Header';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StudentListTab } from './teacher/StudentListTab';
+import { ProjectDistributionTab } from './teacher/ProjectDistributionTab';
+import { RiskMapTab } from './teacher/RiskMapTab';
+import { InfoFormsTab } from './teacher/InfoFormsTab';
+import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { School } from 'lucide-react';
+
+export function TeacherDashboard() {
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-muted/40">
+        <TeacherSidebar selectedClassId={selectedClassId} setSelectedClassId={setSelectedClassId} />
+        <div className="flex flex-col flex-1">
+          <Header />
+          <main className="flex-1 p-4 sm:p-6">
+            {selectedClassId ? (
+              <Tabs defaultValue="students">
+                <TabsList>
+                  <TabsTrigger value="students">Student List</TabsTrigger>
+                  <TabsTrigger value="projects">Project Distribution</TabsTrigger>
+                  <TabsTrigger value="risks">Risk Map</TabsTrigger>
+                  <TabsTrigger value="forms">Info Forms</TabsTrigger>
+                </TabsList>
+                <TabsContent value="students" className="mt-4">
+                  <StudentListTab classId={selectedClassId} />
+                </TabsContent>
+                <TabsContent value="projects" className="mt-4">
+                  <ProjectDistributionTab classId={selectedClassId} />
+                </TabsContent>
+                <TabsContent value="risks" className="mt-4">
+                  <RiskMapTab classId={selectedClassId} />
+                </TabsContent>
+                <TabsContent value="forms" className="mt-4">
+                  <InfoFormsTab classId={selectedClassId} />
+                </TabsContent>
+              </Tabs>
+            ) : (
+                <div className="flex items-center justify-center h-full">
+                    <Card className="w-full max-w-lg text-center shadow-lg">
+                        <CardHeader>
+                            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
+                                <School className="h-10 w-10 text-primary" />
+                            </div>
+                            <CardTitle className="mt-4 font-headline text-2xl">Welcome to Your Dashboard</CardTitle>
+                            <CardDescription>
+                                Please select a class from the sidebar to begin managing your students and activities. If you don't have any classes, you can add one from the sidebar.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
