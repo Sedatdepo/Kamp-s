@@ -1,8 +1,9 @@
 "use client";
 
+import { useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student, InfoForm, TeacherProfile } from '@/lib/types';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { Student, InfoForm } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Loader2, Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { exportStudentInfoToDoc } from '@/lib/word-export';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 
 const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm }) => {
@@ -45,12 +46,12 @@ const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm })
 
 export function InfoFormsTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
-  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const studentIds = students.map(s => s.id);
-  const infoFormsQuery = studentIds.length > 0 ? query(collection(db, 'infoForms'), where('studentId', 'in', studentIds)) : null;
-  const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery!);
+  const studentIds = useMemo(() => students.map(s => s.id), [students]);
+  const infoFormsQuery = useMemo(() => studentIds.length > 0 ? query(collection(db, 'infoForms'), where('studentId', 'in', studentIds)) : null, [studentIds]);
+  const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery);
 
   const getFormForStudent = (studentId: string) => infoForms.find(f => f.studentId === studentId);
 

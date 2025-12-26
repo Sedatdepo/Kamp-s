@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Lesson, Student } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,15 +29,14 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
   const [newLessonQuota, setNewLessonQuota] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
 
-  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const lessonsQuery = appUser?.type === 'teacher' ? query(collection(db, 'lessons'), where('teacherId', '==', appUser.data.uid)) : null;
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery!);
+  const lessonsQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'lessons'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleAssignmentChange = async (studentId: string, lessonId: string) => {
     const studentRef = doc(db, 'students', studentId);
-    // 'unassigned' değeri gelirse null olarak kaydet
     await updateDoc(studentRef, { assignedLesson: lessonId === 'unassigned' ? null : lessonId });
   };
   
@@ -45,9 +44,7 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
     if (!newLessonName.trim() || !appUser || appUser.type !== 'teacher') return;
     setIsLoading(true);
     try {
-        const lessonColl = collection(db, 'lessons');
-        // A simple way to create a unique ID, consider more robust methods for production
-        await doc(lessonColl, newLessonName.toLowerCase().replace(/\s/g, '_')).set({
+        await addDoc(collection(db, 'lessons'), {
             name: newLessonName,
             quota: newLessonQuota,
             teacherId: appUser.data.uid
@@ -64,7 +61,6 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
   }
 
   const handleDeleteLesson = async (lessonId: string) => {
-    // Ayrıca bu dersi olan öğrencilerden de kaldır
     const batch = writeBatch(db);
     const lessonRef = doc(db, 'lessons', lessonId);
     batch.delete(lessonRef);

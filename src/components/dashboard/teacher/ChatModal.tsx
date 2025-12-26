@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,15 +23,14 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const messagesQuery = query(
+  const messagesQuery = useMemo(() => query(
     collection(db, 'messages'),
     where('participants', 'array-contains', student.id),
     orderBy('timestamp', 'asc')
-  );
+  ), [student.id]);
   
-  // Custom filter since Firestore can't do two array-contains on the same field
   const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-  const filteredMessages = messages.filter(m => m.participants.includes(teacherId));
+  const filteredMessages = useMemo(() => messages.filter(m => m.participants.includes(teacherId)), [messages, teacherId]);
 
 
   useEffect(() => {

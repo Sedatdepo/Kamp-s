@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class } from '@/lib/types';
@@ -66,8 +66,8 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const classesQuery = appUser?.type === 'teacher' ? query(collection(db, 'classes'), where('teacherId', '==', appUser.data.uid)) : null;
-  const { data: classes, loading: classesLoading } = useFirestore<Class>('classes', classesQuery!);
+  const classesQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'classes'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const { data: classes, loading: classesLoading } = useFirestore<Class>('classes', classesQuery);
 
   const handleAddClass = async () => {
     if (!newClassName.trim() || appUser?.type !== 'teacher') return;

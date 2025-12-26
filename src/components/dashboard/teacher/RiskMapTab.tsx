@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { RiskFactor, Student } from '@/lib/types';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,11 +25,11 @@ export function RiskMapTab({ classId }: { classId: string }) {
   const [newRiskFactorWeight, setNewRiskFactorWeight] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const riskFactorsQuery = appUser?.type === 'teacher' ? query(collection(db, 'riskFactors'), where('teacherId', '==', appUser.data.uid)) : null;
-  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery!);
+  const riskFactorsQuery = useMemo(() => appUser?.type === 'teacher' ? query(collection(db, 'riskFactors'), where('teacherId', '==', appUser.data.uid)) : null, [appUser]);
+  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const handleRiskChange = async (studentId: string, riskId: string, isChecked: boolean) => {
     const student = students.find(s => s.id === studentId);
@@ -44,8 +44,7 @@ export function RiskMapTab({ classId }: { classId: string }) {
     if (!newRiskFactorLabel.trim() || !appUser || appUser.type !== 'teacher') return;
     setIsLoading(true);
     try {
-        const riskFactorColl = collection(db, 'riskFactors');
-        await doc(riskFactorColl, newRiskFactorLabel.toLowerCase().replace(/\s/g, '_')).set({
+        await addDoc(collection(db, 'riskFactors'), {
             label: newRiskFactorLabel,
             weight: newRiskFactorWeight,
             teacherId: appUser.data.uid

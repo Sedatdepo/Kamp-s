@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { RiskFactor } from '@/lib/types';
@@ -15,7 +16,7 @@ export function RiskFormTab() {
   const { appUser } = useAuth();
   const { toast } = useToast();
   
-  const riskFactorsQuery = query(collection(db, 'riskFactors'));
+  const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   if (appUser?.type !== 'student') return null;

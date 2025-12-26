@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student } from '@/lib/types';
 import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
@@ -31,7 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function StudentListTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
-  const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading } = useFirestore<Student>('students', studentsQuery);
   const { data: classes } = useFirestore<Class>('classes');
 

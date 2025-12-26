@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Lesson, Message } from '@/lib/types';
@@ -32,7 +32,7 @@ function ProjectSelection() {
 
   const [selected, setSelected] = useState<string[]>(appUser.data.projectPreferences || []);
 
-  const lessonsQuery = query(collection(db, 'lessons'));
+  const lessonsQuery = useMemo(() => query(collection(db, 'lessons')), []);
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleCheckboxChange = (lessonId: string) => {
@@ -110,20 +110,20 @@ function Chat() {
     
     if (appUser?.type !== 'student') return null;
 
-    const classQuery = query(collection(db, 'classes'), where('id', '==', appUser.data.classId));
+    const classQuery = useMemo(() => appUser.data.classId ? query(collection(db, 'classes'), where('id', '==', appUser.data.classId)) : null, [appUser.data.classId]);
     const { data: classes, loading: classLoading } = useFirestore<Class>('classes', classQuery);
     
     const teacherId = classes[0]?.teacherId;
     const studentId = appUser.data.id;
 
-    const messagesQuery = teacherId ? query(
+    const messagesQuery = useMemo(() => teacherId ? query(
         collection(db, 'messages'), 
         where('participants', 'array-contains', studentId),
         orderBy('timestamp', 'asc')
-    ) : null;
+    ) : null, [teacherId, studentId]);
     
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-    const filteredMessages = messages.filter(m => m.participants.includes(teacherId || ''));
+    const filteredMessages = useMemo(() => messages.filter(m => m.participants.includes(teacherId || '')), [messages, teacherId]);
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !teacherId) return;
