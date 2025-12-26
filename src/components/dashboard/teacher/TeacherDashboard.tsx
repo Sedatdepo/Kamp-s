@@ -64,5 +64,3 @@ export function TeacherDashboard() {
     </SidebarProvider>
   );
 }
-
-    
