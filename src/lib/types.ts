@@ -12,6 +12,7 @@ export interface Class {
   id: string;
   name: string;
   teacherId: string;
+  isProjectSelectionActive?: boolean;
 }
 
 export interface Student {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Lesson, Student } from '@/lib/types';
+import { Lesson, Student, Class } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export function ProjectDistributionTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
@@ -40,6 +42,9 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
     [appUser]
   );
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
+
+  const { data: classes } = useFirestore<Class>('classes');
+  const currentClass = useMemo(() => classes.find(c => c.id === classId), [classes, classId]);
 
   const handleAssignmentChange = async (studentId: string, lessonId: string) => {
     const studentRef = doc(db, 'students', studentId);
@@ -79,6 +84,14 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
     await batch.commit();
     toast({ title: "Başarılı", description: "Ders silindi."});
   }
+
+  const handleToggleProjectSelection = async (isActive: boolean) => {
+    if (!currentClass) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { isProjectSelectionActive: isActive });
+    toast({ title: 'Başarılı', description: `Proje seçimi ${isActive ? 'başlatıldı' : 'durduruldu'}.` });
+  };
+
 
   const getLessonName = (lessonId: string) => lessons.find(l => l.id === lessonId)?.name || 'N/A';
   const getStudentCountForLesson = (lessonId: string) => students.filter(s => s.assignedLesson === lessonId).length;
@@ -142,62 +155,82 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-                <CardTitle className="font-headline">Dersler</CardTitle>
-                <CardDescription>Ders kotalarını yönetin.</CardDescription>
+      <div className="space-y-6">
+        <Card>
+            <CardHeader>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle className="font-headline">Dersler</CardTitle>
+                    <CardDescription>Ders kotalarını yönetin.</CardDescription>
+                </div>
+                <Dialog open={isLessonDialogOpen} onOpenChange={setLessonDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="icon"><Plus /></Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle className="font-headline">Yeni Ders Ekle</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <Input placeholder="Ders Adı" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} />
+                            <Input type="number" placeholder="Kontenjan" value={newLessonQuota} onChange={e => setNewLessonQuota(Number(e.target.value))} />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild><Button variant="outline">İptal</Button></DialogClose>
+                            <Button onClick={handleAddLesson} disabled={isLoading}>
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Ders Ekle</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
-            <Dialog open={isLessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="icon"><Plus /></Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="font-headline">Yeni Ders Ekle</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <Input placeholder="Ders Adı" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} />
-                        <Input type="number" placeholder="Kontenjan" value={newLessonQuota} onChange={e => setNewLessonQuota(Number(e.target.value))} />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">İptal</Button></DialogClose>
-                        <Button onClick={handleAddLesson} disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Ders Ekle</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Ders</TableHead>
-                    <TableHead>Kontenjan</TableHead>
-                    <TableHead></TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lessonsLoading ? (
-                <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
-              ) : (
-                lessons.map((lesson) => (
-                  <TableRow key={lesson.id}>
-                    <TableCell className="font-medium">{lesson.name}</TableCell>
-                    <TableCell>{getStudentCountForLesson(lesson.id)} / {lesson.quota}</TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteLesson(lesson.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Ders</TableHead>
+                        <TableHead>Kontenjan</TableHead>
+                        <TableHead></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                {lessonsLoading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
+                ) : (
+                    lessons.map((lesson) => (
+                    <TableRow key={lesson.id}>
+                        <TableCell className="font-medium">{lesson.name}</TableCell>
+                        <TableCell>{getStudentCountForLesson(lesson.id)} / {lesson.quota}</TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteLesson(lesson.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Proje Seçim Dönemi</CardTitle>
+                <CardDescription>Öğrenciler için proje tercihlerini açın veya kapatın.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center space-x-2">
+                    <Switch
+                        id="project-selection-switch"
+                        checked={currentClass?.isProjectSelectionActive || false}
+                        onCheckedChange={handleToggleProjectSelection}
+                    />
+                    <Label htmlFor="project-selection-switch">
+                        {currentClass?.isProjectSelectionActive ? "Seçimler Aktif" : "Seçimler Kapalı"}
+                    </Label>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -31,9 +31,15 @@ function ProjectSelection() {
   
   if (appUser?.type !== 'student') return null;
 
+  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
+  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+
   const [selected, setSelected] = useState<string[]>(appUser.data.projectPreferences || []);
 
-  const lessonsQuery = useMemo(() => query(collection(db, 'lessons')), []);
+  const lessonsQuery = useMemo(() => {
+    if (!studentClass?.teacherId) return null;
+    return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
+  }, [studentClass]);
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleCheckboxChange = (lessonId: string) => {
@@ -72,6 +78,22 @@ function ProjectSelection() {
       </Card>
     );
   }
+
+  if (classLoading || !studentClass?.isProjectSelectionActive) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Proje Tercih Seçimi</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="text-center p-6 bg-muted/50 rounded-lg">
+                    <p className="text-muted-foreground">Proje tercih dönemi henüz başlamadı veya sona erdi. Lütfen öğretmeninizden bilgi alın.</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+  }
+
 
   return (
     <Card>

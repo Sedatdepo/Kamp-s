@@ -79,6 +79,7 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
       await addDoc(collection(db, 'classes'), {
         name: newClassName,
         teacherId: appUser.data.uid,
+        isProjectSelectionActive: false,
       });
       toast({ title: 'Sınıf başarıyla eklendi' });
       setNewClassName('');
