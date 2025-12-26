@@ -37,7 +37,8 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
 
   const handleAssignmentChange = async (studentId: string, lessonId: string) => {
     const studentRef = doc(db, 'students', studentId);
-    await updateDoc(studentRef, { assignedLesson: lessonId });
+    // 'unassigned' değeri gelirse null olarak kaydet
+    await updateDoc(studentRef, { assignedLesson: lessonId === 'unassigned' ? null : lessonId });
   };
   
   const handleAddLesson = async () => {
@@ -114,14 +115,14 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={student.assignedLesson || ''}
+                          value={student.assignedLesson || 'unassigned'}
                           onValueChange={(value) => handleAssignmentChange(student.id, value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Ders ata..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">- Atanmamış -</SelectItem>
+                            <SelectItem value="unassigned">- Atanmamış -</SelectItem>
                             {lessons.map(lesson => (
                               <SelectItem key={lesson.id} value={lesson.id} disabled={getStudentCountForLesson(lesson.id) >= lesson.quota && student.assignedLesson !== lesson.id}>
                                 {lesson.name} ({getStudentCountForLesson(lesson.id)}/{lesson.quota})
