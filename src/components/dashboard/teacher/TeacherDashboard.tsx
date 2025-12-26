@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { TeacherSidebar } from './teacher/TeacherSidebar';
-import { Header } from './Header';
+import { TeacherSidebar } from './TeacherSidebar';
+import { Header } from '../Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StudentListTab } from './teacher/StudentListTab';
-import { ProjectDistributionTab } from './teacher/ProjectDistributionTab';
-import { RiskMapTab } from './teacher/RiskMapTab';
-import { InfoFormsTab } from './teacher/InfoFormsTab';
+import { StudentListTab } from './StudentListTab';
+import { ProjectDistributionTab } from './ProjectDistributionTab';
+import { RiskMapTab } from './RiskMapTab';
+import { InfoFormsTab } from './InfoFormsTab';
 import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { School } from 'lucide-react';
 
