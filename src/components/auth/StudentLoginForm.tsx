@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class } from '@/lib/types';
+import { Class, Student } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ export function StudentLoginForm() {
   const { toast } = useToast();
   const { signInStudent } = useAuth();
   const { data: classes, loading: classesLoading } = useFirestore<Class>('classes');
+  const { data: allStudents, loading: studentsLoading } = useFirestore<Student>('students');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,6 +36,13 @@ export function StudentLoginForm() {
       studentNumber: '',
     },
   });
+
+  const selectedClassId = form.watch('classId');
+
+  const studentsInClass = useMemo(() => {
+    if (!selectedClassId) return [];
+    return allStudents.filter(s => s.classId === selectedClassId);
+  }, [selectedClassId, allStudents]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -64,7 +72,7 @@ export function StudentLoginForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Sınıf</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={classesLoading}>
+              <Select onValueChange={(value) => { field.onChange(value); form.setValue('studentName', ''); }} defaultValue={field.value} disabled={classesLoading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sınıfınızı seçin..." />
@@ -95,9 +103,26 @@ export function StudentLoginForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Ad Soyad</FormLabel>
-              <FormControl>
-                <Input placeholder="örn. Ahmet Yılmaz" {...field} />
-              </FormControl>
+               <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClassId || studentsLoading}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={!selectedClassId ? "Önce sınıf seçin..." : "Adınızı seçin..."} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {studentsLoading ? (
+                     <div className='p-2 space-y-2'>
+                        <Skeleton className="h-8 w-full" />
+                    </div>
+                  ) : (
+                    studentsInClass.map((student) => (
+                      <SelectItem key={student.id} value={student.name}>
+                        {student.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
