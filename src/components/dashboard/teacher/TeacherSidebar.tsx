@@ -275,3 +275,5 @@ export function TeacherSidebar({ selectedClassId, onSelectClass, isMobile = fals
     </>
   );
 }
+
+    
