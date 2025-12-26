@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student } from '@/lib/types';
+import { Class, Student } from '@/lib/types';
 import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -22,15 +22,22 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreVertical, Plus, Minus, UserPlus, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
+import { MoreVertical, Plus, Minus, UserPlus, MessageSquare, RefreshCw } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { BulkAddStudentsModal } from './BulkAddStudentsModal';
 import { useToast } from '@/hooks/use-toast';
+import { ChatModal } from './ChatModal';
+import { useAuth } from '@/hooks/useAuth';
 
 export function StudentListTab({ classId }: { classId: string }) {
+  const { appUser } = useAuth();
   const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
   const { data: students, loading } = useFirestore<Student>('students', studentsQuery);
+  const { data: classes } = useFirestore<Class>('classes');
+
   const [isBulkAddOpen, setBulkAddOpen] = useState(false);
+  const [chatStudent, setChatStudent] = useState<Student | null>(null);
+
   const { toast } = useToast();
 
   const handleBehaviorScoreChange = async (studentId: string, currentScore: number, change: number) => {
@@ -48,10 +55,20 @@ export function StudentListTab({ classId }: { classId: string }) {
     }
   };
 
+  const currentClass = classes.find(c => c.id === classId);
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : currentClass?.teacherId;
 
   return (
     <>
       <BulkAddStudentsModal classId={classId} isOpen={isBulkAddOpen} onOpenChange={setBulkAddOpen} />
+      {chatStudent && teacherId && (
+        <ChatModal 
+            student={chatStudent} 
+            teacherId={teacherId}
+            isOpen={!!chatStudent}
+            onOpenChange={(isOpen) => !isOpen && setChatStudent(null)}
+        />
+      )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -116,7 +133,7 @@ export function StudentListTab({ classId }: { classId: string }) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setChatStudent(student)}>
                                     <MessageSquare className="mr-2 h-4 w-4" /> Sohbeti Aç
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleResetPassword(student.id)}>

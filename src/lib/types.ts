@@ -75,4 +75,5 @@ export interface Message {
   receiverId: string;
   text: string;
   timestamp: Timestamp;
+  participants: string[];
 }

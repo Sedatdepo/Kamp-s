@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Lesson, Message } from '@/lib/types';
+import { Class, Lesson, Message } from '@/lib/types';
 import {
   collection,
   query,
@@ -27,12 +27,13 @@ import { format } from 'date-fns';
 function ProjectSelection() {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const [selected, setSelected] = useState<string[]>(appUser?.type === 'student' ? appUser.data.projectPreferences : []);
-
-  const lessonsQuery = appUser?.type === 'teacher' ? null : query(collection(db, 'lessons'));
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
   
   if (appUser?.type !== 'student') return null;
+
+  const [selected, setSelected] = useState<string[]>(appUser.data.projectPreferences || []);
+
+  const lessonsQuery = query(collection(db, 'lessons'));
+  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleCheckboxChange = (lessonId: string) => {
     setSelected(prev => {
@@ -107,33 +108,46 @@ function Chat() {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     
-    // Gerçek bir uygulamada öğretmen ID'si dinamik olmalıdır. Şimdilik bir varsayılan kullanıyoruz.
-    const teacherId = appUser?.type === 'student' ? (lessons.find(l => l.id === appUser.data.assignedLesson)?.teacherId || 'default_teacher') : "default_teacher"; 
-    const lessonsQuery = query(collection(db, 'lessons'));
-    const { data: lessons } = useFirestore<Lesson>('lessons', lessonsQuery);
-    
     if (appUser?.type !== 'student') return null;
 
+    const classQuery = query(collection(db, 'classes'), where('id', '==', appUser.data.classId));
+    const { data: classes, loading: classLoading } = useFirestore<Class>('classes', classQuery);
+    
+    const teacherId = classes[0]?.teacherId;
     const studentId = appUser.data.id;
 
-    // Bu sorgu da basitleştirilmiştir. Gerçek bir sohbet daha karmaşık mantık gerektirebilir.
-    const messagesQuery = query(
+    const messagesQuery = teacherId ? query(
         collection(db, 'messages'), 
-        where('senderId', 'in', [studentId, teacherId]),
-        where('receiverId', 'in', [studentId, teacherId]),
+        where('participants', 'array-contains', studentId),
         orderBy('timestamp', 'asc')
-    );
+    ) : null;
+    
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
+    const filteredMessages = messages.filter(m => m.participants.includes(teacherId || ''));
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() || !teacherId) return;
         await addDoc(collection(db, 'messages'), {
             senderId: studentId,
             receiverId: teacherId,
+            participants: [studentId, teacherId],
             text: newMessage,
             timestamp: Timestamp.now()
         });
         setNewMessage('');
+    }
+
+    if (classLoading || !teacherId) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Öğretmenle Sohbet</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                </CardContent>
+            </Card>
+        )
     }
 
     return (
@@ -145,7 +159,7 @@ function Chat() {
                 <div className="flex flex-col h-96">
                     <ScrollArea className="flex-1 p-4 border rounded-md">
                         {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-                            messages.map(msg => (
+                            filteredMessages.map(msg => (
                                 <div key={msg.id} className={`flex my-2 ${msg.senderId === studentId ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === studentId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                         <p>{msg.text}</p>
@@ -153,6 +167,9 @@ function Chat() {
                                     </div>
                                 </div>
                             ))
+                        )}
+                         {filteredMessages.length === 0 && !messagesLoading && (
+                            <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
                         )}
                     </ScrollArea>
                     <div className="flex mt-4 gap-2">
