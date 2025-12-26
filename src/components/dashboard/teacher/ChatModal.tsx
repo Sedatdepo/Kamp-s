@@ -23,35 +23,33 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const messagesQuery = useMemo(() => query(
-    collection(db, 'messages'),
-    where('participants', 'array-contains', student.id),
-  ), [student.id]);
-  
-  const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-  
-  const filteredAndSortedMessages = useMemo(() => {
-      return messages
-          .filter(m => m.participants.includes(teacherId))
-          .sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
-  }, [messages, teacherId]);
+  const messagesQuery = useMemo(() => {
+    const participants = [student.id, teacherId].sort();
+    return query(
+      collection(db, 'messages'),
+      where('participants', '==', participants),
+      orderBy('timestamp', 'asc')
+    );
+  }, [student.id, teacherId]);
 
+  const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        const scrollable = scrollAreaRef.current.querySelector('div');
-        if(scrollable) {
-            scrollable.scrollTop = scrollable.scrollHeight;
+        const scrollViewport = scrollAreaRef.current.querySelector('div');
+        if (scrollViewport) {
+            scrollViewport.scrollTop = scrollViewport.scrollHeight;
         }
     }
-  }, [filteredAndSortedMessages]);
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
+    const participants = [student.id, teacherId].sort();
     await addDoc(collection(db, 'messages'), {
       senderId: teacherId,
       receiverId: student.id,
-      participants: [teacherId, student.id],
+      participants: participants,
       text: newMessage,
       timestamp: Timestamp.now(),
     });
@@ -70,7 +68,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
             {messagesLoading ? (
               <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             ) : (
-                filteredAndSortedMessages.map(msg => (
+                messages.map(msg => (
                 <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                   <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     <p>{msg.text}</p>
@@ -79,7 +77,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
                 </div>
               ))
             )}
-            {filteredAndSortedMessages.length === 0 && !messagesLoading && (
+            {messages.length === 0 && !messagesLoading && (
                 <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
             )}
           </ScrollArea>

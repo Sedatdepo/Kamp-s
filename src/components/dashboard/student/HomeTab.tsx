@@ -1,7 +1,7 @@
 // StudentDashboard.tsx
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Lesson, Message } from '@/lib/types';
@@ -108,35 +108,47 @@ function ProjectSelection() {
 function Chat() {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
-    
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+
     if (appUser?.type !== 'student') return null;
 
-    const classQuery = useMemo(() => appUser.data.classId ? query(collection(db, 'classes'), where('id', '==', appUser.data.classId)) : null, [appUser.data.classId]);
-    const { data: classes, loading: classLoading } = useFirestore<Class>('classes', classQuery);
+    const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
     
-    const teacherId = classes[0]?.teacherId;
+    const currentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+    const teacherId = currentClass?.teacherId;
     const studentId = appUser.data.id;
-
-    const messagesQuery = useMemo(() => teacherId ? query(
-        collection(db, 'messages'), 
-        where('participants', 'array-contains', studentId),
-    ) : null, [teacherId, studentId]);
+    
+    // The query now specifically looks for the participant array matching [studentId, teacherId]
+    // and orders the results by timestamp. This requires a composite index in Firestore.
+    const messagesQuery = useMemo(() => {
+        if (!teacherId) return null;
+        const participants = [studentId, teacherId].sort();
+        return query(
+            collection(db, 'messages'), 
+            where('participants', '==', participants),
+            orderBy('timestamp', 'asc')
+        );
+    }, [teacherId, studentId]);
     
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-    
-    const filteredAndSortedMessages = useMemo(() => {
-        return messages
-            .filter(m => m.participants.includes(teacherId || ''))
-            .sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
-    }, [messages, teacherId]);
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const scrollViewport = scrollAreaRef.current.querySelector('div');
+            if (scrollViewport) {
+                scrollViewport.scrollTop = scrollViewport.scrollHeight;
+            }
+        }
+      }, [messages]);
 
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !teacherId) return;
+        const participants = [studentId, teacherId].sort();
         await addDoc(collection(db, 'messages'), {
             senderId: studentId,
             receiverId: teacherId,
-            participants: [studentId, teacherId],
+            participants: participants,
             text: newMessage,
             timestamp: Timestamp.now()
         });
@@ -163,9 +175,9 @@ function Chat() {
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col h-96">
-                    <ScrollArea className="flex-1 p-4 border rounded-md">
+                    <ScrollArea className="flex-1 p-4 border rounded-md" ref={scrollAreaRef}>
                         {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-                            filteredAndSortedMessages.map(msg => (
+                            messages.map(msg => (
                                 <div key={msg.id} className={`flex my-2 ${msg.senderId === studentId ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === studentId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                         <p>{msg.text}</p>
@@ -174,7 +186,7 @@ function Chat() {
                                 </div>
                             ))
                         )}
-                         {filteredAndSortedMessages.length === 0 && !messagesLoading && (
+                         {messages.length === 0 && !messagesLoading && (
                             <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
                         )}
                     </ScrollArea>
