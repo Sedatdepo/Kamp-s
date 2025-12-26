@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import bcrypt from 'bcryptjs';
 
 const formSchema = z.object({
   newPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
@@ -45,8 +46,12 @@ export function ChangePasswordForm() {
     setIsLoading(true);
     try {
       const studentRef = doc(db, 'students', appUser.data.id);
+      
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(values.newPassword, salt);
+
       await updateDoc(studentRef, {
-        password: values.newPassword,
+        password: hashedPassword,
         needsPasswordChange: false,
       });
 

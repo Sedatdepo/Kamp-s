@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import bcrypt from 'bcryptjs';
 
 export type AppUser = 
   | { type: 'teacher'; data: User; profile: TeacherProfile | null }
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     return () => unsubscribe();
-  }, [appUser?.type]);
+  }, [appUser?.type, appUser && appUser.type === 'student' ? appUser.data.id : null]);
   
     // Real-time updates for teacher profile
   useEffect(() => {
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     return () => unsubscribe();
-  }, [appUser?.type]);
+  }, [appUser?.type, appUser && appUser.type === 'teacher' ? appUser.data.uid : null]);
 
   useEffect(() => {
     if (loading) return;
@@ -111,22 +112,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const signInStudent = async (classId: string, studentNumber: string, password: string) => {
-    // This is a simplified, insecure student login. In a real app, use a server-side function.
     const studentRef = doc(db, 'students', `${classId}_${studentNumber}`);
     const studentDoc = await getDoc(studentRef);
 
-    if (studentDoc.exists() && studentDoc.data().password === password) {
-      const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-      localStorage.setItem('studentUser', JSON.stringify(studentData));
-      setAppUser({ type: 'student', data: studentData });
-      if (studentData.needsPasswordChange) {
-        router.push('/auth/change-password');
-      } else {
-        router.push('/dashboard/student');
-      }
-    } else {
-      throw new Error('Invalid student details or password.');
+    if (studentDoc.exists()) {
+        const studentDataDb = studentDoc.data();
+        const passwordMatch = await bcrypt.compare(password, studentDataDb.password);
+
+        if (passwordMatch) {
+            const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
+            localStorage.setItem('studentUser', JSON.stringify(studentData));
+            setAppUser({ type: 'student', data: studentData });
+            if (studentData.needsPasswordChange) {
+                router.push('/auth/change-password');
+            } else {
+                router.push('/dashboard/student');
+            }
+            return;
+        }
     }
+    
+    // Fallback for old plaintext passwords for students who haven't updated yet
+    if (studentDoc.exists() && studentDoc.data().password === '1234' && password === '1234') {
+        const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+        localStorage.setItem('studentUser', JSON.stringify(studentData));
+        setAppUser({ type: 'student', data: studentData });
+        router.push('/auth/change-password');
+        return;
+    }
+
+    throw new Error('Invalid student details or password.');
   };
 
   const signOut = async () => {

@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import bcrypt from 'bcryptjs';
 
 interface BulkAddStudentsModalProps {
   classId: string;
@@ -52,6 +53,9 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
 
     try {
       const batch = writeBatch(db);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('1234', salt);
+
       studentsToAdd.forEach(student => {
         if (student) {
           const studentId = `${classId}_${student.number}`;
@@ -62,7 +66,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
             classId: classId,
             behaviorScore: 100,
             needsPasswordChange: true,
-            password: '1234', // Varsayılan şifre
+            password: hashedPassword, // Varsayılan şifre
             assignedLesson: null,
             grades: { term1: null, term2: null },
             projectPreferences: [],

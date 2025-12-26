@@ -28,6 +28,7 @@ import { BulkAddStudentsModal } from './BulkAddStudentsModal';
 import { useToast } from '@/hooks/use-toast';
 import { ChatModal } from './ChatModal';
 import { useAuth } from '@/hooks/useAuth';
+import bcrypt from 'bcryptjs';
 
 export function StudentListTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
@@ -48,7 +49,9 @@ export function StudentListTab({ classId }: { classId: string }) {
   const handleResetPassword = async (studentId: string) => {
     try {
         const studentRef = doc(db, 'students', studentId);
-        await updateDoc(studentRef, { password: '1234', needsPasswordChange: true });
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('1234', salt);
+        await updateDoc(studentRef, { password: hashedPassword, needsPasswordChange: true });
         toast({ title: "Başarılı", description: "Öğrencinin şifresi '1234' olarak sıfırlandı."});
     } catch (error) {
         toast({ variant: 'destructive', title: "Hata", description: "Şifre sıfırlanamadı."});
