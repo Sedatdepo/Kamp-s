@@ -37,16 +37,34 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     setIsLoading(true);
 
     const lines = studentList.trim().split('\n');
-    const studentsToAdd = lines.map(line => {
-      const parts = line.trim().split(/\s+/); // Split by any whitespace
-      if (parts.length < 2) return null;
-      const number = parts[0];
-      const name = parts.slice(1).join(' ');
-      return { number, name };
-    }).filter(Boolean);
+    const studentsToAdd: { number: string; name: string }[] = [];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      const firstSpaceIndex = trimmedLine.indexOf(' ');
+      if (firstSpaceIndex === -1) {
+        // Line doesn't contain a space, invalid format
+        toast({ variant: 'destructive', title: 'Geçersiz Format', description: `Satır "${trimmedLine}" "Numara Ad Soyad" formatında değil.` });
+        setIsLoading(false);
+        return;
+      }
+
+      const number = trimmedLine.substring(0, firstSpaceIndex);
+      const name = trimmedLine.substring(firstSpaceIndex + 1);
+
+      if (!/^\d+$/.test(number) || !name) {
+         toast({ variant: 'destructive', title: 'Geçersiz Format', description: `Satır "${trimmedLine}" "Numara Ad Soyad" formatında değil.` });
+        setIsLoading(false);
+        return;
+      }
+      
+      studentsToAdd.push({ number, name });
+    }
 
     if (studentsToAdd.length === 0) {
-      toast({ variant: 'destructive', title: 'Geçersiz format', description: 'Lütfen "Numara Ad Soyad" formatını kullanın.' });
+      toast({ variant: 'destructive', title: 'Öğrenci bulunamadı', description: 'Lütfen "Numara Ad Soyad" formatını kullanın.' });
       setIsLoading(false);
       return;
     }
@@ -54,29 +72,25 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     try {
       const batch = writeBatch(db);
       const salt = await bcrypt.genSalt(10);
+      const defaultPassword = '1234';
+      const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
-      // Use a for...of loop to correctly handle async operations inside the loop
       for (const student of studentsToAdd) {
-        if (student) {
-          // Correctly await the hashing of the password for each student
-          const hashedPassword = await bcrypt.hash('1234', salt);
-          
-          const studentId = `${classId}_${student.number}`;
-          const studentRef = doc(db, 'students', studentId);
-          batch.set(studentRef, {
-            name: student.name,
-            number: student.number,
-            classId: classId,
-            behaviorScore: 100,
-            needsPasswordChange: true,
-            password: hashedPassword, // Use the correctly awaited hashed password
-            assignedLesson: null,
-            grades: { term1: null, term2: null },
-            projectPreferences: [],
-            referrals: [],
-            risks: [],
-          });
-        }
+        const studentId = `${classId}_${student.number}`;
+        const studentRef = doc(db, 'students', studentId);
+        batch.set(studentRef, {
+          name: student.name,
+          number: student.number,
+          classId: classId,
+          behaviorScore: 100,
+          needsPasswordChange: true,
+          password: hashedPassword,
+          assignedLesson: null,
+          grades: { term1: null, term2: null },
+          projectPreferences: [],
+          referrals: [],
+          risks: [],
+        });
       }
 
       await batch.commit();
