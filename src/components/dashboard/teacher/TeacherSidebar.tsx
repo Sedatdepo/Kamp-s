@@ -77,11 +77,11 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
         name: newClassName,
         teacherId: appUser.data.uid,
       });
-      toast({ title: 'Class added successfully' });
+      toast({ title: 'Sınıf başarıyla eklendi' });
       setNewClassName('');
       setAddDialogOpen(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error adding class' });
+      toast({ variant: 'destructive', title: 'Sınıf eklenirken hata oluştu' });
     } finally {
       setIsLoading(false);
     }
@@ -92,12 +92,12 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
     setIsLoading(true);
     try {
       await updateDoc(doc(db, 'classes', selectedClassForEdit.id), { name: newClassName });
-      toast({ title: 'Class updated successfully' });
+      toast({ title: 'Sınıf başarıyla güncellendi' });
       setEditDialogOpen(false);
       setSelectedClassForEdit(null);
       setNewClassName('');
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error updating class' });
+      toast({ variant: 'destructive', title: 'Sınıf güncellenirken hata oluştu' });
     } finally {
       setIsLoading(false);
     }
@@ -108,14 +108,14 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
     setIsLoading(true);
     try {
       await deleteDoc(doc(db, 'classes', selectedClassForEdit.id));
-      toast({ title: 'Class deleted successfully' });
+      toast({ title: 'Sınıf başarıyla silindi' });
       if(selectedClassId === selectedClassForEdit.id && setSelectedClassId) {
         setSelectedClassId(null);
       }
       setDeleteDialogOpen(false);
       setSelectedClassForEdit(null);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error deleting class' });
+      toast({ variant: 'destructive', title: 'Sınıf silinirken hata oluştu' });
     } finally {
       setIsLoading(false);
     }
@@ -137,13 +137,13 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
       <SidebarHeader>
         <div className="flex items-center gap-2">
             <Logo className="w-8 h-8 text-primary" />
-            <span className="font-headline text-xl font-semibold">CampusConnect</span>
+            <span className="font-headline text-xl font-semibold">İTO KAMPÜS</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className='flex justify-between items-center'>
-            Classes
+            Sınıflar
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
             </Button>
@@ -180,8 +180,8 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => openEditDialog(cls)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openDeleteDialog(cls)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditDialog(cls)}><Edit className="mr-2 h-4 w-4" /> Düzenle</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openDeleteDialog(cls)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Sil</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -212,17 +212,17 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
       <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-headline">Add New Class</DialogTitle>
-            <DialogDescription>Enter the name for the new class.</DialogDescription>
+            <DialogTitle className="font-headline">Yeni Sınıf Ekle</DialogTitle>
+            <DialogDescription>Yeni sınıfın adını girin.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label htmlFor="new-class-name" className="text-sm font-medium">Class Name</label>
-            <Input id="new-class-name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g., 10-A" />
+            <label htmlFor="new-class-name" className="text-sm font-medium">Sınıf Adı</label>
+            <Input id="new-class-name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="örn. 10-A" />
           </div>
           <DialogFooter>
-            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <DialogClose asChild><Button variant="outline">İptal</Button></DialogClose>
             <Button onClick={handleAddClass} disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add Class
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sınıf Ekle
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -232,17 +232,17 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
       <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-headline">Edit Class Name</DialogTitle>
-            <DialogDescription>Enter the new name for the class "{selectedClassForEdit?.name}".</DialogDescription>
+            <DialogTitle className="font-headline">Sınıf Adını Düzenle</DialogTitle>
+            <DialogDescription>"{selectedClassForEdit?.name}" sınıfı için yeni adı girin.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label htmlFor="edit-class-name" className="text-sm font-medium">New Class Name</label>
+            <label htmlFor="edit-class-name" className="text-sm font-medium">Yeni Sınıf Adı</label>
             <Input id="edit-class-name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} />
           </div>
           <DialogFooter>
-            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <DialogClose asChild><Button variant="outline">İptal</Button></DialogClose>
             <Button onClick={handleEditClass} disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Değişiklikleri Kaydet
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -252,15 +252,15 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle className="font-headline">Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle className="font-headline">Emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-                This will permanently delete the class "{selectedClassForEdit?.name}" and all associated data. This action cannot be undone.
+                Bu işlem "{selectedClassForEdit?.name}" sınıfını ve ilişkili tüm verileri kalıcı olarak silecektir. Bu eylem geri alınamaz.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteClass} disabled={isLoading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Delete
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sil
             </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>

@@ -30,7 +30,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
 
   const handleBulkAdd = async () => {
     if (!studentList.trim()) {
-      toast({ variant: 'destructive', title: 'Input is empty' });
+      toast({ variant: 'destructive', title: 'Giriş alanı boş' });
       return;
     }
     setIsLoading(true);
@@ -45,7 +45,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     }).filter(Boolean);
 
     if (studentsToAdd.length === 0) {
-      toast({ variant: 'destructive', title: 'Invalid format', description: 'Please use "Number Name Surname" format.' });
+      toast({ variant: 'destructive', title: 'Geçersiz format', description: 'Lütfen "Numara Ad Soyad" formatını kullanın.' });
       setIsLoading(false);
       return;
     }
@@ -62,7 +62,7 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
             classId: classId,
             behaviorScore: 100,
             needsPasswordChange: true,
-            password: '1234', // Default password
+            password: '1234', // Varsayılan şifre
             assignedLesson: null,
             grades: { term1: null, term2: null },
             projectPreferences: [],
@@ -72,12 +72,12 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
         }
       });
       await batch.commit();
-      toast({ title: 'Success', description: `${studentsToAdd.length} students added.` });
+      toast({ title: 'Başarılı', description: `${studentsToAdd.length} öğrenci eklendi.` });
       setStudentList('');
       onOpenChange(false);
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add students.' });
+      toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenciler eklenemedi.' });
     } finally {
       setIsLoading(false);
     }
@@ -87,16 +87,16 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">Bulk Add Students</DialogTitle>
+          <DialogTitle className="font-headline">Toplu Öğrenci Ekle</DialogTitle>
           <DialogDescription>
-            Paste a list of students below. Each line should be in the format: "Number Name Surname".
+            Aşağıya bir öğrenci listesi yapıştırın. Her satır "Numara Ad Soyad" formatında olmalıdır.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Textarea
-            placeholder="101 John Doe
-102 Jane Smith
-103 Peter Jones"
+            placeholder="101 Ahmet Yılmaz
+102 Ayşe Kaya
+103 Mehmet Demir"
             value={studentList}
             onChange={(e) => setStudentList(e.target.value)}
             className="min-h-[200px]"
@@ -104,11 +104,11 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline">İptal</Button>
           </DialogClose>
           <Button onClick={handleBulkAdd} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Add Students
+            Öğrencileri Ekle
           </Button>
         </DialogFooter>
       </DialogContent>

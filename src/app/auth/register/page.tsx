@@ -9,14 +9,14 @@ export default function RegisterPage() {
         <div className="flex flex-col items-center text-center mb-6">
           <Logo className="h-12 w-12 text-primary" />
           <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
-            Create a Teacher Account
+            Öğretmen Hesabı Oluştur
           </h1>
-          <p className="text-muted-foreground">Join CampusConnect and manage your classes with ease.</p>
+          <p className="text-muted-foreground">İTO KAMPÜS'e katılın ve sınıflarınızı kolayca yönetin.</p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Register</CardTitle>
-            <CardDescription>Fill in the details below to create your account.</CardDescription>
+            <CardTitle className="font-headline">Kayıt Ol</CardTitle>
+            <CardDescription>Hesabınızı oluşturmak için aşağıdaki bilgileri doldurun.</CardDescription>
           </CardHeader>
           <CardContent>
             <RegisterForm />

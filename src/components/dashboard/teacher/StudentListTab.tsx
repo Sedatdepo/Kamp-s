@@ -42,9 +42,9 @@ export function StudentListTab({ classId }: { classId: string }) {
     try {
         const studentRef = doc(db, 'students', studentId);
         await updateDoc(studentRef, { password: '1234', needsPasswordChange: true });
-        toast({ title: "Success", description: "Student's password has been reset to '1234'."});
+        toast({ title: "Başarılı", description: "Öğrencinin şifresi '1234' olarak sıfırlandı."});
     } catch (error) {
-        toast({ variant: 'destructive', title: "Error", description: "Failed to reset password."});
+        toast({ variant: 'destructive', title: "Hata", description: "Şifre sıfırlanamadı."});
     }
   };
 
@@ -55,12 +55,12 @@ export function StudentListTab({ classId }: { classId: string }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle className="font-headline">Students</CardTitle>
-                <CardDescription>Manage the students in this class.</CardDescription>
+                <CardTitle className="font-headline">Öğrenciler</CardTitle>
+                <CardDescription>Bu sınıftaki öğrencileri yönetin.</CardDescription>
             </div>
             <Button onClick={() => setBulkAddOpen(true)}>
                 <UserPlus className="mr-2 h-4 w-4" />
-                Bulk Add
+                Toplu Ekle
             </Button>
         </CardHeader>
         <CardContent>
@@ -68,9 +68,9 @@ export function StudentListTab({ classId }: { classId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-center">Behavior Score</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>İsim</TableHead>
+                  <TableHead className="text-center">Davranış Puanı</TableHead>
+                  <TableHead className="text-right">Eylemler</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,10 +117,10 @@ export function StudentListTab({ classId }: { classId: string }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem>
-                                    <MessageSquare className="mr-2 h-4 w-4" /> Open Chat
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Sohbeti Aç
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleResetPassword(student.id)}>
-                                    <RefreshCw className="mr-2 h-4 w-4" /> Reset Password
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Şifreyi Sıfırla
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -130,7 +130,7 @@ export function StudentListTab({ classId }: { classId: string }) {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={3} className="text-center h-24">
-                            No students found in this class. Use 'Bulk Add' to add them.
+                            Bu sınıfta öğrenci bulunamadı. 'Toplu Ekle' özelliğini kullanarak ekleyin.
                         </TableCell>
                     </TableRow>
                 )}

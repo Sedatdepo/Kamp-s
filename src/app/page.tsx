@@ -47,19 +47,19 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center mb-6">
           <Logo className="h-12 w-12 text-primary" />
           <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
-            CampusConnect
+            İTO KAMPÜS
           </h1>
-          <p className="text-muted-foreground">Your school assistant starts here.</p>
+          <p className="text-muted-foreground">Okul asistanınız burada başlıyor.</p>
         </div>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="teacher">Teacher</TabsTrigger>
-          <TabsTrigger value="student">Student</TabsTrigger>
+          <TabsTrigger value="teacher">Öğretmen</TabsTrigger>
+          <TabsTrigger value="student">Öğrenci</TabsTrigger>
         </TabsList>
         <TabsContent value="teacher">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline">Teacher Login</CardTitle>
-              <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
+              <CardTitle className="font-headline">Öğretmen Girişi</CardTitle>
+              <CardDescription>Yönetim panelinize erişmek için bilgilerinizi girin.</CardDescription>
             </CardHeader>
             <CardContent>
               <TeacherLoginForm />
@@ -69,8 +69,8 @@ export default function LoginPage() {
         <TabsContent value="student">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline">Student Login</CardTitle>
-              <CardDescription>Select your class and enter your details to log in.</CardDescription>
+              <CardTitle className="font-headline">Öğrenci Girişi</CardTitle>
+              <CardDescription>Giriş yapmak için sınıfınızı seçin ve bilgilerinizi girin.</CardDescription>
             </CardHeader>
             <CardContent>
               <StudentLoginForm />

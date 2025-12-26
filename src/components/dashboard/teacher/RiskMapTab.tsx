@@ -50,12 +50,12 @@ export function RiskMapTab({ classId }: { classId: string }) {
             weight: newRiskFactorWeight,
             teacherId: appUser.data.uid
         });
-        toast({ title: "Success", description: "Risk factor added."});
+        toast({ title: "Başarılı", description: "Risk faktörü eklendi."});
         setRiskFactorDialogOpen(false);
         setNewRiskFactorLabel('');
         setNewRiskFactorWeight(1);
     } catch (e) {
-        toast({ variant: 'destructive', title: "Error", description: "Could not add risk factor."});
+        toast({ variant: 'destructive', title: "Hata", description: "Risk faktörü eklenemedi."});
     } finally {
         setIsLoading(false);
     }
@@ -65,6 +65,7 @@ export function RiskMapTab({ classId }: { classId: string }) {
     const batch = writeBatch(db);
     const riskFactorRef = doc(db, 'riskFactors', riskId);
     batch.delete(riskFactorRef);
+    // Öğrencilerden de bu risk faktörünü kaldır
     students.forEach(student => {
         if (student.risks.includes(riskId)) {
             const studentRef = doc(db, 'students', student.id);
@@ -73,7 +74,7 @@ export function RiskMapTab({ classId }: { classId: string }) {
         }
     });
     await batch.commit();
-    toast({ title: "Success", description: "Risk factor deleted."});
+    toast({ title: "Başarılı", description: "Risk faktörü silindi."});
   }
 
 
@@ -82,34 +83,34 @@ export function RiskMapTab({ classId }: { classId: string }) {
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle className="font-headline">Risk Map</CardTitle>
-            <CardDescription>Check off risks for each student.</CardDescription>
+            <CardTitle className="font-headline">Risk Haritası</CardTitle>
+            <CardDescription>Her öğrenci için riskleri işaretleyin.</CardDescription>
           </div>
           <Dialog open={isRiskFactorDialogOpen} onOpenChange={setRiskFactorDialogOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Factors</Button>
+                <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Faktörleri Yönet</Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline">Manage Risk Factors</DialogTitle>
+                    <DialogTitle className="font-headline">Risk Faktörlerini Yönet</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                     <div className="flex gap-2">
-                        <Input placeholder="New factor label" value={newRiskFactorLabel} onChange={e => setNewRiskFactorLabel(e.target.value)} />
-                        <Input className="w-24" type="number" placeholder="Weight" value={newRiskFactorWeight} onChange={e => setNewRiskFactorWeight(Number(e.target.value))} />
+                        <Input placeholder="Yeni faktör adı" value={newRiskFactorLabel} onChange={e => setNewRiskFactorLabel(e.target.value)} />
+                        <Input className="w-24" type="number" placeholder="Ağırlık" value={newRiskFactorWeight} onChange={e => setNewRiskFactorWeight(Number(e.target.value))} />
                         <Button onClick={handleAddRiskFactor} disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Plus className="h-4 w-4"/>}</Button>
                     </div>
                     <ul className="space-y-2 max-h-64 overflow-y-auto">
                         {riskFactors.map(rf => (
                             <li key={rf.id} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
-                                <span>{rf.label} (Weight: {rf.weight})</span>
+                                <span>{rf.label} (Ağırlık: {rf.weight})</span>
                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteRiskFactor(rf.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                             </li>
                         ))}
                     </ul>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild><Button>Done</Button></DialogClose>
+                    <DialogClose asChild><Button>Bitti</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -120,7 +121,7 @@ export function RiskMapTab({ classId }: { classId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-background">Student</TableHead>
+                <TableHead className="sticky left-0 bg-background">Öğrenci</TableHead>
                 {riskFactorsLoading ? (
                   <TableHead><Loader2 className="h-4 w-4 animate-spin"/></TableHead>
                 ) : (

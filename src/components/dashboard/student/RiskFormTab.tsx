@@ -27,18 +27,18 @@ export function RiskFormTab() {
     const studentRef = doc(db, 'students', appUser.data.id);
     try {
         await updateDoc(studentRef, { risks: newRisks });
-        toast({ title: 'Update successful' });
+        toast({ title: 'Güncelleme başarılı' });
     } catch {
-        toast({ variant: 'destructive', title: 'Update failed' });
+        toast({ variant: 'destructive', title: 'Güncelleme başarısız' });
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">Self-Report Risk Factors</CardTitle>
+        <CardTitle className="font-headline">Kişisel Risk Faktörleri</CardTitle>
         <CardDescription>
-          Please check any of the following situations that apply to you. This information is confidential and helps us support you better.
+          Lütfen aşağıdaki durumlardan size uygun olanları işaretleyin. Bu bilgiler gizli tutulacak ve size daha iyi destek olabilmemiz için kullanılacaktır.
         </CardDescription>
       </CardHeader>
       <CardContent>

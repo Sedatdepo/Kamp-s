@@ -15,8 +15,8 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
+  email: z.string().email({ message: 'Lütfen geçerli bir e-posta girin.' }),
+  password: z.string().min(1, { message: 'Şifre gereklidir.' }),
 });
 
 export function TeacherLoginForm() {
@@ -37,15 +37,15 @@ export function TeacherLoginForm() {
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
-        title: 'Login Successful',
-        description: "Welcome back! You're being redirected...",
+        title: 'Giriş Başarılı',
+        description: "Tekrar hoş geldiniz! Yönlendiriliyorsunuz...",
       });
       router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Giriş Başarısız',
+        description: 'E-posta veya şifre hatalı.',
       });
     } finally {
       setIsLoading(false);
@@ -60,9 +60,9 @@ export function TeacherLoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>E-posta</FormLabel>
               <FormControl>
-                <Input placeholder="teacher@school.com" {...field} />
+                <Input placeholder="ornek@okul.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -73,7 +73,7 @@ export function TeacherLoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Şifre</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -83,12 +83,12 @@ export function TeacherLoginForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Log In
+          Giriş Yap
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
+          Hesabınız yok mu?{' '}
           <Link href="/auth/register" className="font-medium text-primary hover:underline">
-            Register
+            Kayıt Ol
           </Link>
         </p>
       </form>

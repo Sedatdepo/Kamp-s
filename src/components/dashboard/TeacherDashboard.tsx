@@ -25,10 +25,10 @@ export function TeacherDashboard() {
             {selectedClassId ? (
               <Tabs defaultValue="students">
                 <TabsList>
-                  <TabsTrigger value="students">Student List</TabsTrigger>
-                  <TabsTrigger value="projects">Project Distribution</TabsTrigger>
-                  <TabsTrigger value="risks">Risk Map</TabsTrigger>
-                  <TabsTrigger value="forms">Info Forms</TabsTrigger>
+                  <TabsTrigger value="students">Öğrenci Listesi</TabsTrigger>
+                  <TabsTrigger value="projects">Proje Dağılımı</TabsTrigger>
+                  <TabsTrigger value="risks">Risk Haritası</TabsTrigger>
+                  <TabsTrigger value="forms">Bilgi Formları</TabsTrigger>
                 </TabsList>
                 <TabsContent value="students" className="mt-4">
                   <StudentListTab classId={selectedClassId} />
@@ -50,9 +50,9 @@ export function TeacherDashboard() {
                             <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
                                 <School className="h-10 w-10 text-primary" />
                             </div>
-                            <CardTitle className="mt-4 font-headline text-2xl">Welcome to Your Dashboard</CardTitle>
+                            <CardTitle className="mt-4 font-headline text-2xl">Yönetim Paneline Hoş Geldiniz</CardTitle>
                             <CardDescription>
-                                Please select a class from the sidebar to begin managing your students and activities. If you don't have any classes, you can add one from the sidebar.
+                                Öğrencilerinizi ve etkinliklerinizi yönetmeye başlamak için lütfen kenar çubuğundan bir sınıf seçin. Henüz sınıfınız yoksa, kenar çubuğundan bir tane ekleyebilirsiniz.
                             </CardDescription>
                         </CardHeader>
                     </Card>

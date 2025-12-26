@@ -30,10 +30,10 @@ import { Loader2 } from 'lucide-react';
 
 
 const profileSchema = z.object({
-    name: z.string().min(2, 'Name must be at least 2 characters.'),
-    branch: z.string().min(2, 'Branch is required.'),
-    schoolName: z.string().min(3, 'School name is required.'),
-    principalName: z.string().min(3, 'Principal name is required.'),
+    name: z.string().min(2, 'İsim en az 2 karakter olmalıdır.'),
+    branch: z.string().min(2, 'Branş gereklidir.'),
+    schoolName: z.string().min(3, 'Okul adı gereklidir.'),
+    principalName: z.string().min(3, 'Müdür adı gereklidir.'),
   });
 
 function ProfileModal({ open, onOpenChange, profile, userId }: { open: boolean, onOpenChange: (open: boolean) => void, profile: TeacherProfile, userId: string }) {
@@ -53,10 +53,10 @@ function ProfileModal({ open, onOpenChange, profile, userId }: { open: boolean, 
       setIsLoading(true);
       try {
         await updateDoc(doc(db, 'teachers', userId), values);
-        toast({ title: 'Success', description: 'Profile updated successfully.' });
+        toast({ title: 'Başarılı', description: 'Profil başarıyla güncellendi.' });
         onOpenChange(false);
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile.' });
+        toast({ variant: 'destructive', title: 'Hata', description: 'Profil güncellenemedi.' });
       } finally {
         setIsLoading(false);
       }
@@ -66,17 +66,17 @@ function ProfileModal({ open, onOpenChange, profile, userId }: { open: boolean, 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-headline">Edit Profile</DialogTitle>
+            <DialogTitle className="font-headline">Profili Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="branch" render={({ field }) => ( <FormItem><FormLabel>Branch</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="schoolName" render={({ field }) => ( <FormItem><FormLabel>School Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="principalName" render={({ field }) => ( <FormItem><FormLabel>Principal Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Ad Soyad</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="branch" render={({ field }) => ( <FormItem><FormLabel>Branş</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="schoolName" render={({ field }) => ( <FormItem><FormLabel>Okul Adı</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="principalName" render={({ field }) => ( <FormItem><FormLabel>Müdür Adı</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes</Button>
+                Değişiklikleri Kaydet</Button>
             </form>
           </Form>
         </DialogContent>
@@ -95,7 +95,7 @@ export function Header() {
   };
 
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
-  const userSubtext = appUser?.type === 'teacher' ? appUser.profile?.branch : appUser?.data.classId;
+  const userSubtext = appUser?.type === 'teacher' ? appUser.profile?.branch : `Nu: ${appUser?.data.number}`;
 
   return (
     <>
@@ -107,7 +107,7 @@ export function Header() {
         <SheetTrigger asChild>
           <Button size="icon" variant="outline" className="sm:hidden">
             <PanelLeft className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
+            <span className="sr-only">Menüyü Aç/Kapat</span>
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="sm:max-w-xs p-0">
@@ -120,8 +120,8 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
               <Avatar>
-                <AvatarImage src={avatarUrl} alt={userName || 'User Avatar'} />
-                <AvatarFallback>{userName ? getInitials(userName) : 'U'}</AvatarFallback>
+                <AvatarImage src={avatarUrl} alt={userName || 'Kullanıcı Avatarı'} />
+                <AvatarFallback>{userName ? getInitials(userName) : 'K'}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -134,12 +134,12 @@ export function Header() {
             {appUser?.type === 'teacher' && (
                 <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Profile Settings</span>
+                    <span>Profil Ayarları</span>
                 </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Logout</span>
+              <span>Çıkış Yap</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

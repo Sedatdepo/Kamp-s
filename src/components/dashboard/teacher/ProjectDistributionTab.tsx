@@ -45,24 +45,25 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
     setIsLoading(true);
     try {
         const lessonColl = collection(db, 'lessons');
+        // A simple way to create a unique ID, consider more robust methods for production
         await doc(lessonColl, newLessonName.toLowerCase().replace(/\s/g, '_')).set({
             name: newLessonName,
             quota: newLessonQuota,
             teacherId: appUser.data.uid
         });
-        toast({ title: "Success", description: "Lesson added."});
+        toast({ title: "Başarılı", description: "Ders eklendi."});
         setLessonDialogOpen(false);
         setNewLessonName('');
         setNewLessonQuota(5);
     } catch (e) {
-        toast({ variant: 'destructive', title: "Error", description: "Could not add lesson."});
+        toast({ variant: 'destructive', title: "Hata", description: "Ders eklenemedi."});
     } finally {
         setIsLoading(false);
     }
   }
 
   const handleDeleteLesson = async (lessonId: string) => {
-    // Also unassign this lesson from any student who has it
+    // Ayrıca bu dersi olan öğrencilerden de kaldır
     const batch = writeBatch(db);
     const lessonRef = doc(db, 'lessons', lessonId);
     batch.delete(lessonRef);
@@ -73,7 +74,7 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
         }
     });
     await batch.commit();
-    toast({ title: "Success", description: "Lesson deleted."});
+    toast({ title: "Başarılı", description: "Ders silindi."});
   }
 
   const getLessonName = (lessonId: string) => lessons.find(l => l.id === lessonId)?.name || 'N/A';
@@ -83,17 +84,17 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
     <div className="grid gap-6 md:grid-cols-3">
       <Card className="md:col-span-2">
         <CardHeader>
-          <CardTitle className="font-headline">Student Assignments</CardTitle>
-          <CardDescription>Assign lessons to students based on their preferences.</CardDescription>
+          <CardTitle className="font-headline">Öğrenci Atamaları</CardTitle>
+          <CardDescription>Öğrencilere tercihlerine göre dersler atayın.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Preferences</TableHead>
-                  <TableHead>Assigned Lesson</TableHead>
+                  <TableHead>Öğrenci</TableHead>
+                  <TableHead>Tercihler</TableHead>
+                  <TableHead>Atanan Ders</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +109,7 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
                           {student.projectPreferences.slice(0, 3).map((prefId, index) => (
                             <li key={index} className="truncate">{getLessonName(prefId)}</li>
                           ))}
-                           {student.projectPreferences.length > 3 && <li className="text-muted-foreground">...more</li>}
+                           {student.projectPreferences.length > 3 && <li className="text-muted-foreground">...daha fazla</li>}
                         </ol>
                       </TableCell>
                       <TableCell>
@@ -117,10 +118,10 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
                           onValueChange={(value) => handleAssignmentChange(student.id, value)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Assign lesson..." />
+                            <SelectValue placeholder="Ders ata..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">- Unassigned -</SelectItem>
+                            <SelectItem value="">- Atanmamış -</SelectItem>
                             {lessons.map(lesson => (
                               <SelectItem key={lesson.id} value={lesson.id} disabled={getStudentCountForLesson(lesson.id) >= lesson.quota && student.assignedLesson !== lesson.id}>
                                 {lesson.name} ({getStudentCountForLesson(lesson.id)}/{lesson.quota})
@@ -142,8 +143,8 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-                <CardTitle className="font-headline">Lessons</CardTitle>
-                <CardDescription>Manage lesson quotas.</CardDescription>
+                <CardTitle className="font-headline">Dersler</CardTitle>
+                <CardDescription>Ders kotalarını yönetin.</CardDescription>
             </div>
             <Dialog open={isLessonDialogOpen} onOpenChange={setLessonDialogOpen}>
                 <DialogTrigger asChild>
@@ -151,17 +152,17 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-headline">Add New Lesson</DialogTitle>
+                        <DialogTitle className="font-headline">Yeni Ders Ekle</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <Input placeholder="Lesson Name" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} />
-                        <Input type="number" placeholder="Quota" value={newLessonQuota} onChange={e => setNewLessonQuota(Number(e.target.value))} />
+                        <Input placeholder="Ders Adı" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} />
+                        <Input type="number" placeholder="Kontenjan" value={newLessonQuota} onChange={e => setNewLessonQuota(Number(e.target.value))} />
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <DialogClose asChild><Button variant="outline">İptal</Button></DialogClose>
                         <Button onClick={handleAddLesson} disabled={isLoading}>
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Lesson</Button>
+                            Ders Ekle</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -171,8 +172,8 @@ export function ProjectDistributionTab({ classId }: { classId: string }) {
           <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>Lesson</TableHead>
-                    <TableHead>Quota</TableHead>
+                    <TableHead>Ders</TableHead>
+                    <TableHead>Kontenjan</TableHead>
                     <TableHead></TableHead>
                 </TableRow>
             </TableHeader>

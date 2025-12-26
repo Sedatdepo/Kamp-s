@@ -16,9 +16,9 @@ import { Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 const formSchema = z.object({
-  classId: z.string().min(1, { message: 'Please select your class.' }),
-  studentNumber: z.string().min(1, { message: 'Student number is required.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
+  classId: z.string().min(1, { message: 'Lütfen sınıfınızı seçin.' }),
+  studentNumber: z.string().min(1, { message: 'Öğrenci numarası gereklidir.' }),
+  password: z.string().min(1, { message: 'Şifre gereklidir.' }),
 });
 
 export function StudentLoginForm() {
@@ -41,14 +41,14 @@ export function StudentLoginForm() {
     try {
       await signInStudent(values.classId, values.studentNumber, values.password);
       toast({
-        title: 'Login Successful',
-        description: 'Welcome! Redirecting to your dashboard...',
+        title: 'Giriş Başarılı',
+        description: 'Hoş geldin! Panele yönlendiriliyorsun...',
       });
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Giriş Başarısız',
+        description: 'Girdiğiniz bilgiler hatalı.',
       });
     } finally {
       setIsLoading(false);
@@ -63,11 +63,11 @@ export function StudentLoginForm() {
           name="classId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Class</FormLabel>
+              <FormLabel>Sınıf</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value} disabled={classesLoading}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select your class..." />
+                    <SelectValue placeholder="Sınıfınızı seçin..." />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -94,9 +94,9 @@ export function StudentLoginForm() {
           name="studentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Student Number</FormLabel>
+              <FormLabel>Öğrenci Numarası</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., 123" {...field} />
+                <Input placeholder="örn. 123" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,7 +107,7 @@ export function StudentLoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Şifre</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -117,7 +117,7 @@ export function StudentLoginForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Log In
+          Giriş Yap
         </Button>
       </form>
     </Form>

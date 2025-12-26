@@ -4,8 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CampusConnect',
-  description: 'A digital assistant for high school teachers and a portal for students.',
+  title: 'İTO KAMPÜS',
+  description: 'Lise öğretmenleri için dijital bir asistan ve öğrenciler için bir portal.',
 };
 
 export default function RootLayout({

@@ -16,12 +16,12 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(6, 'Password must be at least 6 characters.'),
-  branch: z.string().min(2, 'Branch is required.'),
-  schoolName: z.string().min(3, 'School name is required.'),
-  principalName: z.string().min(3, 'Principal name is required.'),
+  name: z.string().min(2, 'İsim en az 2 karakter olmalıdır.'),
+  email: z.string().email('Geçersiz e-posta adresi.'),
+  password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
+  branch: z.string().min(2, 'Branş gereklidir.'),
+  schoolName: z.string().min(3, 'Okul adı gereklidir.'),
+  principalName: z.string().min(3, 'Müdür adı gereklidir.'),
 });
 
 export function RegisterForm() {
@@ -47,7 +47,6 @@ export function RegisterForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Create teacher profile in Firestore
       await setDoc(doc(db, 'teachers', user.uid), {
         name: values.name,
         branch: values.branch,
@@ -56,15 +55,15 @@ export function RegisterForm() {
       });
 
       toast({
-        title: 'Registration Successful',
-        description: 'Your account has been created. Redirecting...',
+        title: 'Kayıt Başarılı',
+        description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
       });
       router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Registration Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Kayıt Başarısız',
+        description: 'Bu e-posta adresi zaten kullanılıyor veya bir hata oluştu.',
       });
     } finally {
       setIsLoading(false);
@@ -80,8 +79,8 @@ export function RegisterForm() {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                <FormLabel>Ad Soyad</FormLabel>
+                <FormControl><Input placeholder="Ahmet Yılmaz" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -91,8 +90,8 @@ export function RegisterForm() {
             name="branch"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Branch/Subject</FormLabel>
-                <FormControl><Input placeholder="Mathematics" {...field} /></FormControl>
+                <FormLabel>Branş/Ders</FormLabel>
+                <FormControl><Input placeholder="Matematik" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -103,8 +102,8 @@ export function RegisterForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl><Input placeholder="teacher@school.com" {...field} /></FormControl>
+              <FormLabel>E-posta</FormLabel>
+              <FormControl><Input placeholder="ogretmen@okul.com" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -114,7 +113,7 @@ export function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Şifre</FormLabel>
               <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -126,8 +125,8 @@ export function RegisterForm() {
             name="schoolName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>School Name</FormLabel>
-                <FormControl><Input placeholder="Central High School" {...field} /></FormControl>
+                <FormLabel>Okul Adı</FormLabel>
+                <FormControl><Input placeholder="Merkez Lisesi" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -137,8 +136,8 @@ export function RegisterForm() {
             name="principalName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Principal Name</FormLabel>
-                <FormControl><Input placeholder="Jane Smith" {...field} /></FormControl>
+                <FormLabel>Müdür Adı</FormLabel>
+                <FormControl><Input placeholder="Ayşe Kaya" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -146,12 +145,12 @@ export function RegisterForm() {
         </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Register
+          Kayıt Ol
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
+          Zaten bir hesabınız var mı?{' '}
           <Link href="/" className="font-medium text-primary hover:underline">
-            Login
+            Giriş Yap
           </Link>
         </p>
       </form>

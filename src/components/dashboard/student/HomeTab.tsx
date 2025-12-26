@@ -42,7 +42,7 @@ function ProjectSelection() {
       if (prev.length < 5) {
         return [...prev, lessonId];
       }
-      toast({ variant: 'destructive', title: 'You can only select up to 5 preferences.' });
+      toast({ variant: 'destructive', title: 'En fazla 5 tercih yapabilirsiniz.' });
       return prev;
     });
   };
@@ -50,7 +50,7 @@ function ProjectSelection() {
   const handleSavePreferences = async () => {
     const studentRef = doc(db, 'students', appUser.data.id);
     await updateDoc(studentRef, { projectPreferences: selected });
-    toast({ title: 'Preferences saved!' });
+    toast({ title: 'Tercihleriniz kaydedildi!' });
   };
 
   const assignedLesson = lessons.find(l => l.id === appUser.data.assignedLesson);
@@ -59,11 +59,11 @@ function ProjectSelection() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Your Assigned Project</CardTitle>
+          <CardTitle className="font-headline">Atanan Projeniz</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="bg-primary/10 p-6 rounded-lg text-center">
-            <p className="text-muted-foreground">You have been assigned to:</p>
+            <p className="text-muted-foreground">Size atanan proje:</p>
             <p className="text-2xl font-bold text-primary mt-2">{assignedLesson.name}</p>
           </div>
         </CardContent>
@@ -74,8 +74,8 @@ function ProjectSelection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">Project Preference Selection</CardTitle>
-        <CardDescription>Select up to 5 lessons in your order of preference. The first one you select is your 1st choice.</CardDescription>
+        <CardTitle className="font-headline">Proje Tercih Seçimi</CardTitle>
+        <CardDescription>Tercih sırasına göre en fazla 5 ders seçin. İlk seçtiğiniz ders 1. tercihiniz olacaktır.</CardDescription>
       </CardHeader>
       <CardContent>
         {lessonsLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
@@ -95,7 +95,7 @@ function ProjectSelection() {
                 </div>
               ))}
             </div>
-            <Button onClick={handleSavePreferences}>Save Preferences</Button>
+            <Button onClick={handleSavePreferences}>Tercihleri Kaydet</Button>
           </div>
         )}
       </CardContent>
@@ -107,15 +107,16 @@ function Chat() {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     
-    // In a real app, teacher ID should be dynamic. For now, we assume one teacher or get it from class.
-    // This is a simplification.
-    const teacherId = "default_teacher"; 
+    // Gerçek bir uygulamada öğretmen ID'si dinamik olmalıdır. Şimdilik bir varsayılan kullanıyoruz.
+    const teacherId = appUser?.type === 'student' ? (lessons.find(l => l.id === appUser.data.assignedLesson)?.teacherId || 'default_teacher') : "default_teacher"; 
+    const lessonsQuery = query(collection(db, 'lessons'));
+    const { data: lessons } = useFirestore<Lesson>('lessons', lessonsQuery);
     
     if (appUser?.type !== 'student') return null;
 
     const studentId = appUser.data.id;
 
-    // This query is also simplified. A real chat would need more complex logic.
+    // Bu sorgu da basitleştirilmiştir. Gerçek bir sohbet daha karmaşık mantık gerektirebilir.
     const messagesQuery = query(
         collection(db, 'messages'), 
         where('senderId', 'in', [studentId, teacherId]),
@@ -138,7 +139,7 @@ function Chat() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline">Chat with Teacher</CardTitle>
+                <CardTitle className="font-headline">Öğretmenle Sohbet</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col h-96">
@@ -155,7 +156,7 @@ function Chat() {
                         )}
                     </ScrollArea>
                     <div className="flex mt-4 gap-2">
-                        <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
+                        <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
                         <Button onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
                     </div>
                 </div>

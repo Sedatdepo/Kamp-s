@@ -1,48 +1,44 @@
+// StudentDashboard.tsx
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { Header } from './Header';
+import { StudentSidebar } from './student/StudentSidebar';
 import { HomeTab } from './student/HomeTab';
 import { RiskFormTab } from './student/RiskFormTab';
 import { InfoFormTab } from './student/InfoFormTab';
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function StudentDashboard() {
-  const { appUser } = useAuth();
-
-  if (!appUser || appUser.type !== 'student') {
-    return null; // Or a loading/error state
-  }
+  const [activeTab, setActiveTab] = useState('home');
 
   return (
-    <div>
-        <Card className="mb-6">
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl">Welcome, {appUser.data.name}</CardTitle>
-                <div className="text-muted-foreground flex items-center gap-4">
-                    <span>Student No: {appUser.data.number}</span>
-                    <span>|</span>
-                    <span>Behavior Score: <span className="font-bold text-primary">{appUser.data.behaviorScore}</span></span>
-                </div>
-            </CardHeader>
-        </Card>
-
-        <Tabs defaultValue="home">
-            <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="home">Home & Projects</TabsTrigger>
-            <TabsTrigger value="risk-form">Risk Form</TabsTrigger>
-            <TabsTrigger value="info-form">Info Form</TabsTrigger>
-            </TabsList>
-            <TabsContent value="home" className="mt-4">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-muted/40">
+        <StudentSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className="flex flex-col flex-1">
+          <Header />
+          <main className="flex-1 p-4 sm:p-6">
+            <Tabs defaultValue={activeTab} className="w-full">
+              <TabsList>
+                <TabsTrigger value="home" onClick={() => setActiveTab('home')}>Anasayfa</TabsTrigger>
+                <TabsTrigger value="risks" onClick={() => setActiveTab('risks')}>Risk Formu</TabsTrigger>
+                <TabsTrigger value="info" onClick={() => setActiveTab('info')}>Bilgi Formu</TabsTrigger>
+              </TabsList>
+              <TabsContent value="home" className="mt-4">
                 <HomeTab />
-            </TabsContent>
-            <TabsContent value="risk-form" className="mt-4">
+              </TabsContent>
+              <TabsContent value="risks" className="mt-4">
                 <RiskFormTab />
-            </TabsContent>
-            <TabsContent value="info-form" className="mt-4">
+              </TabsContent>
+              <TabsContent value="info" className="mt-4">
                 <InfoFormTab />
-            </TabsContent>
-      </Tabs>
-    </div>
+              </TabsContent>
+            </Tabs>
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }

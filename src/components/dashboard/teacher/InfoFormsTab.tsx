@@ -16,29 +16,29 @@ import { format } from 'date-fns';
 
 const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm }) => {
     if (!form || !form.submitted) {
-        return <p>This form has not been filled out yet.</p>
+        return <p>Bu form henüz doldurulmamış.</p>
     }
     return (
         <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-4">
-            <h3 className="font-bold font-headline">Personal Information</h3>
-            <p><strong>Date of Birth:</strong> {form.birthDate ? format(form.birthDate.toDate(), 'PPP') : 'N/A'}</p>
-            <p><strong>Place of Birth:</strong> {form.birthPlace || 'N/A'}</p>
-            <p><strong>Address:</strong> {form.address || 'N/A'}</p>
-            <p><strong>Health Issues:</strong> {form.healthIssues || 'None'}</p>
-            <p><strong>Hobbies:</strong> {form.hobbies || 'N/A'}</p>
-            <p><strong>Tech Usage:</strong> {form.techUsage || 'N/A'}</p>
+            <h3 className="font-bold font-headline">Kişisel Bilgiler</h3>
+            <p><strong>Doğum Tarihi:</strong> {form.birthDate ? format(form.birthDate.toDate(), 'PPP') : 'N/A'}</p>
+            <p><strong>Doğum Yeri:</strong> {form.birthPlace || 'N/A'}</p>
+            <p><strong>Adres:</strong> {form.address || 'N/A'}</p>
+            <p><strong>Sağlık Sorunları:</strong> {form.healthIssues || 'Yok'}</p>
+            <p><strong>Hobiler:</strong> {form.hobbies || 'N/A'}</p>
+            <p><strong>Teknoloji Kullanımı:</strong> {form.techUsage || 'N/A'}</p>
 
-            <h3 className="font-bold font-headline mt-4">Parent Information</h3>
-            <p><strong>Mother's Status:</strong> {form.motherStatus || 'N/A'}</p>
-            <p><strong>Mother's Education:</strong> {form.motherEducation || 'N/A'}</p>
-            <p><strong>Mother's Job:</strong> {form.motherJob || 'N/A'}</p>
-            <p><strong>Father's Status:</strong> {form.fatherStatus || 'N/A'}</p>
-            <p><strong>Father's Education:</strong> {form.fatherEducation || 'N/A'}</p>
-            <p><strong>Father's Job:</strong> {form.fatherJob || 'N/A'}</p>
+            <h3 className="font-bold font-headline mt-4">Veli Bilgileri</h3>
+            <p><strong>Anne Durumu:</strong> {form.motherStatus || 'N/A'}</p>
+            <p><strong>Anne Eğitimi:</strong> {form.motherEducation || 'N/A'}</p>
+            <p><strong>Anne Mesleği:</strong> {form.motherJob || 'N/A'}</p>
+            <p><strong>Baba Durumu:</strong> {form.fatherStatus || 'N/A'}</p>
+            <p><strong>Baba Eğitimi:</strong> {form.fatherEducation || 'N/A'}</p>
+            <p><strong>Baba Mesleği:</strong> {form.fatherJob || 'N/A'}</p>
 
-            <h3 className="font-bold font-headline mt-4">Family Information</h3>
-            <p><strong>Siblings:</strong> {form.siblingsInfo || 'N/A'}</p>
-            <p><strong>Economic Status:</strong> {form.economicStatus || 'N/A'}</p>
+            <h3 className="font-bold font-headline mt-4">Aile Bilgileri</h3>
+            <p><strong>Kardeşler:</strong> {form.siblingsInfo || 'N/A'}</p>
+            <p><strong>Ekonomik Durum:</strong> {form.economicStatus || 'N/A'}</p>
         </div>
     )
 }
@@ -64,17 +64,17 @@ export function InfoFormsTab({ classId }: { classId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">Information Forms</CardTitle>
-        <CardDescription>View and export student information forms.</CardDescription>
+        <CardTitle className="font-headline">Bilgi Formları</CardTitle>
+        <CardDescription>Öğrenci bilgi formlarını görüntüleyin ve dışa aktarın.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Öğrenci</TableHead>
+                <TableHead>Durum</TableHead>
+                <TableHead className="text-right">Eylemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -88,7 +88,7 @@ export function InfoFormsTab({ classId }: { classId: string }) {
                       <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>
                         <Badge variant={form?.submitted ? 'default' : 'secondary'} className={form?.submitted ? 'bg-green-600' : ''}>
-                          {form?.submitted ? 'Filled' : 'Empty'}
+                          {form?.submitted ? 'Dolduruldu' : 'Boş'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
@@ -98,7 +98,7 @@ export function InfoFormsTab({ classId }: { classId: string }) {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md">
                                 <DialogHeader>
-                                    <DialogTitle className="font-headline">Info Form: {student.name}</DialogTitle>
+                                    <DialogTitle className="font-headline">Bilgi Formu: {student.name}</DialogTitle>
                                 </DialogHeader>
                                 <ViewFormModal student={student} form={form} />
                             </DialogContent>
@@ -108,6 +108,7 @@ export function InfoFormsTab({ classId }: { classId: string }) {
                           disabled={!form?.submitted}
                           variant="outline"
                           size="icon"
+                          title="Word olarak indir"
                         >
                           <FileText className="h-4 w-4" />
                         </Button>

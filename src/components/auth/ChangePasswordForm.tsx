@@ -15,10 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
-  newPassword: z.string().min(6, 'Password must be at least 6 characters.'),
+  newPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Şifreler eşleşmiyor",
   path: ['confirmPassword'],
 });
 
@@ -38,7 +38,7 @@ export function ChangePasswordForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (appUser?.type !== 'student') {
-      toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in as a student.' });
+      toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci olarak giriş yapmadınız.' });
       return;
     }
 
@@ -51,15 +51,15 @@ export function ChangePasswordForm() {
       });
 
       toast({
-        title: 'Password Updated',
-        description: 'You can now access your dashboard.',
+        title: 'Şifre Güncellendi',
+        description: 'Artık panonuza erişebilirsiniz.',
       });
       router.push('/dashboard/student');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Update Failed',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Güncelleme Başarısız',
+        description: 'Bilinmeyen bir hata oluştu.',
       });
     } finally {
       setIsLoading(false);
@@ -74,7 +74,7 @@ export function ChangePasswordForm() {
           name="newPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New Password</FormLabel>
+              <FormLabel>Yeni Şifre</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -87,7 +87,7 @@ export function ChangePasswordForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm New Password</FormLabel>
+              <FormLabel>Yeni Şifreyi Onayla</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -97,7 +97,7 @@ export function ChangePasswordForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Update Password
+          Şifreyi Güncelle
         </Button>
       </form>
     </Form>
