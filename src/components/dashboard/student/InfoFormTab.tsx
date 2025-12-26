@@ -47,6 +47,18 @@ export function InfoFormTab() {
 
   const form = useForm<InfoFormData>({
     resolver: zodResolver(infoFormSchema),
+    defaultValues: {
+        birthPlace: '',
+        address: '',
+        healthIssues: '',
+        hobbies: '',
+        techUsage: '',
+        motherEducation: '',
+        motherJob: '',
+        fatherEducation: '',
+        fatherJob: '',
+        siblingsInfo: '',
+      },
   });
 
   useEffect(() => {
