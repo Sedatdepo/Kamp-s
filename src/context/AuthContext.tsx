@@ -22,61 +22,60 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/', '/auth/register'];
-const studentOnlyRoutes = ['/dashboard/student', '/auth/change-password'];
-const teacherOnlyRoutes = ['/dashboard/teacher'];
-
-const defaultLessons = [
-    { id: "math_proj", name: "Math Project", quota: 5, teacherId: "default_teacher" },
-    { id: "sci_proj", name: "Science Fair", quota: 5, teacherId: "default_teacher" },
-    { id: "hist_proj", name: "History Report", quota: 5, teacherId: "default_teacher" },
-    { id: "art_proj", name: "Art Portfolio", quota: 5, teacherId: "default_teacher" },
-    { id: "music_proj", name: "Music Composition", quota: 5, teacherId: "default_teacher" },
-];
-  
-const defaultRiskFactors = [
-    { id: "risk_family", label: "Broken Family", weight: 3, teacherId: "default_teacher" },
-    { id: "risk_attendance", label: "Poor Attendance", weight: 5, teacherId: "default_teacher" },
-    { id: "risk_grades", label: "Low Grades", weight: 4, teacherId: "default_teacher" },
-    { id: "risk_social", label: "Social Isolation", weight: 2, teacherId: "default_teacher" },
-];
+const studentChangePassRoute = '/auth/change-password';
 
 async function seedDatabase() {
+    const defaultLessons = [
+        { name: "Math Project", quota: 5, teacherId: "default_teacher" },
+        { name: "Science Fair", quota: 5, teacherId: "default_teacher" },
+        { name: "History Report", quota: 5, teacherId: "default_teacher" },
+        { name: "Art Portfolio", quota: 5, teacherId: "default_teacher" },
+        { name: "Music Composition", quota: 5, teacherId: "default_teacher" },
+    ];
+      
+    const defaultRiskFactors = [
+        { label: "Broken Family", weight: 3, teacherId: "default_teacher" },
+        { label: "Poor Attendance", weight: 5, teacherId: "default_teacher" },
+        { label: "Low Grades", weight: 4, teacherId: "default_teacher" },
+        { label: "Social Isolation", weight: 2, teacherId: "default_teacher" },
+    ];
+
     try {
-      const lessonsCollection = collection(db, "lessons");
-      const riskFactorsCollection = collection(db, "riskFactors");
-  
-      const lessonsSnapshot = await getDocs(lessonsCollection);
-      const riskFactorsSnapshot = await getDocs(riskFactorsCollection);
-  
-      const batch = writeBatch(db);
-      let operations = 0;
-  
-      if (lessonsSnapshot.empty) {
-        console.log("Seeding default lessons...");
-        defaultLessons.forEach(lesson => {
-          const docRef = doc(db, "lessons", lesson.id);
-          batch.set(docRef, lesson);
-          operations++;
-        });
-      }
-  
-      if (riskFactorsSnapshot.empty) {
-        console.log("Seeding default risk factors...");
-        defaultRiskFactors.forEach(risk => {
-          const docRef = doc(db, "riskFactors", risk.id);
-          batch.set(docRef, risk);
-          operations++;
-        });
-      }
-  
-      if (operations > 0) {
-        await batch.commit();
-        console.log("Database seeded successfully.");
-      } else {
-        console.log("Database already contains data. No seeding needed.");
-      }
+        const lessonsCollection = collection(db, "lessons");
+        const riskFactorsCollection = collection(db, "riskFactors");
+
+        const lessonsSnapshot = await getDocs(query(lessonsCollection, where("teacherId", "==", "default_teacher")));
+        const riskFactorsSnapshot = await getDocs(query(riskFactorsCollection, where("teacherId", "==", "default_teacher")));
+    
+        const batch = writeBatch(db);
+        let operations = 0;
+    
+        if (lessonsSnapshot.empty) {
+            console.log("Seeding default lessons...");
+            defaultLessons.forEach(lesson => {
+                const docRef = doc(lessonsCollection);
+                batch.set(docRef, lesson);
+                operations++;
+            });
+        }
+    
+        if (riskFactorsSnapshot.empty) {
+            console.log("Seeding default risk factors...");
+            defaultRiskFactors.forEach(risk => {
+                const docRef = doc(riskFactorsCollection);
+                batch.set(docRef, risk);
+                operations++;
+            });
+        }
+    
+        if (operations > 0) {
+            await batch.commit();
+            console.log("Database seeded successfully.");
+        } else {
+            console.log("Database already contains default data.");
+        }
     } catch (error) {
-      console.error("Error seeding database:", error);
+        console.error("Error seeding database:", error);
     }
 }
 
@@ -86,41 +85,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const seedCalled = useRef(false);
-
+  
+  // Sadece ilk render'da veritabanını hazırla
   useEffect(() => {
-    if (seedCalled.current) return;
-    seedCalled.current = true;
     seedDatabase();
   }, []);
 
+  // Kullanıcı kimlik durumunu dinle
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       if (user) {
-        // Teacher is logged in via Firebase Auth
         const profileDoc = await getDoc(doc(db, 'teachers', user.uid));
-        if (profileDoc.exists()) {
-          setAppUser({ type: 'teacher', data: user, profile: { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile });
-        } else {
-           setAppUser({ type: 'teacher', data: user, profile: null });
-        }
+        const profile = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile : null;
+        setAppUser({ type: 'teacher', data: user, profile });
       } else {
-        // Check for student session in localStorage
         const studentData = localStorage.getItem('studentUser');
         if (studentData) {
-          const student = JSON.parse(studentData);
-          setAppUser({ type: 'student', data: student });
+          setAppUser({ type: 'student', data: JSON.parse(studentData) });
         } else {
           setAppUser(null);
         }
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Real-time updates for student data
+  // Öğrenci veya öğretmen verileri değiştiğinde gerçek zamanlı güncelleme
   useEffect(() => {
     let unsubscribe: () => void = () => {};
     if (appUser?.type === 'student') {
@@ -131,14 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('studentUser', JSON.stringify(updatedStudent));
         }
       });
-    }
-    return () => unsubscribe();
-  }, [appUser]);
-  
-    // Real-time updates for teacher profile
-  useEffect(() => {
-    let unsubscribe: () => void = () => {};
-    if (appUser?.type === 'teacher') {
+    } else if (appUser?.type === 'teacher') {
       unsubscribe = onSnapshot(doc(db, 'teachers', appUser.data.uid), (doc) => {
         if (doc.exists()) {
           const updatedProfile = { id: doc.id, ...doc.data() } as TeacherProfile;
@@ -147,43 +132,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     return () => unsubscribe();
-  }, [appUser]);
+  }, [appUser?.type, appUser?.type === 'student' ? appUser.data.id : appUser?.type === 'teacher' ? appUser.data.uid : null]);
 
+  // Merkezi Yönlendirme Mantığı
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+      return; // Yükleme tamamlanana kadar hiçbir yönlendirme yapma
+    }
 
     const isPublic = publicRoutes.includes(pathname);
-    if (isPublic) return;
+    const isChangePass = pathname === studentChangePassRoute;
 
-    if (!appUser) {
-      router.push('/');
-      return;
-    }
-
-    if (appUser.type === 'teacher' && !teacherOnlyRoutes.some(p => pathname.startsWith(p))) {
-      router.push('/dashboard/teacher');
-    } else if (appUser.type === 'student') {
-        if (appUser.data.needsPasswordChange && pathname !== '/auth/change-password') {
-            router.push('/auth/change-password');
-        } else if (!appUser.data.needsPasswordChange && !studentOnlyRoutes.some(p => pathname.startsWith(p))) {
-            router.push('/dashboard/student');
+    if (appUser) {
+      if (appUser.type === 'student') {
+        if (appUser.data.needsPasswordChange) {
+          if (!isChangePass) {
+            router.push(studentChangePassRoute);
+          }
+        } else if (isPublic || isChangePass) {
+          router.push('/dashboard/student');
         }
+      } else if (appUser.type === 'teacher') {
+        if (isPublic) {
+          router.push('/dashboard/teacher');
+        }
+      }
+    } else {
+      // Kullanıcı giriş yapmamış
+      if (!isPublic) {
+        router.push('/');
+      }
     }
-  }, [appUser, loading, pathname, router]);
-
+  }, [loading, appUser, pathname, router]);
 
   const signInStudent = async (studentId: string, passwordAsNumber: string) => {
-    const studentsQuery = query(collection(db, 'students'), where('id', '==', studentId));
-    const querySnapshot = await getDocs(studentsQuery);
+    const studentDocRef = doc(db, 'students', studentId);
+    const studentDoc = await getDoc(studentDocRef);
 
-    if (querySnapshot.empty) {
+    if (!studentDoc.exists()) {
         throw new Error('Öğrenci bulunamadı.');
     }
     
-    const studentDoc = querySnapshot.docs[0];
     const studentDataDb = studentDoc.data();
 
-    // The password is the student number
     if (studentDataDb.password !== passwordAsNumber) {
         throw new Error('Geçersiz şifre.');
     }
@@ -191,15 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
     localStorage.setItem('studentUser', JSON.stringify(studentData));
     setAppUser({ type: 'student', data: studentData });
-  
-    if (studentData.needsPasswordChange) {
-      router.push('/auth/change-password');
-    } else {
-      router.push('/dashboard/student');
-    }
+    // Yönlendirmeyi merkezi useEffect halledecek
   };
   
-
   const signOut = async () => {
     await firebaseSignOut(auth);
     localStorage.removeItem('studentUser');
@@ -207,9 +192,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   };
 
-  if (loading) {
+  // Yönlendirme işlemleri sırasında geçici bir yükleme ekranı göster
+  if (loading || (!appUser && !publicRoutes.includes(pathname))) {
     return (
-        <div className="flex h-screen items-center justify-center">
+        <div className="flex h-screen items-center justify-center bg-background">
             <div className="w-full max-w-md space-y-6">
                 <div className="flex flex-col items-center text-center">
                     <Skeleton className="h-12 w-12 rounded-full" />

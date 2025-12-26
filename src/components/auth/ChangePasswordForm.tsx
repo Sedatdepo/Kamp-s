@@ -55,7 +55,8 @@ export function ChangePasswordForm() {
         title: 'Şifre Güncellendi',
         description: 'Artık panonuza erişebilirsiniz.',
       });
-      router.push('/dashboard/student');
+      // Yönlendirmeyi AuthContext halledecek
+      // router.push('/dashboard/student');
     } catch (error: any) {
         console.error("Şifre güncelleme hatası:", error);
       toast({

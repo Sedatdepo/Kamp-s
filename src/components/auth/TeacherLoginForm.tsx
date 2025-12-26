@@ -40,7 +40,8 @@ export function TeacherLoginForm() {
         title: 'Giriş Başarılı',
         description: "Tekrar hoş geldiniz! Yönlendiriliyorsunuz...",
       });
-      router.push('/dashboard/teacher');
+      // Yönlendirmeyi AuthContext halledecek
+      // router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({
         variant: 'destructive',

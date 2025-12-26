@@ -58,7 +58,8 @@ export function RegisterForm() {
         title: 'Kayıt Başarılı',
         description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
       });
-      router.push('/dashboard/teacher');
+      // Yönlendirmeyi AuthContext halledecek
+      // router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({
         variant: 'destructive',

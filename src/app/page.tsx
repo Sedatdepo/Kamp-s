@@ -6,26 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TeacherLoginForm } from '@/components/auth/TeacherLoginForm';
 import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
   const { appUser, loading } = useAuth();
 
-  // AuthProvider yönlendirmeyi hallederken, bu sayfa sadece bir yükleme durumu göstermelidir.
-  // Kullanıcı zaten doğrulanmışsa, AuthProvider onu zaten yönlendirmiş olacaktır.
+  // AuthProvider yönlendirmeyi halleder. Eğer kullanıcı zaten varsa veya sayfa yükleniyorsa
+  // bu bileşen bir "skeleton" göstermemeli, çünkü AuthProvider zaten
+  // bir yükleme ekranı gösteriyor ve sonra doğru sayfaya yönlendiriyor.
+  // Bu sayfa sadece giriş yapmamış kullanıcılar için render edilmeli.
   if (loading || appUser) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex flex-col items-center text-center">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="mt-4 h-8 w-48" />
-            <Skeleton className="mt-2 h-4 w-64" />
-          </div>
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
-    );
+    return null; // AuthProvider işini yaparken boş bir ekran göster.
   }
 
   return (

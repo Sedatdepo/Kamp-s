@@ -19,7 +19,7 @@ import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   classId: z.string().min(1, { message: 'Lütfen sınıfınızı seçin.' }),
-  studentName: z.string().min(1, { message: 'Öğrenci adı gereklidir.' }),
+  studentId: z.string().min(1, { message: 'Lütfen adınızı seçin.' }),
   studentNumber: z.string().min(1, { message: 'Şifre olarak öğrenci numarası gereklidir.' }),
 });
 
@@ -34,7 +34,7 @@ export function StudentLoginForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       classId: '',
-      studentName: '',
+      studentId: '',
       studentNumber: '',
     },
   });
@@ -51,11 +51,7 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const selectedStudent = studentsInClass.find(s => s.name === values.studentName);
-      if (!selectedStudent) {
-        throw new Error("Öğrenci bulunamadı.");
-      }
-      await signInStudent(selectedStudent.id, values.studentNumber);
+      await signInStudent(values.studentId, values.studentNumber);
       toast({
         title: 'Giriş Başarılı',
         description: 'Hoş geldin! Panele yönlendiriliyorsun...',
@@ -80,7 +76,7 @@ export function StudentLoginForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Sınıf</FormLabel>
-              <Select onValueChange={(value) => { field.onChange(value); form.setValue('studentName', ''); }} value={field.value} disabled={classesLoading}>
+              <Select onValueChange={(value) => { field.onChange(value); form.setValue('studentId', ''); }} value={field.value} disabled={classesLoading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sınıfınızı seçin..." />
@@ -107,7 +103,7 @@ export function StudentLoginForm() {
         />
         <FormField
           control={form.control}
-          name="studentName"
+          name="studentId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Ad Soyad</FormLabel>
@@ -124,7 +120,7 @@ export function StudentLoginForm() {
                     </div>
                   ) : (
                     studentsInClass.map((student) => (
-                      <SelectItem key={student.id} value={student.name}>
+                      <SelectItem key={student.id} value={student.id}>
                         {student.name}
                       </SelectItem>
                     ))
