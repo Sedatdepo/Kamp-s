@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PanelLeft, LogOut, User, Settings } from 'lucide-react';
 import { TeacherSidebar } from './teacher/TeacherSidebar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { TeacherProfile } from '@/lib/types';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -39,15 +39,21 @@ const profileSchema = z.object({
 function ProfileModal({ open, onOpenChange, profile, userId }: { open: boolean, onOpenChange: (open: boolean) => void, profile: TeacherProfile, userId: string }) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    
     const form = useForm<z.infer<typeof profileSchema>>({
       resolver: zodResolver(profileSchema),
-      defaultValues: {
-        name: profile.name || '',
-        branch: profile.branch || '',
-        schoolName: profile.schoolName || '',
-        principalName: profile.principalName || '',
-      },
     });
+
+    useEffect(() => {
+        if (profile) {
+            form.reset({
+                name: profile.name || '',
+                branch: profile.branch || '',
+                schoolName: profile.schoolName || '',
+                principalName: profile.principalName || '',
+            });
+        }
+    }, [profile, form]);
   
     async function onSubmit(values: z.infer<typeof profileSchema>) {
       setIsLoading(true);
