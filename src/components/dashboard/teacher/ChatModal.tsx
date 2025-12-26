@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send } from 'lucide-react';
 import { Student, Message } from '@/lib/types';
 import { useFirestore } from '@/hooks/useFirestore';
-import { collection, query, where, orderBy, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
@@ -27,12 +27,15 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
     const participants = [student.id, teacherId].sort();
     return query(
       collection(db, 'messages'),
-      where('participants', '==', participants),
-      orderBy('timestamp', 'asc')
+      where('participants', '==', participants)
     );
   }, [student.id, teacherId]);
 
   const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
+
+  const sortedMessages = useMemo(() => {
+    return messages.sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+  }, [messages]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -41,7 +44,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
             scrollViewport.scrollTop = scrollViewport.scrollHeight;
         }
     }
-  }, [messages]);
+  }, [sortedMessages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -68,7 +71,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
             {messagesLoading ? (
               <Loader2 className="mx-auto h-6 w-6 animate-spin" />
             ) : (
-                messages.map(msg => (
+                sortedMessages.map(msg => (
                 <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                   <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     <p>{msg.text}</p>
@@ -77,7 +80,7 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
                 </div>
               ))
             )}
-            {messages.length === 0 && !messagesLoading && (
+            {sortedMessages.length === 0 && !messagesLoading && (
                 <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
             )}
           </ScrollArea>
