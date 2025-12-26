@@ -167,8 +167,8 @@ export function TeacherSidebar({ selectedClassId, onSelectClass, isMobile = fals
                   <SidebarMenuItem key={cls.id}>
                     <SidebarMenuButton
                       onClick={() => {
-                        if (onSelectClass) onSelectClass(cls.id);
-                        if(onSelect) onSelect();
+                        onSelectClass?.(cls.id);
+                        onSelect?.();
                       }}
                       isActive={selectedClassId === cls.id}
                       className="justify-between"
