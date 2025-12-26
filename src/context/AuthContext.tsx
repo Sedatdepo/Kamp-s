@@ -1,8 +1,8 @@
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import type { Student, TeacherProfile } from '@/lib/types';
@@ -25,11 +25,74 @@ const publicRoutes = ['/', '/auth/register'];
 const studentOnlyRoutes = ['/dashboard/student', '/auth/change-password'];
 const teacherOnlyRoutes = ['/dashboard/teacher'];
 
+const defaultLessons = [
+    { id: "math_proj", name: "Math Project", quota: 5, teacherId: "default_teacher" },
+    { id: "sci_proj", name: "Science Fair", quota: 5, teacherId: "default_teacher" },
+    { id: "hist_proj", name: "History Report", quota: 5, teacherId: "default_teacher" },
+    { id: "art_proj", name: "Art Portfolio", quota: 5, teacherId: "default_teacher" },
+    { id: "music_proj", name: "Music Composition", quota: 5, teacherId: "default_teacher" },
+];
+  
+const defaultRiskFactors = [
+    { id: "risk_family", label: "Broken Family", weight: 3, teacherId: "default_teacher" },
+    { id: "risk_attendance", label: "Poor Attendance", weight: 5, teacherId: "default_teacher" },
+    { id: "risk_grades", label: "Low Grades", weight: 4, teacherId: "default_teacher" },
+    { id: "risk_social", label: "Social Isolation", weight: 2, teacherId: "default_teacher" },
+];
+
+async function seedDatabase() {
+    try {
+      const lessonsCollection = collection(db, "lessons");
+      const riskFactorsCollection = collection(db, "riskFactors");
+  
+      const lessonsSnapshot = await getDocs(lessonsCollection);
+      const riskFactorsSnapshot = await getDocs(riskFactorsCollection);
+  
+      const batch = writeBatch(db);
+      let operations = 0;
+  
+      if (lessonsSnapshot.empty) {
+        console.log("Seeding default lessons...");
+        defaultLessons.forEach(lesson => {
+          const docRef = doc(db, "lessons", lesson.id);
+          batch.set(docRef, lesson);
+          operations++;
+        });
+      }
+  
+      if (riskFactorsSnapshot.empty) {
+        console.log("Seeding default risk factors...");
+        defaultRiskFactors.forEach(risk => {
+          const docRef = doc(db, "riskFactors", risk.id);
+          batch.set(docRef, risk);
+          operations++;
+        });
+      }
+  
+      if (operations > 0) {
+        await batch.commit();
+        console.log("Database seeded successfully.");
+      } else {
+        console.log("Database already contains data. No seeding needed.");
+      }
+    } catch (error) {
+      console.error("Error seeding database:", error);
+    }
+}
+
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const seedCalled = useRef(false);
+
+  useEffect(() => {
+    if (seedCalled.current) return;
+    seedCalled.current = true;
+    seedDatabase();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -110,13 +173,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const signInStudent = async (studentId: string, passwordAsNumber: string) => {
-    const studentRef = doc(db, 'students', studentId);
-    const studentDoc = await getDoc(studentRef);
+    const studentsQuery = query(collection(db, 'students'), where('id', '==', studentId));
+    const querySnapshot = await getDocs(studentsQuery);
 
-    if (!studentDoc.exists()) {
+    if (querySnapshot.empty) {
         throw new Error('Öğrenci bulunamadı.');
     }
     
+    const studentDoc = querySnapshot.docs[0];
     const studentDataDb = studentDoc.data();
 
     // The password is the student number
