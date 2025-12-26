@@ -118,7 +118,7 @@ function Chat() {
     const studentId = appUser.data.id;
     
     const messagesQuery = useMemo(() => {
-        if (!teacherId) return null;
+        if (!teacherId || !studentId) return null;
         const participants = [studentId, teacherId].sort();
         return query(
             collection(db, 'messages'), 
@@ -129,7 +129,7 @@ function Chat() {
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
 
     const sortedMessages = useMemo(() => {
-        return messages.sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+        return [...messages].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
     }, [messages]);
 
     useEffect(() => {

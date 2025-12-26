@@ -24,17 +24,18 @@ export function ChatModal({ student, teacherId, isOpen, onOpenChange }: ChatModa
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const messagesQuery = useMemo(() => {
+    if (!student?.id || !teacherId) return null;
     const participants = [student.id, teacherId].sort();
     return query(
       collection(db, 'messages'),
       where('participants', '==', participants)
     );
-  }, [student.id, teacherId]);
+  }, [student?.id, teacherId]);
 
   const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
 
   const sortedMessages = useMemo(() => {
-    return messages.sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+    return [...messages].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
   }, [messages]);
 
   useEffect(() => {

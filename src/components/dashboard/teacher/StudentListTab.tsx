@@ -28,7 +28,6 @@ import { BulkAddStudentsModal } from './BulkAddStudentsModal';
 import { useToast } from '@/hooks/use-toast';
 import { ChatModal } from './ChatModal';
 import { useAuth } from '@/hooks/useAuth';
-import bcrypt from 'bcryptjs';
 
 export function StudentListTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
@@ -46,13 +45,12 @@ export function StudentListTab({ classId }: { classId: string }) {
     await updateDoc(studentRef, { behaviorScore: currentScore + change });
   };
   
-  const handleResetPassword = async (studentId: string) => {
+  const handleResetPassword = async (student: Student) => {
     try {
-        const studentRef = doc(db, 'students', studentId);
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('1234', salt);
-        await updateDoc(studentRef, { password: hashedPassword, needsPasswordChange: true });
-        toast({ title: "Başarılı", description: "Öğrencinin şifresi '1234' olarak sıfırlandı."});
+        const studentRef = doc(db, 'students', student.id);
+        // Reset password to student number
+        await updateDoc(studentRef, { password: student.number, needsPasswordChange: true });
+        toast({ title: "Başarılı", description: `${student.name} adlı öğrencinin şifresi kendi öğrenci numarası olarak sıfırlandı.`});
     } catch (error) {
         toast({ variant: 'destructive', title: "Hata", description: "Şifre sıfırlanamadı."});
     }
@@ -103,12 +101,12 @@ export function StudentListTab({ classId }: { classId: string }) {
                         </TableRow>
                     ))
                 ) : students.length > 0 ? (
-                  students.map((student) => (
+                  students.map((student, index) => (
                     <TableRow key={student.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <AvatarImage src={PlaceHolderImages[0].imageUrl} data-ai-hint="student portrait" />
+                            <AvatarImage src={PlaceHolderImages[index % PlaceHolderImages.length].imageUrl} data-ai-hint="student portrait" />
                             <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -139,7 +137,7 @@ export function StudentListTab({ classId }: { classId: string }) {
                                 <DropdownMenuItem onClick={() => setChatStudent(student)}>
                                     <MessageSquare className="mr-2 h-4 w-4" /> Sohbeti Aç
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleResetPassword(student.id)}>
+                                <DropdownMenuItem onClick={() => handleResetPassword(student)}>
                                     <RefreshCw className="mr-2 h-4 w-4" /> Şifreyi Sıfırla
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

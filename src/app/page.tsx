@@ -9,10 +9,16 @@ import { TeacherLoginForm } from '@/components/auth/TeacherLoginForm';
 import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
 import { Skeleton } from '@/components/ui/skeleton';
+import { seedDatabase } from '@/lib/actions';
 
 export default function LoginPage() {
   const { appUser, loading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // Seed the database on initial load if it's empty
+    seedDatabase().then(result => console.log(result.message));
+  }, []);
 
   useEffect(() => {
     if (!loading && appUser) {
