@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,19 +14,9 @@ export default function LoginPage() {
   const { appUser, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && appUser) {
-      if (appUser.type === 'teacher') {
-        router.push('/dashboard/teacher');
-      } else if (appUser.type === 'student' && appUser.data.needsPasswordChange) {
-        router.push('/auth/change-password');
-      } else if (appUser.type === 'student') {
-        router.push('/dashboard/student');
-      }
-    }
-  }, [appUser, loading, router]);
-
-  if (loading || (!loading && appUser)) {
+  // If the user is authenticated, AuthProvider will redirect them.
+  // This page should only show a loading state or the login form.
+  if (loading || appUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md space-y-6">
