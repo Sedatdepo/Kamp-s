@@ -83,12 +83,17 @@ async function seedDatabase() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   
   // Sadece ilk render'da veritabanını hazırla
   useEffect(() => {
     seedDatabase();
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
   // Kullanıcı kimlik durumunu dinle
@@ -136,8 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Merkezi Yönlendirme Mantığı
   useEffect(() => {
-    if (loading) {
-      return; // Yükleme tamamlanana kadar hiçbir yönlendirme yapma
+    if (loading || !isMounted) {
+      return; // Yükleme tamamlanana kadar veya bileşen mount edilene kadar hiçbir yönlendirme yapma
     }
 
     const isPublic = publicRoutes.includes(pathname);
@@ -163,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/');
       }
     }
-  }, [loading, appUser, pathname, router]);
+  }, [loading, isMounted, appUser, pathname, router]);
 
   const signInStudent = async (studentId: string, passwordAsNumber: string) => {
     const studentDocRef = doc(db, 'students', studentId);
@@ -193,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Yönlendirme işlemleri sırasında geçici bir yükleme ekranı göster
-  if (loading || (!appUser && !publicRoutes.includes(pathname))) {
+  if (!isMounted || loading) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="w-full max-w-md space-y-6">
