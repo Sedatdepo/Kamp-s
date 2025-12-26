@@ -112,37 +112,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const signInStudent = async (classId: string, studentNumber: string, password: string) => {
-    const studentRef = doc(db, 'students', `${classId}_${studentNumber}`);
+    const studentId = `${classId}_${studentNumber}`;
+    const studentRef = doc(db, 'students', studentId);
     const studentDoc = await getDoc(studentRef);
-
-    if (studentDoc.exists()) {
-        const studentDataDb = studentDoc.data();
-        const passwordMatch = await bcrypt.compare(password, studentDataDb.password);
-
-        if (passwordMatch) {
-            const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
-            localStorage.setItem('studentUser', JSON.stringify(studentData));
-            setAppUser({ type: 'student', data: studentData });
-            if (studentData.needsPasswordChange) {
-                router.push('/auth/change-password');
-            } else {
-                router.push('/dashboard/student');
-            }
-            return;
-        }
+  
+    if (!studentDoc.exists()) {
+      throw new Error('Invalid student details or password.');
     }
-    
-    // Fallback for old plaintext passwords for students who haven't updated yet
-    if (studentDoc.exists() && studentDoc.data().password === '1234' && password === '1234') {
-        const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-        localStorage.setItem('studentUser', JSON.stringify(studentData));
-        setAppUser({ type: 'student', data: studentData });
-        router.push('/auth/change-password');
-        return;
+  
+    const studentDataDb = studentDoc.data();
+    if (!studentDataDb.password) {
+        throw new Error('Student account not properly configured.');
     }
 
-    throw new Error('Invalid student details or password.');
+    const passwordMatch = await bcrypt.compare(password, studentDataDb.password);
+  
+    if (!passwordMatch) {
+      throw new Error('Invalid student details or password.');
+    }
+  
+    const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
+    localStorage.setItem('studentUser', JSON.stringify(studentData));
+    setAppUser({ type: 'student', data: studentData });
+  
+    if (studentData.needsPasswordChange) {
+      router.push('/auth/change-password');
+    } else {
+      router.push('/dashboard/student');
+    }
   };
+  
 
   const signOut = async () => {
     await firebaseSignOut(auth);

@@ -48,7 +48,7 @@ export function StudentLoginForm() {
       toast({
         variant: 'destructive',
         title: 'Giriş Başarısız',
-        description: 'Girdiğiniz bilgiler hatalı.',
+        description: error.message || 'Girdiğiniz bilgiler hatalı.',
       });
     } finally {
       setIsLoading(false);
