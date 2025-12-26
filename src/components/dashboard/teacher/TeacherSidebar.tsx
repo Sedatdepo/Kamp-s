@@ -51,12 +51,12 @@ import {
 
 interface TeacherSidebarProps {
   selectedClassId?: string | null;
-  setSelectedClassId?: (id: string | null) => void;
+  onSelectClass?: (id: string | null) => void;
   isMobile?: boolean;
   onSelect?: () => void;
 }
 
-export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile = false, onSelect }: TeacherSidebarProps) {
+export function TeacherSidebar({ selectedClassId, onSelectClass, isMobile = false, onSelect }: TeacherSidebarProps) {
   const { appUser } = useAuth();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setEditDialogOpen] = useState(false);
@@ -80,6 +80,8 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
         name: newClassName,
         teacherId: appUser.data.uid,
         isProjectSelectionActive: false,
+        isRiskFormActive: false,
+        isInfoFormActive: false,
       });
       toast({ title: 'Sınıf başarıyla eklendi' });
       setNewClassName('');
@@ -113,8 +115,8 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
     try {
       await deleteDoc(doc(db, 'classes', selectedClassForEdit.id));
       toast({ title: 'Sınıf başarıyla silindi' });
-      if(selectedClassId === selectedClassForEdit.id && setSelectedClassId) {
-        setSelectedClassId(null);
+      if(selectedClassId === selectedClassForEdit.id && onSelectClass) {
+        onSelectClass(null);
       }
       setDeleteDialogOpen(false);
       setSelectedClassForEdit(null);
@@ -165,7 +167,7 @@ export function TeacherSidebar({ selectedClassId, setSelectedClassId, isMobile =
                   <SidebarMenuItem key={cls.id}>
                     <SidebarMenuButton
                       onClick={() => {
-                        if (setSelectedClassId) setSelectedClassId(cls.id);
+                        if (onSelectClass) onSelectClass(cls.id);
                         if(onSelect) onSelect();
                       }}
                       isActive={selectedClassId === cls.id}

@@ -13,6 +13,8 @@ export interface Class {
   name: string;
   teacherId: string;
   isProjectSelectionActive?: boolean;
+  isRiskFormActive?: boolean;
+  isInfoFormActive?: boolean;
 }
 
 export interface Student {

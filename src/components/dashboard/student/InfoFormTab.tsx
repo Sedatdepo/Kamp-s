@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,6 +19,8 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/hooks/useFirestore';
+import { Class } from '@/lib/types';
 
 const infoFormSchema = z.object({
   birthDate: z.date().optional(),
@@ -44,6 +46,11 @@ export function InfoFormTab() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isFormLoading, setFormLoading] = useState(true);
+
+  if (appUser?.type !== 'student') return null;
+
+  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
+  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
 
   const form = useForm<InfoFormData>({
     resolver: zodResolver(infoFormSchema),
@@ -105,8 +112,23 @@ export function InfoFormTab() {
     }
   };
   
-  if (isFormLoading) {
+  if (isFormLoading || classLoading) {
     return <Card><CardContent className="p-6"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></CardContent></Card>
+  }
+
+  if (!studentClass?.isInfoFormActive) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Öğrenci Bilgi Formu</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6 bg-muted/50 rounded-lg">
+            <p className="text-muted-foreground">Öğrenci bilgi formu şu anda aktif değil. Lütfen öğretmeninizden bilgi alın.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

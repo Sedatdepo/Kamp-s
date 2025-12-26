@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student, InfoForm } from '@/lib/types';
-import { collection, query, where } from 'firebase/firestore';
+import { Student, InfoForm, Class } from '@/lib/types';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,6 +14,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { exportStudentInfoToDoc } from '@/lib/word-export';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm }) => {
     if (!form || !form.submitted) {
@@ -46,6 +49,8 @@ const ViewFormModal = ({ student, form }: { student: Student, form?: InfoForm })
 
 export function InfoFormsTab({ classId }: { classId: string }) {
   const { appUser } = useAuth();
+  const { toast } = useToast();
+  
   const studentsQuery = useMemo(() => 
     query(collection(db, 'students'), where('classId', '==', classId)), 
     [classId]
@@ -58,6 +63,9 @@ export function InfoFormsTab({ classId }: { classId: string }) {
     [studentIds]
   );
   const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery);
+  
+  const { data: classes } = useFirestore<Class>('classes');
+  const currentClass = useMemo(() => classes.find(c => c.id === classId), [classes, classId]);
 
   const getFormForStudent = (studentId: string) => infoForms.find(f => f.studentId === studentId);
 
@@ -68,66 +76,96 @@ export function InfoFormsTab({ classId }: { classId: string }) {
     }
   };
 
+  const handleToggleInfoForm = async (isActive: boolean) => {
+    if (!currentClass) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { isInfoFormActive: isActive });
+    toast({ title: 'Başarılı', description: `Bilgi Formu ${isActive ? 'öğrencilere açıldı' : 'öğrencilere kapatıldı'}.` });
+  };
+
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline">Bilgi Formları</CardTitle>
-        <CardDescription>Öğrenci bilgi formlarını görüntüleyin ve dışa aktarın.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Öğrenci</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead className="text-right">Eylemler</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {studentsLoading || formsLoading ? (
-                 <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
-              ) : (
-                students.map(student => {
-                  const form = getFormForStudent(student.id);
-                  return (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.name}</TableCell>
-                      <TableCell>
-                        <Badge variant={form?.submitted ? 'default' : 'secondary'} className={form?.submitted ? 'bg-green-600' : ''}>
-                          {form?.submitted ? 'Dolduruldu' : 'Boş'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="font-headline">Bilgi Formu: {student.name}</DialogTitle>
-                                </DialogHeader>
-                                <ViewFormModal student={student} form={form} />
-                            </DialogContent>
-                        </Dialog>
-                        <Button
-                          onClick={() => handleExport(student)}
-                          disabled={!form?.submitted}
-                          variant="outline"
-                          size="icon"
-                          title="Word olarak indir"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="font-headline">Bilgi Formu Dönemi</CardTitle>
+                    <CardDescription>Öğrenciler için bilgi formu doldurma dönemini açın veya kapatın.</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch
+                        id="info-form-switch"
+                        checked={currentClass?.isInfoFormActive || false}
+                        onCheckedChange={handleToggleInfoForm}
+                    />
+                    <Label htmlFor="info-form-switch">
+                        {currentClass?.isInfoFormActive ? "Aktif" : "Kapalı"}
+                    </Label>
+                </div>
+            </div>
+            </CardHeader>
+        </Card>
+        <Card>
+        <CardHeader>
+            <CardTitle className="font-headline">Bilgi Formları</CardTitle>
+            <CardDescription>Öğrenci bilgi formlarını görüntüleyin ve dışa aktarın.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>Öğrenci</TableHead>
+                    <TableHead>Durum</TableHead>
+                    <TableHead className="text-right">Eylemler</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {studentsLoading || formsLoading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
+                ) : (
+                    students.map(student => {
+                    const form = getFormForStudent(student.id);
+                    return (
+                        <TableRow key={student.id}>
+                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell>
+                            <Badge variant={form?.submitted ? 'default' : 'secondary'} className={form?.submitted ? 'bg-green-600' : ''}>
+                            {form?.submitted ? 'Dolduruldu' : 'Boş'}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle className="font-headline">Bilgi Formu: {student.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <ViewFormModal student={student} form={form} />
+                                </DialogContent>
+                            </Dialog>
+                            <Button
+                            onClick={() => handleExport(student)}
+                            disabled={!form?.submitted}
+                            variant="outline"
+                            size="icon"
+                            title="Word olarak indir"
+                            >
+                            <FileText className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })
+                )}
+                </TableBody>
+            </Table>
+            </div>
+        </CardContent>
+        </Card>
+    </div>
   );
 }

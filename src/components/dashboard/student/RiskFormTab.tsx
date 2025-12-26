@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { RiskFactor } from '@/lib/types';
+import { RiskFactor, Class } from '@/lib/types';
 import { collection, doc, updateDoc, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +16,17 @@ export function RiskFormTab() {
   const { appUser } = useAuth();
   const { toast } = useToast();
   
-  const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);
+  if (appUser?.type !== 'student') return null;
+
+  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
+  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+
+  const riskFactorsQuery = useMemo(() => {
+    if (!studentClass?.teacherId) return null;
+    return query(collection(db, 'riskFactors'));
+  }, [studentClass]);
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
-  if (appUser?.type !== 'student') return null;
   const studentRisks = appUser.data.risks || [];
 
   const handleRiskChange = async (riskId: string, isChecked: boolean) => {
@@ -33,6 +40,21 @@ export function RiskFormTab() {
         toast({ variant: 'destructive', title: 'Güncelleme başarısız' });
     }
   };
+
+  if (classLoading || !studentClass?.isRiskFormActive) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Kişisel Risk Faktörleri</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6 bg-muted/50 rounded-lg">
+            <p className="text-muted-foreground">Risk faktörleri formu şu anda aktif değil. Lütfen öğretmeninizden bilgi alın.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
