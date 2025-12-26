@@ -54,10 +54,12 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
     try {
       const batch = writeBatch(db);
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('1234', salt);
-
-      studentsToAdd.forEach(student => {
+      
+      for (const student of studentsToAdd) {
         if (student) {
+          // Hash the password for each student individually and wait for it
+          const hashedPassword = await bcrypt.hash('1234', salt);
+          
           const studentId = `${classId}_${student.number}`;
           const studentRef = doc(db, 'students', studentId);
           batch.set(studentRef, {
@@ -74,7 +76,8 @@ export function BulkAddStudentsModal({ classId, isOpen, onOpenChange }: BulkAddS
             risks: [],
           });
         }
-      });
+      }
+
       await batch.commit();
       toast({ title: 'Başarılı', description: `${studentsToAdd.length} öğrenci eklendi.` });
       setStudentList('');
