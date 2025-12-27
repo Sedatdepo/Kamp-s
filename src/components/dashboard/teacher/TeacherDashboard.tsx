@@ -52,7 +52,13 @@ function generateClassCode() {
 }
 
 
-function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) => void; }) {
+function ClassSelectionScreen({ 
+    onSelectClass, 
+    students: allStudents 
+}: { 
+    onSelectClass: (id: string) => void; 
+    students: Student[];
+}) {
     const { appUser } = useAuth();
     const { toast } = useToast();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
@@ -112,15 +118,6 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
         }
     }
     
-    // This is not efficient for many classes, but for the scope of this app it is acceptable.
-    // A better solution would be a cloud function to maintain a student count on the class document.
-    const studentCountsQuery = useMemo(() => {
-        if (classes.length === 0) return null;
-        return query(collection(db, 'students'), where('teacherId', '==', teacherId));
-    }, [classes, teacherId]);
-
-    const { data: allStudents } = useFirestore<Student>('all-students-for-count', studentCountsQuery);
-
     const studentCounts = useMemo(() => {
         const counts = new Map<string, number>();
         allStudents.forEach(student => {
@@ -193,12 +190,16 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
                                 <div className="flex items-center">
                                     <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingClass(cls); }}>
+                                                <Edit className="h-4 w-4"/>
+                                            </Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                              <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
-                                             <Input defaultValue={cls.name} onChange={(e) => setEditingClass({...cls, name: e.target.value})}/>
-                                             <DialogClose asChild><Button onClick={handleUpdateClass}>Kaydet</Button></DialogClose>
+                                             <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
+                                             <DialogClose asChild>
+                                                <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                             </DialogClose>
                                         </DialogContent>
                                     </Dialog>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={(e) => handleDeleteClass(e, cls.id)} disabled={deletingClassId === cls.id}>
@@ -231,6 +232,9 @@ export function TeacherDashboard() {
 
   const studentsQuery = useMemo(() => selectedClassId ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
+  
+  const allStudentsForTeacherQuery = useMemo(() => teacherId ? query(collection(db, 'students'), where('teacherId', '==', teacherId)) : null, [teacherId]);
+  const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
   
@@ -241,7 +245,7 @@ export function TeacherDashboard() {
           <Header />
           <main className="flex-1 p-4 sm:p-6">
             {!selectedClassId ? (
-                 <ClassSelectionScreen onSelectClass={setSelectedClassId} />
+                 <ClassSelectionScreen onSelectClass={setSelectedClassId} students={allStudents} />
             ) : isLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -339,5 +343,3 @@ export function TeacherDashboard() {
       </div>
   );
 }
-
-    
