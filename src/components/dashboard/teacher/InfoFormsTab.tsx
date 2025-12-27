@@ -31,7 +31,7 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
   const currentClass = classData.length > 0 ? classData[0] : null;
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   useEffect(() => {
     const fetchForms = async () => {
@@ -43,15 +43,20 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
         setFormsLoading(true);
         try {
             const studentIds = students.map(s => s.id);
-            // Firestore 'in' query has a limit of 30. We will fetch all forms and filter client-side.
-            // This is not ideal for very large datasets but acceptable for this app's scale.
-            // A better approach for huge scale would be cloud functions or restructuring data.
-            const formsQuery = query(collection(db, 'infoForms'), where('studentId', 'in', studentIds));
-            const querySnapshot = await getDocs(formsQuery);
             const forms: InfoForm[] = [];
-            querySnapshot.forEach((doc) => {
-                forms.push({ id: doc.id, ...doc.data() } as InfoForm);
-            });
+            
+            // Firestore 'in' query supports up to 30 comparison values.
+            // We chunk the studentIds array into subarrays of 30.
+            for (let i = 0; i < studentIds.length; i += 30) {
+                const chunk = studentIds.slice(i, i + 30);
+                if (chunk.length > 0) {
+                    const formsQuery = query(collection(db, 'infoForms'), where('studentId', 'in', chunk));
+                    const querySnapshot = await getDocs(formsQuery);
+                    querySnapshot.forEach((doc) => {
+                        forms.push({ id: doc.id, ...doc.data() } as InfoForm);
+                    });
+                }
+            }
             setInfoForms(forms);
         } catch (error) {
             console.error("Error fetching info forms: ", error);
@@ -61,10 +66,10 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
         }
     };
 
-    if (!studentsLoading) {
+    if (!studentsLoading && classId) {
         fetchForms();
     }
-  }, [students, studentsLoading, toast]);
+  }, [students, studentsLoading, classId, toast]);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass) return;
