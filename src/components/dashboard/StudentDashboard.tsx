@@ -11,9 +11,10 @@ import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab'
 import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
 import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
 import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
+import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
@@ -68,6 +69,7 @@ export function StudentDashboard() {
           case 'info': return <InfoFormTab />;
           case 'election': return <ElectionVoteTab />;
           case 'dutyRoster': return <DutyRosterTab />;
+          case 'seatingPlan': return <SeatingPlanTab />;
           default: return null;
       }
   }
@@ -102,6 +104,7 @@ export function StudentDashboard() {
                     <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    {currentClass?.seatingPlan && <MenuCard icon={<Grid />} title="Oturma Planım" description="Sınıftaki yerini gör." onClick={() => setActiveTab('seatingPlan')} />}
                     {currentClass?.dutyRoster && currentClass.dutyRoster.length > 0 && (
                         <MenuCard icon={<Users />} title="Nöbetçi Listesi" description="Sınıf nöbetçi listesini gör." onClick={() => setActiveTab('dutyRoster')} />
                     )}

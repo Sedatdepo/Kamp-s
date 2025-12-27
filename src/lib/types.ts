@@ -78,6 +78,9 @@ export interface Class {
   homeworks?: Homework[];
   election?: Election;
   dutyRoster?: RosterItem[];
+  seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
+  seatingPlanRows?: number;
+  seatingPlanCols?: number;
 }
 
 export type GradingScores = {
