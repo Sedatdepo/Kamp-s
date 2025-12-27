@@ -9,8 +9,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
-  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,18 +32,22 @@ export function TeacherChatsTab() {
 
     const studentId = appUser.data.id;
 
-    // 1. Öğrencinin dahil olduğu tüm mesajları, en yeniden en eskiye doğru çek
+    // 1. Öğrencinin dahil olduğu tüm mesajları çek (sıralama olmadan)
     const messagesQuery = useMemo(() => {
         return query(
             collection(db, 'messages'), 
-            where('participants', 'array-contains', studentId),
-            orderBy('timestamp', 'desc')
+            where('participants', 'array-contains', studentId)
         );
     }, [studentId]);
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('studentMessages', messagesQuery);
+    
+    // 2. Mesajları kod içinde tarihe göre sırala
+    const sortedMessages = useMemo(() => {
+        return [...messages].sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+    }, [messages]);
 
-    // 2. Mesajlardaki tüm öğretmen ID'lerini topla
+    // 3. Mesajlardaki tüm öğretmen ID'lerini topla
     const teacherIds = useMemo(() => {
         const ids = new Set<string>();
         messages.forEach(msg => {
@@ -55,7 +57,7 @@ export function TeacherChatsTab() {
         return Array.from(ids);
     }, [messages, studentId]);
 
-    // 3. Öğretmen profillerini çek
+    // 4. Öğretmen profillerini çek
     const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile>(
         'teacherProfilesForChats',
         teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
@@ -79,8 +81,8 @@ export function TeacherChatsTab() {
                     </div>
                 ) : (
                     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {messages.length > 0 ? (
-                        messages.map((msg) => {
+                    {sortedMessages.length > 0 ? (
+                        sortedMessages.map((msg) => {
                             const teacherId = msg.senderId !== studentId ? msg.senderId : msg.receiverId;
                             const teacher = teacherProfiles.find(p => p.id === teacherId);
                             const isMyMessage = msg.senderId === studentId;
