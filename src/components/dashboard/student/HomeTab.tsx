@@ -4,7 +4,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Lesson, Message } from '@/lib/types';
+import { Class, Lesson, Message, TeacherProfile } from '@/lib/types';
 import {
   collection,
   query,
@@ -23,6 +23,7 @@ import { Loader2, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 function ProjectSelection() {
   const { appUser } = useAuth();
@@ -55,6 +56,7 @@ function ProjectSelection() {
   };
 
   const handleSavePreferences = async () => {
+    if (appUser.type !== 'student') return;
     const studentRef = doc(db, 'students', appUser.data.id);
     await updateDoc(studentRef, { projectPreferences: selected });
     toast({ title: 'Tercihleriniz kaydedildi!' });
@@ -126,6 +128,15 @@ function ProjectSelection() {
   );
 }
 
+function getInitials(name: string = '') {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('');
+}
+
+
 function Chat() {
     const { appUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
@@ -138,6 +149,10 @@ function Chat() {
     const currentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
     const teacherId = currentClass?.teacherId;
     const studentId = appUser.data.id;
+
+    const teacherQuery = useMemo(() => (teacherId ? doc(db, 'teachers', teacherId) : null), [teacherId]);
+    const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-chat-${teacherId}`, teacherQuery);
+    const teacherProfile = teacherData[0];
     
     const messagesQuery = useMemo(() => {
         if (!teacherId || !studentId) return null;
@@ -193,10 +208,18 @@ function Chat() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline">Öğretmenle Sohbet</CardTitle>
+                <div className="flex items-center gap-3">
+                    <Avatar>
+                        <AvatarFallback>{teacherProfile ? getInitials(teacherProfile.name) : 'Ö'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <CardTitle className="font-headline">{teacherProfile ? `${teacherProfile.name} ile Sohbet` : 'Öğretmenle Sohbet'}</CardTitle>
+                        <CardDescription>Danışman öğretmeninizle buradan iletişim kurabilirsiniz.</CardDescription>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col h-96">
+                <div className="flex flex-col h-[28rem]">
                     <ScrollArea className="flex-1 p-4 border rounded-md" ref={scrollAreaRef}>
                         {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
                             sortedMessages.map(msg => (
