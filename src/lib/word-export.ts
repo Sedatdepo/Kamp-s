@@ -114,31 +114,63 @@ export function exportGradingToDoc({
 
     const title = `${className} - ${activeTab === 3 ? "Proje" : activeTab === 4 ? "Davranış" : activeTab + ". Performans"}`;
 
-    const headerRows = [
-        new TableRow({
-            children: [
-                new TableCell({ children: [new Paragraph({ text: "S.No", bold: true })] }),
-                new TableCell({ children: [new Paragraph({ text: "Adı Soyadı", bold: true })], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                ...currentCriteria.map(c => new TableCell({ children: [new Paragraph({ text: c.name, bold: true }), new Paragraph({ text: `(${c.max} P)`, size: 8 })] })),
-                new TableCell({ children: [new Paragraph({ text: "PUAN", bold: true })] }),
-            ],
-        }),
-    ];
+    const tableHeader = new TableRow({
+        tableHeader: true,
+        children: [
+            new TableCell({ children: [new Paragraph({ text: "S.No", alignment: AlignmentType.CENTER, bold: true })], width: { size: 5, type: WidthType.PERCENTAGE } }),
+            new TableCell({ children: [new Paragraph({ text: "Adı Soyadı", alignment: AlignmentType.LEFT, bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+            ...currentCriteria.map(c => new TableCell({ children: [
+                new Paragraph({ text: c.name, alignment: AlignmentType.CENTER, bold: true }), 
+                new Paragraph({ text: `(${c.max} P)`, alignment: AlignmentType.CENTER, style: 'small' })
+            ] })),
+            new TableCell({ children: [new Paragraph({ text: "PUAN", alignment: AlignmentType.CENTER, bold: true })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+        ],
+    });
 
     const dataRows = visibleStudents.map((s, index) => {
         const scores = s[targetKey as keyof Student] as { [key: string]: number } | undefined;
         const total = calculateTotal(scores);
         return new TableRow({
             children: [
-                new TableCell({ children: [new Paragraph(`${index + 1}`)] }),
-                new TableCell({ children: [new Paragraph(s.name)], alignment: AlignmentType.LEFT }),
-                ...currentCriteria.map(c => new TableCell({ children: [new Paragraph(`${scores?.[c.id] || 0}`)] })),
-                new TableCell({ children: [new Paragraph({ text: `${total}`, bold: true })] }),
+                new TableCell({ children: [new Paragraph({ text: `${index + 1}`, alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ text: s.name, alignment: AlignmentType.LEFT })] }),
+                ...currentCriteria.map(c => new TableCell({ children: [new Paragraph({ text: `${scores?.[c.id] || 0}`, alignment: AlignmentType.CENTER })] })),
+                new TableCell({ children: [new Paragraph({ text: `${total}`, bold: true, alignment: AlignmentType.CENTER })] }),
             ],
         });
     });
 
+    const signatureTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } },
+        rows: [
+             new TableRow({
+                children: [
+                    new TableCell({ children: [ new Paragraph('Uygundur'), new Paragraph(date) ], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                    new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                    new TableCell({ children: [new Paragraph("Tasdik Olunur")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                ],
+            }),
+             new TableRow({
+                children: [ new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }) ],
+            }),
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: teacher, bold: true }), new Paragraph("Ders Öğretmeni")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                    new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                    new TableCell({ children: [new Paragraph({ text: principal, bold: true }), new Paragraph("Okul Müdürü")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+                ],
+            }),
+        ],
+    })
+
+
     const doc = new Document({
+        styles: {
+            paragraphStyles: [
+                 { id: "small", name: "Small Text", run: { size: 16 } },
+            ]
+        },
         sections: [{
             children: [
                 new Paragraph({ text: "T.C.", alignment: AlignmentType.CENTER, style: "Normal" }),
@@ -148,30 +180,11 @@ export function exportGradingToDoc({
                 new Paragraph({ text: "" }),
                 new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
-                    rows: [...headerRows, ...dataRows],
+                    rows: [tableHeader, ...dataRows],
                 }),
                 new Paragraph({ text: "" }),
-                new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    columnWidths: [33, 34, 33],
-                    borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } },
-                    rows: [
-                        new TableRow({
-                            children: [
-                                new TableCell({ children: [new Paragraph(""), new Paragraph("Uygundur"), new Paragraph(date)], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                                new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                                new TableCell({ children: [new Paragraph(""), new Paragraph("Tasdik Olunur")], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }, alignment: AlignmentType.CENTER }),
-                            ],
-                        }),
-                        new TableRow({
-                            children: [
-                                new TableCell({ children: [new Paragraph({ text: teacher, bold: true }), new Paragraph("Ders Öğretmeni")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                                new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                                new TableCell({ children: [new Paragraph({ text: principal, bold: true }), new Paragraph("Okul Müdürü")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                            ],
-                        }),
-                    ],
-                }),
+                new Paragraph({ text: "" }),
+                signatureTable,
             ],
         }],
     });
