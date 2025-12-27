@@ -19,8 +19,9 @@ import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
+import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -36,6 +37,7 @@ const TABS = [
     { value: "students", label: "Öğrenci Listesi", icon: null },
     { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
     { value: "grading", label: "Değerlendirme", icon: null },
+    { value: "election", label: "Seçim", icon: <Vote className="w-4 h-4 mr-2" /> },
     { value: "projects", label: "Proje Dağılımı", icon: null },
     { value: "homework", label: "Ödev", icon: <BookText className="w-4 h-4 mr-2"/> },
     { value: "risks", label: "Risk Haritası", icon: null },
@@ -320,7 +322,7 @@ export function TeacherDashboard() {
                     </div>
 
                     {/* Desktop Tabs */}
-                    <TabsList className="hidden md:grid w-full grid-cols-8">
+                    <TabsList className="hidden md:grid w-full grid-cols-9">
                         {TABS.map(tab => (
                             <TabsTrigger key={tab.value} value={tab.value}>
                                 {tab.icon}{tab.label}
@@ -347,6 +349,12 @@ export function TeacherDashboard() {
                         teacherProfile={teacherProfile}
                         students={students}
                         currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="election" className="mt-4">
+                        <ElectionTab
+                          students={students}
+                          currentClass={currentClass}
                         />
                     </TabsContent>
                     <TabsContent value="projects" className="mt-4">

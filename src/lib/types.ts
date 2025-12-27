@@ -46,6 +46,19 @@ export interface TeacherProfile {
   behaviorCriteria?: Criterion[];
 }
 
+export type ElectionType = 'class_president' | 'school_representative' | 'honor_board';
+
+export interface Candidate extends Student {
+  votes: number;
+}
+
+export interface Election {
+  type: ElectionType;
+  candidates: Candidate[];
+  votedStudentIds: string[];
+}
+
+
 export interface Class {
   id: string;
   name:string;
@@ -56,6 +69,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
+  election?: Election;
 }
 
 export type GradingScores = {
