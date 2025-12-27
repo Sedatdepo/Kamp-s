@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -13,6 +14,7 @@ interface GradingTableProps {
   students: Student[];
   currentCriteria: Criterion[];
   updateStudents: (updatedStudents: Student[]) => Promise<void>;
+  termGradesKey: 'term1Grades' | 'term2Grades';
 }
 
 export function GradingTable({
@@ -20,6 +22,7 @@ export function GradingTable({
   students,
   currentCriteria,
   updateStudents,
+  termGradesKey
 }: GradingTableProps) {
     const getScoreTargetKey = (tab: ActiveGradingTab) => {
         switch (tab) {
@@ -29,7 +32,7 @@ export function GradingTable({
             case 4: return 'behaviorScores';
         }
     };
-    const targetKey = getScoreTargetKey(activeTab);
+    const scoreKey = getScoreTargetKey(activeTab);
 
   const calculateTotal = (scores: { [key: string]: number } | undefined) => {
     if (!scores) return 0;
@@ -47,8 +50,15 @@ export function GradingTable({
     
     const updatedStudents = students.map(s => {
         if (s.id === studentId) {
-            const currentScores = s[targetKey] || {};
-            return { ...s, [targetKey]: { ...currentScores, [criteriaId]: numValue } };
+            const currentTermGrades = s[termGradesKey] || {};
+            const currentScores = currentTermGrades[scoreKey] || {};
+            return {
+                 ...s, 
+                 [termGradesKey]: {
+                    ...currentTermGrades,
+                    [scoreKey]: { ...currentScores, [criteriaId]: numValue }
+                 }
+            };
         }
         return s;
     });
@@ -84,7 +94,14 @@ export function GradingTable({
 
     const updatedStudents = students.map(s => {
         if (s.id === studentId) {
-            return { ...s, [targetKey]: newScores };
+            const currentTermGrades = s[termGradesKey] || {};
+            return { 
+                ...s,
+                [termGradesKey]: {
+                    ...currentTermGrades,
+                    [scoreKey]: newScores
+                }
+            };
         }
         return s;
     });
@@ -145,7 +162,8 @@ export function GradingTable({
                     </TableHeader>
                     <TableBody>
                         {visibleStudents.map(student => {
-                            const scores = student[targetKey];
+                            const termGrades = student[termGradesKey];
+                            const scores = termGrades ? termGrades[scoreKey] : undefined;
                             const total = calculateTotal(scores);
                             return (
                                 <TableRow key={student.id} className="group">

@@ -48,6 +48,13 @@ export interface Class {
   announcements?: Announcement[];
 }
 
+export type GradingScores = {
+    scores1?: { [key: string]: number };
+    scores2?: { [key: string]: number };
+    projectScores?: { [key: string]: number };
+    behaviorScores?: { [key: string]: number };
+}
+
 export interface Student {
   id: string;
   classId: string;
@@ -58,17 +65,11 @@ export interface Student {
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
-  grades: {
-    term1: number | null;
-    term2: number | null;
-  };
-  referrals: string[];
   
-  // From Grading Tool
-  scores1?: { [key: string]: number };
-  scores2?: { [key: string]: number };
-  projectScores?: { [key: string]: number };
-  behaviorScores?: { [key: string]: number };
+  // Grading data separated by term
+  term1Grades?: GradingScores;
+  term2Grades?: GradingScores;
+
   hasProject?: boolean;
   
   // New Attendance Field

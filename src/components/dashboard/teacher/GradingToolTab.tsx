@@ -1,15 +1,13 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useFirestore } from '@/hooks/useFirestore';
-import { useAuth } from '@/hooks/useAuth';
 import { Student, TeacherProfile, Class, Criterion } from '@/lib/types';
 import { GradingHeader } from './GradingHeader';
 import { GradingTable } from './GradingTable';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { exportGradingToRtf } from '@/lib/word-export';
 
@@ -21,15 +19,19 @@ interface GradingToolTabProps {
 }
 
 export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1: Perf1, 2: Perf2, 3: Proje, 4: Davranış
+export type ActiveTerm = 1 | 2;
 
 export function GradingToolTab({ classId, teacherProfile, students, currentClass }: GradingToolTabProps) {
   const { toast } = useToast();
   const teacherId = teacherProfile?.id;
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
+  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
 
   const perfCriteria = teacherProfile?.perfCriteria ?? INITIAL_PERF_CRITERIA;
   const projCriteria = teacherProfile?.projCriteria ?? INITIAL_PROJ_CRITERIA;
   const behaviorCriteria = teacherProfile?.behaviorCriteria ?? INITIAL_BEHAVIOR_CRITERIA;
+  
+  const termGradesKey: keyof Student = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
 
   const currentCriteria = useMemo(() => {
     if (activeTab === 3) return projCriteria;
@@ -45,6 +47,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
         currentCriteria,
         currentClass,
         teacherProfile,
+        activeTerm,
       });
     } else {
       toast({
@@ -55,22 +58,57 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
     }
   };
 
+  const getScoreTargetKey = (tab: ActiveGradingTab) => {
+    switch (tab) {
+        case 1: return 'scores1';
+        case 2: return 'scores2';
+        case 3: return 'projectScores';
+        case 4: return 'behaviorScores';
+    }
+  };
+  
+  const handleClearScores = async () => {
+    if (!window.confirm("Bu sayfadaki tüm notları temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
+        return;
+    }
+    const scoreKey = getScoreTargetKey(activeTab);
+    const batch = writeBatch(db);
+
+    students.forEach(student => {
+        const studentRef = doc(db, 'students', student.id);
+        const currentTermGrades = student[termGradesKey] || {};
+        
+        batch.update(studentRef, {
+            [termGradesKey]: {
+                ...currentTermGrades,
+                [scoreKey]: {}
+            }
+        });
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: "Tüm notlar temizlendi." });
+    } catch(e) {
+        toast({ variant: 'destructive', title: "Temizleme sırasında hata oluştu!", description: (e as Error).message });
+    }
+  };
+
   const updateStudents = async (updatedStudents: Student[]) => {
     if (students.length === 0) return;
     const batch = writeBatch(db);
     updatedStudents.forEach(updatedStudent => {
         const originalStudent = students.find(s => s.id === updatedStudent.id);
         if (originalStudent) {
-            const changes: Partial<Student> = {};
-            const keys: (keyof Student)[] = ['scores1', 'scores2', 'projectScores', 'behaviorScores', 'hasProject'];
-            keys.forEach(key => {
-                if (JSON.stringify(originalStudent[key]) !== JSON.stringify(updatedStudent[key])) {
-                   (changes as any)[key] = updatedStudent[key];
-                }
-            });
+            // Compare only the fields that can be changed by GradingTable
+            const hasProjectChanged = originalStudent.hasProject !== updatedStudent.hasProject;
+            const termGradesChanged = JSON.stringify(originalStudent[termGradesKey]) !== JSON.stringify(updatedStudent[termGradesKey]);
 
-            if (Object.keys(changes).length > 0) {
+            if (hasProjectChanged || termGradesChanged) {
                  const studentRef = doc(db, "students", updatedStudent.id);
+                 const changes: Partial<Student> = {};
+                 if (hasProjectChanged) changes.hasProject = updatedStudent.hasProject;
+                 if (termGradesChanged) changes[termGradesKey] = updatedStudent[termGradesKey];
                  batch.update(studentRef, changes);
             }
         }
@@ -99,8 +137,11 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
       <GradingHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        activeTerm={activeTerm}
+        setActiveTerm={setActiveTerm}
         teacherProfile={teacherProfile}
         onExport={handleExport}
+        onClearScores={handleClearScores}
         updateTeacherProfile={updateTeacherProfile}
       />
       <GradingTable
@@ -108,6 +149,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
         students={students}
         currentCriteria={currentCriteria}
         updateStudents={updateStudents}
+        termGradesKey={termGradesKey}
       />
     </div>
   );

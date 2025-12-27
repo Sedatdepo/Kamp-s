@@ -1,7 +1,8 @@
+
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, ReportConfig, Class, Lesson, RiskFactor } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor } from './types';
 import { format } from 'date-fns';
-import { ActiveGradingTab } from '@/components/dashboard/teacher/GradingToolTab';
+import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 
 
 // We are generating an HTML string and telling the browser to save it as an .rtf file.
@@ -124,6 +125,7 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
 // --- GRADING TOOL EXPORT ---
 interface ExportGradingArgs {
     activeTab: ActiveGradingTab;
+    activeTerm: ActiveTerm;
     students: Student[];
     currentCriteria: Criterion[];
     currentClass: Class;
@@ -132,23 +134,29 @@ interface ExportGradingArgs {
 
 export function exportGradingToRtf({
     activeTab,
+    activeTerm,
     students,
     currentCriteria,
     currentClass,
     teacherProfile
 }: ExportGradingArgs) {
 
-    let targetKey: keyof Student, reportTitle: string;
+    let scoreKey: 'scores1' | 'scores2' | 'projectScores' | 'behaviorScores';
+    let reportTitle: string;
+    
     if (activeTab === 3) {
-        targetKey = 'projectScores';
+        scoreKey = 'projectScores';
         reportTitle = "PROJE ÖDEVİ DEĞERLENDİRME ÖLÇEĞİ";
     } else if (activeTab === 4) {
-        targetKey = 'behaviorScores';
+        scoreKey = 'behaviorScores';
         reportTitle = "DAVRANIŞ (KANAAT) DEĞERLENDİRME ÖLÇEĞİ";
     } else {
-        targetKey = activeTab === 1 ? 'scores1' : 'scores2';
+        scoreKey = activeTab === 1 ? 'scores1' : 'scores2';
         reportTitle = `${activeTab}. PERFORMANS DEĞERLENDİRME ÖLÇEĞİ`;
     }
+    
+    reportTitle = `${activeTerm}. DÖNEM ${reportTitle}`;
+    const termGradesKey: keyof Student = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
 
     const visibleStudents = activeTab === 3 
         ? students.filter(s => s.hasProject) 
@@ -177,7 +185,8 @@ export function exportGradingToRtf({
     `;
 
     const dataRows = visibleStudents.map((s, index) => {
-        const scores = s[targetKey as keyof Student] as { [key: string]: number } | undefined;
+        const termGrades = s[termGradesKey];
+        const scores = termGrades ? termGrades[scoreKey] : undefined;
         const total = calculateTotal(scores);
         return `
             <tr>

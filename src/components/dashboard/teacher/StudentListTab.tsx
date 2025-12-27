@@ -154,12 +154,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
       risks: [],
       projectPreferences: [],
       assignedLesson: null,
-      grades: { term1: null, term2: null },
-      referrals: [],
-      scores1: {},
-      scores2: {},
-      projectScores: {},
-      behaviorScores: {},
+      term1Grades: {},
+      term2Grades: {},
       hasProject: false,
     });
     setNewStudentName('');
@@ -192,8 +188,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         batch.set(studentRef, {
             classId, name, number,
             needsPasswordChange: true, password: number,
-            risks: [], projectPreferences: [], assignedLesson: null, grades: { term1: null, term2: null }, referrals: [],
-            scores1: {}, scores2: {}, projectScores: {}, behaviorScores: {}, hasProject: false,
+            risks: [], projectPreferences: [], assignedLesson: null,
+            term1Grades: {}, term2Grades: {}, hasProject: false,
         });
     });
 
@@ -282,7 +278,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.number}</TableCell>
                   <TableCell>{student.name}</TableCell>
-                  <TableCell className="text-right relative">
+                  <TableCell className="text-right">
                     <div className="inline-flex relative z-10">
                         <Dialog>
                             {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
@@ -295,8 +291,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                 </Button>
                             </DialogTrigger>
                         </Dialog>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); e.stopPropagation(); resetPassword(student); }}><KeyRound className="h-4 w-4"/></Button>
-                        <Button variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4"/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); e.stopPropagation(); resetPassword(student); }}><KeyRound className="h-4 w-4"/></Button>
+                        <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4"/></Button>
                     </div>
                   </TableCell>
                 </TableRow>
