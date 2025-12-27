@@ -45,7 +45,6 @@ export interface Student {
   name: string;
   password?: string;
   needsPasswordChange: boolean;
-  behaviorScore: number;
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID

@@ -1,4 +1,4 @@
-
+import { saveAs } from 'file-saver';
 import { Student, InfoForm, TeacherProfile, Criterion, ReportConfig, Class, Lesson, RiskFactor } from './types';
 import { format } from 'date-fns';
 import { ActiveGradingTab } from '@/components/dashboard/teacher/GradingToolTab';
@@ -214,8 +214,7 @@ export function exportStudentListToRtf({ students, currentClass, teacherProfile 
         <tr>
             <th style="width:10%;">S.No</th>
             <th style="width:20%;">Okul No</th>
-            <th style="width:50%;">Adı Soyadı</th>
-            <th style="width:20%;">Davranış Puanı</th>
+            <th style="width:70%;">Adı Soyadı</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => `
@@ -223,7 +222,6 @@ export function exportStudentListToRtf({ students, currentClass, teacherProfile 
             <td class="center">${index + 1}</td>
             <td class="center">${s.number}</td>
             <td>${s.name}</td>
-            <td class="center bold">${s.behaviorScore}</td>
         </tr>
     `).join('');
 

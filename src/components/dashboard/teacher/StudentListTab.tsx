@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Plus, Minus, Send, FileText } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -139,7 +139,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
       classId,
       name: newStudentName,
       number: newStudentNumber,
-      behaviorScore: 100,
       needsPasswordChange: true,
       password: newStudentNumber, 
       risks: [],
@@ -182,7 +181,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         const studentRef = doc(collection(db, 'students'));
         batch.set(studentRef, {
             classId, name, number,
-            behaviorScore: 100, needsPasswordChange: true, password: number,
+            needsPasswordChange: true, password: number,
             risks: [], projectPreferences: [], assignedLesson: null, grades: { term1: null, term2: null }, referrals: [],
             scores1: {}, scores2: {}, projectScores: {}, behaviorScores: {}, hasProject: false,
         });
@@ -201,13 +200,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     }
   };
   
-  const handleScoreChange = async (studentId: string, amount: number) => {
-    const student = students.find(s => s.id === studentId);
-    if(!student) return;
-    const newScore = student.behaviorScore + amount;
-    await updateDoc(doc(db, 'students', studentId), { behaviorScore: newScore });
-  };
-
   const resetPassword = async (student: Student) => {
     if(window.confirm(`${student.name} adlı öğrencinin şifresini okul numarası (${student.number}) olarak sıfırlamak istediğinize emin misiniz?`)) {
         await updateDoc(doc(db, 'students', student.id), {
@@ -254,7 +246,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableHead>No</TableHead>
                 <TableHead>Ad Soyad</TableHead>
-                <TableHead>Davranış P.</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
@@ -262,20 +253,12 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableCell><Input value={newStudentNumber} onChange={e => setNewStudentNumber(e.target.value)} placeholder="No" className="h-8 w-20"/></TableCell>
                 <TableCell><Input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Yeni Öğrenci Adı" className="h-8" /></TableCell>
-                <TableCell></TableCell>
                 <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Ekle</Button></TableCell>
               </TableRow>
               {sortedStudents.length > 0 ? sortedStudents.map(student => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.number}</TableCell>
                   <TableCell>{student.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleScoreChange(student.id, -5)}><Minus className="h-4 w-4"/></Button>
-                        <span className="font-bold text-lg">{student.behaviorScore}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleScoreChange(student.id, 5)}><Plus className="h-4 w-4"/></Button>
-                    </div>
-                  </TableCell>
                   <TableCell className="text-right">
                     <Dialog>
                         {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
@@ -287,7 +270,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </TableRow>
               )) : (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
                 </TableRow>
               )}
             </TableBody>
