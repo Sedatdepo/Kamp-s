@@ -137,7 +137,6 @@ function LessonManager({ teacherId }: { teacherId: string }) {
                   <CommandInput 
                     placeholder="Ders ara veya yaz..." 
                     onValueChange={setNewLessonName}
-                    value={newLessonName}
                   />
                   <CommandList>
                     <CommandEmpty>Ders bulunamadı.</CommandEmpty>
