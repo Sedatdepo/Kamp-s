@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -90,7 +90,8 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
         setEditingClass(null);
     };
 
-    const handleDeleteClass = async (classId: string) => {
+    const handleDeleteClass = async (e: React.MouseEvent, classId: string) => {
+        e.stopPropagation();
         if (window.confirm("Bu sınıfı ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) {
             setDeletingClassId(classId);
             try {
@@ -110,6 +111,24 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
             }
         }
     }
+    
+    // This is not efficient for many classes, but for the scope of this app it is acceptable.
+    // A better solution would be a cloud function to maintain a student count on the class document.
+    const studentCountsQuery = useMemo(() => {
+        if (classes.length === 0) return null;
+        return query(collection(db, 'students'), where('teacherId', '==', teacherId));
+    }, [classes, teacherId]);
+
+    const { data: allStudents } = useFirestore<Student>('all-students-for-count', studentCountsQuery);
+
+    const studentCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        allStudents.forEach(student => {
+            counts.set(student.classId, (counts.get(student.classId) || 0) + 1);
+        });
+        return counts;
+    }, [allStudents]);
+
 
     if (loading) {
         return (
@@ -162,17 +181,19 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {classes.map(cls => (
-                        <Card key={cls.id} className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer">
-                            <CardHeader className="flex-1" onClick={() => onSelectClass(cls.id)}>
-                                <CardTitle>{cls.name}</CardTitle>
-                                <CardDescription>Sınıf Kodu: {cls.code}</CardDescription>
-                            </CardHeader>
+                        <Card key={cls.id} className="flex flex-col hover:shadow-lg transition-shadow">
+                             <div className="flex-1 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
+                                <CardHeader>
+                                    <CardTitle>{cls.name}</CardTitle>
+                                    <CardDescription>Sınıf Kodu: {cls.code}</CardDescription>
+                                </CardHeader>
+                            </div>
                             <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4">
-                                <span>{cls.studentCount || 0} Öğrenci</span>
+                                <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
                                 <div className="flex items-center">
-                                    <Dialog>
+                                    <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}><Edit className="h-4 w-4"/></Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                              <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
@@ -180,7 +201,7 @@ function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) =
                                              <DialogClose asChild><Button onClick={handleUpdateClass}>Kaydet</Button></DialogClose>
                                         </DialogContent>
                                     </Dialog>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDeleteClass(cls.id)} disabled={deletingClassId === cls.id}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={(e) => handleDeleteClass(e, cls.id)} disabled={deletingClassId === cls.id}>
                                        {deletingClassId === cls.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
                                     </Button>
                                 </div>
@@ -318,3 +339,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
