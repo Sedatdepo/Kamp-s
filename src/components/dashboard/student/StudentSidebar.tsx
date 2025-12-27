@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -11,14 +12,24 @@ import {
 import { Logo } from '@/components/icons/Logo';
 import { Home, ShieldAlert, FileText, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotification } from '@/hooks/useNotification';
 
 interface StudentSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
+const NotificationBadge = () => (
+  <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-2 w-2">
+    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+  </span>
+);
+
+
 export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps) {
     const { appUser } = useAuth();
+    const { notifications } = useNotification();
     if(appUser?.type !== 'student') return null;
 
   return (
@@ -47,6 +58,7 @@ export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps)
             >
               <Bell />
               <span>Duyurular</span>
+              {notifications.announcements && <NotificationBadge />}
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -56,6 +68,7 @@ export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps)
             >
               <ShieldAlert />
               <span>Risk Formu</span>
+              {notifications.riskForm && <NotificationBadge />}
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -65,6 +78,7 @@ export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps)
             >
               <FileText />
               <span>Bilgi Formu</span>
+              {notifications.infoForm && <NotificationBadge />}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
