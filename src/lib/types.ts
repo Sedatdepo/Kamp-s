@@ -41,6 +41,7 @@ export interface Class {
   id: string;
   name:string;
   teacherId: string;
+  code: string;
   isProjectSelectionActive?: boolean;
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;

@@ -47,7 +47,7 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Öğrenci Girişi</CardTitle>
-              <CardDescription>Giriş yapmak için sınıfınızı seçin ve bilgilerinizi girin.</CardDescription>
+              <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
             </CardHeader>
             <CardContent>
               <StudentLoginForm />

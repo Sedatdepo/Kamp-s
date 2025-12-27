@@ -23,6 +23,16 @@ import { db } from '@/lib/firebase';
 import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+function generateClassCode() {
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+
 interface TeacherSidebarProps {
   selectedClassId: string | null;
   onSelectClass: (id: string | null) => void;
@@ -48,6 +58,7 @@ export function TeacherSidebar({ selectedClassId, onSelectClass }: TeacherSideba
         isProjectSelectionActive: false,
         isRiskFormActive: false,
         isInfoFormActive: false,
+        code: generateClassCode(),
       });
       toast({ title: 'Sınıf oluşturuldu!' });
       setNewClassName('');
@@ -59,9 +70,10 @@ export function TeacherSidebar({ selectedClassId, onSelectClass }: TeacherSideba
 
   const handleDeleteClass = async (e: React.MouseEvent, classId: string) => {
     e.stopPropagation();
-    if(window.confirm("Bu sınıfı silmek istediğinize emin misiniz?")) {
+    if(window.confirm("Bu sınıfı silmek istediğinize emin misiniz? Sınıfa ait tüm öğrenciler de silinecektir!")) {
         try {
             await deleteDoc(doc(db, 'classes', classId));
+            // TODO: Delete students in this class as well
             toast({ title: 'Sınıf silindi', variant: 'destructive'});
             if(selectedClassId === classId) {
                 onSelectClass(null);

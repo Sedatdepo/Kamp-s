@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { exportStudentListToRtf } from '@/lib/word-export';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentListTabProps {
   classId: string;
@@ -107,15 +108,16 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   
+  const studentIds = useMemo(() => students.map(s => s.id), [students]);
+
   const messagesQuery = useMemo(() => {
-    if (!students || students.length === 0) return null;
-    const studentIds = students.map(s => s.id);
+    if (studentIds.length === 0) return null;
     return query(
         collection(db, 'messages'), 
         where('senderId', 'in', studentIds), 
         where('receiverId', '==', teacherId)
     );
-  }, [students, teacherId]);
+  }, [studentIds, teacherId]);
 
   const { data: messagesFromStudents } = useFirestore<Message>('messagesFromStudentsToTeacher', messagesQuery);
 
@@ -136,7 +138,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         if (!isNaN(numA) && !isNaN(numB)) {
             return numA - numB;
         }
-        return a.number.localeCompare(b.number);
+        return a.number.localeCompare(b.number, 'tr');
     });
   }, [students]);
 
@@ -236,14 +238,27 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     }
   }
 
+  const copyClassCode = () => {
+    if(currentClass?.code) {
+      navigator.clipboard.writeText(currentClass.code);
+      toast({ title: 'Sınıf Kodu Kopyalandı!' });
+    }
+  }
+
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
             <div>
                 <CardTitle className="font-headline">Öğrenci Listesi</CardTitle>
-                <CardDescription>Sınıftaki öğrencileri yönetin, puanlarını takip edin ve onlarla iletişim kurun.</CardDescription>
+                <div className="flex items-center gap-2 mt-1">
+                  <CardDescription>Sınıf Kodu:</CardDescription>
+                  <Badge variant="secondary" className="text-base font-mono tracking-widest cursor-pointer" onClick={copyClassCode}>
+                    {currentClass?.code}
+                    <ClipboardCopy className="ml-2 h-3 w-3" />
+                  </Badge>
+                </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={handleExport}>
