@@ -1,64 +1,103 @@
 
-import { saveAs } from 'file-saver';
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, HeadingLevel, AlignmentType } from 'docx';
 import { Student, InfoForm, TeacherProfile, Criterion, ReportConfig } from './types';
 import { format } from 'date-fns';
 import { ActiveGradingTab } from '@/components/dashboard/teacher/GradingToolTab';
 
+// We are generating an HTML string and telling the browser to save it as an .rtf file.
+// Word and other text editors can correctly interpret this HTML-like structure as a rich text document.
+// This provides maximum compatibility, especially with older versions like Word 2003.
+
+const generateHtmlShell = (content: string, title: string) => {
+  return `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>${title}</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 1in;
+        }
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 12pt;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        th, td {
+          border: 1px solid black;
+          padding: 5px;
+          text-align: left;
+        }
+        th {
+          font-weight: bold;
+          text-align: center;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .no-border { border: none; }
+        .small-text { font-size: 10pt; }
+      </style>
+    </head>
+    <body>
+      ${content}
+    </body>
+    </html>
+  `;
+};
+
+const downloadRtf = (htmlContent: string, filename: string) => {
+    const blob = new Blob([htmlContent], { type: 'application/rtf;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+};
+
 export function exportStudentInfoToDoc(student: Student, form: InfoForm, teacher: TeacherProfile) {
-
-  const doc = new Document({
-    sections: [{
-      properties: {},
-      children: [
-        new Paragraph({ text: "Öğrenci Bilgi Formu", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
-        new Paragraph({ text: `Okul: ${teacher.schoolName}`, alignment: AlignmentType.LEFT }),
-        new Paragraph({ text: `Öğretmen: ${teacher.name}`, alignment: AlignmentType.LEFT }),
-        new Paragraph({ text: `Müdür: ${teacher.principalName}`, alignment: AlignmentType.LEFT }),
-        new Paragraph({ text: "" }),
-        new Paragraph({ text: `Öğrenci: ${student.name} (#${student.number})`, heading: HeadingLevel.HEADING_2 }),
-        new Paragraph({ text: "" }),
-        new Paragraph({ text: "Kişisel Bilgiler", heading: HeadingLevel.HEADING_3 }),
-        new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Doğum Tarihi")] }), new TableCell({ children: [new Paragraph(form.birthDate ? format(form.birthDate.toDate(), 'dd.MM.yyyy') : 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Doğum Yeri")] }), new TableCell({ children: [new Paragraph(form.birthPlace || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Adres")] }), new TableCell({ children: [new Paragraph(form.address || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Sağlık Sorunları")] }), new TableCell({ children: [new Paragraph(form.healthIssues || 'Yok')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Hobiler")] }), new TableCell({ children: [new Paragraph(form.hobbies || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Teknoloji Kullanımı")] }), new TableCell({ children: [new Paragraph(form.techUsage || 'N/A')] })] }),
-            ]
-        }),
-        new Paragraph({ text: "" }),
-        new Paragraph({ text: "Veli Bilgileri", heading: HeadingLevel.HEADING_3 }),
-         new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Anne Durumu")] }), new TableCell({ children: [new Paragraph(form.motherStatus || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Anne Eğitim")] }), new TableCell({ children: [new Paragraph(form.motherEducation || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Anne Mesleği")] }), new TableCell({ children: [new Paragraph(form.motherJob || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Baba Durumu")] }), new TableCell({ children: [new Paragraph(form.fatherStatus || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Baba Eğitim")] }), new TableCell({ children: [new Paragraph(form.fatherEducation || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Baba Mesleği")] }), new TableCell({ children: [new Paragraph(form.fatherJob || 'N/A')] })] }),
-            ]
-        }),
-        new Paragraph({ text: "" }),
-        new Paragraph({ text: "Aile Bilgileri", heading: HeadingLevel.HEADING_3 }),
-        new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Kardeş Bilgileri")] }), new TableCell({ children: [new Paragraph(form.siblingsInfo || 'N/A')] })] }),
-                new TableRow({ children: [new TableCell({ children: [new Paragraph("Ekonomik Durum")] }), new TableCell({ children: [new Paragraph(form.economicStatus || 'N/A')] })] }),
-            ]
-        }),
-      ],
-    }],
-  });
-
-  Packer.toBlob(doc).then(blob => {
-    saveAs(blob, `${student.name.replace(/ /g, '_')}_Bilgi_Formu.docx`);
-  });
+    const content = `
+        <div class="center">
+            <p class="bold">ÖĞRENCİ BİLGİ FORMU</p>
+        </div>
+        <p><b>Okul:</b> ${teacher.schoolName}</p>
+        <p><b>Öğretmen:</b> ${teacher.name}</p>
+        <p><b>Öğrenci:</b> ${student.name} (#${student.number})</p>
+        <br>
+        <h3>Kişisel Bilgiler</h3>
+        <table>
+            <tr><td>Doğum Tarihi</td><td>${form.birthDate ? format(form.birthDate.toDate(), 'dd.MM.yyyy') : 'N/A'}</td></tr>
+            <tr><td>Doğum Yeri</td><td>${form.birthPlace || 'N/A'}</td></tr>
+            <tr><td>Adres</td><td>${form.address || 'N/A'}</td></tr>
+            <tr><td>Sağlık Sorunları</td><td>${form.healthIssues || 'Yok'}</td></tr>
+            <tr><td>Hobiler</td><td>${form.hobbies || 'N/A'}</td></tr>
+        </table>
+        <br>
+        <h3>Veli Bilgileri</h3>
+        <table>
+            <tr><td>Anne Durumu</td><td>${form.motherStatus || 'N/A'}</td></tr>
+            <tr><td>Anne Eğitim</td><td>${form.motherEducation || 'N/A'}</td></tr>
+            <tr><td>Anne Mesleği</td><td>${form.motherJob || 'N/A'}</td></tr>
+            <tr><td>Baba Durumu</td><td>${form.fatherStatus || 'N/A'}</td></tr>
+            <tr><td>Baba Eğitim</td><td>${form.fatherEducation || 'N/A'}</td></tr>
+            <tr><td>Baba Mesleği</td><td>${form.fatherJob || 'N/A'}</td></tr>
+        </table>
+        <br>
+        <h3>Aile Bilgileri</h3>
+        <table>
+            <tr><td>Kardeş Bilgileri</td><td>${form.siblingsInfo || 'N/A'}</td></tr>
+            <tr><td>Ekonomik Durum</td><td>${form.economicStatus || 'N/A'}</td></tr>
+        </table>
+    `;
+    const finalHtml = generateHtmlShell(content, "Öğrenci Bilgi Formu");
+    downloadRtf(finalHtml, `${student.name.replace(/ /g, '_')}_Bilgi_Formu.rtf`);
 }
 
 
@@ -115,84 +154,61 @@ export function exportGradingToDoc({
 
     const title = `${className} - ${activeTab === 3 ? "Proje" : activeTab === 4 ? "Davranış" : activeTab + ". Performans"}`;
 
-    const tableHeader = new TableRow({
-        tableHeader: true,
-        children: [
-            new TableCell({ children: [new Paragraph({ text: "S.No", alignment: AlignmentType.CENTER, bold: true })], width: { size: 5, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ text: "Adı Soyadı", alignment: AlignmentType.LEFT, bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
-            ...currentCriteria.map(c => new TableCell({ children: [
-                new Paragraph({ text: c.name, alignment: AlignmentType.CENTER, bold: true }), 
-                new Paragraph({ text: `(${c.max} P)`, alignment: AlignmentType.CENTER, style: 'small' })
-            ] })),
-            new TableCell({ children: [new Paragraph({ text: "PUAN", alignment: AlignmentType.CENTER, bold: true })], width: { size: 10, type: WidthType.PERCENTAGE } }),
-        ],
-    });
+    const tableHeader = `
+        <tr>
+            <th style="width:5%;">S.No</th>
+            <th style="width:25%;">Adı Soyadı</th>
+            ${currentCriteria.map(c => `<th>${c.name}<br/><span class="small-text">(${c.max} P)</span></th>`).join('')}
+            <th style="width:10%;">PUAN</th>
+        </tr>
+    `;
 
     const dataRows = visibleStudents.map((s, index) => {
         const scores = s[targetKey as keyof Student] as { [key: string]: number } | undefined;
         const total = calculateTotal(scores);
-        return new TableRow({
-            children: [
-                new TableCell({ children: [new Paragraph({ text: `${index + 1}`, alignment: AlignmentType.CENTER })] }),
-                new TableCell({ children: [new Paragraph({ text: s.name, alignment: AlignmentType.LEFT })] }),
-                ...currentCriteria.map(c => new TableCell({ children: [new Paragraph({ text: `${scores?.[c.id] || 0}`, alignment: AlignmentType.CENTER })] })),
-                new TableCell({ children: [new Paragraph({ text: `${total}`, bold: true, alignment: AlignmentType.CENTER })] }),
-            ],
-        });
-    });
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td>${s.name}</td>
+                ${currentCriteria.map(c => `<td class="center">${scores?.[c.id] || 0}</td>`).join('')}
+                <td class="center bold">${total}</td>
+            </tr>
+        `;
+    }).join('');
 
-    const signatureTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } },
-        rows: [
-             new TableRow({
-                children: [
-                    new TableCell({ children: [ new Paragraph('Uygundur'), new Paragraph(date) ], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                    new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                    new TableCell({ children: [new Paragraph("Tasdik Olunur")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                ],
-            }),
-             new TableRow({
-                children: [ new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }) ],
-            }),
-            new TableRow({
-                children: [
-                    new TableCell({ children: [new Paragraph({ text: teacher, bold: true }), new Paragraph("Ders Öğretmeni")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                    new TableCell({ children: [], borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                    new TableCell({ children: [new Paragraph({ text: principal, bold: true }), new Paragraph("Okul Müdürü")], alignment: AlignmentType.CENTER, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
-                ],
-            }),
-        ],
-    })
+    const signatureTable = `
+        <br><br><br>
+        <table class="no-border" style="width:100%;">
+            <tr>
+                <td class="no-border center" style="width:50%;">
+                    Uygundur<br/>${date}<br/><br/><br/>
+                    <span class="bold">${teacher}</span><br/>
+                    Ders Öğretmeni
+                </td>
+                <td class="no-border center" style="width:50%;">
+                    Tasdik Olunur<br/><br/><br/><br/>
+                    <span class="bold">${principal}</span><br/>
+                    Okul Müdürü
+                </td>
+            </tr>
+        </table>
+    `;
 
+    const content = `
+        <div class="center">
+            <p>T.C.</p>
+            <p class="bold">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜ</p>
+            <p class="bold">${year} EĞİTİM ÖĞRETİM YILI ${lesson.toLocaleUpperCase('tr-TR')} DERSİ</p>
+            <p class="bold">${className.toLocaleUpperCase('tr-TR')} SINIFI ${term}. DÖNEM ${reportTitle}</p>
+        </div>
+        <br>
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${signatureTable}
+    `;
 
-    const doc = new Document({
-        styles: {
-            paragraphStyles: [
-                 { id: "small", name: "Small Text", run: { size: 16 } },
-            ]
-        },
-        sections: [{
-            children: [
-                new Paragraph({ text: "T.C.", alignment: AlignmentType.CENTER, style: "Normal" }),
-                new Paragraph({ text: `${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜ`, alignment: AlignmentType.CENTER, bold: true }),
-                new Paragraph({ text: `${year} EĞİTİM ÖĞRETİM YILI ${lesson.toLocaleUpperCase('tr-TR')} DERSİ`, alignment: AlignmentType.CENTER, bold: true }),
-                new Paragraph({ text: `${className.toLocaleUpperCase('tr-TR')} SINIFI ${term}. DÖNEM ${reportTitle}`, alignment: AlignmentType.CENTER, bold: true }),
-                new Paragraph({ text: "" }),
-                new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    rows: [tableHeader, ...dataRows],
-                }),
-                new Paragraph({ text: "" }),
-                new Paragraph({ text: "" }),
-                signatureTable,
-            ],
-        }],
-    });
-
-    Packer.toBlob(doc).then(blob => {
-        saveAs(blob, `${title.replace(/ /g, '_')}.docx`);
-    });
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
-
-    
