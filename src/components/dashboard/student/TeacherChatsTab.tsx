@@ -1,15 +1,11 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Message, TeacherProfile } from '@/lib/types';
-import {
-  collection,
-  query,
-  where,
-} from 'firebase/firestore';
+import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, MessageSquare, Clock } from 'lucide-react';
@@ -32,7 +28,6 @@ export function TeacherChatsTab() {
 
     const studentId = appUser.data.id;
 
-    // 1. Öğrencinin dahil olduğu tüm mesajları çek (sıralama olmadan)
     const messagesQuery = useMemo(() => {
         return query(
             collection(db, 'messages'), 
@@ -42,12 +37,24 @@ export function TeacherChatsTab() {
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('studentMessages', messagesQuery);
     
-    // 2. Mesajları kod içinde tarihe göre sırala
+    useEffect(() => {
+        if (messages.length > 0) {
+            const unreadMessages = messages.filter(msg => msg.receiverId === studentId && !msg.isRead);
+            if (unreadMessages.length > 0) {
+                const batch = writeBatch(db);
+                unreadMessages.forEach(msg => {
+                    const msgRef = doc(db, 'messages', msg.id);
+                    batch.update(msgRef, { isRead: true });
+                });
+                batch.commit();
+            }
+        }
+    }, [messages, studentId]);
+
     const sortedMessages = useMemo(() => {
         return [...messages].sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
     }, [messages]);
 
-    // 3. Mesajlardaki tüm öğretmen ID'lerini topla
     const teacherIds = useMemo(() => {
         const ids = new Set<string>();
         messages.forEach(msg => {
@@ -57,7 +64,6 @@ export function TeacherChatsTab() {
         return Array.from(ids);
     }, [messages, studentId]);
 
-    // 4. Öğretmen profillerini çek
     const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile>(
         'teacherProfilesForChats',
         teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null

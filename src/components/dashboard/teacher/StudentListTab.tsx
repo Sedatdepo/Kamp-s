@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -57,7 +58,8 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
             receiverId: student.id,
             participants: participants,
             text: newMessage,
-            timestamp: Timestamp.now()
+            timestamp: Timestamp.now(),
+            isRead: false,
         });
         setNewMessage('');
     };
@@ -102,6 +104,22 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+  const messagesQuery = useMemo(() => {
+    return query(collection(db, 'messages'), where('senderId', 'in', students.map(s => s.id)), where('receiverId', '==', teacherId));
+  }, [students, teacherId]);
+  const { data: messagesFromStudents } = useFirestore<Message>('messagesFromStudentsToTeacher', messagesQuery);
+
+  const unreadMessagesByStudent = useMemo(() => {
+    const unreadMap = new Map<string, number>();
+    messagesFromStudents.forEach(msg => {
+      if (!msg.isRead) {
+        unreadMap.set(msg.senderId, (unreadMap.get(msg.senderId) || 0) + 1);
+      }
+    });
+    return unreadMap;
+  }, [messagesFromStudents]);
 
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => {
@@ -262,7 +280,14 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                   <TableCell className="text-right">
                     <Dialog>
                         {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
-                        <DialogTrigger asChild><Button variant="ghost" size="icon"><MessageSquare className="h-4 w-4"/></Button></DialogTrigger>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="relative">
+                                <MessageSquare className="h-4 w-4"/>
+                                {unreadMessagesByStudent.has(student.id) && (
+                                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                                )}
+                            </Button>
+                        </DialogTrigger>
                     </Dialog>
                     <Button variant="ghost" size="icon" onClick={() => resetPassword(student)}><KeyRound className="h-4 w-4"/></Button>
                     <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDeleteStudent(student.id)}><Trash2 className="h-4 w-4"/></Button>

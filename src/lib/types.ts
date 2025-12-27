@@ -1,9 +1,11 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
   id: number;
   text: string;
   date: string;
+  seenBy: string[];
 }
 
 export interface Criterion {
@@ -113,4 +115,5 @@ export interface Message {
   text: string;
   timestamp: Timestamp;
   participants: string[];
+  isRead: boolean;
 }

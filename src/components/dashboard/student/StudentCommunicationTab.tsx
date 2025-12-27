@@ -1,20 +1,45 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class } from '@/lib/types';
+import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Bell, Clock } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function StudentCommunicationTab() {
   const { appUser } = useAuth();
   
   if (appUser?.type !== 'student') return null;
+  const studentId = appUser.data.id;
 
   const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
   const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+
+  useEffect(() => {
+    if (studentClass && studentClass.announcements && studentId) {
+      const unseenAnnouncements = studentClass.announcements.filter(
+        (ann) => !ann.seenBy?.includes(studentId)
+      );
+
+      if (unseenAnnouncements.length > 0) {
+        const classRef = doc(db, 'classes', studentClass.id);
+        const updatedAnnouncements = studentClass.announcements.map((ann) => {
+          if (!ann.seenBy?.includes(studentId)) {
+            return {
+              ...ann,
+              seenBy: [...(ann.seenBy || []), studentId],
+            };
+          }
+          return ann;
+        });
+        updateDoc(classRef, { announcements: updatedAnnouncements });
+      }
+    }
+  }, [studentClass, studentId]);
 
   if (classLoading) {
     return (
