@@ -9,6 +9,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 interface SeatingPlanTabProps {
     students: Student[];
