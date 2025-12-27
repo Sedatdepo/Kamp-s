@@ -128,128 +128,24 @@ function ProjectSelection() {
   );
 }
 
-function getInitials(name: string = '') {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join('');
-}
-
-
-function Chat() {
-    const { appUser } = useAuth();
-    const [newMessage, setNewMessage] = useState('');
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-    if (appUser?.type !== 'student') return null;
-
-    const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-    
-    const currentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
-    const teacherId = currentClass?.teacherId;
-    const studentId = appUser.data.id;
-
-    const teacherQuery = useMemo(() => (teacherId ? doc(db, 'teachers', teacherId) : null), [teacherId]);
-    const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-chat-${teacherId}`, teacherQuery);
-    const teacherProfile = teacherData[0];
-    
-    const messagesQuery = useMemo(() => {
-        if (!teacherId || !studentId) return null;
-        const participants = [studentId, teacherId].sort();
-        return query(
-            collection(db, 'messages'), 
-            where('participants', '==', participants)
-        );
-    }, [teacherId, studentId]);
-    
-    const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
-
-    const sortedMessages = useMemo(() => {
-        return [...messages].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
-    }, [messages]);
-
-    useEffect(() => {
-        if (scrollAreaRef.current) {
-            const scrollViewport = scrollAreaRef.current.querySelector('div');
-            if (scrollViewport) {
-                scrollViewport.scrollTop = scrollViewport.scrollHeight;
-            }
-        }
-      }, [sortedMessages]);
-
-
-    const handleSendMessage = async () => {
-        if (!newMessage.trim() || !teacherId) return;
-        const participants = [studentId, teacherId].sort();
-        await addDoc(collection(db, 'messages'), {
-            senderId: studentId,
-            receiverId: teacherId,
-            participants: participants,
-            text: newMessage,
-            timestamp: Timestamp.now()
-        });
-        setNewMessage('');
-    }
-
-    if (classLoading || !teacherId) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Öğretmenle Sohbet</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                </CardContent>
-            </Card>
-        )
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center gap-3">
-                    <Avatar>
-                        <AvatarFallback>{teacherProfile ? getInitials(teacherProfile.name) : 'Ö'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <CardTitle className="font-headline">{teacherProfile ? `${teacherProfile.name} ile Sohbet` : 'Öğretmenle Sohbet'}</CardTitle>
-                        <CardDescription>Danışman öğretmeninizle buradan iletişim kurabilirsiniz.</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col h-[28rem]">
-                    <ScrollArea className="flex-1 p-4 border rounded-md" ref={scrollAreaRef}>
-                        {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-                            sortedMessages.map(msg => (
-                                <div key={msg.id} className={`flex my-2 ${msg.senderId === studentId ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === studentId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                        <p>{msg.text}</p>
-                                        <p className="text-xs opacity-70 text-right mt-1">{format(msg.timestamp.toDate(), 'p')}</p>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                         {sortedMessages.length === 0 && !messagesLoading && (
-                            <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
-                        )}
-                    </ScrollArea>
-                    <div className="flex mt-4 gap-2">
-                        <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
-                        <Button onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
-
 export function HomeTab() {
+  const { appUser } = useAuth();
+  if (appUser?.type !== 'student') return null;
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Anasayfa</CardTitle>
+          <CardDescription>
+            Hoş geldin, {appUser.data.name}! Burası senin kişisel panon. 
+            Kenar çubuğunu kullanarak duyurulara, formlara ve proje tercihlerine ulaşabilirsin.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <p className="text-muted-foreground">Gelecekte burada sana özel bilgiler ve kısayollar yer alacak.</p>
+        </CardContent>
+      </Card>
       <ProjectSelection />
-      <Chat />
     </div>
   );
 }

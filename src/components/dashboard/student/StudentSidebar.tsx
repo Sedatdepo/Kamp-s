@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/Logo';
-import { Home, ShieldAlert, FileText, Bell } from 'lucide-react';
+import { Home, ShieldAlert, FileText, Bell, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotification } from '@/hooks/useNotification';
 
@@ -59,6 +59,16 @@ export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps)
               <Bell />
               <span>Duyurular</span>
               {notifications.announcements && <NotificationBadge />}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setActiveTab('teacher-chats')}
+              isActive={activeTab === 'teacher-chats'}
+            >
+              <MessageSquare />
+              <span>Sohbetlerim</span>
+              {/* TODO: Add notification logic for new messages */}
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

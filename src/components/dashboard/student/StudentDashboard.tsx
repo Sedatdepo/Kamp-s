@@ -9,6 +9,7 @@ import { HomeTab } from '@/components/dashboard/student/HomeTab';
 import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
 import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
 import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
+import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNotification } from '@/hooks/useNotification';
 
@@ -37,9 +38,10 @@ export function StudentDashboard() {
           <main className="flex-1 p-4 sm:p-6">
             <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
               {/* Bu TabsList mobil görünümde gizlenecek, çünkü sidebar zaten navigasyonu sağlıyor */}
-              <TabsList className="grid grid-cols-4 w-full md:hidden">
+              <TabsList className="grid grid-cols-5 w-full md:hidden">
                 <TabsTrigger value="home">Anasayfa</TabsTrigger>
                 <TabsTrigger value="announcements">Duyurular</TabsTrigger>
+                <TabsTrigger value="teacher-chats">Sohbetlerim</TabsTrigger>
                 <TabsTrigger value="risks">Risk Formu</TabsTrigger>
                 <TabsTrigger value="info">Bilgi Formu</TabsTrigger>
               </TabsList>
@@ -48,6 +50,9 @@ export function StudentDashboard() {
               </TabsContent>
                <TabsContent value="announcements" className="mt-4">
                 <StudentCommunicationTab />
+              </TabsContent>
+               <TabsContent value="teacher-chats" className="mt-4">
+                <TeacherChatsTab />
               </TabsContent>
               <TabsContent value="risks" className="mt-4">
                 <RiskFormTab />
