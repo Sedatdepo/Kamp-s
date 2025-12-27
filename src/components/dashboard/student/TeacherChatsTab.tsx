@@ -95,7 +95,7 @@ export function TeacherChatsTab() {
                                             <p className="font-semibold text-sm">{teacher?.name || 'Bilinmeyen Öğretmen'}</p>
                                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Clock className="h-3 w-3" />
-                                                <span>{format(msg.timestamp.toDate(), 'd MMMM yyyy, HH:mm', { locale: tr })}</span>
+                                                <span>{msg.timestamp ? format(msg.timestamp.toDate(), 'd MMMM yyyy, HH:mm', { locale: tr }) : ''}</span>
                                             </div>
                                         </div>
                                     </div>
