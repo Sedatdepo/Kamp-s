@@ -30,7 +30,7 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
     const newAnnouncement: Announcement = {
       id: Date.now(),
       text: announcementText,
-      date: new Date().toLocaleDateString('tr-TR'),
+      date: new Date().toISOString(), // Store as ISO string
     };
 
     const classRef = doc(db, 'classes', classId);
@@ -98,7 +98,7 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
                     <p className="text-sm">{ann.text}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                       <Clock className="h-3 w-3" />
-                      <span>{ann.date}</span>
+                      <span>{new Date(ann.date).toLocaleDateString('tr-TR')}</span>
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500" onClick={() => handleDeleteAnnouncement(ann.id)}>

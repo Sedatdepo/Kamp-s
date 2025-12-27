@@ -45,7 +45,7 @@ export function StudentCommunicationTab() {
                 <p className="text-sm leading-relaxed">{ann.text}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3 pt-2 border-t">
                   <Clock className="h-3 w-3" />
-                  <span>Yayınlanma Tarihi: {ann.date}</span>
+                  <span>Yayınlanma Tarihi: {new Date(ann.date).toLocaleDateString('tr-TR')}</span>
                 </div>
               </div>
             ))
