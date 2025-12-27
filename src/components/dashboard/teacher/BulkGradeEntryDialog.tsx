@@ -71,6 +71,15 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
         });
     }
   };
+  
+  const sortedStudents = [...students].sort((a, b) => {
+    const numA = parseInt(a.number, 10);
+    const numB = parseInt(b.number, 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+    }
+    return a.number.localeCompare(b.number, 'tr');
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -85,6 +94,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
+                <TableHead className="w-[50px]">No</TableHead>
                 <TableHead className="w-1/4">Öğrenci Adı</TableHead>
                 <TableHead>1. Yazılı</TableHead>
                 <TableHead>2. Yazılı</TableHead>
@@ -93,13 +103,14 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
+              {sortedStudents.map((student) => (
                 <TableRow key={student.id}>
+                  <TableCell>{student.number}</TableCell>
                   <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.term1Grades?.exam1 ?? ''}</TableCell>
-                  <TableCell>{student.term1Grades?.exam2 ?? ''}</TableCell>
-                  <TableCell>{student.term1Grades?.perf1 ?? ''}</TableCell>
-                  <TableCell>{student.term1Grades?.perf2 ?? ''}</TableCell>
+                  <TableCell>{student.term1Grades?.exam1 ?? 'Girmedi'}</TableCell>
+                  <TableCell>{student.term1Grades?.exam2 ?? 'Girmedi'}</TableCell>
+                  <TableCell>{student.term1Grades?.perf1 ?? 'Girmedi'}</TableCell>
+                  <TableCell>{student.term1Grades?.perf2 ?? 'Girmedi'}</TableCell>
                 </TableRow>
               ))}
                <TableRow>

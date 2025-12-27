@@ -36,13 +36,13 @@ const calculateAverage = (scores: { [key: string]: number } | undefined, criteri
     return (totalScore / totalMax) * 100;
 };
 
-const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNode, value: number }) => (
+const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNode, value: number | string }) => (
     <Card className="flex-1">
         <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 text-xs">{icon} {title}</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-2xl font-bold">{value.toFixed(2)}</p>
+            <p className="text-2xl font-bold">{typeof value === 'number' ? value.toFixed(2) : value}</p>
         </CardContent>
     </Card>
 );
@@ -52,19 +52,19 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
-    const exam1 = grades.exam1 || 0;
-    const exam2 = grades.exam2 || 0;
-    const perf1 = grades.perf1 || 0;
-    const perf2 = grades.perf2 || 0;
+    const exam1 = grades.exam1;
+    const exam2 = grades.exam2;
+    const perf1 = grades.perf1;
+    const perf2 = grades.perf2;
     const projAvg = calculateAverage(grades.projectScores, projCriteria);
     const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1} />
-            <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2} />
-            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1} />
-            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2} />
+            <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1 ?? 'Girmedi'} />
+            <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2 ?? 'Girmedi'} />
+            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1 ?? 'Girmedi'} />
+            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2 ?? 'Girmedi'} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
             <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
         </div>
@@ -209,5 +209,3 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     </Dialog>
   );
 }
-
-    

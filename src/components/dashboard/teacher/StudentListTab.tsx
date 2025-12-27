@@ -175,15 +175,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         return { number, name };
     }).filter(s => s.number && s.name);
 
-    studentsToAdd.sort((a, b) => {
-        const numA = parseInt(a.number, 10);
-        const numB = parseInt(b.number, 10);
-        if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-        }
-        return a.number.localeCompare(b.number);
-    });
-
     const batch = writeBatch(db);
     studentsToAdd.forEach(({name, number}) => {
         const studentRef = doc(collection(db, 'students'));
@@ -261,7 +252,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                 Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: Okul Numarası Ad Soyad.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz&#10;456 Ayşe Kaya" className="h-48" />
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz\n456 Ayşe Kaya" className="h-48" />
                         <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
@@ -335,5 +326,3 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
-
-    
