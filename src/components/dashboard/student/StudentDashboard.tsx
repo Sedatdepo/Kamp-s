@@ -36,7 +36,7 @@ export function StudentDashboard() {
         <div className="flex flex-col flex-1">
           <Header />
           <main className="flex-1 p-4 sm:p-6">
-            <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
+            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
               {/* Bu TabsList mobil görünümde gizlenecek, çünkü sidebar zaten navigasyonu sağlıyor */}
               <TabsList className="grid grid-cols-5 w-full md:hidden">
                 <TabsTrigger value="home">Anasayfa</TabsTrigger>
@@ -45,19 +45,19 @@ export function StudentDashboard() {
                 <TabsTrigger value="risks">Risk Formu</TabsTrigger>
                 <TabsTrigger value="info">Bilgi Formu</TabsTrigger>
               </TabsList>
-              <TabsContent value="home" className="mt-4">
+              <TabsContent value="home" className="mt-4 md:mt-0">
                 <HomeTab />
               </TabsContent>
-               <TabsContent value="announcements" className="mt-4">
+               <TabsContent value="announcements" className="mt-4 md:mt-0">
                 <StudentCommunicationTab />
               </TabsContent>
-               <TabsContent value="teacher-chats" className="mt-4">
+               <TabsContent value="teacher-chats" className="mt-4 md:mt-0">
                 <TeacherChatsTab />
               </TabsContent>
-              <TabsContent value="risks" className="mt-4">
+              <TabsContent value="risks" className="mt-4 md:mt-0">
                 <RiskFormTab />
               </TabsContent>
-              <TabsContent value="info" className="mt-4">
+              <TabsContent value="info" className="mt-4 md:mt-0">
                 <InfoFormTab />
               </TabsContent>
             </Tabs>

@@ -6,6 +6,13 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { TeacherSidebar } from '@/components/dashboard/teacher/TeacherSidebar';
 import { Header } from '@/components/dashboard/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from '@/components/ui/button';
 import { StudentListTab } from '@/components/dashboard/teacher/StudentListTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
@@ -15,20 +22,29 @@ import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTa
 import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+const TABS = [
+    { value: "students", label: "Öğrenci Listesi", icon: null },
+    { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
+    { value: "grading", label: "Değerlendirme", icon: null },
+    { value: "projects", label: "Proje Dağılımı", icon: null },
+    { value: "risks", label: "Risk Haritası", icon: null },
+    { value: "forms", label: "Bilgi Formları", icon: null },
+    { value: "communication", label: "İletişim", icon: null },
+    { value: "report", label: "Rapor", icon: null },
+];
+
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("students");
   const { appUser } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-
-  // Prefetch all necessary data here to pass down as props
-  // This avoids each tab component fetching the same data repeatedly
 
   const teacherQuery = useMemo(() => teacherId ? doc(db, 'teachers', teacherId) : null, [teacherId]);
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
@@ -42,6 +58,8 @@ export function TeacherDashboard() {
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
 
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
+  
+  const activeTabLabel = TABS.find(t => t.value === activeTab)?.label;
 
   return (
     <SidebarProvider>
@@ -56,17 +74,35 @@ export function TeacherDashboard() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : (
-                <Tabs defaultValue="students">
-                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-8">
-                    <TabsTrigger value="students">Öğrenci Listesi</TabsTrigger>
-                    <TabsTrigger value="attendance"><Calendar className="w-4 h-4 mr-2"/>Yoklama</TabsTrigger>
-                    <TabsTrigger value="grading">Değerlendirme</TabsTrigger>
-                    <TabsTrigger value="projects">Proje Dağılımı</TabsTrigger>
-                    <TabsTrigger value="risks">Risk Haritası</TabsTrigger>
-                    <TabsTrigger value="forms">Bilgi Formları</TabsTrigger>
-                    <TabsTrigger value="communication">İletişim</TabsTrigger>
-                    <TabsTrigger value="report">Rapor</TabsTrigger>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  {/* Mobile Dropdown Menu */}
+                  <div className="md:hidden mb-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                          {activeTabLabel}
+                          <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                        {TABS.map(tab => (
+                             <DropdownMenuItem key={tab.value} onClick={() => setActiveTab(tab.value)}>
+                                {tab.icon}{tab.label}
+                            </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Desktop Tabs */}
+                  <TabsList className="hidden md:grid w-full grid-cols-8">
+                     {TABS.map(tab => (
+                        <TabsTrigger key={tab.value} value={tab.value}>
+                            {tab.icon}{tab.label}
+                        </TabsTrigger>
+                    ))}
                   </TabsList>
+                  
                   <TabsContent value="students" className="mt-4">
                     <StudentListTab 
                       classId={selectedClassId} 
