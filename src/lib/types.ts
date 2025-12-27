@@ -69,6 +69,12 @@ export interface Student {
   projectScores?: { [key: string]: number };
   behaviorScores?: { [key: string]: number };
   hasProject?: boolean;
+  
+  // New Attendance Field
+  attendance?: {
+    date: string; // YYYY-MM-DD
+    status: 'present' | 'absent' | 'late' | 'excused';
+  }[];
 }
 
 export interface Lesson {

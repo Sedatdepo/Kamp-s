@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -12,8 +13,9 @@ import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
+import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2 } from 'lucide-react';
+import { School, Loader2, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -55,8 +57,9 @@ export function TeacherDashboard() {
                 </div>
               ) : (
                 <Tabs defaultValue="students">
-                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-7">
+                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-8">
                     <TabsTrigger value="students">Öğrenci Listesi</TabsTrigger>
+                    <TabsTrigger value="attendance"><Calendar className="w-4 h-4 mr-2"/>Yoklama</TabsTrigger>
                     <TabsTrigger value="grading">Değerlendirme</TabsTrigger>
                     <TabsTrigger value="projects">Proje Dağılımı</TabsTrigger>
                     <TabsTrigger value="risks">Risk Haritası</TabsTrigger>
@@ -69,6 +72,11 @@ export function TeacherDashboard() {
                       classId={selectedClassId} 
                       teacherProfile={teacherProfile}
                       currentClass={currentClass}
+                    />
+                  </TabsContent>
+                   <TabsContent value="attendance" className="mt-4">
+                    <AttendanceTab 
+                      students={students}
                     />
                   </TabsContent>
                   <TabsContent value="grading" className="mt-4">
