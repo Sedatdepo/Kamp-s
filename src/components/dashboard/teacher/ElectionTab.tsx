@@ -11,6 +11,7 @@ import {
   Trash2,
   Building,
   ShieldCheck as HonorIcon,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Student, Candidate, ElectionType, Class } from '@/lib/types';
@@ -28,6 +29,8 @@ import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Switch } from '@/components/ui/switch';
+import { exportElectionResultsToRtf } from '@/lib/word-export';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ElectionTabProps {
   students: Student[];
@@ -35,13 +38,16 @@ interface ElectionTabProps {
 }
 
 export function ElectionTab({ students, currentClass }: ElectionTabProps) {
+  const { appUser } = useAuth();
+  const { toast } = useToast();
+  
   const electionData = useMemo(() => currentClass?.election || {
       type: 'class_president',
       candidates: [],
       votedStudentIds: [],
   }, [currentClass]);
 
-  const { toast } = useToast();
+  const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
 
   const updateElection = async (updates: Partial<Class['election']>) => {
     if (!currentClass) return;
@@ -102,10 +108,9 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     return [...electionData.candidates].sort((a, b) => b.votes - a.votes);
   }, [electionData.candidates]);
   
-  const electionInfo = useMemo(() => {
-    const className = currentClass?.name || '';
-    const type = electionData.type;
+  const electionType = electionData.type;
 
+  const electionInfo = useMemo(() => {
     const infoMap = {
         class_president: {
             title: `SINIF BAŞKANI VE BAŞKAN YARDIMCISI SEÇİMİ`,
@@ -123,10 +128,9 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
             runnerUpLabel: null,
         }
     };
-    return infoMap[type];
-  }, [electionData.type, currentClass?.name]);
+    return infoMap[electionType];
+  }, [electionType]);
 
-  const electionType = electionData.type;
   const winner = sortedCandidates[0] || null;
   const runnerUp = electionType === 'class_president' && sortedCandidates.length > 1 ? sortedCandidates[1] : null;
 
@@ -137,6 +141,20 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
         handleToggleActive(false); // Seçimi de pasif yap
     }
   };
+
+  const handleExport = () => {
+    if (!currentClass || !winner) {
+        toast({ title: 'Hata', description: 'Tutanak oluşturmak için tamamlanmış bir seçim olmalıdır.', variant: 'destructive' });
+        return;
+    }
+    exportElectionResultsToRtf({
+        electionResult: { winner, runnerUp, allCandidates: sortedCandidates },
+        electionType,
+        currentClass,
+        students,
+        teacherProfile
+    });
+  }
 
 
   return (
@@ -216,8 +234,16 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
         {(!currentClass?.isElectionActive && electionData.votedStudentIds.length > 0) && winner && (
            <Card>
              <CardHeader>
-                <CardTitle>Seçim Sonuçları</CardTitle>
-                <CardDescription>{electionInfo.title} sonuçları aşağıdadır.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Seçim Sonuçları</CardTitle>
+                        <CardDescription>{electionInfo.title} sonuçları aşağıdadır.</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={handleExport}>
+                        <FileText className="mr-2 h-4 w-4"/>
+                        Tutanak Oluştur (.rtf)
+                    </Button>
+                </div>
              </CardHeader>
              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">

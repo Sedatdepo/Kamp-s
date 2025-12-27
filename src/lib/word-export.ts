@@ -1,6 +1,6 @@
 
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate } from './types';
 import { format } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 
@@ -455,6 +455,79 @@ export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: 
     `).join('');
 
     const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
+// --- ELECTION RESULTS EXPORT ---
+interface ElectionResult {
+    winner: Candidate;
+    runnerUp: Candidate | null;
+    allCandidates: Candidate[];
+}
+interface ExportElectionResultsArgs {
+    electionResult: ElectionResult;
+    electionType: 'class_president' | 'school_representative' | 'honor_board';
+    currentClass: Class;
+    students: Student[];
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportElectionResultsToRtf({
+    electionResult,
+    electionType,
+    currentClass,
+    students,
+    teacherProfile,
+}: ExportElectionResultsArgs) {
+    
+    const infoMap = {
+        class_president: {
+            title: `SINIF BAŞKANLIĞI SEÇİM SONUÇ TUTANAĞI`,
+            decisionText: (winner: Candidate, runnerUp: Candidate | null, className: string) =>
+                `Okulumuz ${className} sınıfı öğrencileri arasında yapılan oylama sonucunda ${winner.votes} oyla ${winner.name} sınıf başkanı, ${runnerUp ? `${runnerUp.votes} oyla ${runnerUp.name} sınıf başkan yardımcısı seçilmiştir.` : 'sınıf başkan yardımcısı seçilememiştir.'}`
+        },
+        school_representative: {
+            title: `OKUL MECLİSİ SINIF TEMSİLCİSİ SEÇİMİ SONUÇ TUTANAĞI`,
+            decisionText: (winner: Candidate, runnerUp: Candidate | null, className: string) =>
+                `Okulumuz ${className} sınıfı öğrencileri arasında yapılan oylama sonucunda ${winner.votes} oyla ${winner.name} sınıf temsilcisi olarak seçilmiştir.`
+        },
+        honor_board: {
+            title: `ONUR KURULU SINIF TEMSİLCİSİ SEÇİMİ SONUÇ TUTANAĞI`,
+             decisionText: (winner: Candidate, runnerUp: Candidate | null, className: string) =>
+                `Okulumuz ${className} sınıfı öğrencileri arasında yapılan oylama sonucunda ${winner.votes} oyla ${winner.name} onur kurulu sınıf temsilcisi olarak seçilmiştir.`
+        }
+    };
+    const electionInfo = infoMap[electionType];
+    const { winner, runnerUp, allCandidates } = electionResult;
+
+    const reportTitle = electionInfo.title;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const introText = `<p>Okulumuz ${currentClass.name} sınıfında, ${allCandidates.length} adayın katılımıyla ${electionInfo.title.toLocaleLowerCase('tr-TR')} yapılmıştır. ${students.length} mevcutlu sınıfta, ${currentClass.election?.votedStudentIds.length || 0} öğrenci oy kullanmıştır. Oyların sayımı yapılarak, oy dökümü aşağıya çıkarılmıştır.</p>`;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:50%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:20%;">Aldığı Oy</th>
+        </tr>
+    `;
+    const dataRows = allCandidates.map((c, index) => `
+        <tr>
+            <td class="center">${index + 1}</td>
+            <td class="center">${c.number}</td>
+            <td>${c.name}</td>
+            <td class="center bold">${c.votes}</td>
+        </tr>
+    `).join('');
+
+    const decision = `<br><p>${electionInfo.decisionText(winner, runnerUp, currentClass.name)} İş bu tutanak tarafımızdan imza altına alınmıştır.</p>`;
+
+    const content = `${header}${introText}<br><table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${decision}${footer}`;
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
