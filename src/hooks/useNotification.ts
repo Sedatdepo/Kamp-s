@@ -5,15 +5,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { useFirestore } from './useFirestore';
 import { Class } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-type NotificationType = 'announcements' | 'riskForm' | 'infoForm';
+type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks';
 
 interface NotificationState {
   announcements: boolean;
   riskForm: boolean;
   infoForm: boolean;
+  homeworks: boolean;
 }
 
 // Helper function to safely parse date strings
@@ -48,6 +49,7 @@ export const useNotification = () => {
     announcements: false,
     riskForm: false,
     infoForm: false,
+    homeworks: false,
   });
   
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
@@ -61,19 +63,13 @@ export const useNotification = () => {
     if (!currentClass || !studentId) return;
 
     // 1. Duyuru Kontrolü
-    const lastSeenAnnouncementDateStr = localStorage.getItem(`lastSeenAnnouncement_${studentId}`);
-    const lastSeenAnnouncementDate = lastSeenAnnouncementDateStr ? parseDate(lastSeenAnnouncementDateStr) : null;
-
-    const latestAnnouncement = currentClass.announcements?.[0];
-    const latestAnnouncementDate = latestAnnouncement ? parseDate(latestAnnouncement.date) : null;
-
-    const hasNewAnnouncement = latestAnnouncementDate && (!lastSeenAnnouncementDate || latestAnnouncementDate > lastSeenAnnouncementDate);
+    const hasNewAnnouncement = currentClass.announcements?.some(
+      (ann) => !ann.seenBy?.includes(studentId)
+    ) ?? false;
     
     // 2. Risk Formu Kontrolü
     let hasNewRiskForm = false;
     if (currentClass.isRiskFormActive) {
-      // Sadece form aktifse ve öğrenci henüz hiç risk belirtmemişse bildirim göster.
-      // Bu, formu doldurma zorunluluğunu hatırlatır.
       const hasSubmittedRisks = appUser?.type === 'student' && appUser.data.risks && appUser.data.risks.length > 0;
       if (!hasSubmittedRisks) {
         hasNewRiskForm = true;
@@ -85,16 +81,21 @@ export const useNotification = () => {
     if (currentClass.isInfoFormActive) {
       const infoFormRef = doc(db, 'infoForms', studentId);
       const infoFormSnap = await getDoc(infoFormRef);
-      // Form aktifse ve henüz "submitted" değilse bildirim göster.
       if (!infoFormSnap.exists() || !infoFormSnap.data().submitted) {
         hasNewInfoForm = true;
       }
     }
 
+    // 4. Ödev Kontrolü
+    const hasNewHomework = currentClass.homeworks?.some(
+        (hw) => !hw.seenBy?.includes(studentId)
+    ) ?? false;
+
     setNotifications({
-      announcements: !!hasNewAnnouncement,
+      announcements: hasNewAnnouncement,
       riskForm: hasNewRiskForm,
-      infoForm: hasNewInfoForm
+      infoForm: hasNewInfoForm,
+      homeworks: hasNewHomework
     });
 
   }, [currentClass, studentId, appUser]);
@@ -103,23 +104,36 @@ export const useNotification = () => {
     checkNotifications();
   }, [checkNotifications]);
 
-  const markAsSeen = useCallback((type: NotificationType) => {
+  const markAsSeen = useCallback(async (type: NotificationType) => {
     if (!studentId || !currentClass) return;
 
+    const classRef = doc(db, 'classes', classId!);
+
     if (type === 'announcements') {
-      const latestAnnouncement = currentClass.announcements?.[0];
-      if (latestAnnouncement) {
-        const latestDate = parseDate(latestAnnouncement.date);
-        if (latestDate) {
-          localStorage.setItem(`lastSeenAnnouncement_${studentId}`, latestDate.toISOString());
+        const updatedAnnouncements = currentClass.announcements?.map(ann => {
+            if (!ann.seenBy?.includes(studentId)) {
+                return { ...ann, seenBy: [...(ann.seenBy || []), studentId] };
+            }
+            return ann;
+        });
+        if (updatedAnnouncements) {
+            await updateDoc(classRef, { announcements: updatedAnnouncements });
         }
-      }
+    } else if (type === 'homeworks') {
+        const updatedHomeworks = currentClass.homeworks?.map(hw => {
+            if (!hw.seenBy?.includes(studentId)) {
+                return { ...hw, seenBy: [...(hw.seenBy || []), studentId] };
+            }
+            return hw;
+        });
+        if (updatedHomeworks) {
+            await updateDoc(classRef, { homeworks: updatedHomeworks });
+        }
     }
-    // riskForm ve infoForm için, öğrenci formu doldurduğunda bildirim zaten kaybolacak.
-    // Sadece sekmeye tıklayınca kaybolması için bir logiğe gerek yok, çünkü asıl amaç formu doldurması.
     
-    checkNotifications(); // Durumu anında güncelle
-  }, [studentId, currentClass, checkNotifications]);
+    // Refresh notifications after marking as seen
+    checkNotifications();
+  }, [studentId, classId, currentClass, checkNotifications]);
 
   return { notifications, markAsSeen };
 };

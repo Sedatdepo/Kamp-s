@@ -2,68 +2,96 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from '@/components/dashboard/Header';
-import { StudentSidebar } from '@/components/dashboard/student/StudentSidebar';
 import { HomeTab } from '@/components/dashboard/student/HomeTab';
 import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
 import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
 import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
 import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
 import { useNotification } from '@/hooks/useNotification';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
+const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean }) => (
+  <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
+    <CardHeader className="flex flex-row items-center gap-4">
+      <div className="bg-primary/10 text-primary p-3 rounded-lg">
+        {icon}
+      </div>
+      <div>
+        <CardTitle className="font-headline text-lg group-hover:text-primary">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </div>
+       {hasNotification && (
+         <Badge variant="destructive" className="absolute top-2 right-2 h-3 w-3 p-0 flex items-center justify-center text-xs"></Badge>
+       )}
+    </CardHeader>
+  </Card>
+);
+
 
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const { markAsSeen } = useNotification();
+  const { notifications, markAsSeen } = useNotification();
 
   useEffect(() => {
-    // Sekme değiştiğinde ilgili bildirimi "görüldü" olarak işaretle
-    if (activeTab === 'announcements') {
-      markAsSeen('announcements');
-    } else if (activeTab === 'risks') {
-      markAsSeen('riskForm');
-    } else if (activeTab === 'info') {
-      markAsSeen('infoForm');
-    }
+    if (activeTab === 'announcements') markAsSeen('announcements');
+    else if (activeTab === 'risks') markAsSeen('riskForm');
+    else if (activeTab === 'info') markAsSeen('infoForm');
+    else if (activeTab === 'homeworks') markAsSeen('homeworks');
   }, [activeTab, markAsSeen]);
+  
+  const renderContent = () => {
+      switch(activeTab) {
+          case 'home-details': return <HomeTab />;
+          case 'announcements': return <StudentCommunicationTab />;
+          case 'teacher-chats': return <TeacherChatsTab />;
+          case 'homeworks': return <HomeworkTab />;
+          case 'risks': return <RiskFormTab />;
+          case 'info': return <InfoFormTab />;
+          default: return null;
+      }
+  }
 
-
-  return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/40">
-        <StudentSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="flex flex-col flex-1">
+  if (activeTab !== 'home') {
+    return (
+        <div className="flex flex-col min-h-screen w-full bg-muted/40">
           <Header />
           <main className="flex-1 p-4 sm:p-6">
-            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
-              {/* Bu TabsList mobil görünümde gizlenecek, çünkü sidebar zaten navigasyonu sağlıyor */}
-              <TabsList className="grid grid-cols-5 w-full md:hidden">
-                <TabsTrigger value="home">Anasayfa</TabsTrigger>
-                <TabsTrigger value="announcements">Duyurular</TabsTrigger>
-                <TabsTrigger value="teacher-chats">Sohbetlerim</TabsTrigger>
-                <TabsTrigger value="risks">Risk Formu</TabsTrigger>
-                <TabsTrigger value="info">Bilgi Formu</TabsTrigger>
-              </TabsList>
-              <TabsContent value="home" className="mt-4 md:mt-0">
-                <HomeTab />
-              </TabsContent>
-               <TabsContent value="announcements" className="mt-4 md:mt-0">
-                <StudentCommunicationTab />
-              </TabsContent>
-               <TabsContent value="teacher-chats" className="mt-4 md:mt-0">
-                <TeacherChatsTab />
-              </TabsContent>
-              <TabsContent value="risks" className="mt-4 md:mt-0">
-                <RiskFormTab />
-              </TabsContent>
-              <TabsContent value="info" className="mt-4 md:mt-0">
-                <InfoFormTab />
-              </TabsContent>
-            </Tabs>
+               <Button variant="ghost" onClick={() => setActiveTab('home')} className="mb-4">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Geri Dön
+              </Button>
+              {renderContent()}
           </main>
         </div>
-      </div>
-    </SidebarProvider>
+    )
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen w-full bg-muted/40">
+        <Header />
+        <main className="flex-1 p-4 sm:p-6">
+            <div className="grid gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline text-2xl">Öğrenci Paneli</CardTitle>
+                        <CardDescription>Aşağıdaki menülerden istediğin işleme ulaşabilirsin.</CardDescription>
+                    </CardHeader>
+                </Card>
+                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
+                    <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
+                    <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
+                    <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
+                    <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
+                </div>
+            </div>
+        </main>
+    </div>
   );
 }
