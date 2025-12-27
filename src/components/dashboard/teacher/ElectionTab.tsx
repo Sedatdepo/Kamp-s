@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -153,6 +152,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     return infoMap[type];
   }, [electionData.type, currentClass?.name]);
 
+  const electionType = electionData.type;
   const winner = sortedCandidates[0] || null;
   const runnerUp = electionType === 'class_president' && sortedCandidates.length > 1 ? sortedCandidates[1] : null;
 
@@ -167,7 +167,6 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   };
 
   const currentVoter = students[currentVoterIndex];
-  const electionType = electionData.type;
 
   return (
     <div className="space-y-6">
