@@ -59,7 +59,6 @@ export function StudentDashboard() {
   if (activeTab !== 'home') {
     return (
         <div className="flex flex-col min-h-screen w-full bg-muted/40">
-          <Header />
           <main className="flex-1 p-4 sm:p-6">
                <Button variant="ghost" onClick={() => setActiveTab('home')} className="mb-4">
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -73,7 +72,6 @@ export function StudentDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
-        <Header />
         <main className="flex-1 p-4 sm:p-6">
             <div className="grid gap-6">
                 <Card>
@@ -88,7 +86,7 @@ export function StudentDashboard() {
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
                     <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
-                    <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
+                    <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveİptal('info')} hasNotification={notifications.infoForm} />
                 </div>
             </div>
         </main>
