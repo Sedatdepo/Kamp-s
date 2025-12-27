@@ -108,28 +108,10 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   
-  const studentIds = useMemo(() => students.map(s => s.id), [students]);
+  // NOTE: This query is disabled to prevent the "IN query over 30" error.
+  // A more robust solution for notifications is needed for large classes.
+  const unreadMessagesByStudent = useMemo(() => new Map<string, number>(), []);
 
-  const messagesQuery = useMemo(() => {
-    if (studentIds.length === 0) return null;
-    return query(
-        collection(db, 'messages'), 
-        where('senderId', 'in', studentIds), 
-        where('receiverId', '==', teacherId)
-    );
-  }, [studentIds, teacherId]);
-
-  const { data: messagesFromStudents } = useFirestore<Message>('messagesFromStudentsToTeacher', messagesQuery);
-
-  const unreadMessagesByStudent = useMemo(() => {
-    const unreadMap = new Map<string, number>();
-    messagesFromStudents.forEach(msg => {
-      if (!msg.isRead) {
-        unreadMap.set(msg.senderId, (unreadMap.get(msg.senderId) || 0) + 1);
-      }
-    });
-    return unreadMap;
-  }, [messagesFromStudents]);
 
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => {
