@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor } from '@/lib/types';
-import { collection, query, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, addDoc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -251,5 +251,3 @@ export function RiskMapTab({ classId }: RiskMapTabProps) {
     </div>
   );
 }
-
-    
