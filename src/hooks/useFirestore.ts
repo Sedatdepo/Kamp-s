@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, Query, DocumentData } from 'firebase/firestore';
+import { collection, onSnapshot, query, Query, DocumentData, DocumentReference } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface FirestoreData<T> {
@@ -10,14 +10,15 @@ interface FirestoreData<T> {
   error: Error | null;
 }
 
-export function useFirestore<T>(collectionName: string, firestoreQuery?: Query<DocumentData>): FirestoreData<T> {
+export function useFirestore<T>(
+  collectionName: string, 
+  firestoreQuery?: Query<DocumentData> | DocumentReference<DocumentData> | null
+): FirestoreData<T> {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // If a query is provided but its parameters aren't ready, don't run.
-    // E.g., if a query depends on a selectedClassId which is initially null.
     if (firestoreQuery === null) {
       setData([]);
       setLoading(false);
@@ -26,12 +27,16 @@ export function useFirestore<T>(collectionName: string, firestoreQuery?: Query<D
 
     const q = firestoreQuery || query(collection(db, collectionName));
 
-    const unsubscribe = onSnapshot(q, 
-      (querySnapshot) => {
+    const unsubscribe = onSnapshot(q as any, // Cast to any to handle both signatures
+      (snapshot) => {
         const items: T[] = [];
-        querySnapshot.forEach((doc) => {
-          items.push({ id: doc.id, ...doc.data() } as T);
-        });
+        if ('docs' in snapshot) { // This is a QuerySnapshot
+          snapshot.forEach((doc) => {
+            items.push({ id: doc.id, ...doc.data() } as T);
+          });
+        } else if (snapshot.exists()) { // This is a DocumentSnapshot
+          items.push({ id: snapshot.id, ...snapshot.data() } as T);
+        }
         setData(items);
         setLoading(false);
       },
