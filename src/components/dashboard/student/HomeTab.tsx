@@ -132,7 +132,7 @@ export function HomeTab() {
           <CardTitle className="font-headline">Anasayfa</CardTitle>
           <CardDescription>
             Hoş geldin, {appUser.data.name}! Burası senin kişisel panon. 
-            Kenar çubuğunu kullanarak duyurulara, formlara ve proje tercihlerine ulaşabilirsin.
+            Menüden duyurulara, formlara ve proje tercihlerine ulaşabilirsin.
           </CardDescription>
         </CardHeader>
         <CardContent>
