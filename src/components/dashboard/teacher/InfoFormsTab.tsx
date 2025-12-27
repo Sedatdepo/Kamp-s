@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, InfoForm } from '@/lib/types';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { exportStudentInfoToDoc } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,8 @@ interface InfoFormsTabProps {
 export function InfoFormsTab({ classId }: InfoFormsTabProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const [infoForms, setInfoForms] = useState<InfoForm[]>([]);
+  const [formsLoading, setFormsLoading] = useState(true);
 
   const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
@@ -31,8 +33,38 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
 
-  const infoFormsQuery = useMemo(() => query(collection(db, 'infoForms'), where('studentId', 'in', students.map(s => s.id).length > 0 ? students.map(s => s.id) : ['dummy'])), [students]);
-  const { data: infoForms, loading: formsLoading } = useFirestore<InfoForm>('infoForms', infoFormsQuery);
+  useEffect(() => {
+    const fetchForms = async () => {
+        if (students.length === 0) {
+            setInfoForms([]);
+            setFormsLoading(false);
+            return;
+        }
+        setFormsLoading(true);
+        try {
+            const studentIds = students.map(s => s.id);
+            // Firestore 'in' query has a limit of 30. We will fetch all forms and filter client-side.
+            // This is not ideal for very large datasets but acceptable for this app's scale.
+            // A better approach for huge scale would be cloud functions or restructuring data.
+            const formsQuery = query(collection(db, 'infoForms'), where('studentId', 'in', studentIds));
+            const querySnapshot = await getDocs(formsQuery);
+            const forms: InfoForm[] = [];
+            querySnapshot.forEach((doc) => {
+                forms.push({ id: doc.id, ...doc.data() } as InfoForm);
+            });
+            setInfoForms(forms);
+        } catch (error) {
+            console.error("Error fetching info forms: ", error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Bilgi formları yüklenirken bir sorun oluştu.'});
+        } finally {
+            setFormsLoading(false);
+        }
+    };
+
+    if (!studentsLoading) {
+        fetchForms();
+    }
+  }, [students, studentsLoading, toast]);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass) return;
