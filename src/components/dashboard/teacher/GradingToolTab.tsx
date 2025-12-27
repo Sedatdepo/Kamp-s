@@ -68,9 +68,6 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
   };
   
   const handleClearScores = async () => {
-    if (!window.confirm("Bu sayfadaki tüm notları temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
-        return;
-    }
     const scoreKey = getScoreTargetKey(activeTab);
     const batch = writeBatch(db);
 
@@ -138,7 +135,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeTerm={activeTerm}
-        setActiveTerm={setActiveTerm}
+        setActiveTerm={setActiveTab}
         teacherProfile={teacherProfile}
         onExport={handleExport}
         onClearScores={handleClearScores}

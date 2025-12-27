@@ -7,6 +7,8 @@ import { Student, TeacherProfile, Criterion } from '@/lib/types';
 import { ActiveGradingTab, ActiveTerm } from './GradingToolTab';
 import { Button } from '@/components/ui/button';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 interface GradingHeaderProps {
   activeTab: ActiveGradingTab;
@@ -60,9 +62,27 @@ export function GradingHeader({
           <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
             <Settings className="mr-2 h-4 w-4" /> Ayarlar
           </Button>
-          <Button variant="destructive" onClick={onClearScores}>
-            <Trash2 className="mr-2 h-4 w-4" /> Sayfayı Temizle
-          </Button>
+          <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Sayfayı Temizle
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Bu sayfadaki tüm notları temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                  <AlertDialogAction onClick={onClearScores} className="bg-destructive hover:bg-destructive/90">
+                    Temizle
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
           <Button onClick={onExport}>
             <FileText className="mr-2 h-4 w-4" /> Dışa Aktar
           </Button>
