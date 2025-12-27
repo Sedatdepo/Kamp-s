@@ -282,20 +282,22 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.number}</TableCell>
                   <TableCell>{student.name}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog>
-                        {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="relative">
-                                <MessageSquare className="h-4 w-4"/>
-                                {unreadMessagesByStudent.has(student.id) && (
-                                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-                                )}
-                            </Button>
-                        </DialogTrigger>
-                    </Dialog>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); resetPassword(student); }}><KeyRound className="h-4 w-4"/></Button>
-                    <Button variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4"/></Button>
+                  <TableCell className="text-right relative">
+                    <div className="inline-flex relative z-10">
+                        <Dialog>
+                            {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="relative">
+                                    <MessageSquare className="h-4 w-4"/>
+                                    {unreadMessagesByStudent.has(student.id) && (
+                                        <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                                    )}
+                                </Button>
+                            </DialogTrigger>
+                        </Dialog>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); e.stopPropagation(); resetPassword(student); }}><KeyRound className="h-4 w-4"/></Button>
+                        <Button variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4"/></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )) : (
