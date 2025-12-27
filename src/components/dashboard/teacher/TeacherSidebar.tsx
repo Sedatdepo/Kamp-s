@@ -65,6 +65,7 @@ export function TeacherSidebar({ selectedClassId, onSelectClass }: TeacherSideba
         isRiskFormActive: false,
         isInfoFormActive: false,
         code: generateClassCode(),
+        announcements: []
       });
       toast({ title: 'Sınıf oluşturuldu!' });
       setNewClassName('');
@@ -74,7 +75,8 @@ export function TeacherSidebar({ selectedClassId, onSelectClass }: TeacherSideba
     }
   };
 
-  const handleStartEdit = (cls: Class) => {
+  const handleStartEdit = (e: React.MouseEvent, cls: Class) => {
+    e.stopPropagation();
     setEditingClassId(cls.id);
     setEditingClassName(cls.name);
   };
@@ -163,7 +165,7 @@ export function TeacherSidebar({ selectedClassId, onSelectClass }: TeacherSideba
                     <span>{cls.name}</span>
                 </SidebarMenuButton>
                 <div className="absolute right-1 top-1 flex">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => handleStartEdit(cls)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={(e) => handleStartEdit(e, cls)}>
                         <Edit className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => handleDeleteClass(e, cls.id)} disabled={isDeleting === cls.id}>
