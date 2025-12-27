@@ -187,12 +187,20 @@ function ClassSelectionScreen({
                                 <CardTitle>{cls.name}</CardTitle>
                                 <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
                             </div>
-                            <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 mt-auto p-4">
+                            <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
                                 <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
-                                <div className="flex items-center">
+                                <div className="flex items-center relative z-50">
                                     <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingClass(cls);}}>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8" 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingClass(cls);
+                                                }}
+                                            >
                                                 <Edit className="h-4 w-4"/>
                                             </Button>
                                         </DialogTrigger>
@@ -204,13 +212,25 @@ function ClassSelectionScreen({
                                             </DialogClose>
                                         </DialogContent>
                                     </Dialog>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" 
+
+                                    <Button 
+                                        type="button"
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
                                         onClick={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
+                                            console.log("Silme butonuna tıklandı: ", cls.id);
                                             handleDeleteClass(cls.id);
                                         }} 
-                                        disabled={deletingClassId === cls.id}>
-                                       {deletingClassId === cls.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
+                                        disabled={deletingClassId === cls.id}
+                                    >
+                                        {deletingClassId === cls.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin"/> 
+                                        ) : (
+                                            <Trash2 className="h-4 w-4"/>
+                                        )}
                                     </Button>
                                 </div>
                             </CardContent>
