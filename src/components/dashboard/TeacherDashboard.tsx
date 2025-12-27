@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -10,7 +9,7 @@ import { StudentListTab } from './teacher/StudentListTab';
 import { ProjectDistributionTab } from './teacher/ProjectDistributionTab';
 import { RiskMapTab } from './teacher/RiskMapTab';
 import { InfoFormsTab } from './teacher/InfoFormsTab';
-import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School } from 'lucide-react';
 
 export function TeacherDashboard() {
