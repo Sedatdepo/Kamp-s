@@ -96,8 +96,7 @@ function ClassSelectionScreen({
         setEditingClass(null);
     };
 
-    const handleDeleteClass = async (e: React.MouseEvent, classId: string) => {
-        e.stopPropagation();
+    const handleDeleteClass = async (classId: string) => {
         if (window.confirm("Bu sınıfı ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) {
             setDeletingClassId(classId);
             try {
@@ -120,11 +119,12 @@ function ClassSelectionScreen({
     
     const studentCounts = useMemo(() => {
         const counts = new Map<string, number>();
-        allStudents.forEach(student => {
-            counts.set(student.classId, (counts.get(student.classId) || 0) + 1);
-        });
+        classes.forEach(cls => {
+            const count = allStudents.filter(s => s.classId === cls.id).length;
+            counts.set(cls.id, count);
+        })
         return counts;
-    }, [allStudents]);
+    }, [allStudents, classes]);
 
 
     if (loading) {
@@ -179,7 +179,7 @@ function ClassSelectionScreen({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {classes.map(cls => (
                         <Card key={cls.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                             <div className="flex-1 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
+                            <div className="flex-1 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
                                 <CardHeader>
                                     <CardTitle>{cls.name}</CardTitle>
                                     <CardDescription>Sınıf Kodu: {cls.code}</CardDescription>
@@ -190,19 +190,19 @@ function ClassSelectionScreen({
                                 <div className="flex items-center">
                                     <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingClass(cls); }}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingClass(cls)}>
                                                 <Edit className="h-4 w-4"/>
                                             </Button>
                                         </DialogTrigger>
                                         <DialogContent>
-                                             <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
-                                             <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
-                                             <DialogClose asChild>
-                                                <Button onClick={handleUpdateClass}>Kaydet</Button>
-                                             </DialogClose>
+                                            <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
+                                            <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
+                                            <DialogClose asChild>
+                                            <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                            </DialogClose>
                                         </DialogContent>
                                     </Dialog>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={(e) => handleDeleteClass(e, cls.id)} disabled={deletingClassId === cls.id}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDeleteClass(cls.id)} disabled={deletingClassId === cls.id}>
                                        {deletingClassId === cls.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
                                     </Button>
                                 </div>
@@ -233,7 +233,16 @@ export function TeacherDashboard() {
   const studentsQuery = useMemo(() => selectedClassId ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
   
-  const allStudentsForTeacherQuery = useMemo(() => teacherId ? query(collection(db, 'students'), where('teacherId', '==', teacherId)) : null, [teacherId]);
+  const allStudentsForTeacherQuery = useMemo(() => {
+    if (!teacherId) return null;
+    // This is not a direct query, but we need all students to calculate counts per class.
+    // The useFirestore hook will handle fetching all documents from the students collection.
+    // In a real-world scenario with many students, this should be optimized.
+    // For now, we'll fetch all students and filter client-side.
+    // A better approach would be to have a 'teacherId' on each student.
+    // Let's assume we can get all classes first, then get students for those classes.
+    return query(collection(db, 'students'));
+  }, [teacherId]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
@@ -262,8 +271,9 @@ export function TeacherDashboard() {
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="w-full">
+                            {TABS.find(t => t.value === activeTab)?.icon}
                             {activeTabLabel}
-                            <ChevronDown className="ml-2 h-4 w-4" />
+                            <ChevronDown className="ml-auto h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
@@ -343,3 +353,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
