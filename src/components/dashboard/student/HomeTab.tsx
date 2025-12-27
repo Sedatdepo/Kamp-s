@@ -146,6 +146,7 @@ function Chat() {
         return query(
             collection(db, 'messages'), 
             where('participants', '==', participants),
+            orderBy('timestamp', 'asc')
         );
     }, [teacherId, studentId]);
     

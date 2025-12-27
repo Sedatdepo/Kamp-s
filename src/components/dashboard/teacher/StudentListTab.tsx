@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, orderBy } from 'firebase/firestore';
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
 
 interface StudentListTabProps {
   classId: string;
@@ -34,12 +36,16 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
         const participants = [student.id, teacherId].sort();
         return query(
             collection(db, 'messages'), 
-            where('participants', '==', participants),
-            orderBy('timestamp', 'asc')
+            where('participants', '==', participants)
         );
     }, [student.id, teacherId]);
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
+
+    const sortedMessages = useMemo(() => {
+        if (!messages) return [];
+        return [...messages].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+    }, [messages]);
 
     const handleSendMessage = async () => {
         if (!newMessage.trim()) return;
@@ -60,17 +66,18 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                 <DialogTitle>Sohbet: {student.name}</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col h-96">
-                <div className="flex-1 p-4 border rounded-md overflow-y-auto">
+                <ScrollArea className="flex-1 p-4 border rounded-md">
                     {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-                        messages.map(msg => (
+                        sortedMessages.map(msg => (
                             <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     <p>{msg.text}</p>
+                                    <p className="text-xs opacity-70 text-right mt-1">{format(msg.timestamp.toDate(), 'p')}</p>
                                 </div>
                             </div>
                         ))
                     )}
-                </div>
+                </ScrollArea>
                 <div className="flex mt-4 gap-2">
                     <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
                     <Button onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
