@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, HeadingLevel, AlignmentType, CompatibilityMode } from 'docx';
 import { Student, InfoForm, TeacherProfile, Criterion, ReportConfig } from './types';
 import { format } from 'date-fns';
 import { ActiveGradingTab } from '@/components/dashboard/teacher/GradingToolTab';
@@ -7,6 +7,9 @@ import { ActiveGradingTab } from '@/components/dashboard/teacher/GradingToolTab'
 export function exportStudentInfoToDoc(student: Student, form: InfoForm, teacher: TeacherProfile) {
 
   const doc = new Document({
+    compatibility: {
+        compatibilityMode: CompatibilityMode.WORD_2003,
+    },
     sections: [{
       properties: {},
       children: [
@@ -166,6 +169,9 @@ export function exportGradingToDoc({
 
 
     const doc = new Document({
+        compatibility: {
+            compatibilityMode: CompatibilityMode.WORD_2003,
+        },
         styles: {
             paragraphStyles: [
                  { id: "small", name: "Small Text", run: { size: 16 } },
