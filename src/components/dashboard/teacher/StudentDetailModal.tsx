@@ -2,17 +2,25 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap } from 'lucide-react';
+import { Gauge, BookOpen, UserCheck, GraduationCap, Clock, CalendarIcon } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { Checkbox } from '@/components/ui/checkbox';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface StudentDetailModalProps {
   student: Student;
   teacherProfile: TeacherProfile;
+  currentClass: Class | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
@@ -39,7 +47,6 @@ const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNod
 );
 
 const TermGrades = ({ termGrades, teacherProfile }: { termGrades: GradingScores, teacherProfile: TeacherProfile }) => {
-    // Safety check for undefined termGrades
     const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
@@ -60,11 +67,73 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades: GradingScores,
     )
 };
 
+const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
+    const { toast } = useToast();
+    const homeworks = currentClass?.homeworks || [];
 
-export function StudentDetailModal({ student, teacherProfile, isOpen, setIsOpen }: StudentDetailModalProps) {
+    const handleHomeworkStatusChange = async (homework: Homework, isCompleted: boolean) => {
+        if (!currentClass) return;
+
+        const classRef = doc(db, 'classes', currentClass.id);
+        
+        const updatedHomeworks = (currentClass.homeworks || []).map(hw => {
+            if (hw.id === homework.id) {
+                const currentCompletedBy = hw.completedBy || [];
+                const newCompletedBy = isCompleted
+                    ? [...currentCompletedBy, student.id]
+                    : currentCompletedBy.filter(id => id !== student.id);
+                return { ...hw, completedBy: newCompletedBy };
+            }
+            return hw;
+        });
+
+        try {
+            await updateDoc(classRef, { homeworks: updatedHomeworks });
+            toast({ title: 'Ödev durumu güncellendi.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme başarısız oldu.' });
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ödev Durumu</CardTitle>
+                <CardDescription>Öğrencinin ödev tamamlama durumunu buradan takip edebilirsiniz.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {homeworks.length > 0 ? (
+                    homeworks.map(hw => (
+                        <div key={hw.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div>
+                                <p className="text-sm font-medium">{hw.text}</p>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}
+                                    {hw.dueDate && ` | Teslim: ${format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}`}
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`hw-check-${hw.id}`}
+                                    checked={(hw.completedBy || []).includes(student.id)}
+                                    onCheckedChange={(checked) => handleHomeworkStatusChange(hw, !!checked)}
+                                />
+                                <label htmlFor={`hw-check-${hw.id}`} className="text-sm font-medium">Yaptı</label>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfa henüz ödev atanmamış.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+
+export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
     
-    const calculateTermAverage = (termGrades: GradingScores) => {
-        // Safety check for undefined termGrades
+    const calculateTermAverage = (termGrades?: GradingScores) => {
         const grades = termGrades || {};
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
@@ -75,7 +144,7 @@ export function StudentDetailModal({ student, teacherProfile, isOpen, setIsOpen 
             calculateAverage(grades.scores2, perfCriteria),
             calculateAverage(grades.projectScores, projCriteria),
             calculateAverage(grades.behaviorScores, behaviorCriteria)
-        ].filter(avg => avg > 0); // Only consider grades that have been entered
+        ].filter(avg => avg > 0);
 
         if (averages.length === 0) return 0;
         return averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
@@ -100,22 +169,33 @@ export function StudentDetailModal({ student, teacherProfile, isOpen, setIsOpen 
           </div>
         </DialogHeader>
         <div className="p-6 pt-0 bg-muted/50">
-            <Tabs defaultValue="term1">
-                <div className="flex justify-between items-center mb-4">
-                     <TabsList>
-                        <TabsTrigger value="term1">1. Dönem</TabsTrigger>
-                        <TabsTrigger value="term2">2. Dönem</TabsTrigger>
-                    </TabsList>
-                    <Card className="p-4 bg-background">
-                        <CardDescription className="flex items-center gap-2"><GraduationCap/> Yıl Sonu Genel Ortalama</CardDescription>
-                        <p className="text-4xl font-bold text-primary text-center mt-1">{finalAverage.toFixed(2)}</p>
-                    </Card>
-                </div>
-                <TabsContent value="term1">
-                    <TermGrades termGrades={student.term1Grades} teacherProfile={teacherProfile} />
+             <Tabs defaultValue="overview">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
+                    <TabsTrigger value="homeworks">Ödevler</TabsTrigger>
+                </TabsList>
+                <TabsContent value="overview" className="mt-4">
+                    <Tabs defaultValue="term1">
+                        <div className="flex justify-between items-center mb-4">
+                            <TabsList>
+                                <TabsTrigger value="term1">1. Dönem</TabsTrigger>
+                                <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+                            </TabsList>
+                            <Card className="p-4 bg-background">
+                                <CardDescription className="flex items-center gap-2"><GraduationCap/> Yıl Sonu Genel Ortalama</CardDescription>
+                                <p className="text-4xl font-bold text-primary text-center mt-1">{finalAverage.toFixed(2)}</p>
+                            </Card>
+                        </div>
+                        <TabsContent value="term1">
+                            <TermGrades termGrades={student.term1Grades} teacherProfile={teacherProfile} />
+                        </TabsContent>
+                        <TabsContent value="term2">
+                            <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} />
+                        </TabsContent>
+                    </Tabs>
                 </TabsContent>
-                <TabsContent value="term2">
-                    <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} />
+                <TabsContent value="homeworks" className="mt-4">
+                   <HomeworkStatusTab student={student} currentClass={currentClass} />
                 </TabsContent>
             </Tabs>
         </div>

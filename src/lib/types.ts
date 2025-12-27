@@ -14,6 +14,7 @@ export interface Homework {
   assignedDate: string;
   dueDate?: string;
   seenBy: string[];
+  completedBy: string[]; // List of student IDs who completed the homework
 }
 
 export interface Criterion {
