@@ -13,6 +13,17 @@ import {
   ShieldCheck as HonorIcon,
   FileText,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Student, Candidate, ElectionType, Class } from '@/lib/types';
 import {
@@ -136,10 +147,9 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
 
 
   const resetElection = () => {
-    if (window.confirm("Bu seçimi ve tüm verilerini sıfırlamak istediğinize emin misiniz?")) {
-        updateElection({ candidates: [], votedStudentIds: [] });
-        handleToggleActive(false); // Seçimi de pasif yap
-    }
+    updateElection({ candidates: [], votedStudentIds: [] });
+    handleToggleActive(false); // Seçimi de pasif yap
+    toast({ title: "Seçim sıfırlandı." });
   };
 
   const handleExport = () => {
@@ -164,9 +174,27 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
             <Vote className="w-7 h-7 text-primary" />
             Seçim Modülü
         </h2>
-        <Button onClick={resetElection} variant="destructive">
-          <Trash2 className="mr-2"/> Seçimi Sıfırla
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">
+              <Trash2 className="mr-2"/> Seçimi Sıfırla
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bu eylem, bu seçim için girilen tüm adayları ve kullanılan oyları kalıcı olarak silecektir. Bu işlem geri alınamaz.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>İptal</AlertDialogCancel>
+              <AlertDialogAction onClick={resetElection} className="bg-destructive hover:bg-destructive/90">
+                Sıfırla
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <Card>
