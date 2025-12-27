@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/Logo';
-import { Home, ShieldAlert, FileText } from 'lucide-react';
+import { Home, ShieldAlert, FileText, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface StudentSidebarProps {
@@ -38,6 +38,15 @@ export function StudentSidebar({ activeTab, setActiveTab }: StudentSidebarProps)
             >
               <Home />
               <span>Anasayfa</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setActiveTab('announcements')}
+              isActive={activeTab === 'announcements'}
+            >
+              <Bell />
+              <span>Duyurular</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

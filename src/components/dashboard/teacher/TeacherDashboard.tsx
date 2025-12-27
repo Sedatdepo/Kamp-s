@@ -10,6 +10,7 @@ import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDi
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
+import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2 } from 'lucide-react';
@@ -54,12 +55,13 @@ export function TeacherDashboard() {
                 </div>
               ) : (
                 <Tabs defaultValue="students">
-                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
+                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-7">
                     <TabsTrigger value="students">Öğrenci Listesi</TabsTrigger>
                     <TabsTrigger value="grading">Değerlendirme</TabsTrigger>
                     <TabsTrigger value="projects">Proje Dağılımı</TabsTrigger>
                     <TabsTrigger value="risks">Risk Haritası</TabsTrigger>
                     <TabsTrigger value="forms">Bilgi Formları</TabsTrigger>
+                    <TabsTrigger value="communication">İletişim</TabsTrigger>
                     <TabsTrigger value="report">Rapor</TabsTrigger>
                   </TabsList>
                   <TabsContent value="students" className="mt-4">
@@ -95,6 +97,12 @@ export function TeacherDashboard() {
                     <InfoFormsTab 
                       classId={selectedClassId}
                       teacherProfile={teacherProfile}
+                      currentClass={currentClass}
+                    />
+                  </TabsContent>
+                   <TabsContent value="communication" className="mt-4">
+                    <CommunicationTab
+                      classId={selectedClassId}
                       currentClass={currentClass}
                     />
                   </TabsContent>

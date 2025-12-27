@@ -1,5 +1,11 @@
 import type { Timestamp } from 'firebase/firestore';
 
+export interface Announcement {
+  id: number;
+  text: string;
+  date: string;
+}
+
 export interface Criterion {
   id: string;
   name: string;
@@ -31,11 +37,12 @@ export interface TeacherProfile {
 
 export interface Class {
   id: string;
-  name: string;
+  name:string;
   teacherId: string;
   isProjectSelectionActive?: boolean;
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
+  announcements?: Announcement[];
 }
 
 export interface Student {

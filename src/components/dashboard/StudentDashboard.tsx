@@ -8,6 +8,7 @@ import { StudentSidebar } from '@/components/dashboard/student/StudentSidebar';
 import { HomeTab } from '@/components/dashboard/student/HomeTab';
 import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
 import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
+import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function StudentDashboard() {
@@ -21,13 +22,17 @@ export function StudentDashboard() {
           <Header />
           <main className="flex-1 p-4 sm:p-6">
             <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
-              <TabsList>
+              <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="home">Anasayfa</TabsTrigger>
+                <TabsTrigger value="announcements">Duyurular</TabsTrigger>
                 <TabsTrigger value="risks">Risk Formu</TabsTrigger>
                 <TabsTrigger value="info">Bilgi Formu</TabsTrigger>
               </TabsList>
               <TabsContent value="home" className="mt-4">
                 <HomeTab />
+              </TabsContent>
+               <TabsContent value="announcements" className="mt-4">
+                <StudentCommunicationTab />
               </TabsContent>
               <TabsContent value="risks" className="mt-4">
                 <RiskFormTab />
