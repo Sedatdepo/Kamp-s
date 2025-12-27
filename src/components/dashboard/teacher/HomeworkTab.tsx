@@ -1,0 +1,150 @@
+
+"use client";
+
+import { useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Class, Homework } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { BookText, CalendarIcon, Clock, Trash2, Send } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+
+interface HomeworkTabProps {
+  classId: string;
+  currentClass: Class | null;
+}
+
+export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
+  const [homeworkText, setHomeworkText] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>();
+  const { toast } = useToast();
+
+  const handleAddHomework = async () => {
+    if (!homeworkText.trim()) {
+      toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
+      return;
+    }
+    if (!currentClass) return;
+
+    const newHomework: Homework = {
+      id: Date.now(),
+      text: homeworkText,
+      assignedDate: new Date().toISOString(),
+      dueDate: dueDate?.toISOString(),
+      seenBy: [],
+    };
+
+    const classRef = doc(db, 'classes', classId);
+    const updatedHomeworks = [newHomework, ...(currentClass.homeworks || [])];
+
+    try {
+      await updateDoc(classRef, { homeworks: updatedHomeworks });
+      setHomeworkText('');
+      setDueDate(undefined);
+      toast({ title: 'Ödev gönderildi!' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
+    }
+  };
+
+  const handleDeleteHomework = async (homeworkId: number) => {
+    if (!currentClass) return;
+    if (!window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) return;
+
+    const classRef = doc(db, 'classes', classId);
+    const updatedHomeworks = (currentClass.homeworks || []).filter(
+      (hw) => hw.id !== homeworkId
+    );
+
+    try {
+      await updateDoc(classRef, { homeworks: updatedHomeworks });
+      toast({ title: 'Ödev silindi.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
+    }
+  };
+  
+  const homeworks = currentClass?.homeworks || [];
+
+  return (
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+              <BookText className="h-6 w-6" />
+              Yeni Ödev Gönder
+            </CardTitle>
+            <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              value={homeworkText}
+              onChange={(e) => setHomeworkText(e.target.value)}
+              placeholder="Ödev açıklamasını buraya yazın..."
+              rows={5}
+            />
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dueDate ? format(dueDate, "PPP", { locale: tr }) : <span>Teslim tarihi seçin</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+                    </PopoverContent>
+                </Popover>
+                <Button onClick={handleAddHomework} className="w-full sm:w-auto">
+                    <Send className="mr-2 h-4 w-4"/>
+                    Gönder
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
+            <CardDescription>Bu sınıfa daha önce gönderilmiş ödevler.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {homeworks.length > 0 ? (
+                homeworks.map((hw) => (
+                  <div key={hw.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start">
+                    <div>
+                      <p className="text-sm">{hw.text}</p>
+                      <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
+                         <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            <span>Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</span>
+                         </div>
+                         {hw.dueDate && (
+                            <div className="flex items-center gap-2 font-medium text-red-600">
+                                <CalendarIcon className="h-3 w-3" />
+                                <span>Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</span>
+                            </div>
+                         )}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500" onClick={() => handleDeleteHomework(hw.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+  );
+}

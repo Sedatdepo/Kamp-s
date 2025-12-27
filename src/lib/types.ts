@@ -8,6 +8,14 @@ export interface Announcement {
   seenBy: string[];
 }
 
+export interface Homework {
+  id: number;
+  text: string;
+  assignedDate: string;
+  dueDate?: string;
+  seenBy: string[];
+}
+
 export interface Criterion {
   id: string;
   name: string;
@@ -46,6 +54,7 @@ export interface Class {
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
   announcements?: Announcement[];
+  homeworks?: Homework[];
 }
 
 export type GradingScores = {

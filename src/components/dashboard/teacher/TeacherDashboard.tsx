@@ -17,10 +17,10 @@ import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
-import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
+import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -37,10 +37,10 @@ const TABS = [
     { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
     { value: "grading", label: "Değerlendirme", icon: null },
     { value: "projects", label: "Proje Dağılımı", icon: null },
+    { value: "homework", label: "Ödev", icon: <BookText className="w-4 h-4 mr-2"/> },
     { value: "risks", label: "Risk Haritası", icon: null },
     { value: "forms", label: "Bilgi Formları", icon: null },
     { value: "communication", label: "İletişim", icon: null },
-    { value: "report", label: "Rapor", icon: null },
 ];
 
 function generateClassCode() {
@@ -79,9 +79,10 @@ function ClassSelectionScreen({
                 teacherId: teacherId,
                 isProjectSelectionActive: false,
                 isRiskFormActive: false,
-isInfoFormActive: false,
+                isInfoFormActive: false,
                 code: generateClassCode(),
-                announcements: []
+                announcements: [],
+                homeworks: [],
             });
             toast({ title: 'Sınıf oluşturuldu!' });
             setNewClassName('');
@@ -188,7 +189,7 @@ isInfoFormActive: false,
                             </div>
                             <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
                                 <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
-                                <div className="flex items-center">
+                                 <div className="flex items-center">
                                     <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
                                             <Button 
@@ -355,6 +356,12 @@ export function TeacherDashboard() {
                         currentClass={currentClass}
                         />
                     </TabsContent>
+                    <TabsContent value="homework" className="mt-4">
+                        <HomeworkTab
+                        classId={selectedClassId}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
                     <TabsContent value="risks" className="mt-4">
                         <RiskMapTab 
                         classId={selectedClassId}
@@ -374,9 +381,6 @@ export function TeacherDashboard() {
                         classId={selectedClassId}
                         currentClass={currentClass}
                         />
-                    </TabsContent>
-                    <TabsContent value="report" className="mt-4">
-                        <ReportTab />
                     </TabsContent>
                     </Tabs>
                 </div>
