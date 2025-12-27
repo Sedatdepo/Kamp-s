@@ -21,9 +21,9 @@ import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
 import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab';
-import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab'; // Yeni eklendi
+import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid } from 'lucide-react'; // Grid eklendi
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -39,7 +39,7 @@ const TABS = [
     { value: "students", label: "Öğrenci Listesi", icon: null },
     { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
     { value: "dutyRoster", label: "Nöbet Listesi", icon: <Users className="w-4 h-4 mr-2"/> },
-    { value: "seatingPlan", label: "Oturma Planı", icon: <Grid className="w-4 h-4 mr-2"/> }, // Yeni eklendi
+    { value: "seatingPlan", label: "Oturma Planı", icon: <Grid className="w-4 h-4 mr-2"/> },
     { value: "grading", label: "Değerlendirme", icon: null },
     { value: "election", label: "Seçim", icon: <Vote className="w-4 h-4 mr-2" /> },
     { value: "projects", label: "Proje Dağılımı", icon: null },
@@ -70,8 +70,8 @@ function ClassSelectionScreen({
     const { toast } = useToast();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-    const classesQuery = useMemo(() => query(collection(db, 'classes'), where('teacherId', '==', teacherId)), [teacherId]);
-    const { data: classes, loading } = useFirestore<Class>('classes', teacherId ? classesQuery : null);
+    const classesQuery = useMemo(() => teacherId ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId]);
+    const { data: classes, loading } = useFirestore('classes', classesQuery);
 
     const [newClassName, setNewClassName] = useState('');
     const [editingClass, setEditingClass] = useState<Class | null>(null);
@@ -281,6 +281,9 @@ export function TeacherDashboard() {
   
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId) return null;
+    // This query is intentionally broad to get a count for all classes.
+    // It might be inefficient for very large student bodies.
+    // A better approach for large scale would be a summary document.
     return query(collection(db, 'students'));
   }, [teacherId]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);

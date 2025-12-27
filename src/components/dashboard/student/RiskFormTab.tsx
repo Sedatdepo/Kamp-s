@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from 'react';
@@ -24,7 +25,7 @@ export function RiskFormTab() {
   const riskFactorsQuery = useMemo(() => {
     if (!studentClass?.teacherId) return null;
     return query(collection(db, 'riskFactors'));
-  }, [studentClass]);
+  }, [studentClass?.teacherId]);
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const studentRisks = appUser.data.risks || [];

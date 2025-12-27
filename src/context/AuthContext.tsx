@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       if (user) {
         await seedDatabase(user.uid);
-        const profileDoc = await getDoc(doc(db, 'teachers', user.uid));
+        const profileDocRef = doc(db, 'teachers', user.uid);
+        const profileDoc = await getDoc(profileDocRef);
         const profile = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile : null;
         setAppUser({ type: 'teacher', data: user, profile });
       } else {
@@ -91,20 +92,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribe: () => void = () => {};
     if (appUser?.type === 'student') {
-      unsubscribe = onSnapshot(doc(db, 'students', appUser.data.id), (doc) => {
-        if (doc.exists()) {
-          const updatedStudent = { id: doc.id, ...doc.data() } as Student;
-          setAppUser({ type: 'student', data: updatedStudent });
-          localStorage.setItem('studentUser', JSON.stringify(updatedStudent));
-        }
-      });
+        const studentDocRef = doc(db, 'students', appUser.data.id);
+        unsubscribe = onSnapshot(studentDocRef, (doc) => {
+            if (doc.exists()) {
+                const updatedStudent = { id: doc.id, ...doc.data() } as Student;
+                setAppUser({ type: 'student', data: updatedStudent });
+                localStorage.setItem('studentUser', JSON.stringify(updatedStudent));
+            }
+        });
     } else if (appUser?.type === 'teacher') {
-      unsubscribe = onSnapshot(doc(db, 'teachers', appUser.data.uid), (doc) => {
-        if (doc.exists()) {
-          const updatedProfile = { id: doc.id, ...doc.data() } as TeacherProfile;
-          setAppUser(prev => prev ? { ...prev, profile: updatedProfile } as AppUser : null);
-        }
-      });
+        const teacherDocRef = doc(db, 'teachers', appUser.data.uid);
+        unsubscribe = onSnapshot(teacherDocRef, (doc) => {
+            if (doc.exists()) {
+                const updatedProfile = { id: doc.id, ...doc.data() } as TeacherProfile;
+                setAppUser(prev => prev ? { ...prev, profile: updatedProfile } as AppUser : null);
+            }
+        });
     }
     return () => unsubscribe();
   }, [appUser?.type, appUser?.type === 'student' ? appUser.data.id : appUser?.type === 'teacher' ? appUser.data.uid : null]);

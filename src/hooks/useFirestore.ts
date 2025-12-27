@@ -81,7 +81,7 @@ export function useFirestore<T>(
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionOrQueryKey, queryKey, firestoreQuery]);
+  }, [collectionOrQueryKey, queryKey]);
 
   return { data, loading, error };
 }

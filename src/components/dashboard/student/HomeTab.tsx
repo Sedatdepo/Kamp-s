@@ -1,3 +1,4 @@
+
 // StudentDashboard.tsx
 "use client";
 
@@ -33,7 +34,8 @@ function ProjectSelection() {
   const lessonsQuery = useMemo(() => {
     if (!studentClass?.teacherId) return null;
     return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
-  }, [studentClass]);
+  }, [studentClass?.teacherId]);
+
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const handleCheckboxChange = (lessonId: string) => {

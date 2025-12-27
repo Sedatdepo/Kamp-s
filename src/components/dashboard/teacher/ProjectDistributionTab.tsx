@@ -181,11 +181,11 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-  const lessonsQuery = useMemo(() => query(collection(db, 'lessons'), where('teacherId', '==', teacherId)), [teacherId]);
+  const lessonsQuery = useMemo(() => teacherId ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null, [teacherId]);
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
   
   const handleToggleChange = async (checked: boolean) => {

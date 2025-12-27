@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
@@ -28,7 +29,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
   const [infoForms, setInfoForms] = useState<InfoForm[]>([]);
   const [formsLoading, setFormsLoading] = useState(true);
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   useEffect(() => {

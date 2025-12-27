@@ -40,6 +40,7 @@ export function ElectionVoteTab() {
   }, [currentClass]);
 
   const sortedCandidates = useMemo(() => {
+    if (!electionData.candidates) return [];
     return [...electionData.candidates].sort((a, b) => b.votes - a.votes);
   }, [electionData.candidates]);
 

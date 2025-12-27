@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -186,7 +187,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);

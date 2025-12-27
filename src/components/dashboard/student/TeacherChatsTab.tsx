@@ -63,10 +63,14 @@ export function TeacherChatsTab() {
         });
         return Array.from(ids);
     }, [messages, studentId]);
+    
+    const teachersQuery = useMemo(() => 
+        teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
+    , [teacherIds]);
 
     const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile>(
         'teacherProfilesForChats',
-        teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
+        teachersQuery
     );
 
     const isLoading = messagesLoading || teachersLoading;
