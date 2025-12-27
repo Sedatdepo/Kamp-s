@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +58,7 @@ export function TeacherChatsTab() {
     // 3. Öğretmen profillerini çek
     const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile>(
         'teacherProfilesForChats',
-        teacherIds.length > 0 ? query(collection(db, 'teachers'), where('id', 'in', teacherIds)) : null
+        teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
     );
 
     const isLoading = messagesLoading || teachersLoading;
