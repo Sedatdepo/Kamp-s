@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, InfoForm, TeacherProfile } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { Student, Class, InfoForm } from '@/lib/types';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { exportStudentInfoToDoc } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,7 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const classQuery = useMemo(() => query(doc(db, 'classes', classId)), [classId]);
+  const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
   const currentClass = classData.length > 0 ? classData[0] : null;
 

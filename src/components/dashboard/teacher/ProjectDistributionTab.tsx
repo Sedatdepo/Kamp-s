@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, Lesson } from '@/lib/types';
@@ -14,7 +14,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Trash2, Edit, Save, X, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -123,7 +122,7 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const classQuery = useMemo(() => query(doc(db, 'classes', classId)), [classId]);
+  const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
   const currentClass = classData.length > 0 ? classData[0] : null;
 
@@ -205,7 +204,7 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
                                 <div className="flex flex-wrap gap-1">
                                     {student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
                                         const lesson = lessons.find(l => l.id === prefId);
-                                        return lesson ? <Badge key={index} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
+                                        return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
                                     }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
                                 </div>
                             </TableCell>

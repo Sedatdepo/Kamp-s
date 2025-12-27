@@ -3,11 +3,11 @@
 
 import { useState } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { Header } from './Header';
-import { StudentSidebar } from './student/StudentSidebar';
-import { HomeTab } from './student/HomeTab';
-import { RiskFormTab } from './student/RiskFormTab';
-import { InfoFormTab } from './student/InfoFormTab';
+import { Header } from '@/components/dashboard/Header';
+import { StudentSidebar } from '@/components/dashboard/student/StudentSidebar';
+import { HomeTab } from '@/components/dashboard/student/HomeTab';
+import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
+import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function StudentDashboard() {
