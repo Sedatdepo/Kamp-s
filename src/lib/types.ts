@@ -67,8 +67,8 @@ export interface Student {
   assignedLesson: string | null; // lesson ID
   
   // Grading data separated by term
-  term1Grades?: GradingScores;
-  term2Grades?: GradingScores;
+  term1Grades: GradingScores;
+  term2Grades: GradingScores;
 
   hasProject?: boolean;
   
