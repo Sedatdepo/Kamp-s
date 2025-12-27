@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, Lesson } from '@/lib/types';
+import { Student, Class, Lesson, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Edit, Save, X, MoreHorizontal, ChevronsUpDown, Check } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit, Save, X, MoreHorizontal, ChevronsUpDown, Check, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { exportProjectDistributionToRtf } from '@/lib/word-export';
 
 const highSchoolLessons = [
     "Matematik", "Fizik", "Kimya", "Biyoloji", "Türk Dili ve Edebiyatı",
@@ -31,6 +32,8 @@ const highSchoolLessons = [
 
 interface ProjectDistributionTabProps {
   classId: string;
+  teacherProfile?: TeacherProfile | null;
+  currentClass?: Class | null;
 }
 
 function LessonManager({ teacherId }: { teacherId: string }) {
@@ -174,16 +177,12 @@ function LessonManager({ teacherId }: { teacherId: string }) {
 }
 
 
-export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps) {
+export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
-  const currentClass = classData.length > 0 ? classData[0] : null;
-
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const lessonsQuery = useMemo(() => query(collection(db, 'lessons'), where('teacherId', '==', teacherId)), [teacherId]);
@@ -206,6 +205,19 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
       });
     }
   };
+  
+  const handleExport = () => {
+    if (currentClass) {
+        exportProjectDistributionToRtf({
+            students,
+            lessons,
+            currentClass,
+            teacherProfile
+        })
+    } else {
+        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için sınıf bilgisi yüklenemedi.'})
+    }
+  };
 
   const handleAssignLesson = async (studentId: string, lessonId: string | null) => {
     const studentRef = doc(db, 'students', studentId);
@@ -213,7 +225,7 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
     toast({ title: 'Atama yapıldı!' });
   };
 
-  const isLoading = classLoading || studentsLoading || lessonsLoading;
+  const isLoading = studentsLoading || lessonsLoading;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -225,14 +237,20 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
                         <CardTitle className="font-headline">Proje Dağılımı ve Atama</CardTitle>
                         <CardDescription>Öğrenci tercihlerini görüntüleyin ve proje atamalarını yapın.</CardDescription>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Switch 
-                            id="project-selection-toggle" 
-                            checked={currentClass?.isProjectSelectionActive || false}
-                            onCheckedChange={handleToggleChange}
-                            disabled={classLoading}
-                        />
-                        <Label htmlFor="project-selection-toggle">Seçim Aktif</Label>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={handleExport}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            RTF Olarak Dışa Aktar
+                        </Button>
+                        <div className="flex items-center space-x-2">
+                            <Switch 
+                                id="project-selection-toggle" 
+                                checked={currentClass?.isProjectSelectionActive || false}
+                                onCheckedChange={handleToggleChange}
+                                disabled={!currentClass}
+                            />
+                            <Label htmlFor="project-selection-toggle">Seçim Aktif</Label>
+                        </div>
                     </div>
                 </div>
             </CardHeader>

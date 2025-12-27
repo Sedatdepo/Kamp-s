@@ -3,32 +3,30 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, InfoForm } from '@/lib/types';
+import { Student, Class, InfoForm, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { exportStudentInfoToDoc } from '@/lib/word-export';
+import { exportStudentInfoToRtf, exportInfoFormsStatusToRtf } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, FileDown } from 'lucide-react';
+import { Loader2, FileDown, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface InfoFormsTabProps {
   classId: string;
+  teacherProfile?: TeacherProfile | null;
+  currentClass?: Class | null;
 }
 
-export function InfoFormsTab({ classId }: InfoFormsTabProps) {
+export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [infoForms, setInfoForms] = useState<InfoForm[]>([]);
   const [formsLoading, setFormsLoading] = useState(true);
-
-  const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
-  const currentClass = classData.length > 0 ? classData[0] : null;
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
@@ -89,10 +87,23 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
     }
   };
 
-  const handleExport = (student: Student) => {
+  const handleExportList = () => {
+    if (currentClass) {
+        exportInfoFormsStatusToRtf({
+            students,
+            infoForms,
+            currentClass,
+            teacherProfile
+        })
+    } else {
+        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için sınıf bilgisi yüklenemedi.'})
+    }
+  };
+
+  const handleExportSingle = (student: Student) => {
     const formData = infoForms.find(f => f.studentId === student.id);
-    if (appUser?.type === 'teacher' && appUser.profile && formData) {
-      exportStudentInfoToDoc(student, formData, appUser.profile);
+    if (appUser?.type === 'teacher' && teacherProfile && formData) {
+      exportStudentInfoToRtf(student, formData, teacherProfile);
     } else {
       toast({
         variant: 'destructive',
@@ -102,7 +113,7 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
     }
   };
 
-  const isLoading = classLoading || studentsLoading || formsLoading;
+  const isLoading = studentsLoading || formsLoading;
 
   return (
     <Card>
@@ -113,13 +124,19 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
                 <CardDescription>Öğrencilerin bilgi formu doldurma durumlarını takip edin.</CardDescription>
             </div>
              <div className="flex items-center space-x-2">
-                <Switch 
-                    id="info-form-toggle" 
-                    checked={currentClass?.isInfoFormActive || false}
-                    onCheckedChange={handleToggleChange}
-                    disabled={classLoading}
-                />
-                <Label htmlFor="info-form-toggle">Form Aktif</Label>
+                <Button variant="outline" onClick={handleExportList}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Listeyi Dışa Aktar
+                </Button>
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="info-form-toggle" 
+                        checked={currentClass?.isInfoFormActive || false}
+                        onCheckedChange={handleToggleChange}
+                        disabled={!currentClass}
+                    />
+                    <Label htmlFor="info-form-toggle">Form Aktif</Label>
+                </div>
             </div>
         </div>
       </CardHeader>
@@ -155,10 +172,10 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
                         variant="ghost"
                         size="sm"
                         disabled={!submitted}
-                        onClick={() => handleExport(student)}
+                        onClick={() => handleExportSingle(student)}
                       >
                         <FileDown className="mr-2 h-4 w-4" />
-                        İndir (.doc)
+                        Formu İndir (.rtf)
                       </Button>
                     </TableCell>
                   </TableRow>

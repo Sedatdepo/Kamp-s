@@ -4,15 +4,15 @@
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, RiskFactor } from '@/lib/types';
-import { collection, query, doc, updateDoc, addDoc, deleteDoc, where } from 'firebase/firestore';
+import { Student, Class, RiskFactor, TeacherProfile } from '@/lib/types';
+import { collection, query, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Edit, Save, X, AlertTriangle, ChevronsUpDown, Check } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit, Save, X, AlertTriangle, ChevronsUpDown, Check, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { exportRiskMapToRtf } from '@/lib/word-export';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -42,6 +43,8 @@ const commonRiskFactors = [
 
 interface RiskMapTabProps {
   classId: string;
+  teacherProfile?: TeacherProfile | null;
+  currentClass?: Class | null;
 }
 
 function RiskFactorManager({ teacherId }: { teacherId: string }) {
@@ -180,16 +183,12 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
 }
 
 
-export function RiskMapTab({ classId }: RiskMapTabProps) {
+export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTabProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
-  const classQuery = useMemo(() => doc(db, 'classes', classId), [classId]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${classId}`, classQuery);
-  const currentClass = classData.length > 0 ? classData[0] : null;
-
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);
   const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
@@ -212,6 +211,19 @@ export function RiskMapTab({ classId }: RiskMapTabProps) {
     }
   };
 
+  const handleExport = () => {
+    if(currentClass) {
+        exportRiskMapToRtf({
+            students,
+            riskFactors,
+            currentClass,
+            teacherProfile
+        })
+    } else {
+        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için sınıf bilgisi yüklenemedi.'})
+    }
+  };
+
   const getRiskScore = (studentRisks: string[]) => {
     return studentRisks.reduce((total, riskId) => {
       const factor = riskFactors.find(f => f.id === riskId);
@@ -226,7 +238,7 @@ export function RiskMapTab({ classId }: RiskMapTabProps) {
   };
 
 
-  const isLoading = classLoading || studentsLoading || factorsLoading;
+  const isLoading = studentsLoading || factorsLoading;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -238,14 +250,20 @@ export function RiskMapTab({ classId }: RiskMapTabProps) {
                 <CardTitle className="font-headline">Risk Haritası</CardTitle>
                 <CardDescription>Öğrencilerin risk faktörlerini ve toplam risk puanlarını görüntüleyin.</CardDescription>
               </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="risk-form-toggle"
-                  checked={currentClass?.isRiskFormActive || false}
-                  onCheckedChange={handleToggleChange}
-                  disabled={classLoading}
-                />
-                <Label htmlFor="risk-form-toggle">Form Aktif</Label>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleExport}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    RTF Olarak Dışa Aktar
+                </Button>
+                <div className="flex items-center space-x-2">
+                    <Switch
+                    id="risk-form-toggle"
+                    checked={currentClass?.isRiskFormActive || false}
+                    onCheckedChange={handleToggleChange}
+                    disabled={!currentClass}
+                    />
+                    <Label htmlFor="risk-form-toggle">Form Aktif</Label>
+                </div>
               </div>
             </div>
           </CardHeader>

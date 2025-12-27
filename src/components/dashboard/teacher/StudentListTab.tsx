@@ -2,14 +2,14 @@
 
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student, Message } from '@/lib/types';
+import { Student, Message, Class, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Plus, Minus, Send } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Plus, Minus, Send, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -23,9 +23,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
+import { exportStudentListToRtf } from '@/lib/word-export';
 
 interface StudentListTabProps {
   classId: string;
+  teacherProfile?: TeacherProfile | null;
+  currentClass?: Class | null;
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
@@ -89,7 +92,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
     );
 }
 
-export function StudentListTab({ classId }: StudentListTabProps) {
+export function StudentListTab({ classId, teacherProfile, currentClass }: StudentListTabProps) {
   const { toast } = useToast();
   const { appUser } = useAuth();
   
@@ -98,7 +101,7 @@ export function StudentListTab({ classId }: StudentListTabProps) {
   const [bulkStudents, setBulkStudents] = useState('');
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => {
@@ -110,6 +113,22 @@ export function StudentListTab({ classId }: StudentListTabProps) {
         return a.number.localeCompare(b.number);
     });
   }, [students]);
+
+  const handleExport = () => {
+    if (currentClass && sortedStudents.length > 0) {
+      exportStudentListToRtf({
+        students: sortedStudents,
+        currentClass,
+        teacherProfile,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Hata',
+        description: 'Dışa aktarılacak öğrenci bulunmuyor.',
+      });
+    }
+  };
 
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
@@ -208,16 +227,22 @@ export function StudentListTab({ classId }: StudentListTabProps) {
                 <CardTitle className="font-headline">Öğrenci Listesi</CardTitle>
                 <CardDescription>Sınıftaki öğrencileri yönetin, puanlarını takip edin ve onlarla iletişim kurun.</CardDescription>
             </div>
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Ekle</Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Öğrencileri Toplu Ekle</DialogTitle></DialogHeader>
-                    <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="Her satıra bir öğrenci gelecek şekilde yapıştırın. Örn:&#10;123 Ahmet Yılmaz&#10;456 Ayşe Kaya" className="h-48" />
-                    <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
-                </DialogContent>
-            </Dialog>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleExport}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    RTF Olarak Dışa Aktar
+                </Button>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Ekle</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Öğrencileri Toplu Ekle</DialogTitle></DialogHeader>
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="Her satıra bir öğrenci gelecek şekilde yapıştırın. Örn:&#10;123 Ahmet Yılmaz&#10;456 Ayşe Kaya" className="h-48" />
+                        <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </div>
       </CardHeader>
       <CardContent>

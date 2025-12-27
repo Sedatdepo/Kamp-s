@@ -6,30 +6,24 @@ import { Student, TeacherProfile, Criterion } from '@/lib/types';
 import { ActiveGradingTab } from './GradingToolTab';
 import { Button } from '@/components/ui/button';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
-import { exportGradingToDoc } from '@/lib/word-export';
 import { useToast } from '@/hooks/use-toast';
 
 interface GradingHeaderProps {
   activeTab: ActiveGradingTab;
   setActiveTab: (tab: ActiveGradingTab) => void;
   teacherProfile: TeacherProfile;
-  students: Student[];
-  currentCriteria: Criterion[];
+  onExport: () => void;
   updateTeacherProfile: (data: Partial<TeacherProfile>) => Promise<void>;
-  className: string;
 }
 
 export function GradingHeader({
   activeTab,
   setActiveTab,
   teacherProfile,
-  students,
-  currentCriteria,
-  updateTeacherProfile,
-  className
+  onExport,
+  updateTeacherProfile
 }: GradingHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { toast } = useToast();
 
   const getTabStyle = (tabId: ActiveGradingTab) => {
     let color;
@@ -43,17 +37,6 @@ export function GradingHeader({
     const isActive = activeTab === tabId;
     return `flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap 
       ${isActive ? `bg-${color}-100 text-${color}-700 ring-2 ring-${color}-200` : 'text-slate-500 hover:bg-slate-50'}`;
-  };
-
-  const handleExport = () => {
-    exportGradingToDoc({
-      activeTab,
-      students,
-      currentCriteria,
-      reportConfig: teacherProfile.reportConfig,
-      className: className,
-    });
-    toast({ title: "Başarılı", description: "Rapor Word dosyası olarak indirildi." });
   };
 
   return (
@@ -72,8 +55,8 @@ export function GradingHeader({
           <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
             <Settings className="mr-2 h-4 w-4" /> Ayarlar
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleExport}>
-            <FileText className="mr-2 h-4 w-4" /> Word'e Aktar
+          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={onExport}>
+            <FileText className="mr-2 h-4 w-4" /> RTF Olarak Dışa Aktar
           </Button>
         </div>
       </div>
