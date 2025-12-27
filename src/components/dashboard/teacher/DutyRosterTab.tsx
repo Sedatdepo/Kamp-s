@@ -1,14 +1,14 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Download, Users, RotateCcw } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Users, RotateCcw, Send, AlertTriangle } from 'lucide-react';
 import { exportDutyRosterToRtf } from '@/lib/word-export';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -30,7 +30,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
-  const generateRoster = async () => {
+  const generateRosterPreview = () => {
     if (!currentClass) {
         toast({ title: "Hata", description: "Lütfen önce bir sınıf seçin.", variant: "destructive" });
         return;
@@ -83,10 +83,6 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    // Save the generated roster to Firestore
-    const classRef = doc(db, 'classes', currentClass.id);
-    await updateDoc(classRef, { dutyRoster: tempRoster });
-
     setRoster(tempRoster);
     
     const nextStudent = sortedStudents[currentStudentIndex % sortedStudents.length];
@@ -97,8 +93,24 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
         });
     }
 
-    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu ve öğrencilerin paneline gönderildi." });
+    toast({ title: "Liste Oluşturuldu", description: "Önizlemeyi kontrol edip kaydedebilirsiniz." });
   };
+  
+  const saveRoster = async () => {
+    if (!currentClass || roster.length === 0) {
+      toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor. Lütfen önce liste oluşturun." });
+      return;
+    }
+    
+    try {
+      const classRef = doc(db, 'classes', currentClass.id);
+      await updateDoc(classRef, { dutyRoster: roster });
+      toast({ title: "Başarılı", description: "Nöbet listesi kaydedildi ve öğrencilerin paneline gönderildi." });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: "Kayıt Hatası", description: error.message || "Liste kaydedilemedi." });
+    }
+  };
+
 
   const handleExport = () => {
     if (roster.length === 0) {
@@ -161,9 +173,9 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
               />
             </div>
 
-            <Button onClick={generateRoster} className="w-full">
+            <Button onClick={generateRosterPreview} className="w-full">
               <CalendarIcon size={20} className="mr-2"/>
-              Listeyi Oluştur ve Kaydet
+              Listeyi Oluştur
             </Button>
           </CardContent>
         </Card>
@@ -173,15 +185,21 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
       <div className="md:col-span-2 space-y-4">
         <Card>
           <CardHeader>
-             <div className="flex justify-between items-center">
+             <div className="flex flex-wrap justify-between items-center gap-4">
                  <div>
                     <CardTitle className="font-headline">Nöbet Listesi Önizleme</CardTitle>
-                    <CardDescription>Oluşturulan liste aşağıdadır. Word olarak indirebilirsiniz.</CardDescription>
+                    <CardDescription>Oluşturulan listeyi kontrol edip kaydedin.</CardDescription>
                  </div>
-                 <Button onClick={handleExport} disabled={roster.length === 0}>
-                    <Download size={18} className="mr-2"/>
-                    Word Olarak İndir
-                </Button>
+                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleExport} disabled={roster.length === 0}>
+                        <Download size={18} className="mr-2"/>
+                        Word Olarak İndir
+                    </Button>
+                     <Button onClick={saveRoster} disabled={roster.length === 0}>
+                        <Send size={18} className="mr-2"/>
+                        Kaydet ve Öğrencilere Gönder
+                    </Button>
+                 </div>
              </div>
           </CardHeader>
           <CardContent>
@@ -189,6 +207,12 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4 text-sm text-green-800">
                     Bir sonraki liste için <strong>{nextStartInfo.index}</strong> numaralı <strong>{nextStartInfo.name}</strong> adlı öğrenciden başlayabilirsiniz.
                 </div>
+            )}
+             {roster.length > 0 && !currentClass?.dutyRoster?.some(item => roster.includes(item)) && (
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4 text-sm text-yellow-800 flex items-center gap-2">
+                <AlertTriangle size={16}/>
+                Önizleme listesi henüz kaydedilmedi. Kaydetmeyi unutmayın.
+              </div>
             )}
             <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
