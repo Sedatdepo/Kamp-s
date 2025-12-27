@@ -36,27 +36,27 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
     const [newMessage, setNewMessage] = useState('');
     
     const messagesQuery = useMemo(() => {
-        const participants = [student.id, teacherId].sort();
         return query(
             collection(db, 'messages'), 
-            where('participants', '==', participants)
+            where('participants', 'array-contains', student.id)
         );
-    }, [student.id, teacherId]);
+    }, [student.id]);
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
 
     const sortedMessages = useMemo(() => {
         if (!messages) return [];
+        // Sort in client-side to avoid complex queries
         return [...messages].sort((a, b) => (a.timestamp?.toMillis() ?? 0) - (b.timestamp?.toMillis() ?? 0));
     }, [messages]);
 
     const handleSendMessage = async () => {
         if (!newMessage.trim()) return;
-        const participants = [student.id, teacherId].sort();
+        
         await addDoc(collection(db, 'messages'), {
             senderId: teacherId,
             receiverId: student.id,
-            participants: participants,
+            participants: [student.id, teacherId],
             text: newMessage,
             timestamp: Timestamp.now(),
             isRead: false,
@@ -106,8 +106,17 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
   
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+  
   const messagesQuery = useMemo(() => {
-    return query(collection(db, 'messages'), where('senderId', 'in', students.map(s => s.id)), where('receiverId', '==', teacherId));
+    const studentIds = students.map(s => s.id);
+    if (studentIds.length === 0) {
+      return null; // Return null if there are no students to avoid Firebase 'in' query error with empty array
+    }
+    return query(
+        collection(db, 'messages'), 
+        where('senderId', 'in', studentIds), 
+        where('receiverId', '==', teacherId)
+    );
   }, [students, teacherId]);
   const { data: messagesFromStudents } = useFirestore<Message>('messagesFromStudentsToTeacher', messagesQuery);
 
