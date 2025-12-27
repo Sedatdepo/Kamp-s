@@ -9,9 +9,10 @@ import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
 import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
 import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab';
 import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
+import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab'; // Yeni eklendi
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote } from 'lucide-react'; // Vote eklendi
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -42,6 +43,7 @@ export function StudentDashboard() {
     else if (activeTab === 'risks') markAsSeen('riskForm');
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks') markAsSeen('homeworks');
+    else if (activeTab === 'election') markAsSeen('election'); // Yeni eklendi
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -52,6 +54,7 @@ export function StudentDashboard() {
           case 'homeworks': return <HomeworkTab />;
           case 'risks': return <RiskFormTab />;
           case 'info': return <InfoFormTab />;
+          case 'election': return <ElectionVoteTab />; // Yeni eklendi
           default: return null;
       }
   }
@@ -86,6 +89,7 @@ export function StudentDashboard() {
                     <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    <MenuCard icon={<Vote />} title="Seçim" description="Sınıf seçimleri için oy kullan." onClick={() => setActiveTab('election')} hasNotification={notifications.election} />
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
                     <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
                     <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
