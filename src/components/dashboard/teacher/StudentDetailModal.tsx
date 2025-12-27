@@ -39,14 +39,16 @@ const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNod
 );
 
 const TermGrades = ({ termGrades, teacherProfile }: { termGrades: GradingScores, teacherProfile: TeacherProfile }) => {
+    // Safety check for undefined termGrades
+    const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
-    const perf1Avg = calculateAverage(termGrades.scores1, perfCriteria);
-    const perf2Avg = calculateAverage(termGrades.scores2, perfCriteria);
-    const projAvg = calculateAverage(termGrades.projectScores, projCriteria);
-    const behaviorAvg = calculateAverage(termGrades.behaviorScores, behaviorCriteria);
+    const perf1Avg = calculateAverage(grades.scores1, perfCriteria);
+    const perf2Avg = calculateAverage(grades.scores2, perfCriteria);
+    const projAvg = calculateAverage(grades.projectScores, projCriteria);
+    const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
         <div className="flex gap-4">
@@ -62,15 +64,17 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades: GradingScores,
 export function StudentDetailModal({ student, teacherProfile, isOpen, setIsOpen }: StudentDetailModalProps) {
     
     const calculateTermAverage = (termGrades: GradingScores) => {
+        // Safety check for undefined termGrades
+        const grades = termGrades || {};
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
         const averages = [
-            calculateAverage(termGrades.scores1, perfCriteria),
-            calculateAverage(termGrades.scores2, perfCriteria),
-            calculateAverage(termGrades.projectScores, projCriteria),
-            calculateAverage(termGrades.behaviorScores, behaviorCriteria)
+            calculateAverage(grades.scores1, perfCriteria),
+            calculateAverage(grades.scores2, perfCriteria),
+            calculateAverage(grades.projectScores, projCriteria),
+            calculateAverage(grades.behaviorScores, behaviorCriteria)
         ].filter(avg => avg > 0); // Only consider grades that have been entered
 
         if (averages.length === 0) return 0;
