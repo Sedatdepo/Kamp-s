@@ -12,11 +12,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Edit, Save, X, MoreHorizontal } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit, Save, X, MoreHorizontal, ChevronsUpDown, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
+const highSchoolLessons = [
+    "Matematik", "Fizik", "Kimya", "Biyoloji", "Türk Dili ve Edebiyatı",
+    "Tarih", "Coğrafya", "Felsefe", "İngilizce", "Almanca",
+    "Beden Eğitimi", "Müzik", "Görsel Sanatlar", "Din Kültürü ve Ahlak Bilgisi",
+    "Psikoloji", "Sosyoloji", "Girişimcilik", "Astronomi", "Yazılım"
+];
+
 
 interface ProjectDistributionTabProps {
   classId: string;
@@ -33,6 +44,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   
   const [newLessonName, setNewLessonName] = useState('');
   const [newLessonQuota, setNewLessonQuota] = useState<number>(5);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const handleStartEdit = (lesson: Lesson) => {
     setIsEditing(lesson.id);
@@ -108,7 +120,52 @@ function LessonManager({ teacherId }: { teacherId: string }) {
             )
         ))}
          <div className="flex gap-2 items-center pt-4 border-t">
-            <Input value={newLessonName} onChange={e => setNewLessonName(e.target.value)} placeholder="Yeni Ders Adı" className="h-9"/>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={popoverOpen}
+                  className="w-[200px] justify-between"
+                >
+                  {newLessonName || "Ders seçin..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput 
+                    placeholder="Ders ara veya yaz..." 
+                    onValueChange={setNewLessonName}
+                    value={newLessonName}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Ders bulunamadı.</CommandEmpty>
+                    <CommandGroup>
+                      {highSchoolLessons.map((lesson) => (
+                        <CommandItem
+                          key={lesson}
+                          value={lesson}
+                          onSelect={(currentValue) => {
+                            setNewLessonName(currentValue === newLessonName ? "" : currentValue);
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              newLessonName === lesson ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {lesson}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
             <Input type="number" value={newLessonQuota} onChange={e => setNewLessonQuota(Number(e.target.value))} className="h-9 w-24" placeholder="Kota"/>
             <Button onClick={handleAddLesson}><Plus className="mr-2 h-4 w-4"/> Ekle</Button>
         </div>
@@ -202,7 +259,7 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
                             <TableCell className="font-medium">{student.name}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                    {student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
+                                    {student.projectPreferences && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
                                         const lesson = lessons.find(l => l.id === prefId);
                                         return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
                                     }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
@@ -245,3 +302,5 @@ export function ProjectDistributionTab({ classId }: ProjectDistributionTabProps)
     </div>
   );
 }
+
+    
