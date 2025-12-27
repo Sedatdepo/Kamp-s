@@ -1,14 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Student, Criterion } from '@/lib/types';
 import { ActiveGradingTab } from './GradingToolTab';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Users, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 
 interface GradingTableProps {
   activeTab: ActiveGradingTab;
@@ -23,8 +21,6 @@ export function GradingTable({
   currentCriteria,
   updateStudents,
 }: GradingTableProps) {
-    const { toast } = useToast();
-
     const getScoreTargetKey = (tab: ActiveGradingTab) => {
         switch (tab) {
             case 1: return 'scores1';
@@ -40,7 +36,7 @@ export function GradingTable({
     return currentCriteria.reduce((sum, c) => sum + (Number(scores[c.id]) || 0), 0);
   };
   
-  const maxTotal = useMemo(() => currentCriteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100), [currentCriteria]);
+  const maxTotal = useMemo(() => currentCriteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0), [currentCriteria]);
 
   const updateScore = (studentId: string, criteriaId: string, value: string) => {
     const criterion = currentCriteria.find(c => c.id === criteriaId);
@@ -65,7 +61,7 @@ export function GradingTable({
     if (newTotal < 0) newTotal = 0;
     if (newTotal > maxTotal) newTotal = maxTotal;
 
-    const ratio = newTotal / maxTotal;
+    const ratio = maxTotal > 0 ? newTotal / maxTotal : 0;
     let newScores: { [key: string]: number } = {};
     let currentSum = 0;
 
