@@ -8,40 +8,15 @@ import { Class } from '@/lib/types';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks';
+type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election';
 
 interface NotificationState {
   announcements: boolean;
   riskForm: boolean;
   infoForm: boolean;
   homeworks: boolean;
+  election: boolean;
 }
-
-// Helper function to safely parse date strings
-const parseDate = (dateString: string): Date | null => {
-  // Check if it's already an ISO 8601 format
-  if (dateString.includes('T') && dateString.includes('Z')) {
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? null : date;
-  }
-  
-  // Check for "DD.MM.YYYY" format
-  const parts = dateString.split('.');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-    const year = parseInt(parts[2], 10);
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      const date = new Date(year, month, day);
-      return isNaN(date.getTime()) ? null : date;
-    }
-  }
-  
-  // Fallback for other potential formats that new Date() can handle
-  const date = new Date(dateString);
-  return isNaN(date.getTime()) ? null : date;
-};
-
 
 export const useNotification = () => {
   const { appUser } = useAuth();
@@ -50,6 +25,7 @@ export const useNotification = () => {
     riskForm: false,
     infoForm: false,
     homeworks: false,
+    election: false,
   });
   
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
@@ -90,12 +66,16 @@ export const useNotification = () => {
     const hasNewHomework = currentClass.homeworks?.some(
         (hw) => !hw.seenBy?.includes(studentId)
     ) ?? false;
+    
+    // 5. Seçim Kontrolü
+    const hasNewElection = currentClass.isElectionActive === true && !currentClass.election?.votedStudentIds.includes(studentId);
 
     setNotifications({
       announcements: hasNewAnnouncement,
       riskForm: hasNewRiskForm,
       infoForm: hasNewInfoForm,
-      homeworks: hasNewHomework
+      homeworks: hasNewHomework,
+      election: hasNewElection
     });
 
   }, [currentClass, studentId, appUser]);
@@ -105,9 +85,9 @@ export const useNotification = () => {
   }, [checkNotifications]);
 
   const markAsSeen = useCallback(async (type: NotificationType) => {
-    if (!studentId || !currentClass) return;
+    if (!studentId || !currentClass || !classId) return;
 
-    const classRef = doc(db, 'classes', classId!);
+    const classRef = doc(db, 'classes', classId);
 
     if (type === 'announcements') {
         const updatedAnnouncements = currentClass.announcements?.map(ann => {
@@ -130,6 +110,7 @@ export const useNotification = () => {
             await updateDoc(classRef, { homeworks: updatedHomeworks });
         }
     }
+    // Seçim için bildirim temizleme işlemi oy kullanma ile gerçekleşir, burada değil.
     
     // Refresh notifications after marking as seen
     checkNotifications();

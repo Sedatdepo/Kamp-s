@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -29,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Switch } from '@/components/ui/switch';
 
 type Stage = 'setup' | 'voting' | 'results';
 
@@ -53,7 +55,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   const voters = useMemo(() => students.filter(s => !electionData.votedStudentIds.includes(s.id)), [students, electionData.votedStudentIds]);
   const votedStudents = useMemo(() => new Set(electionData.votedStudentIds), [electionData.votedStudentIds]);
 
-  const updateElection = async (updates: Partial<typeof electionData>) => {
+  const updateElection = async (updates: Partial<Class['election']>) => {
     if (!currentClass) return;
     const classRef = doc(db, 'classes', currentClass.id);
     await updateDoc(classRef, {
@@ -62,6 +64,24 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
         ...updates
       }
     });
+  };
+  
+  const handleToggleActive = async (checked: boolean) => {
+    if (!currentClass) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    try {
+        await updateDoc(classRef, { isElectionActive: checked });
+        toast({
+            title: 'Başarılı',
+            description: `Seçim oylaması öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.`,
+        });
+    } catch {
+        toast({
+            variant: 'destructive',
+            title: 'Hata',
+            description: 'Güncelleme sırasında bir sorun oluştu.',
+        });
+    }
   };
 
   const toggleCandidate = (studentId: string) => {
@@ -160,6 +180,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   const resetElection = () => {
     if (window.confirm("Bu seçimi ve tüm verilerini sıfırlamak istediğinize emin misiniz?")) {
         updateElection({ candidates: [], votedStudentIds: [] });
+        handleToggleActive(false); // Seçimi de pasif yap
         setStage('setup');
         setCurrentVoterIndex(0);
         setShowNextButton(false);
@@ -185,8 +206,21 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
       {stage === 'setup' && (
           <Card>
             <CardHeader>
-              <CardTitle>1. Adım: Kurulum</CardTitle>
-              <CardDescription>Önce seçim türünü seçin, ardından adayları belirleyin.</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>1. Adım: Kurulum</CardTitle>
+                  <CardDescription>Önce seçim türünü seçin, ardından adayları belirleyin ve oylamayı aktif edin.</CardDescription>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="election-toggle" 
+                        checked={currentClass?.isElectionActive || false}
+                        onCheckedChange={handleToggleActive}
+                        disabled={!currentClass}
+                    />
+                    <Label htmlFor="election-toggle">Seçim Aktif</Label>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div>
@@ -228,7 +262,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                             </TableBody>
                         </Table>
                    </div>
-                   <Button onClick={startVoting} className="w-full bg-green-600 hover:bg-green-700">Oylamayı Başlat</Button>
+                   <Button onClick={startVoting} className="w-full bg-green-600 hover:bg-green-700">Oylamayı Başlat (Tahta)</Button>
                 </div>
             </CardContent>
           </Card>
@@ -239,7 +273,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle>2. Adım: Oylama</CardTitle>
+                        <CardTitle>2. Adım: Oylama (Akıllı Tahta)</CardTitle>
                         <CardDescription>{students.length} öğrenci oy kullanacak. {electionData.votedStudentIds.length} / {students.length} oy kullanıldı.</CardDescription>
                     </div>
                     <Button onClick={finishVoting} size="lg" className="bg-blue-600 hover:bg-blue-700">Oylamayı Bitir</Button>

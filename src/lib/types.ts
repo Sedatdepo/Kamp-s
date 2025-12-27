@@ -67,6 +67,7 @@ export interface Class {
   isProjectSelectionActive?: boolean;
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
+  isElectionActive?: boolean; // Yeni eklendi
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -154,5 +155,3 @@ export interface Message {
   participants: string[];
   isRead: boolean;
 }
-
-    
