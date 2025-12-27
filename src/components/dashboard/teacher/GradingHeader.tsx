@@ -16,6 +16,7 @@ interface GradingHeaderProps {
   students: Student[];
   currentCriteria: Criterion[];
   updateTeacherProfile: (data: Partial<TeacherProfile>) => Promise<void>;
+  className: string;
 }
 
 export function GradingHeader({
@@ -25,11 +26,20 @@ export function GradingHeader({
   students,
   currentCriteria,
   updateTeacherProfile,
+  className
 }: GradingHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { toast } = useToast();
 
-  const getTabStyle = (tabId: ActiveGradingTab, color: string) => {
+  const getTabStyle = (tabId: ActiveGradingTab) => {
+    let color;
+    switch(tabId) {
+        case 1: color = 'blue'; break;
+        case 2: color = 'orange'; break;
+        case 3: color = 'violet'; break;
+        case 4: color = 'emerald'; break;
+        default: color = 'slate';
+    }
     const isActive = activeTab === tabId;
     return `flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap 
       ${isActive ? `bg-${color}-100 text-${color}-700 ring-2 ring-${color}-200` : 'text-slate-500 hover:bg-slate-50'}`;
@@ -41,7 +51,7 @@ export function GradingHeader({
       students,
       currentCriteria,
       reportConfig: teacherProfile.reportConfig,
-      className: "Sınıf Adı", // Bu bilgi class'dan alınmalı
+      className: className,
     });
     toast({ title: "Başarılı", description: "Rapor Word dosyası olarak indirildi." });
   };
@@ -53,10 +63,10 @@ export function GradingHeader({
           {/* Gelecekteki kontroller için boş */}
         </div>
         <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1">
-          <button onClick={() => setActiveTab(1)} className={getTabStyle(1, 'blue')}>1. Performans</button>
-          <button onClick={() => setActiveTab(2)} className={getTabStyle(2, 'orange')}>2. Performans</button>
-          <button onClick={() => setActiveTab(3)} className={getTabStyle(3, 'violet')}>Proje Ödevi</button>
-          <button onClick={() => setActiveTab(4)} className={getTabStyle(4, 'emerald')}>Davranış Notu</button>
+          <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
+          <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
+          <button onClick={() => setActiveTab(3)} className={getTabStyle(3)}>Proje Ödevi</button>
+          <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>

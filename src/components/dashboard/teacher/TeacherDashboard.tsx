@@ -10,6 +10,7 @@ import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDi
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
+import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School } from 'lucide-react';
 
@@ -25,12 +26,13 @@ export function TeacherDashboard() {
           <main className="flex-1 p-4 sm:p-6">
             {selectedClassId ? (
               <Tabs defaultValue="students">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
                   <TabsTrigger value="students">Öğrenci Listesi</TabsTrigger>
                   <TabsTrigger value="grading">Değerlendirme</TabsTrigger>
                   <TabsTrigger value="projects">Proje Dağılımı</TabsTrigger>
                   <TabsTrigger value="risks">Risk Haritası</TabsTrigger>
                   <TabsTrigger value="forms">Bilgi Formları</TabsTrigger>
+                  <TabsTrigger value="report">Rapor</TabsTrigger>
                 </TabsList>
                 <TabsContent value="students" className="mt-4">
                   <StudentListTab classId={selectedClassId} />
@@ -46,6 +48,9 @@ export function TeacherDashboard() {
                 </TabsContent>
                 <TabsContent value="forms" className="mt-4">
                   <InfoFormsTab classId={selectedClassId} />
+                </TabsContent>
+                 <TabsContent value="report" className="mt-4">
+                  <ReportTab />
                 </TabsContent>
               </Tabs>
             ) : (
