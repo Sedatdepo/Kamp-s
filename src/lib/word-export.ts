@@ -35,6 +35,14 @@ const generateHtmlShell = (content: string, title: string) => {
           font-weight: bold;
           text-align: center;
           background-color: #f2f2f2;
+          /* Rotate text for risk factors */
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+          white-space: nowrap;
+        }
+        th.horizontal {
+            writing-mode: horizontal-tb;
+            transform: none;
         }
         .center { text-align: center; }
         .bold { font-weight: bold; }
@@ -160,11 +168,11 @@ export function exportGradingToRtf({
 
     const tableHeader = `
         <tr>
-            <th style="width:5%;">S.No</th>
-            <th style="width:10%;">Okul No</th>
-            <th style="width:25%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:5%;">S.No</th>
+            <th class="horizontal" style="width:10%;">Okul No</th>
+            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
             ${currentCriteria.map(c => `<th>${c.name}<br/><span class="small-text">(${c.max} P)</span></th>`).join('')}
-            <th style="width:10%;">PUAN</th>
+            <th class="horizontal" style="width:10%;">PUAN</th>
         </tr>
     `;
 
@@ -212,9 +220,9 @@ export function exportStudentListToRtf({ students, currentClass, teacherProfile 
 
     const tableHeader = `
         <tr>
-            <th style="width:10%;">S.No</th>
-            <th style="width:20%;">Okul No</th>
-            <th style="width:70%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:70%;">Adı Soyadı</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => `
@@ -245,10 +253,10 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
 
     const tableHeader = `
         <tr>
-            <th style="width:5%;">S.No</th>
-            <th style="width:15%;">Adı Soyadı</th>
-            <th style="width:40%;">Tercihler</th>
-            <th style="width:20%;">Atanan Proje</th>
+            <th class="horizontal" style="width:5%;">S.No</th>
+            <th class="horizontal" style="width:15%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:40%;">Tercihler</th>
+            <th class="horizontal" style="width:20%;">Atanan Proje</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => {
@@ -295,23 +303,24 @@ export function exportRiskMapToRtf({ students, riskFactors, currentClass, teache
 
     const tableHeader = `
         <tr>
-            <th style="width:5%;">S.No</th>
-            <th style="width:20%;">Adı Soyadı</th>
-            <th style="width:60%;">Risk Faktörleri</th>
-            <th style="width:15%;">Risk Puanı</th>
+            <th class="horizontal" style="width:5%;">S.No</th>
+            <th class="horizontal" style="width:10%;">Okul No</th>
+            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
+            ${riskFactors.map(factor => `<th>${factor.label}</th>`).join('')}
+            <th class="horizontal">Risk Puanı</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => {
-        const studentRiskFactors = s.risks.map(riskId => {
-            const factor = riskFactors.find(f => f.id === riskId);
-            return factor ? factor.label : '';
-        }).filter(Boolean).join(', ') || 'Risk yok';
         const riskScore = getRiskScore(s.risks);
         return `
             <tr>
                 <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
                 <td>${s.name}</td>
-                <td>${studentRiskFactors}</td>
+                ${riskFactors.map(factor => {
+                    const hasRisk = s.risks.includes(factor.id);
+                    return `<td class="center">${hasRisk ? 'X' : ''}</td>`;
+                }).join('')}
                 <td class="center bold">${riskScore}</td>
             </tr>
         `;
@@ -338,10 +347,10 @@ export function exportInfoFormsStatusToRtf({ students, infoForms, currentClass, 
 
     const tableHeader = `
         <tr>
-            <th style="width:10%;">S.No</th>
-            <th style="width:20%;">Okul No</th>
-            <th style="width:50%;">Adı Soyadı</th>
-            <th style="width:20%;">Doldurma Durumu</th>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:50%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:20%;">Doldurma Durumu</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => {
