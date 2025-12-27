@@ -49,13 +49,14 @@ const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNod
 
 const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores, teacherProfile: TeacherProfile }) => {
     const grades = termGrades || {};
+    const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
     const exam1 = grades.exam1;
     const exam2 = grades.exam2;
-    const perf1 = grades.perf1;
-    const perf2 = grades.perf2;
+    const perf1 = calculateAverage(grades.scores1, perfCriteria);
+    const perf2 = calculateAverage(grades.scores2, perfCriteria);
     const projAvg = calculateAverage(grades.projectScores, projCriteria);
     const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
@@ -63,8 +64,8 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1 ?? 'Girmedi'} />
             <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2 ?? 'Girmedi'} />
-            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1 ?? 'Girmedi'} />
-            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2 ?? 'Girmedi'} />
+            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1} />
+            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
             <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
         </div>
@@ -73,7 +74,11 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores
 
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
-    const homeworks = currentClass?.homeworks || [];
+    if (!currentClass) {
+        return <p>Sınıf bilgisi yüklenemedi.</p>;
+    }
+    const homeworks = currentClass.homeworks || [];
+
 
     const handleHomeworkStatusChange = async (homework: Homework, isCompleted: boolean) => {
         if (!currentClass) return;
@@ -139,26 +144,28 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
     
     const calculateTermAverage = (termGrades?: GradingScores) => {
-        const grades = termGrades || {};
+        if (!termGrades) return 0;
+        const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
         const averages = [
-            grades.exam1,
-            grades.exam2,
-            grades.perf1,
-            grades.perf2,
-            calculateAverage(grades.projectScores, projCriteria),
-            calculateAverage(grades.behaviorScores, behaviorCriteria)
-        ].filter(avg => avg !== undefined && avg > 0);
+            termGrades.exam1,
+            termGrades.exam2,
+            calculateAverage(termGrades.scores1, perfCriteria),
+            calculateAverage(termGrades.scores2, perfCriteria),
+            calculateAverage(termGrades.projectScores, projCriteria),
+            calculateAverage(termGrades.behaviorScores, behaviorCriteria)
+        ].filter((avg): avg is number => avg !== undefined && avg > 0);
 
         if (averages.length === 0) return 0;
-        return averages.reduce((sum, avg) => sum + (avg || 0), 0) / averages.length;
+        return averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
     };
     
     const term1Avg = calculateTermAverage(student.term1Grades);
     const term2Avg = calculateTermAverage(student.term2Grades);
-    const finalAverage = (term1Avg + term2Avg) / ([term1Avg, term2Avg].filter(a => a > 0).length || 1);
+    const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

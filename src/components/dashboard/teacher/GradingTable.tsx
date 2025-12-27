@@ -169,7 +169,7 @@ export function GradingTable({
                                 <TableRow key={student.id} className="group">
                                     <TableCell className="p-3 font-medium text-slate-700 sticky left-0 bg-white group-hover:bg-slate-50">{student.name}</TableCell>
                                     {currentCriteria.map(c => (
-                                        <TableCell key={c.id} className="p-2 text-center">
+                                        <TableCell key={`${student.id}-${c.id}`} className="p-2 text-center">
                                             <Input type="number" title={c.name} value={scores?.[c.id] ?? ''} onChange={(e) => updateScore(student.id, c.id, e.target.value)} className="w-16 h-9 p-1.5 text-center bg-slate-50 border-slate-200 rounded-lg focus:ring-blue-500 focus:bg-white font-mono" />
                                         </TableCell>
                                     ))}

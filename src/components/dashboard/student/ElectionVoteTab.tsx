@@ -106,7 +106,7 @@ export function ElectionVoteTab() {
              </CardHeader>
              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
-                    {electionType === 'class_president' && (
+                    {electionType === 'class_president' && winner && (
                         <>
                             <Card className="bg-green-100 dark:bg-green-900/50 border-green-500">
                                 <CardHeader>
@@ -128,7 +128,7 @@ export function ElectionVoteTab() {
                             )}
                         </>
                     )}
-                     {electionType === 'school_representative' && (
+                     {electionType === 'school_representative' && winner && (
                         <Card className="bg-purple-100 dark:bg-purple-900/50 border-purple-500 col-span-full max-w-sm mx-auto">
                             <CardHeader>
                                 <Building className="mx-auto text-purple-500 w-10 h-10"/>
@@ -138,7 +138,7 @@ export function ElectionVoteTab() {
                             </CardHeader>
                         </Card>
                     )}
-                    {electionType === 'honor_board' && (
+                    {electionType === 'honor_board' && winner && (
                         <Card className="bg-indigo-100 dark:bg-indigo-900/50 border-indigo-500 col-span-full max-w-sm mx-auto">
                             <CardHeader>
                                 <HonorIcon className="mx-auto text-indigo-500 w-10 h-10"/>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -80,7 +81,7 @@ export function useFirestore<T>(
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionOrQueryKey, queryKey]);
+  }, [collectionOrQueryKey, queryKey, firestoreQuery]);
 
   return { data, loading, error };
 }

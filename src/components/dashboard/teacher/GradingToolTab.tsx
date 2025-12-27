@@ -135,7 +135,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeTerm={activeTerm}
-        setActiveTerm={setActiveTab}
+        setActiveTerm={setActiveTerm}
         teacherProfile={teacherProfile}
         onExport={handleExport}
         onClearScores={handleClearScores}
