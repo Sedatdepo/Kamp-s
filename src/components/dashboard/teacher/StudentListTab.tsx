@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -77,6 +77,9 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                             </div>
                         ))
                     )}
+                     {sortedMessages.length === 0 && !messagesLoading && (
+                        <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
+                    )}
                 </ScrollArea>
                 <div className="flex mt-4 gap-2">
                     <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
@@ -97,6 +100,17 @@ export function StudentListTab({ classId }: StudentListTabProps) {
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>('students', studentsQuery);
+
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => {
+        const numA = parseInt(a.number, 10);
+        const numB = parseInt(b.number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+        }
+        return a.number.localeCompare(b.number);
+    });
+  }, [students]);
 
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
@@ -125,19 +139,36 @@ export function StudentListTab({ classId }: StudentListTabProps) {
     const lines = bulkStudents.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 
-    for (const line of lines) {
-        const [number, ...nameParts] = line.split(/\s+/);
+    const studentsToAdd = lines.map(line => {
+        const [number, ...nameParts] = line.trim().split(/\s+/);
         const name = nameParts.join(' ');
-        if(number && name) {
-            await addDoc(collection(db, 'students'), {
-                classId, name, number,
-                behaviorScore: 100, needsPasswordChange: true, password: number,
-                risks: [], projectPreferences: [], assignedLesson: null, grades: { term1: null, term2: null }, referrals: [],
-            });
+        return { number, name };
+    }).filter(s => s.number && s.name);
+
+    // Numaraya göre sırala
+    studentsToAdd.sort((a, b) => {
+        const numA = parseInt(a.number, 10);
+        const numB = parseInt(b.number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
         }
-    }
+        return a.number.localeCompare(b.number);
+    });
+
+    const batch = writeBatch(db);
+    studentsToAdd.forEach(({name, number}) => {
+        const studentRef = doc(collection(db, 'students'));
+        batch.set(studentRef, {
+            classId, name, number,
+            behaviorScore: 100, needsPasswordChange: true, password: number,
+            risks: [], projectPreferences: [], assignedLesson: null, grades: { term1: null, term2: null }, referrals: [],
+        });
+    });
+
+    await batch.commit();
+
     setBulkStudents('');
-    toast({ title: `${lines.length} öğrenci eklendi!`});
+    toast({ title: `${studentsToAdd.length} öğrenci eklendi!`});
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -205,7 +236,7 @@ export function StudentListTab({ classId }: StudentListTabProps) {
                 <TableCell></TableCell>
                 <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Ekle</Button></TableCell>
               </TableRow>
-              {students.length > 0 ? students.map(student => (
+              {sortedStudents.length > 0 ? sortedStudents.map(student => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.number}</TableCell>
                   <TableCell>{student.name}</TableCell>
