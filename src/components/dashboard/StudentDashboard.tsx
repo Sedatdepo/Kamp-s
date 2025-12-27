@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { HomeTab } from '@/components/dashboard/student/HomeTab';
 import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
@@ -9,12 +9,18 @@ import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
 import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
 import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab';
 import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
-import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab'; // Yeni eklendi
+import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
+import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote } from 'lucide-react'; // Vote eklendi
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/hooks/useAuth';
+import { useFirestore } from '@/hooks/useFirestore';
+import { Class } from '@/lib/types';
+import { doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean }) => (
   <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
@@ -36,14 +42,20 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon
 
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
+  const { appUser } = useAuth();
   const { notifications, markAsSeen } = useNotification();
+  
+  const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+  const classQuery = useMemo(() => classId ? doc(db, 'classes', classId) : null, [classId]);
+  const { data: classData } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
+  const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
 
   useEffect(() => {
     if (activeTab === 'announcements') markAsSeen('announcements');
     else if (activeTab === 'risks') markAsSeen('riskForm');
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks') markAsSeen('homeworks');
-    else if (activeTab === 'election') markAsSeen('election'); // Yeni eklendi
+    else if (activeTab === 'election') markAsSeen('election');
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -54,7 +66,8 @@ export function StudentDashboard() {
           case 'homeworks': return <HomeworkTab />;
           case 'risks': return <RiskFormTab />;
           case 'info': return <InfoFormTab />;
-          case 'election': return <ElectionVoteTab />; // Yeni eklendi
+          case 'election': return <ElectionVoteTab />;
+          case 'dutyRoster': return <DutyRosterTab />;
           default: return null;
       }
   }
@@ -89,10 +102,19 @@ export function StudentDashboard() {
                     <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
-                    <MenuCard icon={<Vote />} title="Seçim" description="Sınıf seçimleri için oy kullan." onClick={() => setActiveTab('election')} hasNotification={notifications.election} />
+                    {currentClass?.dutyRoster && currentClass.dutyRoster.length > 0 && (
+                        <MenuCard icon={<Users />} title="Nöbetçi Listesi" description="Sınıf nöbetçi listesini gör." onClick={() => setActiveTab('dutyRoster')} />
+                    )}
+                    {currentClass?.isElectionActive && (
+                        <MenuCard icon={<Vote />} title="Seçim" description="Sınıf seçimleri için oy kullan." onClick={() => setActiveTab('election')} hasNotification={notifications.election} />
+                    )}
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
-                    <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
-                    <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
+                    {currentClass?.isRiskFormActive && (
+                        <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
+                    )}
+                    {currentClass?.isInfoFormActive && (
+                        <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
+                    )}
                 </div>
             </div>
         </main>

@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,17 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Calendar as CalendarIcon, Download, Users, RotateCcw } from 'lucide-react';
 import { exportDutyRosterToRtf } from '@/lib/word-export';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface DutyRosterTabProps {
   students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
-}
-
-interface RosterItem {
-  date: string;
-  day: string;
-  student: string;
 }
 
 export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRosterTabProps) {
@@ -33,9 +30,13 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
-  const generateRoster = () => {
+  const generateRoster = async () => {
+    if (!currentClass) {
+        toast({ title: "Hata", description: "Lütfen önce bir sınıf seçin.", variant: "destructive" });
+        return;
+    }
     if (students.length === 0) {
-      toast({ title: "Hata", description: "Lütfen önce öğrenci listesi olan bir sınıf seçin.", variant: "destructive" });
+      toast({ title: "Hata", description: "Bu sınıfta öğrenci bulunmuyor.", variant: "destructive" });
       return;
     }
     if (!startDate || !endDate) {
@@ -75,20 +76,28 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
         tempRoster.push({
           date: currentDate.toLocaleDateString('tr-TR'),
           day: daysMap[dayOfWeek],
-          student: studentNames
+          student: studentNames,
+          studentIds: [student1.id, student2.id]
         });
       }
       currentDate.setDate(currentDate.getDate() + 1);
     }
+    
+    // Save the generated roster to Firestore
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { dutyRoster: tempRoster });
 
     setRoster(tempRoster);
     
-    const nextIndex = (currentStudentIndex % sortedStudents.length);
-    setNextStartInfo({
-      index: sortedStudents[nextIndex].number,
-      name: sortedStudents[nextIndex].name
-    });
-    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu." });
+    const nextStudent = sortedStudents[currentStudentIndex % sortedStudents.length];
+    if(nextStudent) {
+        setNextStartInfo({
+          index: parseInt(nextStudent.number, 10),
+          name: nextStudent.name
+        });
+    }
+
+    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu ve öğrencilerin paneline gönderildi." });
   };
 
   const handleExport = () => {
@@ -141,12 +150,12 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
             <div className="bg-muted p-3 rounded-lg border">
               <label className="block text-sm font-medium mb-1 flex items-center gap-2">
                 <RotateCcw size={14}/>
-                Hangi Öğrenciden Başlasın? (Liste Sırası)
+                Hangi Öğrenciden Başlasın? (Okul No)
               </label>
               <Input 
                 type="number" 
                 min="1"
-                placeholder="Öğrenci sıra no"
+                placeholder="Öğrenci okul no"
                 value={startIndex}
                 onChange={(e) => setStartIndex(parseInt(e.target.value) || 1)}
               />
@@ -154,7 +163,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
 
             <Button onClick={generateRoster} className="w-full">
               <CalendarIcon size={20} className="mr-2"/>
-              Listeyi Oluştur
+              Listeyi Oluştur ve Kaydet
             </Button>
           </CardContent>
         </Card>

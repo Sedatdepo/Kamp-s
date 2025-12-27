@@ -58,6 +58,12 @@ export interface Election {
   votedStudentIds: string[];
 }
 
+export interface RosterItem {
+  date: string;
+  day: string;
+  student: string; // "Student Name 1 - Student Name 2"
+  studentIds: string[];
+}
 
 export interface Class {
   id: string;
@@ -67,15 +73,15 @@ export interface Class {
   isProjectSelectionActive?: boolean;
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
-  isElectionActive?: boolean; // Yeni eklendi
+  isElectionActive?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
+  dutyRoster?: RosterItem[];
 }
 
 export type GradingScores = {
     exam1?: number;
-    exam2?: number;
     perf1?: number;
     perf2?: number;
     projectScores?: { [key: string]: number };
