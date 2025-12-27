@@ -41,6 +41,11 @@ async function seedDatabase() {
     { label: "Öğrenme Güçlüğü", weight: 3, teacherId: "default_teacher" },
     { label: "Kaygı Bozukluğu", weight: 4, teacherId: "default_teacher" },
     { label: "Dikkat Eksikliği ve Hiperaktivite", weight: 4, teacherId: "default_teacher" },
+    { label: "Okul Fobisi", weight: 4, teacherId: "default_teacher" },
+    { label: "Teknoloji Bağımlılığı", weight: 3, teacherId: "default_teacher" },
+    { label: "Aile İçi Şiddet", weight: 5, teacherId: "default_teacher" },
+    { label: "Sosyal İzolasyon", weight: 3, teacherId: "default_teacher" },
+    { label: "Düşük Akademik Başarı", weight: 4, teacherId: "default_teacher" },
   ];
 
   try {
@@ -48,7 +53,7 @@ async function seedDatabase() {
       const riskFactorsCollection = collection(db, "riskFactors");
 
       const lessonsSnapshot = await getDocs(query(lessonsCollection, where("teacherId", "==", "default_teacher")));
-      const riskFactorsSnapshot = await getDocs(query(riskFactorsCollection, where("teacherId", "==", "default_teacher")));
+      const riskFactorsSnapshot = await getDocs(query(riskFactorsCollection));
   
       const batch = writeBatch(db);
       let operations = 0;
@@ -62,20 +67,27 @@ async function seedDatabase() {
           });
       }
   
-      if (riskFactorsSnapshot.empty) {
-          console.log("Seeding default risk factors...");
-          defaultRiskFactors.forEach(risk => {
-              const docRef = doc(riskFactorsCollection);
-              batch.set(docRef, risk);
-              operations++;
-          });
+      // Delete all existing risk factors to ensure a clean slate
+      if (!riskFactorsSnapshot.empty) {
+        riskFactorsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+            operations++;
+        });
       }
+
+      // Add the Turkish risk factors
+      console.log("Seeding default Turkish risk factors...");
+      defaultRiskFactors.forEach(risk => {
+          const docRef = doc(riskFactorsCollection);
+          batch.set(docRef, risk);
+          operations++;
+      });
   
       if (operations > 0) {
           await batch.commit();
           console.log("Database seeded successfully.");
       } else {
-          console.log("Database already contains default data.");
+          console.log("Database seeding not required or already up to date.");
       }
   } catch (error) {
       console.error("Error seeding database:", error);
