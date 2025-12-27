@@ -16,6 +16,32 @@ interface NotificationState {
   infoForm: boolean;
 }
 
+// Helper function to safely parse date strings
+const parseDate = (dateString: string): Date | null => {
+  // Check if it's already an ISO 8601 format
+  if (dateString.includes('T') && dateString.includes('Z')) {
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  
+  // Check for "DD.MM.YYYY" format
+  const parts = dateString.split('.');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      const date = new Date(year, month, day);
+      return isNaN(date.getTime()) ? null : date;
+    }
+  }
+  
+  // Fallback for other potential formats that new Date() can handle
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
+
 export const useNotification = () => {
   const { appUser } = useAuth();
   const [notifications, setNotifications] = useState<NotificationState>({
@@ -35,9 +61,13 @@ export const useNotification = () => {
     if (!currentClass || !studentId) return;
 
     // 1. Duyuru Kontrolü
-    const lastSeenAnnouncementDate = localStorage.getItem(`lastSeenAnnouncement_${studentId}`);
+    const lastSeenAnnouncementDateStr = localStorage.getItem(`lastSeenAnnouncement_${studentId}`);
+    const lastSeenAnnouncementDate = lastSeenAnnouncementDateStr ? parseDate(lastSeenAnnouncementDateStr) : null;
+
     const latestAnnouncement = currentClass.announcements?.[0];
-    const hasNewAnnouncement = latestAnnouncement && (!lastSeenAnnouncementDate || new Date(latestAnnouncement.date) > new Date(lastSeenAnnouncementDate));
+    const latestAnnouncementDate = latestAnnouncement ? parseDate(latestAnnouncement.date) : null;
+
+    const hasNewAnnouncement = latestAnnouncementDate && (!lastSeenAnnouncementDate || latestAnnouncementDate > lastSeenAnnouncementDate);
     
     // 2. Risk Formu Kontrolü
     let hasNewRiskForm = false;
@@ -62,7 +92,7 @@ export const useNotification = () => {
     }
 
     setNotifications({
-      announcements: hasNewAnnouncement,
+      announcements: !!hasNewAnnouncement,
       riskForm: hasNewRiskForm,
       infoForm: hasNewInfoForm
     });
@@ -79,7 +109,10 @@ export const useNotification = () => {
     if (type === 'announcements') {
       const latestAnnouncement = currentClass.announcements?.[0];
       if (latestAnnouncement) {
-        localStorage.setItem(`lastSeenAnnouncement_${studentId}`, new Date(latestAnnouncement.date).toISOString());
+        const latestDate = parseDate(latestAnnouncement.date);
+        if (latestDate) {
+          localStorage.setItem(`lastSeenAnnouncement_${studentId}`, latestDate.toISOString());
+        }
       }
     }
     // riskForm ve infoForm için, öğrenci formu doldurduğunda bildirim zaten kaybolacak.
