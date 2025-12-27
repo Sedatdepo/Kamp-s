@@ -49,23 +49,22 @@ const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNod
 
 const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores, teacherProfile: TeacherProfile }) => {
     const grades = termGrades || {};
-    const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
     const exam1 = grades.exam1 || 0;
     const exam2 = grades.exam2 || 0;
-    const perf1Avg = calculateAverage(grades.scores1, perfCriteria);
-    const perf2Avg = calculateAverage(grades.scores2, perfCriteria);
+    const perf1 = grades.perf1 || 0;
+    const perf2 = grades.perf2 || 0;
     const projAvg = calculateAverage(grades.projectScores, projCriteria);
     const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1} />
             <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2} />
-            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1Avg} />
-            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2Avg} />
+            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1} />
+            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
             <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
         </div>
@@ -141,15 +140,14 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     
     const calculateTermAverage = (termGrades?: GradingScores) => {
         const grades = termGrades || {};
-        const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
         const averages = [
             grades.exam1,
             grades.exam2,
-            calculateAverage(grades.scores1, perfCriteria),
-            calculateAverage(grades.scores2, perfCriteria),
+            grades.perf1,
+            grades.perf2,
             calculateAverage(grades.projectScores, projCriteria),
             calculateAverage(grades.behaviorScores, behaviorCriteria)
         ].filter(avg => avg !== undefined && avg > 0);

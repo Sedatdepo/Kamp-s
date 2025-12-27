@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 import { exportStudentListToRtf } from '@/lib/word-export';
 import { Badge } from '@/components/ui/badge';
 import { StudentDetailModal } from './StudentDetailModal';
+import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 
 interface StudentListTabProps {
   classId: string;
@@ -104,8 +105,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
   const [bulkStudents, setBulkStudents] = useState('');
-  const [bulkGrades, setBulkGrades] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
@@ -200,35 +201,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     toast({ title: `${studentsToAdd.length} öğrenci eklendi!`});
   };
 
-  const handleBulkGrades = async () => {
-    const lines = bulkGrades.split('\n').filter(line => line.trim() !== '');
-    if (lines.length === 0) return;
-
-    const batch = writeBatch(db);
-    let updatedCount = 0;
-
-    lines.forEach(line => {
-        const [number, exam1, exam2] = line.trim().split(/\s+/);
-        const student = sortedStudents.find(s => s.number === number);
-        if (student) {
-            const studentRef = doc(db, 'students', student.id);
-            const dataToUpdate: any = {};
-            if (exam1 !== undefined) {
-                dataToUpdate['term1Grades.exam1'] = Number(exam1) || 0;
-            }
-            if (exam2 !== undefined) {
-                dataToUpdate['term2Grades.exam1'] = Number(exam2) || 0;
-            }
-            batch.update(studentRef, dataToUpdate);
-            updatedCount++;
-        }
-    });
-
-    await batch.commit();
-    setBulkGrades('');
-    toast({ title: `${updatedCount} öğrencinin notu güncellendi!` });
-  };
-
   const handleDeleteStudent = async (e: React.MouseEvent, studentId: string) => {
     e.stopPropagation();
     if(window.confirm("Bu öğrenciyi silmek istediğinize emin misiniz?")) {
@@ -275,21 +247,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                     <FileText className="mr-2 h-4 w-4" />
                     Listeyi Dışa Aktar
                 </Button>
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="outline"><ClipboardPaste className="mr-2 h-4 w-4" />Toplu Not Girişi</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Toplu Sınav Notu Girişi</DialogTitle>
-                            <DialogDescription>
-                                Excel veya tablolardan kopyaladığınız veriyi yapıştırın. Format: Okul No, 1. Sınav, 2. Sınav (Her veri arası TAB tuşu).
-                            </DialogDescription>
-                        </DialogHeader>
-                        <Textarea value={bulkGrades} onChange={e => setBulkGrades(e.target.value)} placeholder="123	85	90&#10;456	70	75" className="h-48 font-mono" />
-                        <DialogClose asChild><Button onClick={handleBulkGrades}>Notları Kaydet</Button></DialogClose>
-                    </DialogContent>
-                </Dialog>
+                <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
+                  <ClipboardPaste className="mr-2 h-4 w-4" />Toplu Not Girişi
+                </Button>
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Ekle</Button>
@@ -367,6 +327,11 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
             setIsOpen={(isOpen) => !isOpen && setSelectedStudent(null)}
         />
     )}
+    <BulkGradeEntryDialog 
+        isOpen={isBulkGradeOpen}
+        setIsOpen={setIsBulkGradeOpen}
+        students={sortedStudents}
+    />
     </>
   );
 }

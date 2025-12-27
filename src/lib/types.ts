@@ -61,10 +61,13 @@ export interface Class {
 export type GradingScores = {
     exam1?: number;
     exam2?: number;
-    scores1?: { [key: string]: number };
-    scores2?: { [key: string]: number };
+    perf1?: number;
+    perf2?: number;
     projectScores?: { [key: string]: number };
     behaviorScores?: { [key: string]: number };
+    // Deprecated, use perf1/perf2
+    scores1?: { [key: string]: number };
+    scores2?: { [key: string]: number };
 }
 
 export interface Student {
