@@ -113,7 +113,14 @@ export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
     }
   };
 
-  const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+  const sortedStudents = [...students].sort((a, b) => {
+    const numA = parseInt(a.number, 10);
+    const numB = parseInt(b.number, 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+    }
+    return a.number.localeCompare(b.number, 'tr');
+  });
 
   return (
     <Card>
@@ -152,11 +159,11 @@ export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedStudents.map((student, index) => {
+            {sortedStudents.map((student) => {
               const totalAbsence = student.attendance?.filter(a => a.status === 'absent').length || 0;
               return (
                 <TableRow key={student.id}>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{student.number}</TableCell>
                   <TableCell className="font-medium">{student.name}</TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center gap-1">

@@ -108,16 +108,15 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   
   const messagesQuery = useMemo(() => {
+    if (!students || students.length === 0) return null;
     const studentIds = students.map(s => s.id);
-    if (studentIds.length === 0) {
-      return null; // Return null if there are no students to avoid Firebase 'in' query error with empty array
-    }
     return query(
         collection(db, 'messages'), 
         where('senderId', 'in', studentIds), 
         where('receiverId', '==', teacherId)
     );
   }, [students, teacherId]);
+
   const { data: messagesFromStudents } = useFirestore<Message>('messagesFromStudentsToTeacher', messagesQuery);
 
   const unreadMessagesByStudent = useMemo(() => {
