@@ -13,7 +13,6 @@ import {
   updateDoc,
   addDoc,
   Timestamp,
-  orderBy,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,8 +144,7 @@ function Chat() {
         const participants = [studentId, teacherId].sort();
         return query(
             collection(db, 'messages'), 
-            where('participants', '==', participants),
-            orderBy('timestamp', 'asc')
+            where('participants', '==', participants)
         );
     }, [teacherId, studentId]);
     
