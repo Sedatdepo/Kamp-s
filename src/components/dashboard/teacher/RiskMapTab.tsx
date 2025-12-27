@@ -12,11 +12,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Edit, Save, X, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit, Save, X, AlertTriangle, ChevronsUpDown, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
+const commonRiskFactors = [
+    "Parçalanmış Aile",
+    "Ekonomik Zorluklar",
+    "Akran Zorbalığı",
+    "Devamsızlık Sorunu",
+    "Öğrenme Güçlüğü",
+    "Kaygı Bozukluğu",
+    "Dikkat Eksikliği ve Hiperaktivite",
+    "Okul Fobisi",
+    "Teknoloji Bağımlılığı",
+    "Aile İçi Şiddet",
+    "Sosyal İzolasyon",
+    "Düşük Akademik Başarı",
+    "Olumsuz Arkadaş Çevresi",
+    "Sağlık Sorunları (Kronik)",
+    "Göçmenlik/Kültürel Uyum Sorunları"
+];
+
 
 interface RiskMapTabProps {
   classId: string;
@@ -33,6 +55,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   
   const [newFactorLabel, setNewFactorLabel] = useState('');
   const [newFactorWeight, setNewFactorWeight] = useState<number>(3);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const handleStartEdit = (factor: RiskFactor) => {
     setIsEditing(factor.id);
@@ -68,7 +91,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
       await addDoc(collection(db, 'riskFactors'), {
           label: newFactorLabel,
           weight: newFactorWeight,
-          teacherId: teacherId // Genel faktörler için de bir sahip belirtilebilir.
+          teacherId: teacherId
       });
       setNewFactorLabel('');
       setNewFactorWeight(3);
@@ -104,7 +127,50 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
             )
         ))}
          <div className="flex gap-2 items-center pt-4 border-t">
-            <Input value={newFactorLabel} onChange={e => setNewFactorLabel(e.target.value)} placeholder="Yeni Faktör Adı" className="h-9"/>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={popoverOpen}
+                  className="w-[200px] justify-between"
+                >
+                  {newFactorLabel || "Faktör seçin/yazın..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[250px] p-0">
+                <Command>
+                  <CommandInput 
+                    placeholder="Faktör ara veya yaz..." 
+                    onValueChange={setNewFactorLabel}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Faktör bulunamadı.</CommandEmpty>
+                    <CommandGroup>
+                      {commonRiskFactors.map((factor) => (
+                        <CommandItem
+                          key={factor}
+                          value={factor}
+                          onSelect={(currentValue) => {
+                            setNewFactorLabel(currentValue === newFactorLabel ? "" : currentValue);
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              newFactorLabel === factor ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {factor}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input type="number" value={newFactorWeight} onChange={e => setNewFactorWeight(Number(e.target.value))} className="h-9 w-24" placeholder="Ağırlık"/>
             <Button onClick={handleAddFactor}><Plus className="mr-2 h-4 w-4"/> Ekle</Button>
         </div>

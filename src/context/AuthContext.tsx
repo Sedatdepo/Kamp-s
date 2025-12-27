@@ -34,10 +34,13 @@ async function seedDatabase() {
   ];
     
   const defaultRiskFactors = [
-      { label: "Parçalanmış Aile", weight: 3, teacherId: "default_teacher" },
-      { label: "Devamsızlık Sorunu", weight: 5, teacherId: "default_teacher" },
-      { label: "Düşük Notlar", weight: 4, teacherId: "default_teacher" },
-      { label: "Sosyal İzolasyon", weight: 2, teacherId: "default_teacher" },
+    { label: "Parçalanmış Aile", weight: 3, teacherId: "default_teacher" },
+    { label: "Ekonomik Zorluklar", weight: 4, teacherId: "default_teacher" },
+    { label: "Akran Zorbalığı", weight: 5, teacherId: "default_teacher" },
+    { label: "Devamsızlık Sorunu", weight: 5, teacherId: "default_teacher" },
+    { label: "Öğrenme Güçlüğü", weight: 3, teacherId: "default_teacher" },
+    { label: "Kaygı Bozukluğu", weight: 4, teacherId: "default_teacher" },
+    { label: "Dikkat Eksikliği ve Hiperaktivite", weight: 4, teacherId: "default_teacher" },
   ];
 
   try {
