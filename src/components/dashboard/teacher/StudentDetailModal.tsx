@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap, Clock, CalendarIcon } from 'lucide-react';
+import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -39,10 +39,10 @@ const calculateAverage = (scores: { [key: string]: number } | undefined, criteri
 const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNode, value: number }) => (
     <Card className="flex-1">
         <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">{icon} {title}</CardDescription>
+            <CardDescription className="flex items-center gap-2 text-xs">{icon} {title}</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-3xl font-bold">{value.toFixed(2)}</p>
+            <p className="text-2xl font-bold">{value.toFixed(2)}</p>
         </CardContent>
     </Card>
 );
@@ -53,13 +53,17 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
+    const exam1 = grades.exam1 || 0;
+    const exam2 = grades.exam2 || 0;
     const perf1Avg = calculateAverage(grades.scores1, perfCriteria);
     const perf2Avg = calculateAverage(grades.scores2, perfCriteria);
     const projAvg = calculateAverage(grades.projectScores, projCriteria);
     const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
-        <div className="flex gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+            <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1} />
+            <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2} />
             <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1Avg} />
             <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2Avg} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
@@ -142,14 +146,16 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
         const averages = [
+            grades.exam1,
+            grades.exam2,
             calculateAverage(grades.scores1, perfCriteria),
             calculateAverage(grades.scores2, perfCriteria),
             calculateAverage(grades.projectScores, projCriteria),
             calculateAverage(grades.behaviorScores, behaviorCriteria)
-        ].filter(avg => avg > 0);
+        ].filter(avg => avg !== undefined && avg > 0);
 
         if (averages.length === 0) return 0;
-        return averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
+        return averages.reduce((sum, avg) => sum + (avg || 0), 0) / averages.length;
     };
     
     const term1Avg = calculateTermAverage(student.term1Grades);
@@ -205,3 +211,5 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     </Dialog>
   );
 }
+
+    

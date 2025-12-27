@@ -59,6 +59,8 @@ export interface Class {
 }
 
 export type GradingScores = {
+    exam1?: number;
+    exam2?: number;
     scores1?: { [key: string]: number };
     scores2?: { [key: string]: number };
     projectScores?: { [key: string]: number };
@@ -135,3 +137,5 @@ export interface Message {
   participants: string[];
   isRead: boolean;
 }
+
+    
