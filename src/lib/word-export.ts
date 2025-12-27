@@ -50,6 +50,9 @@ const generateHtmlShell = (content: string, title: string) => {
         .no-border { border: none; }
         .small-text { font-size: 10pt; }
         .header-p { margin: 0; padding: 0; }
+        .word-export-desk-container { vertical-align: top; }
+        .word-export-desk { width: 100%; border: 1.5px solid #d97706; background-color: #fef3c7; border-collapse: collapse; }
+        .word-export-seat { width: 50%; height: 50px; border: 1px solid #d97706; padding: 4px; text-align: center; vertical-align: middle; font-size: 11px; }
       </style>
     </head>
     <body>
@@ -528,6 +531,60 @@ export function exportElectionResultsToRtf({
     const decision = `<br><p>${electionInfo.decisionText(winner, runnerUp, currentClass.name)} İş bu tutanak tarafımızdan imza altına alınmıştır.</p>`;
 
     const content = `${header}${introText}<br><table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${decision}${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
+// --- SEATING PLAN EXPORT ---
+interface SeatingPlanExportArgs {
+    seatingPlan: { [key: string]: Student };
+    rowCount: number;
+    colCount: number;
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportSeatingPlanToRtf({
+    seatingPlan,
+    rowCount,
+    colCount,
+    currentClass,
+    teacherProfile,
+}: SeatingPlanExportArgs) {
+    const reportTitle = "Sınıf Oturma Planı";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    let tableContent = '';
+    for (let r = 0; r < rowCount; r++) {
+        tableContent += '<tr>';
+        for (let c = 0; c < colCount; c++) {
+            const leftStudent = seatingPlan[`${r}-${c}-0`];
+            const rightStudent = seatingPlan[`${r}-${c}-1`];
+            tableContent += `
+                <td class="word-export-desk-container">
+                    <table class="word-export-desk">
+                        <tr>
+                            <td class="word-export-seat">${leftStudent ? leftStudent.name : ''}</td>
+                            <td class="word-export-seat">${rightStudent ? rightStudent.name : ''}</td>
+                        </tr>
+                    </table>
+                </td>
+            `;
+        }
+        tableContent += '</tr>';
+    }
+
+    const board = `<div class="center bold" style="background-color: #f2f2f2; padding: 10px; margin: 20px auto; width: 60%;">TAHTA / ÖĞRETMEN MASASI</div>`;
+
+    const content = `
+        ${header}
+        ${board}
+        <table style="border: none; border-spacing: 10px; width: 100%;">${tableContent}</table>
+        ${footer}
+    `;
+
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
