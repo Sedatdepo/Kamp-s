@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, User } from 'lucide-react';
-import { SidebarTrigger } from '../ui/sidebar';
 import { ProfileDialog } from './teacher/ProfileDialog';
 import { useState } from 'react';
 
@@ -37,7 +36,6 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-        {appUser?.type === 'teacher' && <SidebarTrigger className="md:hidden" />}
         <div className="ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
