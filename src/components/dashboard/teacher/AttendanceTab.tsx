@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Student } from '@/lib/types';
+import { Student, Class } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,11 +16,12 @@ import { format, parseISO } from 'date-fns';
 
 interface AttendanceTabProps {
   students: Student[];
+  currentClass: Class | null;
 }
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
-export function AttendanceTab({ students }: AttendanceTabProps) {
+export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
   const { toast } = useToast();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [attendanceRecords, setAttendanceRecords] = useState<{ [key: string]: AttendanceStatus }>({});
@@ -175,7 +176,7 @@ export function AttendanceTab({ students }: AttendanceTabProps) {
         <Dialog open={showSummary} onOpenChange={setShowSummary}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Devamsızlık Özeti - {format(parseISO(date), 'dd.MM.yyyy')}</DialogTitle>
+                    <DialogTitle>Devamsızlık Özeti - {currentClass?.name} - {format(parseISO(date), 'dd.MM.yyyy')}</DialogTitle>
                     <DialogDescription>
                         Aşağıdaki öğrenciler "Yok" olarak işaretlendi.
                     </DialogDescription>
@@ -184,7 +185,7 @@ export function AttendanceTab({ students }: AttendanceTabProps) {
                     {absentStudents.map(s => (
                         <li key={s.id} className="flex items-center gap-2 p-2 bg-red-50 rounded-md">
                            <XCircle className="h-5 w-5 text-red-500" />
-                           <span className="font-medium">{s.name}</span>
+                           <span className="font-medium">{s.name} ({s.number})</span>
                         </li>
                     ))}
                 </ul>

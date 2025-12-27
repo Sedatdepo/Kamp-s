@@ -77,6 +77,7 @@ export function TeacherDashboard() {
                    <TabsContent value="attendance" className="mt-4">
                     <AttendanceTab 
                       students={students}
+                      currentClass={currentClass}
                     />
                   </TabsContent>
                   <TabsContent value="grading" className="mt-4">
