@@ -33,7 +33,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-        <SidebarTrigger className="md:hidden" />
+      {appUser?.type === 'teacher' && <SidebarTrigger className="md:hidden" />}
       <div className="ml-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
