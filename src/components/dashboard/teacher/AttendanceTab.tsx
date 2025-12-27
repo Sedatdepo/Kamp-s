@@ -93,12 +93,14 @@ export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
 
       const currentlyAbsent = students.filter(s => attendanceRecords[s.id] === 'absent');
       
-      setAttendanceRecords({});
-
       if (currentlyAbsent.length > 0) {
         setAbsentStudents(currentlyAbsent);
         setShowSummary(true);
       }
+      
+      // Clear the records from the UI after saving.
+      setAttendanceRecords({});
+
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Yoklama kaydedilemedi.' });
     }
