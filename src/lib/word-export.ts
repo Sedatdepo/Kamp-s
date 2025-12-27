@@ -419,3 +419,42 @@ export function exportStudentInfoToRtf(student: Student, form: InfoForm, teacher
     const finalHtml = generateHtmlShell(content, "Öğrenci Bilgi Formu");
     downloadRtf(finalHtml, `${student.name.replace(/ /g, '_')}_Bilgi_Formu.rtf`);
 }
+
+
+// --- DUTY ROSTER EXPORT ---
+interface RosterItem {
+  date: string;
+  day: string;
+  student: string;
+}
+
+interface ExportDutyRosterArgs {
+    roster: RosterItem[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: ExportDutyRosterArgs) {
+    const reportTitle = "Sınıf Nöbetçi Öğrenci Listesi";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:33%;">Tarih</th>
+            <th class="horizontal" style="width:33%;">Gün</th>
+            <th class="horizontal" style="width:34%;">Nöbetçi Öğrenciler</th>
+        </tr>
+    `;
+    const dataRows = roster.map(item => `
+        <tr>
+            <td class="center">${item.date}</td>
+            <td class="center">${item.day}</td>
+            <td>${item.student}</td>
+        </tr>
+    `).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}

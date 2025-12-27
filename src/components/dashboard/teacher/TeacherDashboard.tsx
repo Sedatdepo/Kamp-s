@@ -20,6 +20,7 @@ import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTa
 import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
+import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab'; // Yeni eklendi
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const TABS = [
     { value: "students", label: "Öğrenci Listesi", icon: null },
     { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
+    { value: "dutyRoster", label: "Nöbet Listesi", icon: <Users className="w-4 h-4 mr-2"/> }, // Yeni eklendi
     { value: "grading", label: "Değerlendirme", icon: null },
     { value: "election", label: "Seçim", icon: <Vote className="w-4 h-4 mr-2" /> },
     { value: "projects", label: "Proje Dağılımı", icon: null },
@@ -82,6 +84,7 @@ function ClassSelectionScreen({
                 isProjectSelectionActive: false,
                 isRiskFormActive: false,
                 isInfoFormActive: false,
+                isElectionActive: false, // Yeni eklendi
                 code: generateClassCode(),
                 announcements: [],
                 homeworks: [],
@@ -322,7 +325,7 @@ export function TeacherDashboard() {
                     </div>
 
                     {/* Desktop Tabs */}
-                    <TabsList className="hidden md:grid w-full grid-cols-9">
+                    <TabsList className="hidden md:grid w-full grid-cols-10">
                         {TABS.map(tab => (
                             <TabsTrigger key={tab.value} value={tab.value}>
                                 {tab.icon}{tab.label}
@@ -341,6 +344,13 @@ export function TeacherDashboard() {
                         <AttendanceTab 
                         students={students}
                         currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="dutyRoster" className="mt-4">
+                        <DutyRosterTab 
+                            students={students}
+                            currentClass={currentClass}
+                            teacherProfile={teacherProfile}
                         />
                     </TabsContent>
                     <TabsContent value="grading" className="mt-4">
