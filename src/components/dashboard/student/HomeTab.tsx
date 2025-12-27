@@ -1,29 +1,23 @@
 // StudentDashboard.tsx
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Lesson, Message, TeacherProfile } from '@/lib/types';
+import { Class, Lesson } from '@/lib/types';
 import {
   collection,
   query,
   where,
   doc,
   updateDoc,
-  addDoc,
-  Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Loader2 } from 'lucide-react';
 
 function ProjectSelection() {
   const { appUser } = useAuth();
