@@ -91,9 +91,13 @@ function ClassSelectionScreen({
 
     const handleUpdateClass = async () => {
         if (!editingClass || !editingClass.name.trim()) return;
-        await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
-        toast({ title: 'Sınıf adı güncellendi' });
-        setEditingClass(null);
+        try {
+            await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
+            toast({ title: 'Sınıf adı güncellendi' });
+            setEditingClass(null);
+        } catch(error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf güncellenemedi.' });
+        }
     };
 
     const handleDeleteClass = async (classId: string) => {
@@ -179,18 +183,16 @@ function ClassSelectionScreen({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {classes.map(cls => (
                         <Card key={cls.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                            <div className="flex-1 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
-                                <CardHeader>
-                                    <CardTitle>{cls.name}</CardTitle>
-                                    <CardDescription>Sınıf Kodu: {cls.code}</CardDescription>
-                                </CardHeader>
+                            <div className="flex-1 cursor-pointer p-6" onClick={() => onSelectClass(cls.id)}>
+                                <CardTitle>{cls.name}</CardTitle>
+                                <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
                             </div>
-                            <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4">
+                            <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 mt-auto p-4">
                                 <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
                                 <div className="flex items-center">
                                     <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                         <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingClass(cls)}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingClass(cls);}}>
                                                 <Edit className="h-4 w-4"/>
                                             </Button>
                                         </DialogTrigger>
@@ -198,11 +200,16 @@ function ClassSelectionScreen({
                                             <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
                                             <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
                                             <DialogClose asChild>
-                                            <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                                <Button onClick={handleUpdateClass}>Kaydet</Button>
                                             </DialogClose>
                                         </DialogContent>
                                     </Dialog>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDeleteClass(cls.id)} disabled={deletingClassId === cls.id}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteClass(cls.id);
+                                        }} 
+                                        disabled={deletingClassId === cls.id}>
                                        {deletingClassId === cls.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
                                     </Button>
                                 </div>
@@ -353,5 +360,7 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
 
     
