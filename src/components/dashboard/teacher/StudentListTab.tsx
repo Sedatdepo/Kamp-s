@@ -294,8 +294,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                             </Button>
                         </DialogTrigger>
                     </Dialog>
-                    <Button variant="ghost" size="icon" onClick={() => resetPassword(student)}><KeyRound className="h-4 w-4"/></Button>
-                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDeleteStudent(student.id)}><Trash2 className="h-4 w-4"/></Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); resetPassword(student); }}><KeyRound className="h-4 w-4"/></Button>
+                    <Button variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4"/></Button>
                   </TableCell>
                 </TableRow>
               )) : (
