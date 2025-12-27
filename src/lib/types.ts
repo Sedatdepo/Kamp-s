@@ -1,11 +1,32 @@
 import type { Timestamp } from 'firebase/firestore';
 
+export interface Criterion {
+  id: string;
+  name: string;
+  max: number;
+}
+
+export interface ReportConfig {
+  schoolName?: string;
+  academicYear?: string;
+  semester?: '1' | '2';
+  lessonName?: string;
+  teacherName?: string;
+  principalName?: string;
+  date?: string;
+}
+
 export interface TeacherProfile {
   id: string;
   name: string;
   branch: string;
   schoolName: string;
   principalName: string;
+  // Grading Tool Data
+  reportConfig?: ReportConfig;
+  perfCriteria?: Criterion[];
+  projCriteria?: Criterion[];
+  behaviorCriteria?: Criterion[];
 }
 
 export interface Class {
@@ -33,6 +54,13 @@ export interface Student {
     term2: number | null;
   };
   referrals: string[];
+  
+  // From Grading Tool
+  scores1?: { [key: string]: number };
+  scores2?: { [key: string]: number };
+  projectScores?: { [key: string]: number };
+  behaviorScores?: { [key: string]: number };
+  hasProject?: boolean;
 }
 
 export interface Lesson {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -44,7 +43,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
     const sortedMessages = useMemo(() => {
         if (!messages) return [];
-        return [...messages].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+        return [...messages].sort((a, b) => (a.timestamp?.toMillis() ?? 0) - (b.timestamp?.toMillis() ?? 0));
     }, [messages]);
 
     const handleSendMessage = async () => {
@@ -72,7 +71,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                             <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     <p>{msg.text}</p>
-                                    <p className="text-xs opacity-70 text-right mt-1">{format(msg.timestamp.toDate(), 'p')}</p>
+                                    <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}</p>
                                 </div>
                             </div>
                         ))
@@ -123,12 +122,17 @@ export function StudentListTab({ classId }: StudentListTabProps) {
       number: newStudentNumber,
       behaviorScore: 100,
       needsPasswordChange: true,
-      password: newStudentNumber, // Initial password is the student number
+      password: newStudentNumber, 
       risks: [],
       projectPreferences: [],
       assignedLesson: null,
       grades: { term1: null, term2: null },
       referrals: [],
+      scores1: {},
+      scores2: {},
+      projectScores: {},
+      behaviorScores: {},
+      hasProject: false,
     });
     setNewStudentName('');
     setNewStudentNumber('');
@@ -145,7 +149,6 @@ export function StudentListTab({ classId }: StudentListTabProps) {
         return { number, name };
     }).filter(s => s.number && s.name);
 
-    // Numaraya göre sırala
     studentsToAdd.sort((a, b) => {
         const numA = parseInt(a.number, 10);
         const numB = parseInt(b.number, 10);
@@ -162,6 +165,7 @@ export function StudentListTab({ classId }: StudentListTabProps) {
             classId, name, number,
             behaviorScore: 100, needsPasswordChange: true, password: number,
             risks: [], projectPreferences: [], assignedLesson: null, grades: { term1: null, term2: null }, referrals: [],
+            scores1: {}, scores2: {}, projectScores: {}, behaviorScores: {}, hasProject: false,
         });
     });
 

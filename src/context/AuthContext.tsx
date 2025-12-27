@@ -1,12 +1,14 @@
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+
 
 export type AppUser = 
   | { type: 'teacher'; data: User; profile: TeacherProfile | null }
@@ -24,74 +26,35 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const publicRoutes = ['/', '/auth/register'];
 const studentChangePassRoute = '/auth/change-password';
 
-async function seedDatabase() {
-  const defaultLessons = [
-    { name: "Matematik Projesi", quota: 5, teacherId: "default_teacher" },
-    { name: "Bilim Fuarı", quota: 5, teacherId: "default_teacher" },
-    { name: "Tarih Raporu", quota: 5, teacherId: "default_teacher" },
-    { name: "Sanat Portfolyosu", quota: 5, teacherId: "default_teacher" },
-    { name: "Müzik Kompozisyonu", quota: 5, teacherId: "default_teacher" },
-  ];
+async function seedDatabase(teacherId: string) {
+    const teacherRef = doc(db, 'teachers', teacherId);
+    const teacherSnap = await getDoc(teacherRef);
+    if (!teacherSnap.exists()) return;
+
+    const teacherData = teacherSnap.data();
+
+    const updates: Partial<TeacherProfile> = {};
+
+    if (!teacherData.perfCriteria) updates.perfCriteria = INITIAL_PERF_CRITERIA;
+    if (!teacherData.projCriteria) updates.projCriteria = INITIAL_PROJ_CRITERIA;
+    if (!teacherData.behaviorCriteria) updates.behaviorCriteria = INITIAL_BEHAVIOR_CRITERIA;
+    if (!teacherData.reportConfig) {
+        updates.reportConfig = {
+            schoolName: teacherData.schoolName || "",
+            teacherName: teacherData.name || "",
+            principalName: teacherData.principalName || "",
+            academicYear: "2024-2025",
+            semester: "1",
+            lessonName: teacherData.branch || "",
+            date: new Date().toLocaleDateString('tr-TR')
+        };
+    }
     
-  const defaultRiskFactors = [
-    { label: "Parçalanmış Aile", weight: 3, teacherId: "default_teacher" },
-    { label: "Ekonomik Zorluklar", weight: 4, teacherId: "default_teacher" },
-    { label: "Akran Zorbalığı", weight: 5, teacherId: "default_teacher" },
-    { label: "Devamsızlık Sorunu", weight: 5, teacherId: "default_teacher" },
-    { label: "Öğrenme Güçlüğü", weight: 3, teacherId: "default_teacher" },
-    { label: "Kaygı Bozukluğu", weight: 4, teacherId: "default_teacher" },
-    { label: "Dikkat Eksikliği ve Hiperaktivite", weight: 4, teacherId: "default_teacher" },
-    { label: "Okul Fobisi", weight: 4, teacherId: "default_teacher" },
-    { label: "Teknoloji Bağımlılığı", weight: 3, teacherId: "default_teacher" },
-    { label: "Aile İçi Şiddet", weight: 5, teacherId: "default_teacher" },
-    { label: "Sosyal İzolasyon", weight: 3, teacherId: "default_teacher" },
-    { label: "Düşük Akademik Başarı", weight: 4, teacherId: "default_teacher" },
-  ];
-
-  try {
-      const lessonsCollection = collection(db, "lessons");
-      const riskFactorsCollection = collection(db, "riskFactors");
-
-      const lessonsSnapshot = await getDocs(query(lessonsCollection, where("teacherId", "==", "default_teacher")));
-      const riskFactorsSnapshot = await getDocs(query(riskFactorsCollection));
-  
-      const batch = writeBatch(db);
-      let operations = 0;
-  
-      if (lessonsSnapshot.empty) {
-          console.log("Seeding default lessons...");
-          defaultLessons.forEach(lesson => {
-              const docRef = doc(lessonsCollection);
-              batch.set(docRef, lesson);
-              operations++;
-          });
-      }
-  
-      // Delete all existing risk factors to ensure a clean slate
-      if (!riskFactorsSnapshot.empty) {
-        riskFactorsSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-            operations++;
-        });
-      }
-
-      // Add the Turkish risk factors
-      console.log("Seeding default Turkish risk factors...");
-      defaultRiskFactors.forEach(risk => {
-          const docRef = doc(riskFactorsCollection);
-          batch.set(docRef, risk);
-          operations++;
-      });
-  
-      if (operations > 0) {
-          await batch.commit();
-          console.log("Database seeded successfully.");
-      } else {
-          console.log("Database seeding not required or already up to date.");
-      }
-  } catch (error) {
-      console.error("Error seeding database:", error);
-  }
+    if (Object.keys(updates).length > 0) {
+        console.log("Seeding teacher profile with default grading data...");
+        await setDoc(teacherRef, updates, { merge: true });
+        console.log("Seeding complete.");
+    }
 }
 
 
@@ -103,14 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   
   useEffect(() => {
-    seedDatabase();
-  }, []);
-
-  useEffect(() => {
     setIsMounted(true);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
+        await seedDatabase(user.uid);
         const profileDoc = await getDoc(doc(db, 'teachers', user.uid));
         const profile = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile : null;
         setAppUser({ type: 'teacher', data: user, profile });
