@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile } from '@/lib/types';
-import { collection, query, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
