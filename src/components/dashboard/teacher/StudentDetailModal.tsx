@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Gauge, BookOpen, UserCheck, GraduationCap, Clock, CalendarIcon } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -46,7 +47,7 @@ const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNod
     </Card>
 );
 
-const TermGrades = ({ termGrades, teacherProfile }: { termGrades: GradingScores, teacherProfile: TeacherProfile }) => {
+const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores, teacherProfile: TeacherProfile }) => {
     const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
@@ -112,13 +113,14 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                                     {hw.dueDate && ` | Teslim: ${format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}`}
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`hw-check-${hw.id}`}
+                            <div className="flex items-center space-x-3">
+                                <Label htmlFor={`hw-switch-${hw.id}`} className="text-sm font-medium text-muted-foreground">Yapmadı</Label>
+                                <Switch
+                                    id={`hw-switch-${hw.id}`}
                                     checked={(hw.completedBy || []).includes(student.id)}
                                     onCheckedChange={(checked) => handleHomeworkStatusChange(hw, !!checked)}
                                 />
-                                <label htmlFor={`hw-check-${hw.id}`} className="text-sm font-medium">Yaptı</label>
+                                <Label htmlFor={`hw-switch-${hw.id}`} className="text-sm font-medium">Yaptı</Label>
                             </div>
                         </div>
                     ))
