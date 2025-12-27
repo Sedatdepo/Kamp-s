@@ -2,8 +2,6 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { TeacherSidebar } from '@/components/dashboard/teacher/TeacherSidebar';
 import { Header } from '@/components/dashboard/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,13 +19,16 @@ import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { ReportTab } from '@/components/dashboard/teacher/ReportTab';
 import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const TABS = [
     { value: "students", label: "Öğrenci Listesi", icon: null },
@@ -39,6 +40,158 @@ const TABS = [
     { value: "communication", label: "İletişim", icon: null },
     { value: "report", label: "Rapor", icon: null },
 ];
+
+function generateClassCode() {
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+
+function ClassSelectionScreen({ onSelectClass }: { onSelectClass: (id: string) => void; }) {
+    const { appUser } = useAuth();
+    const { toast } = useToast();
+    const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+
+    const classesQuery = useMemo(() => query(collection(db, 'classes'), where('teacherId', '==', teacherId)), [teacherId]);
+    const { data: classes, loading } = useFirestore<Class>('classes', teacherId ? classesQuery : null);
+
+    const [newClassName, setNewClassName] = useState('');
+    const [editingClass, setEditingClass] = useState<Class | null>(null);
+    const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+
+    const handleAddClass = async () => {
+        if (!newClassName.trim() || !teacherId) return;
+        try {
+            await addDoc(collection(db, 'classes'), {
+                name: newClassName,
+                teacherId: teacherId,
+                isProjectSelectionActive: false,
+                isRiskFormActive: false,
+                isInfoFormActive: false,
+                code: generateClassCode(),
+                announcements: []
+            });
+            toast({ title: 'Sınıf oluşturuldu!' });
+            setNewClassName('');
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf oluşturulamadı.' });
+        }
+    };
+
+    const handleUpdateClass = async () => {
+        if (!editingClass || !editingClass.name.trim()) return;
+        await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
+        toast({ title: 'Sınıf adı güncellendi' });
+        setEditingClass(null);
+    };
+
+    const handleDeleteClass = async (classId: string) => {
+        if (window.confirm("Bu sınıfı ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) {
+            setDeletingClassId(classId);
+            try {
+                const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+                const studentSnapshot = await getDocs(studentsQuery);
+                const batch = writeBatch(db);
+                studentSnapshot.forEach(studentDoc => {
+                    batch.delete(doc(db, 'students', studentDoc.id));
+                });
+                batch.delete(doc(db, 'classes', classId));
+                await batch.commit();
+                toast({ title: 'Sınıf ve öğrenciler silindi', variant: 'destructive' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinemedi.' });
+            } finally {
+                setDeletingClassId(null);
+            }
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+                        <CardContent><Skeleton className="h-4 w-1/2" /></CardContent>
+                    </Card>
+                ))}
+            </div>
+        );
+    }
+    
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold font-headline">Sınıflarınız</h1>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button><Plus className="mr-2 h-4 w-4" /> Yeni Sınıf Ekle</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Yeni Sınıf Oluştur</DialogTitle></DialogHeader>
+                        <div className="space-y-4">
+                            <Input 
+                                value={newClassName}
+                                onChange={(e) => setNewClassName(e.target.value)}
+                                placeholder="Sınıf Adı (örn. 9/A)"
+                            />
+                            <DialogClose asChild>
+                                <Button onClick={handleAddClass} className="w-full">Oluştur</Button>
+                            </DialogClose>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
+             {classes.length === 0 ? (
+                 <Card className="w-full text-center shadow-lg">
+                    <CardHeader>
+                        <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
+                            <School className="h-10 w-10 text-primary" />
+                        </div>
+                        <CardTitle className="mt-4 font-headline text-2xl">Henüz Sınıfınız Yok</CardTitle>
+                        <CardDescription>
+                           Öğrencilerinizi ve etkinliklerinizi yönetmeye başlamak için "Yeni Sınıf Ekle" butonuna tıklayarak ilk sınıfınızı oluşturun.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {classes.map(cls => (
+                        <Card key={cls.id} className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer">
+                            <CardHeader className="flex-1" onClick={() => onSelectClass(cls.id)}>
+                                <CardTitle>{cls.name}</CardTitle>
+                                <CardDescription>Sınıf Kodu: {cls.code}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4">
+                                <span>{cls.studentCount || 0} Öğrenci</span>
+                                <div className="flex items-center">
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="h-4 w-4"/></Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                             <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
+                                             <Input defaultValue={cls.name} onChange={(e) => setEditingClass({...cls, name: e.target.value})}/>
+                                             <DialogClose asChild><Button onClick={handleUpdateClass}>Kaydet</Button></DialogClose>
+                                        </DialogContent>
+                                    </Dialog>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDeleteClass(cls.id)} disabled={deletingClassId === cls.id}>
+                                       {deletingClassId === cls.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+             )}
+        </div>
+    );
+}
+
 
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -62,118 +215,105 @@ export function TeacherDashboard() {
   const activeTabLabel = TABS.find(t => t.value === activeTab)?.label;
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/40">
-        <TeacherSidebar selectedClassId={selectedClassId} onSelectClass={setSelectedClassId} />
-        <div className="flex flex-col flex-1">
+      <div className="flex flex-col min-h-screen w-full bg-muted/40">
           <Header />
           <main className="flex-1 p-4 sm:p-6">
-            {selectedClassId ? (
-              isLoading ? (
+            {!selectedClassId ? (
+                 <ClassSelectionScreen onSelectClass={setSelectedClassId} />
+            ) : isLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : (
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  {/* Mobile Dropdown Menu */}
-                  <div className="md:hidden mb-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                          {activeTabLabel}
-                          <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                        {TABS.map(tab => (
-                             <DropdownMenuItem key={tab.value} onClick={() => setActiveTab(tab.value)}>
-                                {tab.icon}{tab.label}
-                            </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Desktop Tabs */}
-                  <TabsList className="hidden md:grid w-full grid-cols-8">
-                     {TABS.map(tab => (
-                        <TabsTrigger key={tab.value} value={tab.value}>
-                            {tab.icon}{tab.label}
-                        </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  
-                  <TabsContent value="students" className="mt-4">
-                    <StudentListTab 
-                      classId={selectedClassId} 
-                      teacherProfile={teacherProfile}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                   <TabsContent value="attendance" className="mt-4">
-                    <AttendanceTab 
-                      students={students}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                  <TabsContent value="grading" className="mt-4">
-                    <GradingToolTab 
-                      classId={selectedClassId}
-                      teacherProfile={teacherProfile}
-                      students={students}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                  <TabsContent value="projects" className="mt-4">
-                    <ProjectDistributionTab 
-                      classId={selectedClassId}
-                      teacherProfile={teacherProfile}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                  <TabsContent value="risks" className="mt-4">
-                    <RiskMapTab 
-                      classId={selectedClassId}
-                      teacherProfile={teacherProfile}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                  <TabsContent value="forms" className="mt-4">
-                    <InfoFormsTab 
-                      classId={selectedClassId}
-                      teacherProfile={teacherProfile}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                   <TabsContent value="communication" className="mt-4">
-                    <CommunicationTab
-                      classId={selectedClassId}
-                      currentClass={currentClass}
-                    />
-                  </TabsContent>
-                  <TabsContent value="report" className="mt-4">
-                    <ReportTab />
-                  </TabsContent>
-                </Tabs>
-              )
             ) : (
-                <div className="flex items-center justify-center h-full">
-                    <Card className="w-full max-w-lg text-center shadow-lg">
-                        <CardHeader>
-                            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
-                                <School className="h-10 w-10 text-primary" />
-                            </div>
-                            <CardTitle className="mt-4 font-headline text-2xl">Yönetim Paneline Hoş Geldiniz</CardTitle>
-                            <CardDescription>
-                                Öğrencilerinizi ve etkinliklerinizi yönetmeye başlamak için lütfen kenar çubuğundan bir sınıf seçin. Henüz sınıfınız yoksa, kenar çubuğundan bir tane ekleyebilirsiniz.
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-              </div>
+                <div>
+                   <Button variant="ghost" onClick={() => setSelectedClassId(null)} className="mb-4">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Tüm Sınıflar
+                    </Button>
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    {/* Mobile Dropdown Menu */}
+                    <div className="md:hidden mb-4">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full">
+                            {activeTabLabel}
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                            {TABS.map(tab => (
+                                <DropdownMenuItem key={tab.value} onClick={() => setActiveTab(tab.value)}>
+                                    {tab.icon}{tab.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
+                    {/* Desktop Tabs */}
+                    <TabsList className="hidden md:grid w-full grid-cols-8">
+                        {TABS.map(tab => (
+                            <TabsTrigger key={tab.value} value={tab.value}>
+                                {tab.icon}{tab.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                    
+                    <TabsContent value="students" className="mt-4">
+                        <StudentListTab 
+                        classId={selectedClassId} 
+                        teacherProfile={teacherProfile}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="attendance" className="mt-4">
+                        <AttendanceTab 
+                        students={students}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="grading" className="mt-4">
+                        <GradingToolTab 
+                        classId={selectedClassId}
+                        teacherProfile={teacherProfile}
+                        students={students}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="projects" className="mt-4">
+                        <ProjectDistributionTab 
+                        classId={selectedClassId}
+                        teacherProfile={teacherProfile}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="risks" className="mt-4">
+                        <RiskMapTab 
+                        classId={selectedClassId}
+                        teacherProfile={teacherProfile}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="forms" className="mt-4">
+                        <InfoFormsTab 
+                        classId={selectedClassId}
+                        teacherProfile={teacherProfile}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="communication" className="mt-4">
+                        <CommunicationTab
+                        classId={selectedClassId}
+                        currentClass={currentClass}
+                        />
+                    </TabsContent>
+                    <TabsContent value="report" className="mt-4">
+                        <ReportTab />
+                    </TabsContent>
+                    </Tabs>
+                </div>
             )}
           </main>
-        </div>
       </div>
-    </SidebarProvider>
   );
 }
