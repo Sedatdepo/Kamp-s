@@ -931,7 +931,7 @@ export function exportHomeworkStatusToRtf({ students, currentClass, teacherProfi
     
     const homeworks = currentClass.homeworks || [];
 
-    const homeworkSections = homeworks.map(hw => {
+    let homeworkSections = homeworks.map(hw => {
         const completedStudents = students.filter(s => hw.completedBy?.includes(s.id));
         const notCompletedStudents = students.filter(s => !hw.completedBy?.includes(s.id));
 
