@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -22,8 +23,9 @@ import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
 import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
+import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -40,6 +42,7 @@ const TABS = [
     { value: "dutyRoster", label: "Nöbet Listesi", icon: <Users className="w-4 h-4 mr-2"/> },
     { value: "seatingPlan", label: "Oturma Planı", icon: <Grid className="w-4 h-4 mr-2"/> },
     { value: "grading", label: "Değerlendirme", icon: null },
+    { value: "planning", label: "Planlama", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
     { value: "election", label: "Seçim", icon: <Vote className="w-4 h-4 mr-2" /> },
     { value: "projects", label: "Proje Dağılımı", icon: null },
     { value: "homework", label: "Ödev", icon: <BookText className="w-4 h-4 mr-2"/> },
@@ -331,7 +334,7 @@ export function TeacherDashboard() {
                     </div>
 
                     {/* Desktop Tabs */}
-                    <TabsList className="hidden md:grid w-full grid-cols-11">
+                    <TabsList className="hidden md:grid w-full grid-cols-12">
                         {TABS.map(tab => (
                             <TabsTrigger key={tab.value} value={tab.value}>
                                 {tab.icon}{tab.label}
@@ -373,6 +376,9 @@ export function TeacherDashboard() {
                         students={students}
                         currentClass={currentClass}
                         />
+                    </TabsContent>
+                    <TabsContent value="planning" className="mt-4">
+                      <AnnualPlanTab />
                     </TabsContent>
                     <TabsContent value="election" className="mt-4">
                         <ElectionTab
@@ -421,4 +427,11 @@ export function TeacherDashboard() {
   );
 }
 
+const AnnualPlanTab = () => {
+    return (
+        <Suspense fallback={<div>Yükleniyor...</div>}>
+            <AnnualPlanBuilder />
+        </Suspense>
+    );
+};
     

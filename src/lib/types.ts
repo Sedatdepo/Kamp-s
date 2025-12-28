@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -85,6 +86,7 @@ export interface Class {
 
 export type GradingScores = {
     exam1?: number;
+    exam2?: number;
     perf1?: number;
     perf2?: number;
     projectScores?: { [key: string]: number };
@@ -163,4 +165,46 @@ export interface Message {
   timestamp: Timestamp;
   participants: string[];
   isRead: boolean;
+}
+
+// Annual Plan Types
+export interface AnnualPlanEntry {
+  id: string;
+  hafta: string;
+  saat: string;
+  unite: string;
+  konu: string;
+  cikti: string; // Kazanım
+  yontem: string;
+  arac: string;
+  degerlendirme: string;
+  isDone: boolean;
+  isSpecial: boolean; // For holidays etc.
+  dailyPlan: DailyPlan | null;
+}
+
+export interface DailyPlan {
+  id: string;
+  date: string;
+  konu: string;
+  kazanim: string;
+  materyal: string;
+  plan: {
+      giris: string;
+      gelisme: string;
+      sonuc: string;
+  };
+  degerlendirme: string;
+}
+
+export interface AnnualPlan {
+  id: number;
+  title: string;
+  rows: AnnualPlanEntry[];
+  dailyPlanSettings: {
+      okul: string;
+      mudur: string;
+      ogretmen: string;
+      ders: string;
+  };
 }
