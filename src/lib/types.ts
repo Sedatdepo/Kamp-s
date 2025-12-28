@@ -222,6 +222,28 @@ export interface Archivable {
     data: any;
 }
 
+export interface DilekceDocument extends Archivable {
+    data: {
+        id: string;
+        kurum: string;
+        kaymakamlik: string;
+        mudurluk: string;
+        sayi?: string;
+        konu?: string;
+        tarih: string;
+        muhatap: string;
+        muhatap_detay?: string;
+        ilgiler: { value: string }[];
+        metin: string;
+        kapanis: string;
+        imza_ad_soyad: string;
+        imza_unvan: string;
+        ekler: { value: string }[];
+        dagitim_geregi?: string;
+        dagitim_bilgi?: string;
+    }
+}
+
 export interface DutyRosterDocument extends Archivable {
     data: RosterItem[];
 }
@@ -253,29 +275,5 @@ export interface RiskMapDocument extends Archivable {
 export interface CommunicationDocument extends Archivable {
     data: {
         announcements: Announcement[];
-    }
-}
-
-
-// Dilekçe Types
-export interface DilekceDocument extends Archivable {
-    data: {
-        id: string;
-        kurum: string;
-        kaymakamlik: string;
-        mudurluk: string;
-        sayi?: string;
-        konu?: string;
-        tarih: string;
-        muhatap: string;
-        muhatap_detay?: string;
-        ilgiler: { value: string }[];
-        metin: string;
-        kapanis: string;
-        imza_ad_soyad: string;
-        imza_unvan: string;
-        ekler: { value: string }[];
-        dagitim_geregi?: string;
-        dagitim_bilgi?: string;
     }
 }

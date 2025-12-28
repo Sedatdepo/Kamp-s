@@ -274,7 +274,7 @@ const TABS_CONFIG = {
   "grading": { label: "Değerlendirme Aracı", icon: Gauge },
   "planning": { label: "Planlama Araçları", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
-  "projects": { label: "Ödev & Proje Takibi", icon: BookText },
+  "projects": { label: "Proje Dağıtımı", icon: BookText },
   "homework": { label: "Ödev Takibi", icon: BookText },
   "risks": { label: "Rehberlik Araçları", icon: List },
   "forms": { label: "Bilgi Formları", icon: FileSignature },
@@ -380,7 +380,8 @@ export function TeacherDashboard() {
                 <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
-                <MenuCard icon={<BookText />} title="Ödev & Proje Takibi" description="Proje dağıtımı ve ödev yönetimi." onClick={() => setActiveTab('projects')} />
+                <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
+                <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
                 <MenuCard icon={<List />} title="Rehberlik Araçları" description="Risk haritası ve bilgi formları." onClick={() => setActiveTab('risks')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
             </div>
