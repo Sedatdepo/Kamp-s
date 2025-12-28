@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
-  Plus, Trash2, Save, X, ArrowDown, Download, 
+  Plus, Trash2, Save, X, ArrowDown, Download, Upload,
   PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useDatabase } from '@/hooks/use-database';
 import type { AnnualPlan, AnnualPlanEntry } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
 
 // --- YARDIMCI BİLEŞENLER ---
 const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {
@@ -218,7 +219,8 @@ export function AnnualPlanTab() {
     const [activePlanId, setActivePlanId] = useState<number | null>(null);
 
     const searchParams = useSearchParams();
-    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     useEffect(() => {
         if (!loading && db.annualPlans.length > 0) {
             const planIdFromUrl = searchParams.get('planId');
@@ -270,6 +272,55 @@ export function AnnualPlanTab() {
         setDb(prev => ({ ...prev, annualPlans: [...prev.annualPlans, newPlan] }));
         setActivePlanId(newPlan.id);
     };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!activePlan) return;
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Assuming header is in the first row, data starts from the second.
+                const newRows: AnnualPlanEntry[] = json.slice(1).map((row, index) => ({
+                    id: `${activePlan.id}-${Date.now()}-${index}`,
+                    hafta: String(row[0] || ''),
+                    saat: String(row[1] || '2'),
+                    unite: String(row[2] || ''),
+                    konu: String(row[3] || ''),
+                    cikti: String(row[4] || ''),
+                    yontem: String(row[5] || ''),
+                    arac: String(row[6] || ''),
+                    degerlendirme: String(row[7] || ''),
+                    isDone: false,
+                    isSpecial: false,
+                    dailyPlan: null,
+                }));
+                
+                const updatedPlan = { ...activePlan, rows: [...activePlan.rows, ...newRows] };
+                updatePlan(updatedPlan);
+                toast({ title: 'Plan İçe Aktarıldı', description: `${newRows.length} hafta başarıyla eklendi.` });
+
+            } catch (error) {
+                console.error("Error parsing file:", error);
+                toast({ variant: 'destructive', title: 'Dosya Okuma Hatası', description: 'Seçilen dosya geçerli bir formatta değil.' });
+            }
+        };
+        reader.readAsArrayBuffer(file);
+
+        // Reset file input to allow re-uploading the same file
+        event.target.value = '';
+    };
     
     const onOpenDailyPlan = (row: AnnualPlanEntry) => {
         toast({
@@ -289,7 +340,7 @@ export function AnnualPlanTab() {
             konu: item.konu,
             cikti: item.kazanim,
             yontem: '',
-            arac: '',
+arac: '',
             degerlendirme: '',
             isDone: false,
             isSpecial: false,
@@ -408,6 +459,13 @@ export function AnnualPlanTab() {
                     onDistributeDates={onDistributeDates}
                 />
             </Suspense>
+             <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+                accept=".xlsx, .xls"
+            />
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
@@ -418,6 +476,10 @@ export function AnnualPlanTab() {
                     <Button variant="outline" onClick={() => setIsPanelOpen(true)}>
                         <Settings className="mr-2" />
                         Yönetim Paneli
+                    </Button>
+                    <Button variant="outline" onClick={handleImportClick}>
+                        <Upload className="mr-2" />
+                        İçe Aktar (.xlsx)
                     </Button>
                     <Button>
                         <Download className="mr-2" />
