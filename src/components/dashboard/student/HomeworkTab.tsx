@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, User } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -78,6 +78,14 @@ export function HomeworkTab() {
                         <div className="flex items-center gap-2 font-medium text-red-600">
                             <CalendarIcon className="h-3 w-3" />
                             <span>Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</span>
+                        </div>
+                    )}
+                    {(hw.teacherName || hw.lessonName) && (
+                        <div className="flex items-center gap-2 text-slate-600 font-medium">
+                            <User className="h-3 w-3" />
+                            <span className="font-semibold">{hw.teacherName || ''}</span>
+                            {hw.teacherName && hw.lessonName && <span>-</span>}
+                            <span>{hw.lessonName || ''}</span>
                         </div>
                     )}
                  </div>

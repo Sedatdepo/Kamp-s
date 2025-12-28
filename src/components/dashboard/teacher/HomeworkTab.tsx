@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Class, Homework } from '@/lib/types';
+import { Class, Homework, TeacherProfile } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -29,9 +29,10 @@ import { useAuth } from '@/hooks/useAuth';
 interface HomeworkTabProps {
   classId: string;
   currentClass: Class | null;
+  teacherProfile: TeacherProfile | null;
 }
 
-export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
+export function HomeworkTab({ classId, currentClass, teacherProfile }: HomeworkTabProps) {
   const [homeworkText, setHomeworkText] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const { toast } = useToast();
@@ -52,6 +53,8 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
       dueDate: dueDate?.toISOString(),
       seenBy: [],
       completedBy: [],
+      teacherName: teacherProfile?.name,
+      lessonName: teacherProfile?.branch,
     };
 
     const classRef = doc(db, 'classes', classId);
@@ -142,6 +145,13 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
                             <div className="flex items-center gap-2 font-medium text-red-600">
                                 <CalendarIcon className="h-3 w-3" />
                                 <span>Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</span>
+                            </div>
+                         )}
+                         {(hw.teacherName || hw.lessonName) && (
+                            <div className="flex items-center gap-2 font-medium text-slate-600">
+                                <span className="font-semibold">{hw.teacherName || ''}</span>
+                                {hw.teacherName && hw.lessonName && <span>-</span>}
+                                <span>{hw.lessonName || ''}</span>
                             </div>
                          )}
                       </div>
