@@ -13,7 +13,6 @@ function LoginPageContent() {
   const { appUser, loading } = useAuth();
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'teacher';
-  const classCode = searchParams.get('code');
   const isInvite = searchParams.get('invite') === 'true';
 
   if ((loading || appUser) && !isInvite) {
@@ -52,7 +51,9 @@ function LoginPageContent() {
               <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
             </CardHeader>
             <CardContent>
-              <StudentLoginForm defaultClassCode={classCode} />
+              <Suspense fallback={<div>Yükleniyor...</div>}>
+                <StudentLoginForm />
+              </Suspense>
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,28 +10,34 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
 });
 
-interface StudentLoginFormProps {
-  defaultClassCode?: string | null;
-}
-
-export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
+export function StudentLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { signInStudent } = useAuth();
+  const searchParams = useSearchParams();
+  const classCodeFromUrl = searchParams.get('code');
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      classCode: defaultClassCode || '',
+      classCode: '',
       studentNumber: '',
     },
   });
+
+  useEffect(() => {
+    if (classCodeFromUrl) {
+      form.setValue('classCode', classCodeFromUrl.toUpperCase());
+    }
+  }, [classCodeFromUrl, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
