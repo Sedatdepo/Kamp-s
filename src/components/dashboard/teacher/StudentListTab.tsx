@@ -28,6 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -397,7 +398,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
       <ClassInviteDialog
         isOpen={isInviteOpen}
         setIsOpen={setIsInviteOpen}
-        classCode={currentClass.code!}
+        classCode={currentClass.code}
         className={currentClass.name}
       />
     )}
