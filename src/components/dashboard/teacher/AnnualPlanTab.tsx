@@ -4,11 +4,11 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, Trash2, Save, X, ArrowDown, Download, Upload,
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Home
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
-import type { AnnualPlan, AnnualPlanEntry } from '@/lib/types';
+import type { AnnualPlan, AnnualPlanEntry, DailyPlan } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
@@ -211,12 +211,98 @@ const ControlPanelModal = ({
     );
 };
 
+const DailyPlanEditor = ({ row, plan, onSave, onBack }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function }) => {
+    const [dailyPlan, setDailyPlan] = useState<DailyPlan>(row.dailyPlan || {
+        id: `dp-${row.id}`,
+        date: row.hafta,
+        konu: row.konu,
+        kazanim: row.cikti,
+        materyal: plan.rows.find(r => r.id === row.id)?.arac || 'Ders Kitabı, EBA',
+        plan: {
+            giris: 'Giriş Bölümü',
+            gelisme: 'Gelişme Bölümü',
+            sonuc: 'Sonuç Bölümü'
+        },
+        degerlendirme: plan.rows.find(r => r.id === row.id)?.degerlendirme || 'Soru-cevap'
+    });
+
+    const updateField = (field: keyof DailyPlan, value: string) => {
+        setDailyPlan(prev => ({...prev, [field]: value}));
+    };
+    
+    const updatePlanPart = (part: keyof DailyPlan['plan'], value: string) => {
+        setDailyPlan(prev => ({...prev, plan: {...prev.plan, [part]: value}}));
+    };
+
+    const addQuickText = (field: 'materyal' | 'degerlendirme', text: string) => {
+        setDailyPlan(prev => ({...prev, [field]: prev[field] ? `${prev[field]}, ${text}` : text }));
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+            <Button onClick={() => onBack()} variant="ghost" className="mb-6">
+                <ArrowLeft className="mr-2" /> Yıllık Plana Geri Dön
+            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800">Günlük Plan Detayları</h2>
+                    <p className="text-gray-500 text-sm mb-4">Hafta: {row.hafta}</p>
+                </div>
+                <div className="text-right">
+                    <Button onClick={() => onSave(dailyPlan)}>
+                        <Save className="mr-2"/> Günlük Planı Kaydet
+                    </Button>
+                </div>
+            </div>
+            
+            <div className="mt-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="font-bold text-gray-600">Konu</label>
+                        <AutoResizingTextarea value={dailyPlan.konu} onChange={(e: any) => updateField('konu', e.target.value)} className="w-full p-2 border rounded mt-1 bg-gray-50"/>
+                    </div>
+                    <div>
+                        <label className="font-bold text-gray-600">Kazanımlar</label>
+                        <AutoResizingTextarea value={dailyPlan.kazanim} onChange={(e: any) => updateField('kazanim', e.target.value)} className="w-full p-2 border rounded mt-1 bg-gray-50"/>
+                    </div>
+                </div>
+                <div>
+                    <label className="font-bold text-gray-600">Giriş Bölümü (İlgi Çekme, Güdüleme)</label>
+                    <AutoResizingTextarea value={dailyPlan.plan.giris} onChange={(e: any) => updatePlanPart('giris', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                </div>
+                 <div>
+                    <label className="font-bold text-gray-600">Gelişme Bölümü (Konu Anlatımı, Etkinlikler)</label>
+                    <AutoResizingTextarea value={dailyPlan.plan.gelisme} onChange={(e: any) => updatePlanPart('gelisme', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                </div>
+                 <div>
+                    <label className="font-bold text-gray-600">Sonuç Bölümü (Özet, Tekrar)</label>
+                    <AutoResizingTextarea value={dailyPlan.plan.sonuc} onChange={(e: any) => updatePlanPart('sonuc', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="font-bold text-gray-600">Materyal & Araç-Gereç</label>
+                        <AutoResizingTextarea value={dailyPlan.materyal} onChange={(e: any) => updateField('materyal', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                         <QuickAddButtons items={['Ders Kitabı', 'EBA', 'Akıllı Tahta', 'Çalışma Kağıdı']} onAdd={(text: string) => addQuickText('materyal', text)} />
+                    </div>
+                    <div>
+                        <label className="font-bold text-gray-600">Ölçme & Değerlendirme</label>
+                        <AutoResizingTextarea value={dailyPlan.degerlendirme} onChange={(e: any) => updateField('degerlendirme', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                         <QuickAddButtons items={['Soru-Cevap', 'Çalışma Kağıdı', 'Gözlem Formu', 'Kısa Sınav']} onAdd={(text: string) => addQuickText('degerlendirme', text)} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 export function AnnualPlanTab() {
     const { db, setDb, loading } = useDatabase();
     const { toast } = useToast();
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     
     const [activePlanId, setActivePlanId] = useState<number | null>(null);
+    const [activeRow, setActiveRow] = useState<AnnualPlanEntry | null>(null);
 
     const searchParams = useSearchParams();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -291,7 +377,6 @@ export function AnnualPlanTab() {
                 const worksheet = workbook.Sheets[sheetName];
                 const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                // Assuming header is in the first row, data starts from the second.
                 const newRows: AnnualPlanEntry[] = json.slice(1).map((row, index) => ({
                     id: `${activePlan.id}-${Date.now()}-${index}`,
                     hafta: String(row[0] || ''),
@@ -317,17 +402,19 @@ export function AnnualPlanTab() {
             }
         };
         reader.readAsArrayBuffer(file);
-
-        // Reset file input to allow re-uploading the same file
         event.target.value = '';
     };
     
     const onOpenDailyPlan = (row: AnnualPlanEntry) => {
-        toast({
-            title: "Günlük Plan Açılıyor",
-            description: `${row.konu} konusu için günlük plan sayfası açılacak.`,
-        });
+        setActiveRow(row);
     };
+
+    const handleSaveDailyPlan = (dailyPlan: DailyPlan) => {
+        if (!activePlan || !activeRow) return;
+        const updatedRows = activePlan.rows.map(r => r.id === activeRow.id ? {...r, dailyPlan: dailyPlan} : r);
+        updatePlan({...activePlan, rows: updatedRows});
+        toast({title: 'Günlük plan kaydedildi!'});
+    }
     
     const onImportCurriculum = (curriculumName: keyof typeof MOCK_CURRICULUM) => {
         if (!activePlan) return;
@@ -340,7 +427,7 @@ export function AnnualPlanTab() {
             konu: item.konu,
             cikti: item.kazanim,
             yontem: '',
-arac: '',
+            arac: '',
             degerlendirme: '',
             isDone: false,
             isSpecial: false,
@@ -422,25 +509,28 @@ arac: '',
         return <div className="flex h-screen items-center justify-center">Yükleniyor...</div>;
     }
 
-    if (db.annualPlans.length === 0) {
-        return (
-            <div className="flex h-screen items-center justify-center text-center p-8">
-                <div className="bg-white p-12 rounded-2xl shadow-lg border border-gray-100 max-w-lg">
-                    <Home size={48} className="mx-auto text-blue-500 mb-6" />
-                    <h1 className="text-3xl font-bold text-gray-800">Yıllık Plan Oluşturucuya Hoş Geldiniz</h1>
-                    <p className="text-gray-500 mt-4 mb-8">
-                        Ders planlarınızı kolayca oluşturun, yönetin ve dışa aktarın. Başlamak için ilk yıllık planınızı oluşturun.
-                    </p>
-                    <Button size="lg" onClick={() => addPlan('Yeni Yıllık Plan')}>
-                        <PlusCircle className="mr-2" /> İlk Planını Oluştur
-                    </Button>
+    if (!activePlan) {
+        if (db.annualPlans.length === 0) {
+            return (
+                <div className="flex h-screen items-center justify-center text-center p-8">
+                    <div className="bg-white p-12 rounded-2xl shadow-lg border border-gray-100 max-w-lg">
+                        <Home size={48} className="mx-auto text-blue-500 mb-6" />
+                        <h1 className="text-3xl font-bold text-gray-800">Yıllık Plan Oluşturucuya Hoş Geldiniz</h1>
+                        <p className="text-gray-500 mt-4 mb-8">
+                            Ders planlarınızı kolayca oluşturun, yönetin ve dışa aktarın. Başlamak için ilk yıllık planınızı oluşturun.
+                        </p>
+                        <Button size="lg" onClick={() => addPlan('Yeni Yıllık Plan')}>
+                            <PlusCircle className="mr-2" /> İlk Planını Oluştur
+                        </Button>
+                    </div>
                 </div>
-            </div>
-        )
+            )
+        }
+        return <div className="flex h-screen items-center justify-center">Aktif plan bulunamadı. Lütfen bir plan seçin veya oluşturun.</div>
     }
-    
-    if(!activePlan) {
-      return <div className="flex h-screen items-center justify-center">Aktif plan bulunamadı. Lütfen bir plan seçin veya oluşturun.</div>
+
+    if (activeRow) {
+        return <DailyPlanEditor row={activeRow} plan={activePlan} onSave={handleSaveDailyPlan} onBack={() => setActiveRow(null)} />;
     }
 
     return (
