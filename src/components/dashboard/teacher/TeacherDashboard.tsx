@@ -1,17 +1,8 @@
 
-
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from '@/components/ui/button';
 import { StudentListTab } from '@/components/dashboard/teacher/StudentListTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
@@ -25,7 +16,7 @@ import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
 import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -35,21 +26,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
-const TABS = [
-    { value: "students", label: "Öğrenci Listesi", icon: null },
-    { value: "attendance", label: "Yoklama", icon: <Calendar className="w-4 h-4 mr-2"/> },
-    { value: "dutyRoster", label: "Nöbet Listesi", icon: <Users className="w-4 h-4 mr-2"/> },
-    { value: "seatingPlan", label: "Oturma Planı", icon: <Grid className="w-4 h-4 mr-2"/> },
-    { value: "grading", label: "Değerlendirme", icon: null },
-    { value: "planning", label: "Planlama", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
-    { value: "election", label: "Seçim", icon: <Vote className="w-4 h-4 mr-2" /> },
-    { value: "projects", label: "Proje Dağılımı", icon: null },
-    { value: "homework", label: "Ödev", icon: <BookText className="w-4 h-4 mr-2"/> },
-    { value: "risks", label: "Risk Haritası", icon: null },
-    { value: "forms", label: "Bilgi Formları", icon: null },
-    { value: "communication", label: "İletişim", icon: null },
-];
+type ActiveTab = "dashboard" | "students" | "attendance" | "dutyRoster" | "seatingPlan" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce";
+
+const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
+  return (
+    <Card 
+      onClick={!isDisabled ? onClick : undefined} 
+      className={`cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative ${isDisabled ? 'opacity-50 cursor-not-allowed bg-muted/50' : ''}`}
+    >
+      <CardHeader className="flex flex-row items-center gap-4">
+        <div className="bg-primary/10 text-primary p-3 rounded-lg">
+          {icon}
+        </div>
+        <div>
+          <CardTitle className="font-headline text-lg group-hover:text-primary">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+      </CardHeader>
+    </Card>
+  );
+};
+
 
 function generateClassCode() {
   const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
@@ -265,10 +264,27 @@ function ClassSelectionScreen({
     );
 }
 
+const TABS_CONFIG = {
+  "dashboard": { label: "Panel", icon: School },
+  "students": { label: "Öğrenci Listesi", icon: Users },
+  "attendance": { label: "Yoklama", icon: Calendar },
+  "dutyRoster": { label: "Nöbet Listesi", icon: Users },
+  "seatingPlan": { label: "Oturma Planı", icon: Grid },
+  "grading": { label: "Değerlendirme Aracı", icon: Gauge },
+  "planning": { label: "Yıllık Plan", icon: ClipboardList },
+  "election": { label: "Sınıf Seçimleri", icon: Vote },
+  "projects": { label: "Proje Yönetimi", icon: BookText },
+  "homework": { label: "Ödev Takibi", icon: BookText },
+  "risks": { label: "Risk Haritası", icon: List },
+  "forms": { label: "Bilgi Formları", icon: FileText },
+  "communication": { label: "İletişim", icon: MessageCircle },
+  "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
+} as const;
+
 
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("students");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
   const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
@@ -291,136 +307,70 @@ export function TeacherDashboard() {
 
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
   
-  const activeTabLabel = TABS.find(t => t.value === activeTab)?.label;
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-full p-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    
+    if (!selectedClassId) {
+        return <ClassSelectionScreen onSelectClass={setSelectedClassId} students={allStudents} />;
+    }
+
+    switch(activeTab) {
+        case 'students': return <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+        case 'attendance': return <AttendanceTab students={students} currentClass={currentClass} />;
+        case 'dutyRoster': return <DutyRosterTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />;
+        case 'seatingPlan': return <SeatingPlanTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />;
+        case 'grading': return <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={students} currentClass={currentClass} />;
+        case 'planning': return <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
+        case 'election': return <ElectionTab students={students} currentClass={currentClass} />;
+        case 'projects': return <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+        case 'homework': return <HomeworkTab classId={selectedClassId} currentClass={currentClass} />;
+        case 'risks': return <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+        case 'forms': return <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+        case 'communication': return <CommunicationTab classId={selectedClassId} currentClass={currentClass} />;
+        case 'dilekce': return <DilekceTab teacherProfile={teacherProfile} />;
+        case 'dashboard':
+        default:
+            return (
+                <div className="grid gap-6">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="font-headline text-2xl">{currentClass?.name || 'Sınıf Paneli'}</CardTitle>
+                                <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Tüm Sınıflar
+                                </Button>
+                            </div>
+                            <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
+                        </CardHeader>
+                    </Card>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
+                        <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                        <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
+                        <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
+                        <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
+                        <MenuCard icon={<BookText />} title="Ödev & Proje Takibi" description="Proje dağıtımı ve ödev yönetimi." onClick={() => setActiveTab('projects')} />
+                        <MenuCard icon={<List />} title="Rehberlik Araçları" description="Risk haritası ve bilgi formları." onClick={() => setActiveTab('risks')} />
+                        <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
+                    </div>
+                </div>
+            );
+    }
+  }
+
 
   return (
       <div className="flex flex-col min-h-screen w-full bg-muted/40">
           <Header />
           <main className="flex-1 p-4 sm:p-6">
-            {!selectedClassId ? (
-                 <ClassSelectionScreen onSelectClass={setSelectedClassId} students={allStudents} />
-            ) : isLoading ? (
-                <div className="flex justify-center items-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : (
-                <div>
-                   <Button variant="ghost" onClick={() => setSelectedClassId(null)} className="mb-4">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Tüm Sınıflar
-                    </Button>
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    {/* Mobile Dropdown Menu */}
-                    <div className="md:hidden mb-4">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                            {TABS.find(t => t.value === activeTab)?.icon}
-                            {activeTabLabel}
-                            <ChevronDown className="ml-auto h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                            {TABS.map(tab => (
-                                <DropdownMenuItem key={tab.value} onClick={() => setActiveTab(tab.value)}>
-                                    {tab.icon}{tab.label}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    {/* Desktop Tabs */}
-                    <TabsList className="hidden md:grid w-full grid-cols-12">
-                        {TABS.map(tab => (
-                            <TabsTrigger key={tab.value} value={tab.value}>
-                                {tab.icon}{tab.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    
-                    <TabsContent value="students" className="mt-4">
-                        <StudentListTab 
-                        classId={selectedClassId} 
-                        teacherProfile={teacherProfile}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="attendance" className="mt-4">
-                        <AttendanceTab 
-                        students={students}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="dutyRoster" className="mt-4">
-                        <DutyRosterTab 
-                            students={students}
-                            currentClass={currentClass}
-                            teacherProfile={teacherProfile}
-                        />
-                    </TabsContent>
-                    <TabsContent value="seatingPlan" className="mt-4">
-                        <SeatingPlanTab 
-                            students={students}
-                            currentClass={currentClass}
-                            teacherProfile={teacherProfile}
-                        />
-                    </TabsContent>
-                    <TabsContent value="grading" className="mt-4">
-                        <GradingToolTab 
-                        classId={selectedClassId}
-                        teacherProfile={teacherProfile}
-                        students={students}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="planning" className="mt-4">
-                      <Suspense fallback={<div>Yükleniyor...</div>}>
-                        <AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} />
-                      </Suspense>
-                    </TabsContent>
-                    <TabsContent value="election" className="mt-4">
-                        <ElectionTab
-                          students={students}
-                          currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="projects" className="mt-4">
-                        <ProjectDistributionTab 
-                        classId={selectedClassId}
-                        teacherProfile={teacherProfile}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="homework" className="mt-4">
-                        <HomeworkTab
-                        classId={selectedClassId}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="risks" className="mt-4">
-                        <RiskMapTab 
-                        classId={selectedClassId}
-                        teacherProfile={teacherProfile}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="forms" className="mt-4">
-                        <InfoFormsTab 
-                        classId={selectedClassId}
-                        teacherProfile={teacherProfile}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    <TabsContent value="communication" className="mt-4">
-                        <CommunicationTab
-                        classId={selectedClassId}
-                        currentClass={currentClass}
-                        />
-                    </TabsContent>
-                    </Tabs>
-                </div>
-            )}
+            {renderContent()}
           </main>
       </div>
   );
