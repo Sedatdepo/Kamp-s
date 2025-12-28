@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -240,6 +241,12 @@ export interface GradingDocument extends Archivable {
         term: 'term1' | 'term2';
         // A snapshot of the relevant grade parts of all students in a class
         studentGrades: { studentId: string, grades: GradingScores }[];
+    }
+}
+
+export interface RiskMapDocument extends Archivable {
+    data: {
+        studentRisks: { studentId: string, risks: string[] }[];
     }
 }
 

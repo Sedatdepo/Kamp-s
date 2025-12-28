@@ -1,9 +1,10 @@
+
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, RiskFactor, TeacherProfile } from '@/lib/types';
+import { Student, Class, RiskFactor, TeacherProfile, RiskMapDocument } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,6 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -214,13 +217,33 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
 export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTabProps) {
   const { appUser, db } = useAuth();
   const { toast } = useToast();
+  const { db: localDb, setDb: setLocalDb, loading: localDbLoading } = useDatabase();
+  const { riskMapDocuments = [] } = localDb;
+  
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: liveStudents, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
   const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
+  const displayedStudents = useMemo(() => {
+    if (selectedRecordId) {
+      const record = riskMapDocuments.find(d => d.id === selectedRecordId);
+      if (record) {
+        return liveStudents.map(student => {
+          const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
+          return {
+            ...student,
+            risks: archivedData ? archivedData.risks : [],
+          };
+        });
+      }
+    }
+    return liveStudents;
+  }, [selectedRecordId, riskMapDocuments, liveStudents]);
+  
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', classId);
@@ -242,7 +265,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   const handleExport = () => {
     if(currentClass) {
         exportRiskMapToRtf({
-            students,
+            students: displayedStudents,
             riskFactors,
             currentClass,
             teacherProfile
@@ -264,9 +287,48 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     if (score > 5) return 'bg-yellow-100 text-yellow-800';
     return '';
   };
+  
+  const handleSaveToArchive = () => {
+    if (!currentClass) return;
+
+    const studentRisks = liveStudents.map(student => ({
+      studentId: student.id,
+      risks: student.risks,
+    }));
+
+    const newRecord: RiskMapDocument = {
+      id: `riskmap_${Date.now()}`,
+      name: `Risk Haritası - ${new Date().toLocaleDateString('tr-TR')}`,
+      date: new Date().toISOString(),
+      classId: currentClass.id,
+      data: { studentRisks },
+    };
+
+    setLocalDb(prev => ({
+      ...prev,
+      riskMapDocuments: [...(prev.riskMapDocuments || []), newRecord],
+    }));
+
+    toast({ title: 'Başarılı', description: 'Risk haritası arşive kaydedildi.' });
+  };
+  
+  const handleNewRecord = useCallback(() => {
+    setSelectedRecordId(null);
+  }, []);
+
+  const handleDeleteRecord = useCallback(() => {
+    if (!selectedRecordId) return;
+    setLocalDb(prev => ({
+      ...prev,
+      riskMapDocuments: (prev.riskMapDocuments || []).filter(d => d.id !== selectedRecordId),
+    }));
+    handleNewRecord();
+    toast({ title: 'Silindi', description: 'Kayıt arşivden silindi.', variant: 'destructive' });
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
 
-  const isLoading = studentsLoading || factorsLoading;
+  const isLoading = studentsLoading || factorsLoading || localDbLoading;
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -275,7 +337,9 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="font-headline">Risk Haritası</CardTitle>
+                <CardTitle className="font-headline">
+                    {selectedRecordId ? 'Arşivlenmiş Risk Haritası' : 'Canlı Risk Haritası'}
+                </CardTitle>
                 <CardDescription>Öğrencilerin risk faktörlerini ve toplam risk puanlarını görüntüleyin.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -283,15 +347,17 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
                     <FileText className="mr-2 h-4 w-4" />
                     RTF Olarak Dışa Aktar
                 </Button>
-                <div className="flex items-center space-x-2">
-                    <Switch
-                    id="risk-form-toggle"
-                    checked={currentClass?.isRiskFormActive || false}
-                    onCheckedChange={handleToggleChange}
-                    disabled={!currentClass}
-                    />
-                    <Label htmlFor="risk-form-toggle">Form Aktif</Label>
-                </div>
+                {selectedRecordId === null && (
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                        id="risk-form-toggle"
+                        checked={currentClass?.isRiskFormActive || false}
+                        onCheckedChange={handleToggleChange}
+                        disabled={!currentClass}
+                        />
+                        <Label htmlFor="risk-form-toggle">Form Aktif</Label>
+                    </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -311,7 +377,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.length > 0 ? students.map(student => {
+                  {displayedStudents.length > 0 ? displayedStudents.map(student => {
                     const riskScore = getRiskScore(student.risks);
                     return (
                       <TableRow key={student.id} className={getRiskColor(riskScore)}>
@@ -358,7 +424,20 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
         </Card>
       </div>
        <div>
-            { appUser?.type === 'teacher' && <RiskFactorManager teacherId={appUser.data.uid} /> }
+            <div className="space-y-4">
+                 <RecordManager
+                    records={(riskMapDocuments || []).filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
+                    selectedRecordId={selectedRecordId}
+                    onSelectRecord={setSelectedRecordId}
+                    onNewRecord={handleNewRecord}
+                    onDeleteRecord={handleDeleteRecord}
+                    noun="Risk Haritası"
+                />
+                 <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
+                    <Save className="mr-2 h-4 w-4" /> Canlı Veriyi Arşive Kaydet
+                </Button>
+            </div>
+            { teacherId && <div className="mt-4"><RiskFactorManager teacherId={teacherId} /></div> }
         </div>
     </div>
   );
