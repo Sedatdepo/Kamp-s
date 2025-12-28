@@ -201,8 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db) throw new Error("Veritabanı başlatılamadı.");
     
-    // 1. Find the class with the given code
-    const classQuery = query(collection(db, 'classes'), where('code', '==', classCode));
+    // Find the class with the given code
+    const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
     const classSnapshot = await getDocs(classQuery);
 
     if (classSnapshot.empty) {
@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const classDoc = classSnapshot.docs[0];
     const classId = classDoc.id;
 
-    // 2. Find the student in that class with the given number
+    // Find the student in that class with the given number
     const studentQuery = query(
         collection(db, 'students'), 
         where('classId', '==', classId),
@@ -226,8 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentDoc = studentSnapshot.docs[0];
     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
 
+    // Check if the password (which is the student number) matches
     if (studentData.password !== studentNumber) {
-        throw new Error('Geçersiz şifre.');
+        throw new Error('Şifre (öğrenci numarası) hatalı.');
     }
     
     localStorage.setItem('studentUser', JSON.stringify(studentData));

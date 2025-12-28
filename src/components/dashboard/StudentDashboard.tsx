@@ -21,23 +21,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
+import { Skeleton } from '../ui/skeleton';
 
-const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean }) => (
-  <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
-    <CardHeader className="flex flex-row items-center gap-4">
-      <div className="bg-primary/10 text-primary p-3 rounded-lg">
-        {icon}
-      </div>
-      <div>
-        <CardTitle className="font-headline text-lg group-hover:text-primary">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </div>
-       {hasNotification && (
-         <Badge variant="destructive" className="absolute top-2 right-2 h-3 w-3 p-0 flex items-center justify-center text-xs"></Badge>
-       )}
-    </CardHeader>
-  </Card>
-);
+const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean }) => {
+  if (isLoading) {
+    return <Skeleton className="h-28 w-full" />;
+  }
+  
+  return (
+    <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
+      <CardHeader className="flex flex-row items-center gap-4">
+        <div className="bg-primary/10 text-primary p-3 rounded-lg">
+          {icon}
+        </div>
+        <div>
+          <CardTitle className="font-headline text-lg group-hover:text-primary">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+        {hasNotification && (
+          <Badge variant="destructive" className="absolute top-2 right-2 h-3 w-3 p-0 flex items-center justify-center text-xs"></Badge>
+        )}
+      </CardHeader>
+    </Card>
+  );
+};
 
 
 export function StudentDashboard() {
@@ -47,7 +54,7 @@ export function StudentDashboard() {
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
+  const { data: classData, loading: classLoading } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
   const currentClass = useMemo(() => (classData.length > 0 ? classData[0] : null), [classData]);
 
   useEffect(() => {
@@ -103,20 +110,51 @@ export function StudentDashboard() {
                     <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
-                    {currentClass?.seatingPlan && <MenuCard icon={<Grid />} title="Oturma Planım" description="Sınıftaki yerini gör." onClick={() => setActiveTab('seatingPlan')} />}
-                    {currentClass?.dutyRoster && currentClass.dutyRoster.length > 0 && (
-                        <MenuCard icon={<Users />} title="Nöbetçi Listesi" description="Sınıf nöbetçi listesini gör." onClick={() => setActiveTab('dutyRoster')} />
-                    )}
-                    {currentClass?.isElectionActive && (
-                        <MenuCard icon={<Vote />} title="Seçim" description="Sınıf seçimleri için oy kullan." onClick={() => setActiveTab('election')} hasNotification={notifications.election} />
-                    )}
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Grid />} 
+                        title="Oturma Planım" 
+                        description="Sınıftaki yerini gör." 
+                        onClick={() => currentClass?.seatingPlan && setActiveTab('seatingPlan')} 
+                    />
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Users />} 
+                        title="Nöbetçi Listesi" 
+                        description="Sınıf nöbetçi listesini gör." 
+                        onClick={() => currentClass?.dutyRoster && currentClass.dutyRoster.length > 0 && setActiveTab('dutyRoster')} 
+                    />
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Vote />} 
+                        title="Seçim" 
+                        description="Sınıf seçimleri için oy kullan." 
+                        onClick={() => currentClass?.isElectionActive && setActiveTab('election')} 
+                        hasNotification={notifications.election} 
+                    />
+
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
-                    {currentClass?.isRiskFormActive && (
-                        <MenuCard icon={<ShieldAlert />} title="Risk Formu" description="Kişisel risk faktörlerini işaretle." onClick={() => setActiveTab('risks')} hasNotification={notifications.riskForm} />
-                    )}
-                    {currentClass?.isInfoFormActive && (
-                        <MenuCard icon={<FileText />} title="Bilgi Formu" description="Kişisel ve ailevi bilgilerini doldur." onClick={() => setActiveTab('info')} hasNotification={notifications.infoForm} />
-                    )}
+
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<ShieldAlert />} 
+                        title="Risk Formu" 
+                        description="Kişisel risk faktörlerini işaretle." 
+                        onClick={() => currentClass?.isRiskFormActive && setActiveTab('risks')} 
+                        hasNotification={notifications.riskForm} 
+                    />
+
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<FileText />} 
+                        title="Bilgi Formu" 
+                        description="Kişisel ve ailevi bilgilerini doldur." 
+                        onClick={() => currentClass?.isInfoFormActive && setActiveTab('info')} 
+                        hasNotification={notifications.infoForm} 
+                    />
                 </div>
             </div>
         </main>
