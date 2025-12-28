@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Class, Homework, TeacherProfile } from '@/lib/types';
+import { Class, Homework, TeacherProfile, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookText, CalendarIcon, Clock, Trash2, Send } from 'lucide-react';
+import { BookText, CalendarIcon, Clock, Trash2, Send, FileText } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -25,14 +25,16 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 
 interface HomeworkTabProps {
   classId: string;
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
+  students: Student[];
 }
 
-export function HomeworkTab({ classId, currentClass, teacherProfile }: HomeworkTabProps) {
+export function HomeworkTab({ classId, currentClass, teacherProfile, students }: HomeworkTabProps) {
   const [homeworkText, setHomeworkText] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const { toast } = useToast();
@@ -85,6 +87,18 @@ export function HomeworkTab({ classId, currentClass, teacherProfile }: HomeworkT
       toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
     }
   };
+
+  const handleExport = () => {
+    if (currentClass && teacherProfile && students) {
+      exportHomeworkStatusToRtf({
+        students,
+        currentClass,
+        teacherProfile
+      });
+    } else {
+        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.'})
+    }
+  };
   
   const homeworks = currentClass?.homeworks || [];
 
@@ -126,8 +140,16 @@ export function HomeworkTab({ classId, currentClass, teacherProfile }: HomeworkT
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
-            <CardDescription>Bu sınıfa daha önce gönderilmiş ödevler.</CardDescription>
+             <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
+                    <CardDescription>Bu sınıfa daha önce gönderilmiş ödevler.</CardDescription>
+                </div>
+                 <Button variant="outline" onClick={handleExport} disabled={homeworks.length === 0}>
+                    <FileText className="mr-2 h-4 w-4"/>
+                    Raporu Dışa Aktar
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">

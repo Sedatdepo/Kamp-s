@@ -332,7 +332,7 @@ export function TeacherDashboard() {
         'planning': <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>,
         'election': <ElectionTab students={students} currentClass={currentClass} />,
         'projects': <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} />,
+        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={students} />,
         'risks': <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,

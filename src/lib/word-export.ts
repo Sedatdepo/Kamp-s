@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -912,6 +912,58 @@ export function exportDilekceToRtf(data: DilekceDocument['data']) {
     `;
 
     const title = data.konu || "Dilekce";
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- HOMEWORK STATUS EXPORT ---
+interface ExportHomeworkStatusArgs {
+    students: Student[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+
+export function exportHomeworkStatusToRtf({ students, currentClass, teacherProfile }: ExportHomeworkStatusArgs) {
+    const reportTitle = "Ödev Durum Raporu";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+    
+    const homeworks = currentClass.homeworks || [];
+
+    const homeworkSections = homeworks.map(hw => {
+        const completedStudents = students.filter(s => hw.completedBy?.includes(s.id));
+        const notCompletedStudents = students.filter(s => !hw.completedBy?.includes(s.id));
+
+        return `
+            <h3>Ödev: ${hw.text}</h3>
+            <p class="small-text">Veriliş: ${format(new Date(hw.assignedDate), 'dd.MM.yyyy')} ${hw.dueDate ? `| Teslim: ${format(new Date(hw.dueDate), 'dd.MM.yyyy')}` : ''}</p>
+            <br>
+            <table style="width: 100%;">
+                <tr>
+                    <td style="width: 50%; vertical-align: top;">
+                        <b>Yapanlar (${completedStudents.length})</b>
+                        <ol>
+                            ${completedStudents.map(s => `<li>${s.name} (${s.number})</li>`).join('') || '<li>-</li>'}
+                        </ol>
+                    </td>
+                    <td style="width: 50%; vertical-align: top;">
+                        <b>Yapmayanlar (${notCompletedStudents.length})</b>
+                        <ol>
+                            ${notCompletedStudents.map(s => `<li>${s.name} (${s.number})</li>`).join('') || '<li>-</li>'}
+                        </ol>
+                    </td>
+                </tr>
+            </table>
+            <br>
+        `;
+    }).join('');
+    
+    if (homeworks.length === 0) {
+        homeworkSections = "<p>Bu sınıfa henüz ödev atanmamış.</p>";
+    }
+
+    const content = `${header}${homeworkSections}${footer}`;
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
