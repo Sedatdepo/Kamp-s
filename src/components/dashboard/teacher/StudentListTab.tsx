@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -39,6 +39,7 @@ import { exportStudentListToRtf } from '@/lib/word-export';
 import { Badge } from '@/components/ui/badge';
 import { StudentDetailModal } from './StudentDetailModal';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
+import { ClassInviteDialog } from './ClassInviteDialog';
 
 interface StudentListTabProps {
   classId: string;
@@ -117,6 +118,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const [bulkStudents, setBulkStudents] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
@@ -226,13 +228,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const resetPassword = async (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
-    if(window.confirm(`${student.name} adlı öğrencinin şifresini okul numarası (${student.number}) olarak sıfırlamak istediğinize emin misiniz?`)) {
-        await updateDoc(doc(db, 'students', student.id), {
-            password: student.number,
-            needsPasswordChange: true
-        });
-        toast({title: 'Şifre sıfırlandı!'})
-    }
   }
 
   const copyClassCode = () => {
@@ -255,6 +250,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                     {currentClass?.code}
                     <ClipboardCopy className="ml-2 h-3 w-3" />
                   </Badge>
+                  <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(true)}>
+                    <LinkIcon className="mr-2 h-4 w-4" /> Sınıf Davet Linki
+                  </Button>
                 </div>
             </div>
             <div className="flex items-center gap-2">
@@ -318,7 +316,31 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                             </DialogTrigger>
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => resetPassword(e, student)}><KeyRound className="h-4 w-4"/></Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon"><KeyRound className="h-4 w-4"/></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Şifre Sıfırlama</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        {student.name} adlı öğrencinin şifresini okul numarası ({student.number}) olarak sıfırlamak istediğinize emin misiniz? Öğrenci bir sonraki girişinde yeni şifre belirlemek zorunda kalacaktır.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={async () => {
+                                      await updateDoc(doc(db, 'students', student.id), {
+                                          password: student.number,
+                                          needsPasswordChange: true
+                                      });
+                                      toast({title: 'Şifre sıfırlandı!'})
+                                    }}>
+                                        Sıfırla
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
@@ -365,6 +387,14 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         setIsOpen={setIsBulkGradeOpen}
         students={sortedStudents}
     />
+     {currentClass && (
+      <ClassInviteDialog
+        isOpen={isInviteOpen}
+        setIsOpen={setIsInviteOpen}
+        classCode={currentClass.code}
+        className={currentClass.name}
+      />
+    )}
     </>
   );
 }

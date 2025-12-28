@@ -19,7 +19,11 @@ const formSchema = z.object({
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
 });
 
-export function StudentLoginForm() {
+interface StudentLoginFormProps {
+  defaultClassCode?: string | null;
+}
+
+export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { signInStudent } = useAuth();
@@ -27,7 +31,7 @@ export function StudentLoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      classCode: '',
+      classCode: defaultClassCode || '',
       studentNumber: '',
     },
   });

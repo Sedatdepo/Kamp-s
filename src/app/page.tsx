@@ -6,9 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TeacherLoginForm } from '@/components/auth/TeacherLoginForm';
 import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { appUser, loading } = useAuth();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'teacher';
+  const classCode = searchParams.get('code');
 
   // AuthProvider yönlendirmeyi halleder. Eğer kullanıcı zaten varsa veya sayfa yükleniyorsa
   // bu bileşen bir "skeleton" göstermemeli, çünkü AuthProvider zaten
@@ -20,7 +25,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Tabs defaultValue="teacher" className="w-full max-w-md">
+      <Tabs defaultValue={defaultTab} className="w-full max-w-md">
         <div className="flex flex-col items-center text-center mb-6">
           <Logo className="h-12 w-12 text-primary" />
           <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
@@ -50,11 +55,19 @@ export default function LoginPage() {
               <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
             </CardHeader>
             <CardContent>
-              <StudentLoginForm />
+              <StudentLoginForm defaultClassCode={classCode} />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Yükleniyor...</div>}>
+      <LoginPageContent />
+    </Suspense>
+  )
 }
