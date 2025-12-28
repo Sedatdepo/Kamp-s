@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -89,6 +90,7 @@ export function StudentDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
+        <Header />
         <main className="flex-1 p-4 sm:p-6">
             <div className="grid gap-6">
                 <Card>
