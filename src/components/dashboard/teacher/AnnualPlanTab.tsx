@@ -12,6 +12,9 @@ import type { AnnualPlan, AnnualPlanEntry, DailyPlan } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
+import { exportDailyPlanToRtf } from '@/lib/word-export';
+import { useAuth } from '@/hooks/useAuth';
+import { Class, TeacherProfile } from '@/lib/types';
 
 // --- YARDIMCI BİLEŞENLER ---
 const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {
@@ -211,7 +214,7 @@ const ControlPanelModal = ({
     );
 };
 
-const DailyPlanEditor = ({ row, plan, onSave, onBack }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function }) => {
+const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport, teacherProfile }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function, onExport: Function, teacherProfile: TeacherProfile | null }) => {
     const [dailyPlan, setDailyPlan] = useState<DailyPlan>(row.dailyPlan || {
         id: `dp-${row.id}`,
         date: row.hafta,
@@ -234,25 +237,42 @@ const DailyPlanEditor = ({ row, plan, onSave, onBack }: { row: AnnualPlanEntry, 
         setDailyPlan(prev => ({...prev, plan: {...prev.plan, [part]: value}}));
     };
 
-    const addQuickText = (field: 'materyal' | 'degerlendirme', text: string) => {
-        setDailyPlan(prev => ({...prev, [field]: prev[field] ? `${prev[field]}, ${text}` : text }));
+    const addQuickText = (field: 'materyal' | 'degerlendirme' | 'plan.giris' | 'plan.gelisme' | 'plan.sonuc', text: string) => {
+        if (field.startsWith('plan.')) {
+            const part = field.split('.')[1] as keyof DailyPlan['plan'];
+            setDailyPlan(prev => ({ ...prev, plan: { ...prev.plan, [part]: prev.plan[part] ? `${prev.plan[part]}, ${text}` : text } }));
+        } else {
+            setDailyPlan(prev => ({ ...prev, [field]: prev[field] ? `${prev[field]}, ${text}` : text }));
+        }
     };
+    
+    const handleExport = () => {
+        if (!plan.dailyPlanSettings.okul || !plan.dailyPlanSettings.mudur) {
+            alert('Lütfen önce Yıllık Plan Ayarlarından okul ve müdür adını girin.');
+            return;
+        }
+        onExport(dailyPlan);
+    }
 
     return (
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <Button onClick={() => onBack()} variant="ghost" className="mb-6">
-                <ArrowLeft className="mr-2" /> Yıllık Plana Geri Dön
-            </Button>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800">Günlük Plan Detayları</h2>
-                    <p className="text-gray-500 text-sm mb-4">Hafta: {row.hafta}</p>
-                </div>
-                <div className="text-right">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <Button onClick={() => onBack()} variant="ghost" className="mb-6 md:mb-0">
+                    <ArrowLeft className="mr-2" /> Yıllık Plana Geri Dön
+                </Button>
+                <div className="flex gap-2">
+                    <Button onClick={() => handleExport()}>
+                        <Download className="mr-2"/> Word Olarak İndir
+                    </Button>
                     <Button onClick={() => onSave(dailyPlan)}>
                         <Save className="mr-2"/> Günlük Planı Kaydet
                     </Button>
                 </div>
+            </div>
+            
+             <div className="mt-6 border-b pb-6 mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Günlük Plan Detayları</h2>
+                <p className="text-gray-500 text-sm">Hafta: {row.hafta} | Ünite: {row.unite}</p>
             </div>
             
             <div className="mt-6 space-y-6">
@@ -269,14 +289,17 @@ const DailyPlanEditor = ({ row, plan, onSave, onBack }: { row: AnnualPlanEntry, 
                 <div>
                     <label className="font-bold text-gray-600">Giriş Bölümü (İlgi Çekme, Güdüleme)</label>
                     <AutoResizingTextarea value={dailyPlan.plan.giris} onChange={(e: any) => updatePlanPart('giris', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                    <QuickAddButtons items={['Önceki dersin tekrarı', 'Beyin fırtınası', 'Soru-cevap']} onAdd={(text: string) => addQuickText('plan.giris', text)} />
                 </div>
                  <div>
                     <label className="font-bold text-gray-600">Gelişme Bölümü (Konu Anlatımı, Etkinlikler)</label>
                     <AutoResizingTextarea value={dailyPlan.plan.gelisme} onChange={(e: any) => updatePlanPart('gelisme', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                    <QuickAddButtons items={['Anlatım', 'Gösteri', 'Problem çözme', 'Grup çalışması']} onAdd={(text: string) => addQuickText('plan.gelisme', text)} />
                 </div>
                  <div>
                     <label className="font-bold text-gray-600">Sonuç Bölümü (Özet, Tekrar)</label>
                     <AutoResizingTextarea value={dailyPlan.plan.sonuc} onChange={(e: any) => updatePlanPart('sonuc', e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                     <QuickAddButtons items={['Özet', 'Değerlendirme', 'Gelecek konuya hazırlık']} onAdd={(text: string) => addQuickText('plan.sonuc', text)} />
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -296,7 +319,7 @@ const DailyPlanEditor = ({ row, plan, onSave, onBack }: { row: AnnualPlanEntry, 
 };
 
 
-export function AnnualPlanTab() {
+export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
     const { db, setDb, loading } = useDatabase();
     const { toast } = useToast();
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -349,10 +372,10 @@ export function AnnualPlanTab() {
             title: title || 'Yeni Yıllık Plan',
             rows: [],
             dailyPlanSettings: {
-                okul: "Okul Adı",
-                mudur: "Müdür Adı",
-                ogretmen: "Öğretmen Adı",
-                ders: "Ders Adı",
+                okul: teacherProfile?.schoolName || "Okul Adı",
+                mudur: teacherProfile?.principalName || "Müdür Adı",
+                ogretmen: teacherProfile?.name || "Öğretmen Adı",
+                ders: teacherProfile?.branch || "Ders Adı",
             }
         };
         setDb(prev => ({ ...prev, annualPlans: [...prev.annualPlans, newPlan] }));
@@ -414,6 +437,19 @@ export function AnnualPlanTab() {
         const updatedRows = activePlan.rows.map(r => r.id === activeRow.id ? {...r, dailyPlan: dailyPlan} : r);
         updatePlan({...activePlan, rows: updatedRows});
         toast({title: 'Günlük plan kaydedildi!'});
+    }
+
+    const handleExportDailyPlan = (dailyPlan: DailyPlan) => {
+        if (!activePlan || !activeRow || !currentClass) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
+            return;
+        }
+        exportDailyPlanToRtf({
+            dailyPlan,
+            annualPlanEntry: activeRow,
+            currentClass: currentClass,
+            teacherProfile: teacherProfile || null,
+        });
     }
     
     const onImportCurriculum = (curriculumName: keyof typeof MOCK_CURRICULUM) => {
@@ -514,7 +550,7 @@ export function AnnualPlanTab() {
             return (
                 <div className="flex h-screen items-center justify-center text-center p-8">
                     <div className="bg-white p-12 rounded-2xl shadow-lg border border-gray-100 max-w-lg">
-                        <Home size={48} className="mx-auto text-blue-500 mb-6" />
+                        <List size={48} className="mx-auto text-blue-500 mb-6" />
                         <h1 className="text-3xl font-bold text-gray-800">Yıllık Plan Oluşturucuya Hoş Geldiniz</h1>
                         <p className="text-gray-500 mt-4 mb-8">
                             Ders planlarınızı kolayca oluşturun, yönetin ve dışa aktarın. Başlamak için ilk yıllık planınızı oluşturun.
@@ -530,7 +566,14 @@ export function AnnualPlanTab() {
     }
 
     if (activeRow) {
-        return <DailyPlanEditor row={activeRow} plan={activePlan} onSave={handleSaveDailyPlan} onBack={() => setActiveRow(null)} />;
+        return <DailyPlanEditor 
+            row={activeRow} 
+            plan={activePlan} 
+            onSave={handleSaveDailyPlan} 
+            onBack={() => setActiveRow(null)}
+            onExport={handleExportDailyPlan}
+            teacherProfile={teacherProfile}
+        />;
     }
 
     return (
@@ -570,10 +613,6 @@ export function AnnualPlanTab() {
                     <Button variant="outline" onClick={handleImportClick}>
                         <Upload className="mr-2" />
                         İçe Aktar (.xlsx)
-                    </Button>
-                    <Button>
-                        <Download className="mr-2" />
-                        Planı İndir (.pdf)
                     </Button>
                 </div>
             </div>

@@ -376,7 +376,7 @@ export function TeacherDashboard() {
                     </TabsContent>
                     <TabsContent value="planning" className="mt-4">
                       <Suspense fallback={<div>Yükleniyor...</div>}>
-                        <AnnualPlanTab />
+                        <AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} />
                       </Suspense>
                     </TabsContent>
                     <TabsContent value="election" className="mt-4">

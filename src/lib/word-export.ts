@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -416,6 +416,12 @@ export function exportStudentInfoToRtf(student: Student, form: InfoForm, teacher
 
 
 // --- DUTY ROSTER EXPORT ---
+interface ExportDutyRosterArgs {
+    roster: RosterItem[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+
 export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: ExportDutyRosterArgs) {
     const reportTitle = "Sınıf Nöbetçi Öğrenci Listesi";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
@@ -714,4 +720,95 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     `;
 
     downloadRtf(generateHtmlShell(content, title), `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DAILY PLAN EXPORT ---
+interface ExportDailyPlanArgs {
+  dailyPlan: DailyPlan;
+  annualPlanEntry: AnnualPlanEntry;
+  currentClass: Class;
+  teacherProfile: TeacherProfile | null;
+}
+
+export function exportDailyPlanToRtf({
+  dailyPlan,
+  annualPlanEntry,
+  currentClass,
+  teacherProfile,
+}: ExportDailyPlanArgs) {
+  const reportTitle = "GÜNLÜK DERS PLANI";
+  const header = `
+    <div class="center">
+        <p class="bold">${teacherProfile?.reportConfig?.schoolName || 'Okul Adı'}</p>
+        <p class="bold">${teacherProfile?.reportConfig?.academicYear || 'Eğitim-Öğretim Yılı'} EĞİTİM-ÖĞRETİM YILI</p>
+        <p class="bold">${teacherProfile?.reportConfig?.lessonName || 'Ders Adı'} DERSİ ${reportTitle}</p>
+    </div>
+    <br>
+  `;
+
+  const planTable = `
+    <table style="width: 100%; border: 1px solid black;">
+      <tr>
+        <td style="width: 25%;"><b>DERS:</b></td>
+        <td style="width: 75%;" colspan="3">${teacherProfile?.reportConfig?.lessonName || ''}</td>
+      </tr>
+      <tr>
+        <td><b>SINIF:</b></td>
+        <td>${currentClass.name}</td>
+        <td style="width: 25%;"><b>TARİH:</b></td>
+        <td style="width: 25%;">${dailyPlan.date}</td>
+      </tr>
+      <tr>
+        <td><b>ÜNİTE:</b></td>
+        <td colspan="3">${annualPlanEntry.unite}</td>
+      </tr>
+      <tr>
+        <td><b>KONU:</b></td>
+        <td colspan="3">${dailyPlan.konu}</td>
+      </tr>
+      <tr>
+        <td><b>KAZANIM(LAR):</b></td>
+        <td colspan="3">${dailyPlan.kazanim}</td>
+      </tr>
+      <tr>
+        <td><b>ÖĞRETME-ÖĞRENME YÖNTEM VE TEKNİKLERİ:</b></td>
+        <td colspan="3">${annualPlanEntry.yontem || 'Anlatım, Soru-Cevap'}</td>
+      </tr>
+       <tr>
+        <td><b>KULLANILAN EĞİTİM TEKNOLOJİLERİ-ARAÇ VE GEREÇLER:</b></td>
+        <td colspan="3">${dailyPlan.materyal}</td>
+      </tr>
+      <tr>
+        <td class="center bold" colspan="4">ÖĞRENME-ÖĞRETME SÜRECİ</td>
+      </tr>
+      <tr>
+        <td colspan="4">
+            <b>Giriş:</b><br/>${dailyPlan.plan.giris.replace(/\n/g, '<br/>')}<br/><br/>
+            <b>Gelişme:</b><br/>${dailyPlan.plan.gelisme.replace(/\n/g, '<br/>')}<br/><br/>
+            <b>Sonuç:</b><br/>${dailyPlan.plan.sonuc.replace(/\n/g, '<br/>')}
+        </td>
+      </tr>
+       <tr>
+        <td><b>ÖLÇME VE DEĞERLENDİRME:</b></td>
+        <td colspan="3">${dailyPlan.degerlendirme}</td>
+      </tr>
+       <tr>
+        <td colspan="4">
+            <b>DERSİN DİĞER DERSLERLE İLİŞKİSİ:</b><br/><br/><br/>
+        </td>
+      </tr>
+       <tr>
+        <td colspan="4">
+            <b>PLANIN UYGULANMASINA İLİŞKİN AÇIKLAMALAR:</b><br/><br/><br/>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const footer = generateReportFooter(teacherProfile);
+  const title = `${currentClass.name} - ${dailyPlan.date} - Günlük Plan`;
+
+  const content = `${header}${planTable}${footer}`;
+  const finalHtml = generateHtmlShell(content, title);
+  downloadRtf(finalHtml, `${title.replace(/\s/g, '_')}.rtf`);
 }
