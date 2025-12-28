@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -727,7 +727,7 @@ interface ExportDailyPlanArgs {
   dailyPlan: DailyPlan;
   annualPlanEntry: AnnualPlanEntry;
   currentClass: Class;
-  teacherProfile: TeacherProfile | null;
+  teacherProfile: TeacherProfile;
 }
 
 export function exportDailyPlanToRtf({
@@ -811,4 +811,40 @@ export function exportDailyPlanToRtf({
   const content = `${header}${planTable}${footer}`;
   const finalHtml = generateHtmlShell(content, title);
   downloadRtf(finalHtml, `${title.replace(/\s/g, '_')}.rtf`);
+}
+
+// --- ANNUAL PLAN EXPORT ---
+interface ExportAnnualPlanArgs {
+    annualPlan: AnnualPlan;
+    currentClass: Class;
+    teacherProfile: TeacherProfile | null;
+}
+export function exportAnnualPlanToRtf({ annualPlan, currentClass, teacherProfile }: ExportAnnualPlanArgs) {
+    const reportTitle = "Yıllık Ders Planı";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${annualPlan.title}`;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:15%;">Hafta / Tarih</th>
+            <th class="horizontal" style="width:5%;">Saat</th>
+            <th class="horizontal" style="width:20%;">Ünite</th>
+            <th class="horizontal" style="width:20%;">Konu</th>
+            <th class="horizontal" style="width:40%;">Kazanımlar</th>
+        </tr>
+    `;
+    const dataRows = annualPlan.rows.map(row => `
+        <tr>
+            <td class="center">${row.hafta}</td>
+            <td class="center">${row.saat}</td>
+            <td>${row.unite}</td>
+            <td>${row.konu}</td>
+            <td>${row.cikti}</td>
+        </tr>
+    `).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }

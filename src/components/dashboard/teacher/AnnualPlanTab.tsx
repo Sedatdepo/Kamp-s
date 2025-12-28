@@ -12,7 +12,7 @@ import type { AnnualPlan, AnnualPlanEntry, DailyPlan } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
-import { exportDailyPlanToRtf } from '@/lib/word-export';
+import { exportDailyPlanToRtf, exportAnnualPlanToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
 import { Class, TeacherProfile } from '@/lib/types';
 
@@ -214,7 +214,7 @@ const ControlPanelModal = ({
     );
 };
 
-const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport, teacherProfile }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function, onExport: Function, teacherProfile: TeacherProfile | null }) => {
+const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function, onExport: Function }) => {
     const [dailyPlan, setDailyPlan] = useState<DailyPlan>(row.dailyPlan || {
         id: `dp-${row.id}`,
         date: row.hafta,
@@ -427,6 +427,18 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
         reader.readAsArrayBuffer(file);
         event.target.value = '';
     };
+
+    const handleExportPlan = () => {
+        if (!activePlan || !currentClass) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Dışa aktarılacak aktif bir plan veya sınıf yok.' });
+            return;
+        }
+        exportAnnualPlanToRtf({
+            annualPlan: activePlan,
+            currentClass: currentClass,
+            teacherProfile: teacherProfile
+        });
+    };
     
     const onOpenDailyPlan = (row: AnnualPlanEntry) => {
         setActiveRow(row);
@@ -440,7 +452,7 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
     }
 
     const handleExportDailyPlan = (dailyPlan: DailyPlan) => {
-        if (!activePlan || !activeRow || !currentClass) {
+        if (!activePlan || !activeRow || !currentClass || !teacherProfile) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
             return;
         }
@@ -448,7 +460,7 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
             dailyPlan,
             annualPlanEntry: activeRow,
             currentClass: currentClass,
-            teacherProfile: teacherProfile || null,
+            teacherProfile: teacherProfile,
         });
     }
     
@@ -572,7 +584,6 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
             onSave={handleSaveDailyPlan} 
             onBack={() => setActiveRow(null)}
             onExport={handleExportDailyPlan}
-            teacherProfile={teacherProfile}
         />;
     }
 
@@ -609,6 +620,10 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
                     <Button variant="outline" onClick={() => setIsPanelOpen(true)}>
                         <Settings className="mr-2" />
                         Yönetim Paneli
+                    </Button>
+                     <Button variant="outline" onClick={handleExportPlan}>
+                        <Download className="mr-2" />
+                        Planı İndir (RTF)
                     </Button>
                     <Button variant="outline" onClick={handleImportClick}>
                         <Upload className="mr-2" />
