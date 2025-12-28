@@ -1,21 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
-  Plus, Trash2, Upload, Menu, X, Save, FolderOpen, Edit2, ArrowLeft, FileOutput, 
-    ArrowUp, ArrowDown, Download, FileJson, CheckSquare, Square, PieChart, PlusCircle, 
-      FileText, Settings, Calendar, TrendingUp, MoreHorizontal, Eraser, AlertCircle, 
-        MousePointerClick, ChevronRight, ExternalLink, List, BookOpen, Clock, RefreshCw, 
-          Image as ImageIcon, Home, CheckCircle 
-          } from 'lucide-react';
+  Plus, Trash2, Save, X, ArrowDown, Download, 
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
 import type { AnnualPlan, AnnualPlanEntry } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
-
+import { Home } from 'lucide-react';
 
 // --- YARDIMCI BİLEŞENLER ---
 const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {
@@ -48,13 +44,12 @@ const ControlPanelModal = ({
     onAddSpecialRow, onInsertEmptyRow, onResetProgress, onOpenDailyPlan,
     onImportCurriculum, onDistributeDates
 }: any) => {
-    if (!isOpen) return null;
+    if (!isOpen || !activePlan) return null;
 
     const [selectedCurriculum, setSelectedCurriculum] = useState("Fizik 9. Sınıf");
     const [startDate, setStartDate] = useState("2025-09-08"); // Varsayılan Pazartesi
     const [keepHolidays, setKeepHolidays] = useState(false);
 
-    if(!activePlan) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
@@ -216,8 +211,7 @@ const ControlPanelModal = ({
     );
 };
 
-
-const AnnualPlanBuilder = () => {
+export function AnnualPlanTab() {
     const { db, setDb, loading } = useDatabase();
     const { toast } = useToast();
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -237,8 +231,6 @@ const AnnualPlanBuilder = () => {
         }
     }, [db.annualPlans, loading, activePlanId, searchParams]);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    
     const activePlan = useMemo(() => {
         if (!activePlanId) return null;
         return db.annualPlans.find(p => p.id === activePlanId);
@@ -264,8 +256,6 @@ const AnnualPlanBuilder = () => {
         };
     }, [activePlan]);
 
-
-    // Functions for plan manipulation
     const addPlan = (title: string) => {
         const newPlan: AnnualPlan = {
             id: Date.now(),
@@ -281,16 +271,8 @@ const AnnualPlanBuilder = () => {
         setDb(prev => ({ ...prev, annualPlans: [...prev.annualPlans, newPlan] }));
         setActivePlanId(newPlan.id);
     };
-
-    const deletePlan = (id: number) => {
-        setDb(prev => ({ ...prev, annualPlans: prev.annualPlans.filter(p => p.id !== id) }));
-        if (activePlanId === id) {
-            setActivePlanId(db.annualPlans.length > 0 ? db.annualPlans[0].id : null);
-        }
-    };
     
     const onOpenDailyPlan = (row: AnnualPlanEntry) => {
-        // This would typically navigate to a new page or open a large modal
         toast({
             title: "Günlük Plan Açılıyor",
             description: `${row.konu} konusu için günlük plan sayfası açılacak.`,
@@ -323,16 +305,15 @@ const AnnualPlanBuilder = () => {
         if (!activePlan) return;
 
         let currentDate = new Date(startDateStr);
-        // Find the next Monday if start date is not Monday
         while (currentDate.getDay() !== 1) {
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
         const newRows = activePlan.rows.map(row => {
             if (row.isSpecial && !keepHolidays) {
-                return null; // Remove old holidays if not keeping them
+                return null;
             }
-            return { ...row, hafta: '' }; // Reset dates
+            return { ...row, hafta: '' };
         }).filter(Boolean) as AnnualPlanEntry[];
 
 
@@ -360,7 +341,7 @@ const AnnualPlanBuilder = () => {
         const newRow: AnnualPlanEntry = {
             id: `special-${Date.now()}`,
             isSpecial: true,
-            isDone: true, // Mark as done to not affect progress
+            isDone: true,
             hafta: type,
             unite: content,
             konu: '', cikti: '', saat: '', yontem: '', arac: '', degerlendirme: '', dailyPlan: null
@@ -409,24 +390,25 @@ const AnnualPlanBuilder = () => {
     }
     
     if(!activePlan) {
-      return <div className="flex h-screen items-center justify-center">Aktif plan bulunamadı.</div>
+      return <div className="flex h-screen items-center justify-center">Aktif plan bulunamadı. Lütfen bir plan seçin veya oluşturun.</div>
     }
-
 
     return (
         <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-            <ControlPanelModal
-                isOpen={isPanelOpen}
-                onClose={() => setIsPanelOpen(false)}
-                stats={stats}
-                activePlan={activePlan}
-                onAddSpecialRow={onAddSpecialRow}
-                onInsertEmptyRow={onInsertEmptyRow}
-                onResetProgress={onResetProgress}
-                onOpenDailyPlan={onOpenDailyPlan}
-                onImportCurriculum={onImportCurriculum}
-                onDistributeDates={onDistributeDates}
-            />
+            <Suspense fallback={<div>Yükleniyor...</div>}>
+                <ControlPanelModal
+                    isOpen={isPanelOpen}
+                    onClose={() => setIsPanelOpen(false)}
+                    stats={stats}
+                    activePlan={activePlan}
+                    onAddSpecialRow={onAddSpecialRow}
+                    onInsertEmptyRow={onInsertEmptyRow}
+                    onResetProgress={onResetProgress}
+                    onOpenDailyPlan={onOpenDailyPlan}
+                    onImportCurriculum={onImportCurriculum}
+                    onDistributeDates={onDistributeDates}
+                />
+            </Suspense>
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
@@ -447,7 +429,9 @@ const AnnualPlanBuilder = () => {
 
             {/* Plan Tablosu */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <p>Plan tablosu burada olacak...</p>
+              <p className="p-8 text-center text-gray-500">
+                Yıllık plan tablosu burada görünecek. Başlamak için "Yönetim Paneli" üzerinden müfredat yükleyin.
+              </p>
             </div>
         </div>
     );

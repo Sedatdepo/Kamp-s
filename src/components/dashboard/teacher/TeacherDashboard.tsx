@@ -285,9 +285,6 @@ export function TeacherDashboard() {
   
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
-    // This query is intentionally broad to get a count for all classes.
-    // It might be inefficient for very large student bodies.
-    // A better approach for large scale would be a summary document.
     return query(collection(db, 'students'));
   }, [teacherId, db]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
@@ -378,7 +375,9 @@ export function TeacherDashboard() {
                         />
                     </TabsContent>
                     <TabsContent value="planning" className="mt-4">
-                      <AnnualPlanTab />
+                      <Suspense fallback={<div>Yükleniyor...</div>}>
+                        <AnnualPlanTab />
+                      </Suspense>
                     </TabsContent>
                     <TabsContent value="election" className="mt-4">
                         <ElectionTab
