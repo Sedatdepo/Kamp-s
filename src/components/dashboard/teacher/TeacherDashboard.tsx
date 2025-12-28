@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -15,8 +14,9 @@ import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
 import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
 import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
+import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -266,18 +266,16 @@ function ClassSelectionScreen({
 
 const TABS_CONFIG = {
   "dashboard": { label: "Panel", icon: School },
-  "students": { label: "Öğrenci Listesi", icon: Users },
+  "students": { label: "Öğrenci Yönetimi", icon: Users },
   "attendance": { label: "Yoklama", icon: Calendar },
   "dutyRoster": { label: "Nöbet Listesi", icon: Users },
   "seatingPlan": { label: "Oturma Planı", icon: Grid },
   "grading": { label: "Değerlendirme Aracı", icon: Gauge },
-  "planning": { label: "Yıllık Plan", icon: ClipboardList },
+  "planning": { label: "Planlama Araçları", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
-  "projects": { label: "Proje Yönetimi", icon: BookText },
-  "homework": { label: "Ödev Takibi", icon: BookText },
-  "risks": { label: "Risk Haritası", icon: List },
-  "forms": { label: "Bilgi Formları", icon: FileText },
-  "communication": { label: "İletişim", icon: MessageCircle },
+  "projects": { label: "Ödev & Proje Takibi", icon: BookText },
+  "risks": { label: "Rehberlik Araçları", icon: List },
+  "communication": { label: "İletişim Paneli", icon: MessageCircle },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
 } as const;
 
