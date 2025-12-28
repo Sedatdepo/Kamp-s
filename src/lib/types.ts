@@ -250,6 +250,12 @@ export interface RiskMapDocument extends Archivable {
     }
 }
 
+export interface CommunicationDocument extends Archivable {
+    data: {
+        announcements: Announcement[];
+    }
+}
+
 
 // Dilekçe Types
 export interface DilekceDocument extends Archivable {
