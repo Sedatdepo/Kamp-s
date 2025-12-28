@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
@@ -98,6 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
   const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
 
+  const signOut = useCallback(async () => {
+    await firebaseSignOut(auth);
+    localStorage.removeItem('studentUser');
+    setAppUser(null);
+    router.push('/');
+  }, [router]);
+
   useEffect(() => {
     let unsubscribe: () => void = () => {};
     if (studentId) {
@@ -122,8 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId, teacherUid]);
+  }, [studentId, teacherUid, signOut]);
 
   useEffect(() => {
     if (loading || !isMounted) {
@@ -148,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } else {
-      if (!isPublic) {
+      if (!isPublic && pathname !== '/auth/change-password') {
         router.push('/');
       }
     }
@@ -173,12 +179,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAppUser({ type: 'student', data: studentData });
   };
   
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-    localStorage.removeItem('studentUser');
-    setAppUser(null);
-    router.push('/');
-  };
 
   if (!isMounted || loading) {
     return (

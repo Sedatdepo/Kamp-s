@@ -149,16 +149,12 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         if (!termGrades) return 0;
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
-        const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
         const exam1 = termGrades.exam1;
-        const exam2 = termGrades.exam2;
         const perf1 = calculateAverage(termGrades.scores1, perfCriteria);
-        const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
         const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
-        const behaviorAvg = calculateAverage(termGrades.behaviorScores, behaviorCriteria);
 
-        const averages = [exam1, exam2, perf1, perf2, projAvg, behaviorAvg].filter(
+        const averages = [exam1, perf1, projAvg].filter(
             (avg): avg is number => avg !== undefined && avg !== null && avg > 0
         );
 

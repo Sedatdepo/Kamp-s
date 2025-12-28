@@ -47,9 +47,9 @@ export function StudentDashboard() {
   const { notifications, markAsSeen } = useNotification();
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const classQuery = useMemo(() => classId ? doc(db, 'classes', classId) : null, [classId]);
+  const classQuery = useMemo(() => (classId ? doc(db, 'classes', classId) : null), [classId]);
   const { data: classData } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
-  const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
+  const currentClass = useMemo(() => (classData.length > 0 ? classData[0] : null), [classData]);
 
   useEffect(() => {
     if (activeTab === 'announcements') markAsSeen('announcements');

@@ -122,7 +122,15 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     const newPlan = { ...seatingPlan };
 
     if (dragSource && dragSource !== 'list') delete newPlan[dragSource];
-    if (existingStudent && dragSource) newPlan[dragSource] = existingStudent;
+    if (existingStudent && dragSource) {
+        if (dragSource === 'list') {
+            const currentUnseated = unseatedStudents.filter(s => s.id !== draggedStudent.id);
+            const finalUnseated = [...currentUnseated, existingStudent];
+            // Here you might need a way to update the unseated list state if it were managed by state
+        } else {
+            newPlan[dragSource] = existingStudent;
+        }
+    }
     
     newPlan[targetKey] = draggedStudent;
     
