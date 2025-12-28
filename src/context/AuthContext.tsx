@@ -3,7 +3,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc, Firestore } from 'firebase/firestore';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const { auth, db } = useMemo(() => {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
@@ -157,6 +158,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return; 
     }
 
+    const isInviteLink = searchParams.get('invite') === 'true';
+    if (isInviteLink) {
+        return; // Don't redirect if it's an invite link, let the page handle it.
+    }
+
     const isPublic = publicRoutes.includes(pathname);
     const isChangePass = pathname === studentChangePassRoute;
 
@@ -179,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/');
       }
     }
-  }, [loading, isMounted, appUser, pathname, router]);
+  }, [loading, isMounted, appUser, pathname, router, searchParams]);
 
   const signInStudent = async (studentId: string, passwordAsNumber: string) => {
     if (!db) throw new Error("Veritabanı başlatılamadı.");

@@ -20,10 +20,10 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
   const { toast } = useToast();
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  const inviteLink = `https://ito-kampus.web.app/?tab=student&code=${classCode}`;
+  const inviteLink = `https://ito-kampus.web.app/?tab=student&code=${classCode}&invite=true`;
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && inviteLink) {
       QRCode.toDataURL(inviteLink, {
         width: 256,
         margin: 2,

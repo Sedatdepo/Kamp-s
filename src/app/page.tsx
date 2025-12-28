@@ -14,14 +14,17 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'teacher';
   const classCode = searchParams.get('code');
+  const isInvite = searchParams.get('invite') === 'true';
 
-  // AuthProvider yönlendirmeyi halleder. Eğer kullanıcı zaten varsa veya sayfa yükleniyorsa
-  // bu bileşen bir "skeleton" göstermemeli, çünkü AuthProvider zaten
-  // bir yükleme ekranı gösteriyor ve sonra doğru sayfaya yönlendiriyor.
-  // Bu sayfa sadece giriş yapmamış kullanıcılar için render edilmeli.
-  if (loading || appUser) {
-    return null; // AuthProvider işini yaparken boş bir ekran göster.
+  // AuthProvider handles redirection. If user exists or page is loading,
+  // this component should not render a skeleton, because AuthProvider is already
+  // showing a loading screen and then redirecting.
+  // This page should only render for non-logged-in users.
+  // We make an exception for invite links to allow logged-in teachers to see the page.
+  if ((loading || appUser) && !isInvite) {
+    return null; // Show a blank screen while AuthProvider does its job.
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
