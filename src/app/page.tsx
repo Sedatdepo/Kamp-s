@@ -17,9 +17,8 @@ function LoginPageContent() {
   const isInvite = searchParams.get('invite') === 'true';
 
   if ((loading || appUser) && !isInvite) {
-    return null; 
+    return null;
   }
-
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
