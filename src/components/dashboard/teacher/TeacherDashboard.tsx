@@ -16,7 +16,7 @@ import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
 import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, FileText } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -274,8 +274,10 @@ const TABS_CONFIG = {
   "planning": { label: "Planlama Araçları", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
   "projects": { label: "Ödev & Proje Takibi", icon: BookText },
+  "homework": { label: "Ödev Takibi", icon: BookText },
   "risks": { label: "Rehberlik Araçları", icon: List },
-  "communication": { label: "İletişim Paneli", icon: MessageCircle },
+  "forms": { label: "Bilgi Formları", icon: List },
+  "communication": { label: "İletişim", icon: MessageCircle },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
 } as const;
 
@@ -306,7 +308,7 @@ export function TeacherDashboard() {
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
   
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading && selectedClassId) {
       return (
         <div className="flex justify-center items-center h-full p-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -318,49 +320,71 @@ export function TeacherDashboard() {
         return <ClassSelectionScreen onSelectClass={setSelectedClassId} students={allStudents} />;
     }
 
-    switch(activeTab) {
-        case 'students': return <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'attendance': return <AttendanceTab students={students} currentClass={currentClass} />;
-        case 'dutyRoster': return <DutyRosterTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />;
-        case 'seatingPlan': return <SeatingPlanTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />;
-        case 'grading': return <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={students} currentClass={currentClass} />;
-        case 'planning': return <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
-        case 'election': return <ElectionTab students={students} currentClass={currentClass} />;
-        case 'projects': return <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'homework': return <HomeworkTab classId={selectedClassId} currentClass={currentClass} />;
-        case 'risks': return <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'forms': return <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'communication': return <CommunicationTab classId={selectedClassId} currentClass={currentClass} />;
-        case 'dilekce': return <DilekceTab teacherProfile={teacherProfile} />;
-        case 'dashboard':
-        default:
-            return (
-                <div className="grid gap-6">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <CardTitle className="font-headline text-2xl">{currentClass?.name || 'Sınıf Paneli'}</CardTitle>
-                                <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Tüm Sınıflar
-                                </Button>
-                            </div>
-                            <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
-                        </CardHeader>
-                    </Card>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
-                        <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                        <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
-                        <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
-                        <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
-                        <MenuCard icon={<BookText />} title="Ödev & Proje Takibi" description="Proje dağıtımı ve ödev yönetimi." onClick={() => setActiveTab('projects')} />
-                        <MenuCard icon={<List />} title="Rehberlik Araçları" description="Risk haritası ve bilgi formları." onClick={() => setActiveTab('risks')} />
-                        <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
-                    </div>
-                </div>
-            );
+    if (activeTab !== "dashboard") {
+      const TabComponent = {
+        'students': <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
+        'attendance': <AttendanceTab students={students} currentClass={currentClass} />,
+        'dutyRoster': <DutyRosterTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />,
+        'seatingPlan': <SeatingPlanTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />,
+        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={students} currentClass={currentClass} />,
+        'planning': <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>,
+        'election': <ElectionTab students={students} currentClass={currentClass} />,
+        'projects': <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
+        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} />,
+        'risks': <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
+        'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
+        'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,
+        'dilekce': <DilekceTab teacherProfile={teacherProfile} />
+      }[activeTab];
+
+      return (
+        <div>
+          <div className="mb-6 flex justify-between items-center">
+             <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+              {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
+              {TABS_CONFIG[activeTab]?.label}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Geri
+              </Button>
+               <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
+                <Home className="mr-2 h-4 w-4" /> Tüm Sınıflar
+              </Button>
+            </div>
+          </div>
+          {TabComponent}
+        </div>
+      );
     }
+
+    // Dashboard view
+    return (
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="font-headline text-2xl">{currentClass?.name || 'Sınıf Paneli'}</CardTitle>
+                        <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Tüm Sınıflar
+                        </Button>
+                    </div>
+                    <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
+                </CardHeader>
+            </Card>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
+                <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
+                <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
+                <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
+                <MenuCard icon={<BookText />} title="Ödev & Proje Takibi" description="Proje dağıtımı ve ödev yönetimi." onClick={() => setActiveTab('projects')} />
+                <MenuCard icon={<List />} title="Rehberlik Araçları" description="Risk haritası ve bilgi formları." onClick={() => setActiveTab('risks')} />
+                <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
+            </div>
+        </div>
+    );
   }
 
 
