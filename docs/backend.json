@@ -1,0 +1,398 @@
+{
+  "entities": {
+    "Class": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Class",
+      "type": "object",
+      "description": "Represents a class or course within the school.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Class entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the class (e.g., '10th Grade Math')."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student enrolled in a class.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Student entity."
+        },
+        "classId": {
+          "type": "string",
+          "description": "Reference to Class. (Relationship: Class 1:N Student)"
+        },
+        "number": {
+          "type": "number",
+          "description": "The student's unique number within the class."
+        },
+        "name": {
+          "type": "string",
+          "description": "The student's full name."
+        },
+        "password": {
+          "type": "string",
+          "description": "Hashed password of the student. Should be stored securely."
+        },
+        "needsPasswordChange": {
+          "type": "boolean",
+          "description": "Indicates whether the student needs to change their password on the next login."
+        },
+        "behaviorScore": {
+          "type": "number",
+          "description": "The student's current behavior score."
+        },
+        "risks": {
+          "type": "array",
+          "description": "References to RiskFactors. (Relationship: Student N:N RiskFactor)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "projectPreferences": {
+          "type": "array",
+          "description": "An array of lesson IDs representing the student's project preferences.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignedLesson": {
+          "type": "string",
+          "description": "Reference to Lesson. (Relationship: Student 1:1 Lesson, optional)"
+        },
+        "grades": {
+          "type": "string",
+          "description": "Grades for the student."
+        },
+        "referrals": {
+          "type": "array",
+          "description": "References to other Student entities representing referrals. (Relationship: Student 1:N Student (Self-Referential))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "classId",
+        "number",
+        "name",
+        "password",
+        "needsPasswordChange",
+        "behaviorScore"
+      ]
+    },
+    "Lesson": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Lesson",
+      "type": "object",
+      "description": "Represents a lesson or project that students can be assigned to.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Lesson entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the lesson (e.g., 'Math Project')."
+        },
+        "quota": {
+          "type": "number",
+          "description": "The maximum number of students that can be assigned to this lesson."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "quota"
+      ]
+    },
+    "RiskFactor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RiskFactor",
+      "type": "object",
+      "description": "Represents a risk factor that can affect a student.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RiskFactor entity."
+        },
+        "label": {
+          "type": "string",
+          "description": "The label or name of the risk factor (e.g., 'Broken Family')."
+        },
+        "weight": {
+          "type": "number",
+          "description": "A numerical weight representing the severity of the risk factor."
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "weight"
+      ]
+    },
+    "InfoForm": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfoForm",
+      "type": "object",
+      "description": "Represents a detailed information form for a student.",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "Reference to Student. (Relationship: Student 1:1 InfoForm)"
+        },
+        "personalInfo": {
+          "type": "string",
+          "description": "All personal info."
+        },
+        "parentInfo": {
+          "type": "string",
+          "description": "All parent info."
+        },
+        "familyInfo": {
+          "type": "string",
+          "description": "All family info."
+        }
+      },
+      "required": [
+        "studentId",
+        "personalInfo",
+        "parentInfo",
+        "familyInfo"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message exchanged between users (teachers and students).",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "description": "Reference to User (Teacher or Student). The ID of the message sender."
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "Reference to User (Teacher or Student). The ID of the message recipient."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "A timestamp indicating when the message was sent (e.g., Unix timestamp)."
+        }
+      },
+      "required": [
+        "senderId",
+        "receiverId",
+        "text",
+        "timestamp"
+      ]
+    },
+    "TeacherProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TeacherProfile",
+      "type": "object",
+      "description": "Stores teacher profile information.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TeacherProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The teacher's full name."
+        },
+        "branch": {
+          "type": "string",
+          "description": "The teacher's branch or department."
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The name of the school where the teacher works."
+        },
+        "principalName": {
+          "type": "string",
+          "description": "The name of the school principal (for reports)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "branch",
+        "schoolName",
+        "principalName"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/classes/{classId}",
+        "definition": {
+          "entityName": "Class",
+          "schema": {
+            "$ref": "#/backend/entities/Class"
+          },
+          "description": "Stores class information.  Only teachers can create/modify.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier for the class."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}/students/{studentId}",
+        "definition": {
+          "entityName": "Student",
+          "schema": {
+            "$ref": "#/backend/entities/Student"
+          },
+          "description": "Stores student data. Authorization is based on class membership.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier for the class."
+            },
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}/lessons/{lessonId}",
+        "definition": {
+          "entityName": "Lesson",
+          "schema": {
+            "$ref": "#/backend/entities/Lesson"
+          },
+          "description": "Stores lessons associated with a class.  Teachers manage lessons.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier for the class."
+            },
+            {
+              "name": "lessonId",
+              "description": "The unique identifier for the lesson."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/riskFactors/{riskFactorId}",
+        "definition": {
+          "entityName": "RiskFactor",
+          "schema": {
+            "$ref": "#/backend/entities/RiskFactor"
+          },
+          "description": "Stores risk factors. Teachers can add/edit/delete.",
+          "params": [
+            {
+              "name": "riskFactorId",
+              "description": "The unique identifier for the risk factor."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}/infoForms/{infoFormId}",
+        "definition": {
+          "entityName": "InfoForm",
+          "schema": {
+            "$ref": "#/backend/entities/InfoForm"
+          },
+          "description": "Stores info forms for students.  Students and teachers can access student's own form.",
+          "params": [
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            },
+            {
+              "name": "infoFormId",
+              "description": "The unique identifier for the info form."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores messages between students and teachers.",
+          "params": [
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teachers/{teacherId}",
+        "definition": {
+          "entityName": "TeacherProfile",
+          "schema": {
+            "$ref": "#/backend/entities/TeacherProfile"
+          },
+          "description": "Stores teacher profile data.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The unique identifier for the teacher."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_teacher/{teacherId}",
+        "definition": {
+          "entityName": "teacher",
+          "schema": {
+            "$ref": "#/backend/entities/TeacherProfile"
+          },
+          "description": "Indicates teacher role using document existence.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The unique identifier for the teacher."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes authorization independence and simplifies security rules by denormalizing authorization data. It uses path-based ownership and membership maps where appropriate.\n\n*   **/classes:** Stores class information. Publicly readable, but only teachers can create/modify.\n*   **/classes/{classId}/students:** Stores student data.  Authorization independence is achieved by denormalizing class membership for students. Teachers are granted write access based on their role.\n*   **/classes/{classId}/lessons:** Stores lessons and their quota. Teachers are granted write access based on their role.\n*   **/riskFactors:** Stores risk factors. Teachers can add/edit/delete.\n*   **/students/{studentId}/infoForms:** Stores info forms. Students and teachers can read/write student's own data.\n*   **/students/{studentId}/messages:** Stores messages between students and teachers. Secure read/write based on sender/receiver IDs. To support secure listing, messages are stored in subcollections owned by each student.\n*   **/teachers/{teacherId}:** Stores teacher profile data. Only the teacher can modify their own profile. Enables storing the teacher profile information (name, branch, schoolName, principalName) needed for Word document generation.\n*   **/roles_teacher/{teacherId}:**  Indicates teacher role using document existence. Simplifies teacher role checks in security rules without needing document content.\n\n**Authorization Independence:**  The structure avoids `get()` calls in security rules by denormalizing authorization data.  For example, student documents under `/classes/{classId}/students` do not need to fetch the class document to determine if a teacher has write access.\n\n**QAPs (Rules are not Filters):**\n\n*   Secure `list` operations are achieved by:\n    *   Segregating data with different access needs into separate collections or subcollections.\n    *   Using path-based ownership for private data (e.g., `/students/{studentId}/infoForms`).\n    *   Leveraging the membership map pattern where appropriate.\n\n**Invariants:**\n\n*   Ownership is enforced through path-based ownership (e.g., `/students/{studentId}/infoForms`).\n*   Timestamps are supported in messages.  Consider using server timestamps for increased reliability.\n*   Denormalized data is managed through atomic operations (transactions/batches) to maintain consistency."
+  }
+}

@@ -1,0 +1,198 @@
+/**
+ * Core Philosophy: This ruleset implements a role-based and ownership-based security model
+ * for a school management application. It grants broad management permissions to users with a
+ * 'teacher' role while giving individual users (teachers and students) strict control over
+ * their own private data.
+ *
+ * Data Structure: The data is organized into several top-level collections.
+ * - /classes: Contains class and student information, managed by teachers.
+ * - /riskFactors: A global list of risk factors, managed by teachers.
+ * - /teachers: Teacher-specific profile documents, editable only by the owner.
+ * - /roles_teacher: A private collection used to assign teacher roles for rule checks.
+ * - /students/{studentId}/...: Top-level collections scoped by studentId for private data
+ *   like infoForms and messages, ensuring data can be listed securely by its owner.
+ *
+ * Key Security Decisions:
+ * - Teacher Role: A user's teacher status is determined by the existence of a document in
+ *   the /roles_teacher/{userId} collection. This provides a fast and secure way to check
+ *   for elevated permissions using `exists()`. This collection is not readable or writable
+ *   by any client.
+ * - Student Data: Student records are nested under `/classes` for logical grouping, but their
+ *   private subcollections (`infoForms`, `messages`) are at the top level to enable simple,
+ *   performant, and secure list queries based on ownership.
+ * - Default Read Access: Most educational data (classes, lessons, risk factors) is readable by
+ *   any signed-in user to facilitate app functionality, while writes are strictly controlled.
+ *
+ * Denormalization for Authorization:
+ * - The `/roles_teacher` collection is the primary example of denormalizing authorization data.
+ *   Instead of checking a field on a user profile, we check for document existence, which is
+ *   highly performant.
+ * - Message documents in `/students/{studentId}/messages` contain `senderId` and `receiverId`
+ *   fields directly, allowing authorization rules to grant access to participants without
+ *   requiring any extra document reads (`get` calls).
+ *
+ * Structural Segregation:
+ * - Private student data (`infoForms`, `messages`) is placed in dedicated subcollections under a
+ *   top-level `/students/{studentId}` path. This separates it from the more publicly accessible
+ *   class and lesson data, allowing for strict `isOwner(studentId)` rules on `list` operations,
+ *   preventing data leakage between students.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    // ----------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the foundation of the ownership model.
+     * @param userId The user ID to check against the authenticated user's UID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the user has the 'teacher' role.
+     * Role is determined by the existence of a document in the roles_teacher collection.
+     */
+    function isTeacher() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_teacher/$(request.auth.uid));
+    }
+
+    /**
+     * Enforces that a document exists for an update or delete operation.
+     * Prevents operations on non-existent documents, which is a security best practice.
+     */
+    function docExists() {
+      return resource != null;
+    }
+
+    // Collection Rules
+    // ----------------
+
+    /**
+     * @description Manages class information. Publicly readable, but only teachers can write.
+     * @path /classes/{classId}
+     * @allow (get) Any user, signed in or not, can read a class document.
+     * @deny (create) A non-teacher or anonymous user attempts to create a class.
+     * @principle Public read access for general info, with writes restricted by role.
+     */
+    match /classes/{classId} {
+      allow get, list: if true;
+      allow create, update, delete: if isTeacher();
+    }
+
+    /**
+     * @description Manages student records within a class. Teachers have full control,
+     *   while a student can only read their own record.
+     * @path /classes/{classId}/students/{studentId}
+     * @allow (get) A student (auth.uid == studentId) reads their own record.
+     * @deny (update) A student attempts to update their own record.
+     * @principle Role-based management for sensitive data, with self-read permissions for owners.
+     */
+    match /classes/{classId}/students/{studentId} {
+      allow get: if isTeacher() || isOwner(studentId);
+      allow list: if isTeacher();
+      allow create: if isTeacher();
+      allow update: if isTeacher() && docExists();
+      allow delete: if isTeacher() && docExists();
+    }
+
+    /**
+     * @description Manages lessons associated with a class. Readable by any signed-in user,
+     *   but only writable by teachers.
+     * @path /classes/{classId}/lessons/{lessonId}
+     * @allow (list) Any authenticated user can list the lessons for a class.
+     * @deny (create) An authenticated student attempts to create a new lesson.
+     * @principle Role-based control for creating educational content.
+     */
+    match /classes/{classId}/lessons/{lessonId} {
+      allow get, list: if isSignedIn();
+      allow create: if isTeacher();
+      allow update: if isTeacher() && docExists();
+      allow delete: if isTeacher() && docExists();
+    }
+
+    /**
+     * @description Stores a global list of risk factors. Readable by any signed-in user,
+     *   but only writable by teachers.
+     * @path /riskFactors/{riskFactorId}
+     * @allow (list) Any authenticated user can list all risk factors.
+     * @deny (create) An authenticated student attempts to create a new risk factor.
+     * @principle Role-based control over globally applicable definitions.
+     */
+    match /riskFactors/{riskFactorId} {
+      allow get, list: if isSignedIn();
+      allow create: if isTeacher();
+      allow update: if isTeacher() && docExists();
+      allow delete: if isTeacher() && docExists();
+    }
+
+    /**
+     * @description Stores detailed information forms for a student. Accessible only by the
+     *   student themselves or a teacher.
+     * @path /students/{studentId}/infoForms/{infoFormId}
+     * @allow (create) A teacher creates an info form on behalf of a student.
+     * @deny (get) A student tries to read the info form of another student.
+     * @principle Restricts access to sensitive personal data to the owner and authorized staff.
+     */
+    match /students/{studentId}/infoForms/{infoFormId} {
+      allow get, list: if isOwner(studentId) || isTeacher();
+      allow create: if (isOwner(studentId) || isTeacher()) && request.resource.data.studentId == studentId;
+      allow update: if (isOwner(studentId) || isTeacher()) && docExists() && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if (isOwner(studentId) || isTeacher()) && docExists();
+    }
+
+    /**
+     * @description Manages messages. A user can read/write messages they are a part of.
+     *   A student can only list messages from their own message history.
+     * @path /students/{studentId}/messages/{messageId}
+     * @allow (create) An authenticated user sends a message to another user.
+     * @deny (get) A user attempts to read a message where they are not the sender or receiver.
+     * @principle Enforces participant-only access for communication records.
+     */
+    match /students/{studentId}/messages/{messageId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId));
+      allow list: if isOwner(studentId);
+      allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
+      allow update: if false;
+      allow delete: if isOwner(studentId) && docExists() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId));
+    }
+
+    /**
+     * @description Stores teacher profile data. A teacher can create and manage their own
+     *   profile. All signed-in users can read teacher profiles.
+     * @path /teachers/{teacherId}
+     * @allow (create) A new teacher signs up and creates their own profile document.
+     * @deny (update) A teacher attempts to modify another teacher's profile.
+     * @principle Enforces document ownership for personal profile data.
+     */
+    match /teachers/{teacherId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(teacherId) && request.resource.data.id == teacherId;
+      allow update: if isOwner(teacherId) && docExists() && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(teacherId) && docExists();
+    }
+
+    /**
+     * @description Defines user roles. This collection is used as a lookup table by other rules
+     *   and MUST NOT be accessible by any client. Roles are managed by a trusted backend.
+     * @path /roles_teacher/{teacherId}
+     * @allow (any) No client operation is ever permitted.
+     * @deny (any) All client requests (read, write) are denied.
+     * @principle Secures role-granting mechanism from client manipulation.
+     */
+    match /roles_teacher/{teacherId} {
+      allow read, write: if false;
+    }
+  }
+}
