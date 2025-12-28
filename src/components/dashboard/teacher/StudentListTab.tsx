@@ -226,10 +226,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
   
-  const resetPassword = async (e: React.MouseEvent, student: Student) => {
-    e.stopPropagation();
-  }
-
   const copyClassCode = () => {
     if(currentClass?.code) {
       navigator.clipboard.writeText(currentClass.code);
@@ -387,7 +383,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         setIsOpen={setIsBulkGradeOpen}
         students={sortedStudents}
     />
-     {currentClass && (
+     {currentClass?.code && (
       <ClassInviteDialog
         isOpen={isInviteOpen}
         setIsOpen={setIsInviteOpen}
