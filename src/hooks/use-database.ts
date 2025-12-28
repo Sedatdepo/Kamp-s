@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { AnnualPlan, DilekceDocument } from '@/lib/types';
+import { AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, ElectionDocument } from '@/lib/types';
 
 // localStorage anahtarı
 const DB_KEY = 'ito_kampus_database';
@@ -10,12 +11,18 @@ const DB_KEY = 'ito_kampus_database';
 interface Database {
   annualPlans: AnnualPlan[];
   dilekceDocuments: DilekceDocument[];
+  dutyRosterDocuments: DutyRosterDocument[];
+  seatingPlanDocuments: SeatingPlanDocument[];
+  electionDocuments: ElectionDocument[];
 }
 
 // Varsayılan boş veritabanı
 const initialDb: Database = {
   annualPlans: [],
   dilekceDocuments: [],
+  dutyRosterDocuments: [],
+  seatingPlanDocuments: [],
+  electionDocuments: [],
 };
 
 export const useDatabase = () => {

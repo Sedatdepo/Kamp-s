@@ -1,16 +1,17 @@
+
 "use client";
 
-import React, { useState } from 'react';
-import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Student, Class, TeacherProfile, RosterItem, DutyRosterDocument } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Download, Users, RotateCcw, Send, AlertTriangle } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Users, RotateCcw, Save } from 'lucide-react';
 import { exportDutyRosterToRtf } from '@/lib/word-export';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '@/hooks/useAuth';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
 
 interface DutyRosterTabProps {
   students: Student[];
@@ -20,8 +21,10 @@ interface DutyRosterTabProps {
 
 export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRosterTabProps) {
   const { toast } = useToast();
-  const { db } = useAuth();
-
+  const { db, setDb, loading } = useDatabase();
+  const { dutyRosterDocuments = [] } = db;
+  
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState("");
   const [startIndex, setStartIndex] = useState(1);
@@ -29,6 +32,19 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
   const [nextStartInfo, setNextStartInfo] = useState<{ index: number; name: string } | null>(null);
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  
+  useEffect(() => {
+      const classRecords = dutyRosterDocuments.filter(d => d.classId === currentClass?.id);
+      if (selectedRecordId) {
+          const record = classRecords.find(d => d.id === selectedRecordId);
+          setRoster(record ? record.data : []);
+      } else if (classRecords.length > 0) {
+          setSelectedRecordId(classRecords[0].id);
+          setRoster(classRecords[0].data);
+      } else {
+          setRoster([]);
+      }
+  }, [selectedRecordId, dutyRosterDocuments, currentClass]);
 
   const generateRosterPreview = () => {
     if (!currentClass) {
@@ -96,20 +112,53 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
     toast({ title: "Liste Oluşturuldu", description: "Önizlemeyi kontrol edip kaydedebilirsiniz." });
   };
   
-  const saveRoster = async () => {
-    if (!currentClass || roster.length === 0 || !db) {
-      toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor. Lütfen önce liste oluşturun." });
+  const saveRoster = () => {
+    if (!currentClass || roster.length === 0) {
+      toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor." });
       return;
     }
     
-    try {
-      const classRef = doc(db, 'classes', currentClass.id);
-      await updateDoc(classRef, { dutyRoster: roster });
-      toast({ title: "Başarılı", description: "Nöbet listesi kaydedildi ve öğrencilerin paneline gönderildi." });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: "Kayıt Hatası", description: error.message || "Liste kaydedilemedi." });
-    }
+    const newRecord: DutyRosterDocument = {
+        id: selectedRecordId || `duty_${Date.now()}`,
+        name: `Nöbet Listesi - ${new Date(startDate).toLocaleDateString('tr-TR')}`,
+        date: new Date().toISOString(),
+        classId: currentClass.id,
+        data: roster,
+    };
+    
+    setDb(prevDb => {
+        const existingIndex = prevDb.dutyRosterDocuments.findIndex(d => d.id === newRecord.id);
+        const updatedDocs = [...prevDb.dutyRosterDocuments];
+        if (existingIndex > -1) {
+            updatedDocs[existingIndex] = newRecord;
+        } else {
+            updatedDocs.push(newRecord);
+        }
+        return { ...prevDb, dutyRosterDocuments: updatedDocs };
+    });
+    
+    setSelectedRecordId(newRecord.id);
+    toast({ title: "Başarılı", description: "Nöbet listesi arşive kaydedildi." });
   };
+  
+  const handleNewRecord = useCallback(() => {
+    setSelectedRecordId(null);
+    setRoster([]);
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate("");
+    setStartIndex(1);
+    setNextStartInfo(null);
+  }, []);
+
+  const handleDeleteRecord = useCallback(() => {
+    if (!selectedRecordId) return;
+    setDb(prevDb => ({
+      ...prevDb,
+      dutyRosterDocuments: prevDb.dutyRosterDocuments.filter(d => d.id !== selectedRecordId)
+    }));
+    handleNewRecord();
+    toast({ title: "Silindi", description: "Nöbet listesi arşivden silindi.", variant: "destructive" });
+  }, [selectedRecordId, setDb, handleNewRecord, toast]);
 
 
   const handleExport = () => {
@@ -128,10 +177,19 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
     }
   };
 
+  if (loading) return <div>Yükleniyor...</div>;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* --- SOL PANEL: AYARLAR --- */}
-      <div className="md:col-span-1 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-1 space-y-6">
+        <RecordManager
+          records={dutyRosterDocuments.filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
+          selectedRecordId={selectedRecordId}
+          onSelectRecord={setSelectedRecordId}
+          onNewRecord={handleNewRecord}
+          onDeleteRecord={handleDeleteRecord}
+          noun="Nöbet Listesi"
+        />
         <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
@@ -175,14 +233,13 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
 
             <Button onClick={generateRosterPreview} className="w-full">
               <CalendarIcon size={20} className="mr-2"/>
-              Listeyi Oluştur
+              Listeyi Oluştur ve Önizle
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* --- SAĞ PANEL: ÖNİZLEME VE ÇIKTI --- */}
-      <div className="md:col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-4">
         <Card>
           <CardHeader>
              <div className="flex flex-wrap justify-between items-center gap-4">
@@ -196,8 +253,8 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                         Word Olarak İndir
                     </Button>
                      <Button onClick={saveRoster} disabled={roster.length === 0}>
-                        <Send size={18} className="mr-2"/>
-                        Kaydet ve Öğrencilere Gönder
+                        <Save size={18} className="mr-2"/>
+                        Arşive Kaydet
                     </Button>
                  </div>
              </div>
@@ -207,12 +264,6 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4 text-sm text-green-800">
                     Bir sonraki liste için <strong>{nextStartInfo.index}</strong> numaralı <strong>{nextStartInfo.name}</strong> adlı öğrenciden başlayabilirsiniz.
                 </div>
-            )}
-             {roster.length > 0 && !currentClass?.dutyRoster?.some(item => roster.includes(item)) && (
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4 text-sm text-yellow-800 flex items-center gap-2">
-                <AlertTriangle size={16}/>
-                Önizleme listesi henüz kaydedilmedi. Kaydetmeyi unutmayın.
-              </div>
             )}
             <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
@@ -235,7 +286,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                     ) : (
                         <TableRow>
                             <TableCell colSpan={3} className="text-center h-48 text-muted-foreground">
-                                Liste oluşturmak için lütfen yandaki formu doldurun.
+                                Arşivden bir liste seçin veya yeni bir liste oluşturun.
                             </TableCell>
                         </TableRow>
                     )}

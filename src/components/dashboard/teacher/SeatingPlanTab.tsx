@@ -1,17 +1,19 @@
+
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users, Grid, Shuffle, Trash2, Download, GripVertical, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, SeatingPlanDocument } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '@/hooks/useAuth';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+
 
 interface SeatingPlanTabProps {
     students: Student[];
@@ -21,8 +23,10 @@ interface SeatingPlanTabProps {
 
 export function SeatingPlanTab({ students, currentClass, teacherProfile }: SeatingPlanTabProps) {
   const { toast } = useToast();
-  const { db } = useAuth();
-
+  const { db, setDb, loading } = useDatabase();
+  const { seatingPlanDocuments = [] } = db;
+  
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [rowCount, setRowCount] = useState(5);
   const [colCount, setColCount] = useState(3);
   const [seatingPlan, setSeatingPlan] = useState<{ [key: string]: Student }>({});
@@ -30,22 +34,30 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
   const [dragSource, setDragSource] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentClass?.seatingPlan) {
-      const loadedPlan: { [key: string]: Student } = {};
-      for (const key in currentClass.seatingPlan) {
-        const studentId = currentClass.seatingPlan[key];
-        const student = students.find(s => s.id === studentId);
-        if (student) {
-          loadedPlan[key] = student;
+    const classRecords = seatingPlanDocuments.filter(d => d.classId === currentClass?.id);
+    if (selectedRecordId) {
+        const record = classRecords.find(r => r.id === selectedRecordId);
+        if (record) {
+            const loadedPlan: { [key: string]: Student } = {};
+            for (const key in record.data.plan) {
+                const studentId = record.data.plan[key];
+                const student = students.find(s => s.id === studentId);
+                if (student) {
+                    loadedPlan[key] = student;
+                }
+            }
+            setSeatingPlan(loadedPlan);
+            setRowCount(record.data.rows || 5);
+            setColCount(record.data.cols || 3);
+        } else {
+            setSeatingPlan({});
         }
-      }
-      setSeatingPlan(loadedPlan);
-      setRowCount(currentClass.seatingPlanRows || 5);
-      setColCount(currentClass.seatingPlanCols || 3);
+    } else if (classRecords.length > 0) {
+        setSelectedRecordId(classRecords[0].id);
     } else {
-      setSeatingPlan({});
+        setSeatingPlan({});
     }
-  }, [currentClass, students]);
+  }, [selectedRecordId, seatingPlanDocuments, students, currentClass]);
 
   const handleRandomize = useCallback(() => {
     if (students.length === 0) {
@@ -73,24 +85,38 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
   }, [toast]);
 
   const handleSavePlan = async () => {
-    if (!currentClass || !db) return;
+    if (!currentClass) return;
 
     const planToSave: { [key: string]: string } = {};
     for (const key in seatingPlan) {
       planToSave[key] = seatingPlan[key].id;
     }
-
-    const classRef = doc(db, 'classes', currentClass.id);
-    try {
-      await updateDoc(classRef, {
-        seatingPlan: planToSave,
-        seatingPlanRows: rowCount,
-        seatingPlanCols: colCount,
-      });
-      toast({ title: "Oturma planı başarıyla kaydedildi!" });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Hata", description: "Plan kaydedilemedi." });
-    }
+    
+    const newRecord: SeatingPlanDocument = {
+        id: selectedRecordId || `seat_${Date.now()}`,
+        name: `Oturma Planı - ${new Date().toLocaleDateString('tr-TR')}`,
+        date: new Date().toISOString(),
+        classId: currentClass.id,
+        data: {
+            plan: planToSave,
+            rows: rowCount,
+            cols: colCount,
+        }
+    };
+    
+    setDb(prevDb => {
+        const existingIndex = prevDb.seatingPlanDocuments.findIndex(d => d.id === newRecord.id);
+        const updatedDocs = [...prevDb.seatingPlanDocuments];
+        if (existingIndex > -1) {
+            updatedDocs[existingIndex] = newRecord;
+        } else {
+            updatedDocs.push(newRecord);
+        }
+        return { ...prevDb, seatingPlanDocuments: updatedDocs };
+    });
+    
+    setSelectedRecordId(newRecord.id);
+    toast({ title: "Oturma planı başarıyla kaydedildi!" });
   };
 
   const handleExportWord = useCallback(() => {
@@ -124,9 +150,7 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     if (dragSource && dragSource !== 'list') delete newPlan[dragSource];
     if (existingStudent && dragSource) {
         if (dragSource === 'list') {
-            const currentUnseated = unseatedStudents.filter(s => s.id !== draggedStudent.id);
-            const finalUnseated = [...currentUnseated, existingStudent];
-            // Here you might need a way to update the unseated list state if it were managed by state
+            // Already handled by unseatedStudents logic
         } else {
             newPlan[dragSource] = existingStudent;
         }
@@ -154,10 +178,37 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     const seatedIds = new Set(Object.values(seatingPlan).map((s: Student) => s.id));
     return students.filter(s => !seatedIds.has(s.id));
   }, [students, seatingPlan]);
+  
+  const handleNewRecord = useCallback(() => {
+    setSelectedRecordId(null);
+    setSeatingPlan({});
+    setRowCount(5);
+    setColCount(3);
+  }, []);
+
+  const handleDeleteRecord = useCallback(() => {
+    if (!selectedRecordId) return;
+    setDb(prevDb => ({
+      ...prevDb,
+      seatingPlanDocuments: prevDb.seatingPlanDocuments.filter(d => d.id !== selectedRecordId)
+    }));
+    handleNewRecord();
+    toast({ title: "Silindi", description: "Oturma planı arşivden silindi.", variant: "destructive" });
+  }, [selectedRecordId, setDb, handleNewRecord, toast]);
+
+  if (loading) return <div>Yükleniyor...</div>
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-3 space-y-6">
+         <RecordManager
+            records={seatingPlanDocuments.filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
+            selectedRecordId={selectedRecordId}
+            onSelectRecord={setSelectedRecordId}
+            onNewRecord={handleNewRecord}
+            onDeleteRecord={handleDeleteRecord}
+            noun="Oturma Planı"
+        />
         <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">

@@ -213,12 +213,31 @@ export interface AnnualPlan {
   };
 }
 
-
-// Dilekçe Types
-export interface DilekceDocument {
+export interface Archivable {
     id: string;
     name: string;
     date: string;
+    classId: string;
+    data: any;
+}
+
+export interface DutyRosterDocument extends Archivable {
+    data: RosterItem[];
+}
+export interface SeatingPlanDocument extends Archivable {
+    data: {
+        plan: { [key: string]: string };
+        rows: number;
+        cols: number;
+    }
+}
+export interface ElectionDocument extends Archivable {
+    data: Election;
+}
+
+
+// Dilekçe Types
+export interface DilekceDocument extends Archivable {
     data: {
         id: string;
         kurum: string;
