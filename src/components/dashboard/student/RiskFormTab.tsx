@@ -29,7 +29,7 @@ export function RiskFormTab() {
   const studentRisks = appUser.data.risks || [];
 
   const handleRiskChange = async (riskId: string, isChecked: boolean) => {
-    if (!db) return;
+    if (!db || !appUser || appUser.type !== 'student') return;
     const currentRisks = appUser.data.risks || [];
     const newRisks = isChecked ? [...currentRisks, riskId] : currentRisks.filter(r => r !== riskId);
     const studentRef = doc(db, 'students', appUser.data.id);
