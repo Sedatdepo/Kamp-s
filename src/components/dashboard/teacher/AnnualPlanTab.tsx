@@ -4,17 +4,18 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, Trash2, Save, X, ArrowDown, Download, Upload,
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, ArrowLeft
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, CheckSquare, Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
-import type { AnnualPlan, AnnualPlanEntry, DailyPlan } from '@/lib/types';
+import type { AnnualPlan, AnnualPlanEntry, DailyPlan, TeacherProfile, Class } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { exportDailyPlanToRtf, exportAnnualPlanToRtf } from '@/lib/word-export';
-import { useAuth } from '@/hooks/useAuth';
-import { Class, TeacherProfile } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 // --- YARDIMCI BİLEŞENLER ---
 const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {
@@ -215,6 +216,7 @@ const ControlPanelModal = ({
 };
 
 const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function, onExport: Function }) => {
+    const { toast } = useToast();
     const [dailyPlan, setDailyPlan] = useState<DailyPlan>(row.dailyPlan || {
         id: `dp-${row.id}`,
         date: row.hafta,
@@ -248,7 +250,7 @@ const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport }: { row: AnnualP
     
     const handleExport = () => {
         if (!plan.dailyPlanSettings.okul || !plan.dailyPlanSettings.mudur) {
-            alert('Lütfen önce Yıllık Plan Ayarlarından okul ve müdür adını girin.');
+            toast({variant: 'destructive', title: 'Lütfen önce Yıllık Plan Ayarlarından okul ve müdür adını girin.'});
             return;
         }
         onExport(dailyPlan);
@@ -352,6 +354,12 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
             annualPlans: prevDb.annualPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p)
         }));
     };
+
+    const updateRow = useCallback((rowId: string, updatedFields: Partial<AnnualPlanEntry>) => {
+        if (!activePlan) return;
+        const newRows = activePlan.rows.map(r => r.id === rowId ? { ...r, ...updatedFields } : r);
+        updatePlan({ ...activePlan, rows: newRows });
+    }, [activePlan, updatePlan]);
     
     const stats = useMemo(() => {
         if (!activePlan) return { totalWeeks: 0, completedWeeks: 0, percentage: 0 };
@@ -419,7 +427,7 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
                 updatePlan(updatedPlan);
                 toast({ title: 'Plan İçe Aktarıldı', description: `${newRows.length} hafta başarıyla eklendi.` });
 
-            } catch (error) {
+            } catch (error) => {
                 console.error("Error parsing file:", error);
                 toast({ variant: 'destructive', title: 'Dosya Okuma Hatası', description: 'Seçilen dosya geçerli bir formatta değil.' });
             }
@@ -429,7 +437,7 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
     };
 
     const handleExportPlan = () => {
-        if (!activePlan || !currentClass) {
+        if (!activePlan || !currentClass || !teacherProfile) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Dışa aktarılacak aktif bir plan veya sınıf yok.' });
             return;
         }
@@ -446,10 +454,10 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
 
     const handleSaveDailyPlan = (dailyPlan: DailyPlan) => {
         if (!activePlan || !activeRow) return;
-        const updatedRows = activePlan.rows.map(r => r.id === activeRow.id ? {...r, dailyPlan: dailyPlan} : r);
+        const updatedRows = activePlan.rows.map(r => r.id === activeRow.id ? {...r, dailyPlan: dailyPlan, konu: dailyPlan.konu, cikti: dailyPlan.kazanim, arac: dailyPlan.materyal, degerlendirme: dailyPlan.degerlendirme } : r);
         updatePlan({...activePlan, rows: updatedRows});
         toast({title: 'Günlük plan kaydedildi!'});
-    }
+    };
 
     const handleExportDailyPlan = (dailyPlan: DailyPlan) => {
         if (!activePlan || !activeRow || !currentClass || !teacherProfile) {
@@ -490,22 +498,23 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
         if (!activePlan) return;
 
         let currentDate = new Date(startDateStr);
-        while (currentDate.getDay() !== 1) {
+        // Haftanın ilk günü Pazartesi değilse, bir sonraki Pazartesi'ye git
+        while (currentDate.getDay() !== 1) { 
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
         const newRows = activePlan.rows.map(row => {
             if (row.isSpecial && !keepHolidays) {
-                return null;
+                return null; // Tatilleri koruma seçeneği kapalıysa tatilleri sil
             }
-            return { ...row, hafta: '' };
+            return { ...row, hafta: '' }; // Tüm tarihleri sıfırla
         }).filter(Boolean) as AnnualPlanEntry[];
 
 
         let weekIndex = 0;
         for (let i = 0; i < newRows.length; i++) {
             const row = newRows[i];
-            if (row.isSpecial) continue;
+            if (row.isSpecial) continue; // Tatil satırlarını atla
 
             const weekStart = new Date(currentDate);
             weekStart.setDate(weekStart.getDate() + (weekIndex * 7));
@@ -634,9 +643,57 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
 
             {/* Plan Tablosu */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <p className="p-8 text-center text-gray-500">
-                Yıllık plan tablosu burada görünecek. Başlamak için "Yönetim Paneli" üzerinden müfredat yükleyin.
-              </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th className="p-4 w-12 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Hafta</th>
+                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Ünite</th>
+                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Konu & Kazanım</th>
+                                <th className="p-4 w-32 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                            {activePlan.rows.length > 0 ? activePlan.rows.map((row, index) => (
+                                <tr key={row.id} className={`group ${row.isSpecial ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <td className="p-4 text-center">
+                                        {!row.isSpecial && (
+                                            <Checkbox
+                                                checked={row.isDone}
+                                                onCheckedChange={(checked) => updateRow(row.id, { isDone: !!checked })}
+                                                aria-label="Haftayı tamamlandı olarak işaretle"
+                                            />
+                                        )}
+                                    </td>
+                                    <td className="p-4 align-top">
+                                        <AutoResizingTextarea value={row.hafta} onChange={(e: any) => updateRow(row.id, { hafta: e.target.value })} className="w-full bg-transparent p-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Tarih aralığı"/>
+                                    </td>
+                                    <td className="p-4 align-top">
+                                        <AutoResizingTextarea value={row.unite} onChange={(e: any) => updateRow(row.id, { unite: e.target.value })} className="w-full bg-transparent p-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Ünite Adı"/>
+                                    </td>
+                                    <td className="p-4 align-top">
+                                        <AutoResizingTextarea value={row.konu} onChange={(e: any) => updateRow(row.id, { konu: e.target.value })} className="w-full bg-transparent p-1 font-semibold focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Konu Adı"/>
+                                        <AutoResizingTextarea value={row.cikti} onChange={(e: any) => updateRow(row.id, { cikti: e.target.value })} className="w-full bg-transparent p-1 text-sm text-gray-500 mt-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Kazanımlar"/>
+                                    </td>
+                                    <td className="p-4 text-center align-middle">
+                                        {!row.isSpecial && (
+                                            <Button variant="outline" size="sm" onClick={() => onOpenDailyPlan(row)}>
+                                                <FileText className="mr-2 h-4 w-4"/> Aç
+                                            </Button>
+                                        )}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-gray-500">
+                                        Yıllık plan tablosu burada görünecek. Başlamak için "Yönetim Paneli" üzerinden müfredat yükleyin.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
