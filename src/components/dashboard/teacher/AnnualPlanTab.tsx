@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, Trash2, Save, X, ArrowDown, Download, Upload,
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, CheckSquare, Square
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
