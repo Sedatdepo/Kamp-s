@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -46,7 +45,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
         );
     }, [student.id]);
 
-    const { data: messages, loading: messagesLoading } = useFirestore<Message>('messages', messagesQuery);
+    const { data: messages, loading: messagesLoading } = useFirestore<Message>(`messages-for-student-${student.id}`, messagesQuery);
 
     const sortedMessages = useMemo(() => {
         if (!messages) return [];
@@ -112,9 +111,26 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
   
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-  
-  const unreadMessagesByStudent = useMemo(() => new Map<string, number>(), []);
 
+  const unreadMessagesQuery = useMemo(() => {
+    if (!teacherId) return null;
+    return query(
+        collection(db, 'messages'),
+        where('receiverId', '==', teacherId),
+        where('isRead', '==', false)
+    );
+  }, [teacherId]);
+
+  const { data: unreadMessages } = useFirestore<Message>(`unread-messages-for-teacher-${teacherId}`, unreadMessagesQuery);
+
+  const unreadMessagesByStudent = useMemo(() => {
+    const map = new Map<string, number>();
+    unreadMessages.forEach(msg => {
+        map.set(msg.senderId, (map.get(msg.senderId) || 0) + 1);
+    });
+    return map;
+  }, [unreadMessages]);
+  
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => {
         const numA = parseInt(a.number, 10);
@@ -284,7 +300,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                   <TableCell className="text-right">
                     <div className="inline-flex relative z-10">
                         <Dialog>
-                            {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                             <DialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="relative" onClick={(e) => { e.stopPropagation(); }}>
                                     <MessageSquare className="h-4 w-4"/>
@@ -293,6 +308,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                     )}
                                 </Button>
                             </DialogTrigger>
+                             {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
                         <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); resetPassword(e, student); }}><KeyRound className="h-4 w-4"/></Button>
                         <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(e, student.id); }}><Trash2 className="h-4 w-4"/></Button>
