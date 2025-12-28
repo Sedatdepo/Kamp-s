@@ -30,7 +30,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (studentId: string, passwordAsNumber: string) => Promise<void>;
+  signInStudent: (classCode: string, studentNumber: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -92,11 +92,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        await seedDatabase(db, user.uid);
-        const profileDocRef = doc(db, 'teachers', user.uid);
-        const profileDoc = await getDoc(profileDocRef);
-        const profile = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile : null;
-        setAppUser({ type: 'teacher', data: user, profile });
+        const teacherProfileRef = doc(db, 'teachers', user.uid);
+        const teacherProfileSnap = await getDoc(teacherProfileRef);
+
+        if (teacherProfileSnap.exists()) {
+            await seedDatabase(db, user.uid);
+            const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
+            setAppUser({ type: 'teacher', data: user, profile });
+        } else {
+             // This case might happen if a user is authenticated but has no teacher profile.
+             // We can sign them out or handle as an error state. For now, we treat as no user.
+             await firebaseSignOut(auth);
+             setAppUser(null);
+        }
       } else {
         const studentData = localStorage.getItem('studentUser');
         if (studentData) {
@@ -187,23 +195,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loading, isMounted, appUser, pathname, router, searchParams]);
 
-  const signInStudent = async (studentId: string, passwordAsNumber: string) => {
+  const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db) throw new Error("Veritabanı başlatılamadı.");
+    
+    // 1. Find the class with the given code
+    const classQuery = query(collection(db, 'classes'), where('code', '==', classCode));
+    const classSnapshot = await getDocs(classQuery);
 
-    const studentDocRef = doc(db, 'students', studentId);
-    const studentDoc = await getDoc(studentDocRef);
+    if (classSnapshot.empty) {
+        throw new Error('Bu koda sahip bir sınıf bulunamadı.');
+    }
+    const classDoc = classSnapshot.docs[0];
+    const classId = classDoc.id;
 
-    if (!studentDoc.exists()) {
-        throw new Error('Öğrenci bulunamadı.');
+    // 2. Find the student in that class with the given number
+    const studentQuery = query(
+        collection(db, 'students'), 
+        where('classId', '==', classId),
+        where('number', '==', studentNumber)
+    );
+    const studentSnapshot = await getDocs(studentQuery);
+
+    if (studentSnapshot.empty) {
+        throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
     }
     
-    const studentDataDb = studentDoc.data();
+    const studentDoc = studentSnapshot.docs[0];
+    const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
 
-    if (studentDataDb.password !== passwordAsNumber) {
+    if (studentData.password !== studentNumber) {
         throw new Error('Geçersiz şifre.');
     }
-  
-    const studentData = { id: studentDoc.id, ...studentDataDb } as Student;
+    
     localStorage.setItem('studentUser', JSON.stringify(studentData));
     setAppUser({ type: 'student', data: studentData });
   };

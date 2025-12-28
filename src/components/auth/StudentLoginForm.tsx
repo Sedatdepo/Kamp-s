@@ -10,8 +10,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Student } from '@/lib/types';
 
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
@@ -25,7 +23,7 @@ interface StudentLoginFormProps {
 export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { signInStudent, db } = useAuth();
+  const { signInStudent } = useAuth();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,40 +34,9 @@ export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!db) {
-        toast({ variant: 'destructive', title: 'Hata', description: 'Veritabanı bağlantısı kurulamadı.'});
-        return;
-    }
     setIsLoading(true);
     try {
-        // 1. Find the class with the given code
-        const classQuery = query(collection(db, 'classes'), where('code', '==', values.classCode.toUpperCase()));
-        const classSnapshot = await getDocs(classQuery);
-
-        if (classSnapshot.empty) {
-            throw new Error('Bu koda sahip bir sınıf bulunamadı.');
-        }
-        
-        const classDoc = classSnapshot.docs[0];
-        const classId = classDoc.id;
-
-        // 2. Find the student in that class with the given number
-        const studentQuery = query(
-            collection(db, 'students'), 
-            where('classId', '==', classId),
-            where('number', '==', values.studentNumber)
-        );
-        const studentSnapshot = await getDocs(studentQuery);
-
-        if (studentSnapshot.empty) {
-            throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
-        }
-
-        const studentDoc = studentSnapshot.docs[0];
-        const studentId = studentDoc.id;
-        
-      // 3. Attempt to sign in with studentId and the number as password
-      await signInStudent(studentId, values.studentNumber);
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
 
       toast({
         title: 'Giriş Başarılı',
