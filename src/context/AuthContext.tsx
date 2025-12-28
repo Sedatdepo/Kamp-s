@@ -5,7 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallb
 import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const { auth, db, storage } = useMemo(() => {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
@@ -169,12 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return; 
     }
 
-    const isInviteLink = searchParams.get('invite') === 'true';
-    if (isInviteLink) {
-        return; // Don't redirect if it's an invite link, let the page handle it.
+    const isPublic = publicRoutes.includes(pathname) || pathname.startsWith('/auth/register'); // Allow for sub-routes
+    // A special check for invite links which are public but need to stay on the page.
+    if (pathname === '/' && window.location.search.includes('invite=true')) {
+        return;
     }
 
-    const isPublic = publicRoutes.includes(pathname);
     const isChangePass = pathname === studentChangePassRoute;
 
     if (appUser) {
@@ -192,11 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } else {
-      if (!isPublic && pathname !== '/auth/change-password') {
+      if (!isPublic && !isChangePass) {
         router.push('/');
       }
     }
-  }, [loading, isMounted, appUser, pathname, router, searchParams]);
+  }, [loading, isMounted, appUser, pathname, router]);
 
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db) throw new Error("Veritabanı başlatılamadı.");
