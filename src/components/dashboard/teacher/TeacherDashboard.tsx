@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -426,12 +426,3 @@ export function TeacherDashboard() {
       </div>
   );
 }
-
-const AnnualPlanTab = () => {
-    return (
-        <Suspense fallback={<div>Yükleniyor...</div>}>
-            <AnnualPlanBuilder />
-        </Suspense>
-    );
-};
-    
