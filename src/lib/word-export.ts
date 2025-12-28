@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -575,22 +575,6 @@ export function exportSeatingPlanToRtf({
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
-interface ExportDutyRosterArgs {
-    roster: RosterItem[];
-    currentClass: Class;
-    teacherProfile?: TeacherProfile | null;
-}
-
-// --- STUDENT DEVELOPMENT REPORT EXPORT ---
-
-const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
-    if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
-    const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
-    if (totalMax === 0) return 0;
-    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
-    return (totalScore / totalMax) * 100;
-};
-
 interface StudentDevelopmentReportArgs {
     student: Student;
     infoForm: InfoForm | null;
@@ -608,6 +592,14 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
+
+    const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+        if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
+        const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+        if (totalMax === 0) return 0;
+        const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+        return (totalScore / totalMax) * 100;
+    };
 
     const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades) return 0;
@@ -845,6 +837,81 @@ export function exportAnnualPlanToRtf({ annualPlan, currentClass, teacherProfile
     `).join('');
 
     const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DILEKCE EXPORT ---
+export function exportDilekceToRtf(data: DilekceDocument['data']) {
+    const ilgiList = data.ilgiler?.filter(i => i.value) || [];
+    const eklerList = data.ekler?.filter(e => e.value) || [];
+
+    const content = `
+        <div class="center" style="font-size: 12pt; line-height: 1.5;">
+            <p>${data.kurum || 'T.C.'}</p>
+            <p>${data.kaymakamlik || 'KAYMAKAMLIĞI'}</p>
+            <p>${data.mudurluk || 'İlçe Milli Eğitim Müdürlüğü'}</p>
+        </div>
+        
+        <table class="no-border" style="width: 100%; font-size: 12pt; margin-top: 20px;">
+            <tr>
+                <td class="no-border" style="width: 50%;">
+                    <p>Sayı&nbsp;&nbsp;&nbsp;: ${data.sayi || '.....................'}</p>
+                    <p>Konu&nbsp;&nbsp;: ${data.konu || '.....................'}</p>
+                </td>
+                <td class="no-border" style="width: 50%; text-align: right;">
+                    <p>${data.tarih || 'dd.mm.yyyy'}</p>
+                </td>
+            </tr>
+        </table>
+
+        <div class="center bold" style="text-transform: uppercase; margin-top: 40px; margin-bottom: 20px; font-size: 12pt;">
+            <p>${data.muhatap || 'İLGİLİ MAKAMA'}</p>
+            ${data.muhatap_detay ? `<p style="font-size: 11pt; text-transform: none;">(${data.muhatap_detay})</p>` : ''}
+        </div>
+
+        ${ilgiList.length > 0 ? `
+            <div style="font-size: 12pt; margin-bottom: 10px; line-height: 1.5;">
+                ${ilgiList.map((ilgi, index) => `
+                    <p style="padding-left: 50px; text-indent: -30px;">İlgi: ${String.fromCharCode(97 + index)}) ${ilgi.value}</p>
+                `).join('')}
+            </div>
+        ` : ''}
+        
+        <div style="font-size: 12pt; line-height: 1.5; text-align: justify; text-indent: 50px; white-space: pre-wrap;">
+            ${data.metin.replace(/\n/g, '<br/>')}
+        </div>
+
+        <div style="text-align: right; font-size: 12pt; margin-top: 20px;">
+            <p>${data.kapanis || 'Gereğini arz ederim.'}</p>
+        </div>
+
+        <div style="text-align: right; font-size: 12pt; margin-top: 40px;">
+            <p style="height: 50px;">(İmza)</p>
+            <p class="bold">${data.imza_ad_soyad || 'Ad Soyad'}</p>
+            <p>${data.imza_unvan || 'Unvan'}</p>
+        </div>
+
+        ${(eklerList.length > 0 || data.dagitim_geregi || data.dagitim_bilgi) ? `
+            <div style="font-size: 11pt; margin-top: 30px;">
+                ${eklerList.length > 0 ? `
+                    <div style="margin-bottom: 10px;">
+                        <p class="bold">EKLER:</p>
+                        ${eklerList.map((ek, index) => `<p>${index + 1}. ${ek.value}</p>`).join('')}
+                    </div>
+                ` : ''}
+                ${(data.dagitim_geregi || data.dagitim_bilgi) ? `
+                    <div>
+                        <p class="bold">DAĞITIM:</p>
+                        ${data.dagitim_geregi ? `<p>Gereği:<br/>${data.dagitim_geregi.replace(/\n/g, '<br/>')}</p>` : ''}
+                        ${data.dagitim_bilgi ? `<p style="margin-top: 5px;">Bilgi:<br/>${data.dagitim_bilgi.replace(/\n/g, '<br/>')}</p>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        ` : ''}
+    `;
+
+    const title = data.konu || "Dilekce";
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }

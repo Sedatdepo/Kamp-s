@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { AnnualPlan } from '@/lib/types';
+import { AnnualPlan, DilekceDocument } from '@/lib/types';
 
 // localStorage anahtarı
-const DB_KEY = 'annual_plan_database';
+const DB_KEY = 'ito_kampus_database';
 
 // Veritabanı yapısı
 interface Database {
   annualPlans: AnnualPlan[];
+  dilekceDocuments: DilekceDocument[];
 }
 
 // Varsayılan boş veritabanı
 const initialDb: Database = {
   annualPlans: [],
+  dilekceDocuments: [],
 };
 
 export const useDatabase = () => {
@@ -25,10 +27,13 @@ export const useDatabase = () => {
     try {
       const storedDb = localStorage.getItem(DB_KEY);
       if (storedDb) {
-        setDb(JSON.parse(storedDb));
+        const parsedDb = JSON.parse(storedDb);
+        // Ensure all parts of the initialDb are present in the loaded data
+        setDb({ ...initialDb, ...parsedDb });
       } else {
         // Eğer localStorage boşsa, başlangıç verisiyle doldur
         localStorage.setItem(DB_KEY, JSON.stringify(initialDb));
+        setDb(initialDb);
       }
     } catch (error) {
       console.error("Failed to load database from localStorage:", error);
