@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { StudentListTab } from '@/components/dashboard/teacher/StudentListTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
@@ -276,7 +277,7 @@ const TABS_CONFIG = {
   "projects": { label: "Ödev & Proje Takibi", icon: BookText },
   "homework": { label: "Ödev Takibi", icon: BookText },
   "risks": { label: "Rehberlik Araçları", icon: List },
-  "forms": { label: "Bilgi Formları", icon: List },
+  "forms": { label: "Bilgi Formları", icon: FileSignature },
   "communication": { label: "İletişim", icon: MessageCircle },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
 } as const;
@@ -349,7 +350,7 @@ export function TeacherDashboard() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> Geri
               </Button>
                <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
-                <Home className="mr-2 h-4 w-4" /> Tüm Sınıflar
+                <Home className="mr-2 h-4 w-4" /> Ana Sayfa
               </Button>
             </div>
           </div>
