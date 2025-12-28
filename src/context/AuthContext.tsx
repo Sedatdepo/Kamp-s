@@ -1,8 +1,10 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +36,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
+  storage: FirebaseStorage | null;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,9 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { auth, db } = useMemo(() => {
+  const { auth, db, storage } = useMemo(() => {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-    return { auth: getAuth(app), db: getFirestore(app) };
+    return { auth: getAuth(app), db: getFirestore(app), storage: getStorage(app) };
   }, []);
   
   useEffect(() => {
@@ -248,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, auth, db }}>
+    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, auth, db, storage }}>
       {children}
     </AuthContext.Provider>
   );

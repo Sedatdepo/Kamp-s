@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -165,6 +164,11 @@ export interface Message {
   timestamp: Timestamp;
   participants: string[];
   isRead: boolean;
+  file?: {
+    url: string;
+    name: string;
+    type: string;
+  };
 }
 
 // Annual Plan Types

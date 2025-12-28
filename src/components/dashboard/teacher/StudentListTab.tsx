@@ -1,14 +1,16 @@
+
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon, FileDown } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon, FileDown, Paperclip, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -47,13 +49,17 @@ interface StudentListTabProps {
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
-    const { db } = useAuth();
+    const { db, storage } = useAuth();
     const [newMessage, setNewMessage] = useState('');
-    
+    const [file, setFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
     const messagesQuery = useMemo(() => {
         if (!db) return null;
         return query(
-            collection(db, 'messages'), 
+            collection(db, 'messages'),
             where('participants', 'array-contains', student.id)
         );
     }, [student.id, db]);
@@ -62,13 +68,38 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
     const sortedMessages = useMemo(() => {
         if (!messages) return [];
-        // Sort in client-side to avoid complex queries
         return [...messages].sort((a, b) => (a.timestamp?.toMillis() ?? 0) - (b.timestamp?.toMillis() ?? 0));
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() || !db) return;
-        
+        if (!newMessage.trim() && !file) return;
+        if (!db || !storage) {
+            toast({ variant: "destructive", title: "Hata", description: "Veritabanı veya depolama hizmeti başlatılamadı." });
+            return;
+        }
+
+        setIsUploading(true);
+
+        let fileData: Message['file'] | undefined = undefined;
+
+        if (file) {
+            try {
+                const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                fileData = {
+                    url: downloadURL,
+                    name: file.name,
+                    type: file.type,
+                };
+            } catch (error) {
+                console.error("File upload error: ", error);
+                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: "Dosya yüklenirken bir sorun oluştu." });
+                setIsUploading(false);
+                return;
+            }
+        }
+
         await addDoc(collection(db, 'messages'), {
             senderId: teacherId,
             receiverId: student.id,
@@ -76,9 +107,23 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
             text: newMessage,
             timestamp: Timestamp.now(),
             isRead: false,
+            ...(fileData && { file: fileData }),
         });
+
         setNewMessage('');
+        setFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+        setIsUploading(false);
     };
+    
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+        }
+    };
+
 
     return (
         <DialogContent className="sm:max-w-[425px]">
@@ -90,8 +135,15 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                     {messagesLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
                         sortedMessages.map(msg => (
                             <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`p-2 rounded-lg max-w-xs ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                    <p>{msg.text}</p>
+                                <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                    {msg.text && <p>{msg.text}</p>}
+                                    {msg.file && (
+                                        <a href={msg.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-background/20 p-2 rounded-md hover:bg-background/40">
+                                            <Paperclip className="h-4 w-4" />
+                                            <span className="truncate">{msg.file.name}</span>
+                                            <Download className="h-4 w-4" />
+                                        </a>
+                                    )}
                                     <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}</p>
                                 </div>
                             </div>
@@ -101,9 +153,23 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                         <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
                     )}
                 </ScrollArea>
+                {file && (
+                    <div className="p-2 border-t text-sm text-muted-foreground flex justify-between items-center">
+                        <span>Ekli dosya: {file.name}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
                 <div className="flex mt-4 gap-2">
-                    <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
-                    <Button onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
+                    <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && !isUploading && handleSendMessage()} disabled={isUploading} />
+                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        <Paperclip className="h-5 w-5" />
+                    </Button>
+                    <Button onClick={handleSendMessage} disabled={isUploading}>
+                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
+                    </Button>
                 </div>
             </div>
         </DialogContent>
