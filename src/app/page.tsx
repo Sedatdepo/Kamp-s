@@ -7,9 +7,8 @@ import { TeacherLoginForm } from '@/components/auth/TeacherLoginForm';
 import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
 
-function LoginPageContent() {
+export default function LoginPage() {
   const { appUser, loading } = useAuth();
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'teacher';
@@ -51,21 +50,11 @@ function LoginPageContent() {
               <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Suspense fallback={<div>Yükleniyor...</div>}>
-                <StudentLoginForm />
-              </Suspense>
+              <StudentLoginForm />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div>Yükleniyor...</div>}>
-      <LoginPageContent />
-    </Suspense>
   );
 }
