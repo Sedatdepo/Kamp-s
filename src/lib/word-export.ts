@@ -1,8 +1,8 @@
-
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem } from './types';
-import { format } from 'date-fns';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores } from './types';
+import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
+import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
 
 
 // We are generating an HTML string and telling the browser to save it as an .rtf file.
@@ -573,4 +573,145 @@ interface ExportDutyRosterArgs {
     roster: RosterItem[];
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
+}
+
+// --- STUDENT DEVELOPMENT REPORT EXPORT ---
+
+const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+    if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
+    const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+    if (totalMax === 0) return 0;
+    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    return (totalScore / totalMax) * 100;
+};
+
+interface StudentDevelopmentReportArgs {
+    student: Student;
+    infoForm: InfoForm | null;
+    riskFactors: RiskFactor[];
+    teacherProfile: TeacherProfile;
+    currentClass: Class;
+}
+export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass }: StudentDevelopmentReportArgs) {
+    const reportTitle = "ÖĞRENCİ GELİŞİM VE DEĞERLENDİRME RAPORU";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${student.name} - Gelişim Raporu`;
+    
+    // --- GRADES CALCULATION ---
+    const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
+    const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
+    const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
+
+    const calculateTermAverage = (termGrades?: GradingScores) => {
+        if (!termGrades) return 0;
+        const exam1 = termGrades.exam1;
+        const exam2 = termGrades.exam2;
+        const perf1 = calculateAverage(termGrades.scores1, perfCriteria);
+        const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
+        const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
+        const allScores = [exam1, exam2, perf1, perf2, projAvg].filter((score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0);
+        if (allScores.length === 0) return 0;
+        const sum = allScores.reduce((acc, score) => acc + score, 0);
+        return sum / allScores.length;
+    };
+    
+    const term1Avg = calculateTermAverage(student.term1Grades);
+    const term2Avg = calculateTermAverage(student.term2Grades);
+    const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+    
+    // --- REPORT SECTIONS ---
+    const studentInfoSection = `
+        <h3>A. ÖĞRENCİ KİMLİK BİLGİLERİ</h3>
+        <table style="width: 100%;">
+            <tr><td style="width: 30%;"><b>Adı Soyadı:</b></td><td>${student.name}</td></tr>
+            <tr><td><b>Okul Numarası:</b></td><td>${student.number}</td></tr>
+            <tr><td><b>Sınıfı:</b></td><td>${currentClass.name}</td></tr>
+            <tr><td><b>Doğum Tarihi:</b></td><td>${infoForm?.birthDate ? format(infoForm.birthDate.toDate(), 'dd.MM.yyyy') : 'Belirtilmemiş'}</td></tr>
+            <tr><td><b>Doğum Yeri:</b></td><td>${infoForm?.birthPlace || 'Belirtilmemiş'}</td></tr>
+        </table>
+    `;
+
+    const familyInfoSection = `
+        <h3>B. AİLE BİLGİLERİ</h3>
+        <table style="width: 100%;">
+            <tr><td style="width: 30%;"><b>Anne Durumu:</b></td><td>${infoForm?.motherStatus || 'Belirtilmemiş'}</td></tr>
+            <tr><td><b>Anne Eğitim / Meslek:</b></td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
+            <tr><td><b>Baba Durumu:</b></td><td>${infoForm?.fatherStatus || 'Belirtilmemiş'}</td></tr>
+            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
+            <tr><td><b>Kardeş Bilgileri:</b></td><td>${infoForm?.siblingsInfo || 'Belirtilmemiş'}</td></tr>
+            <tr><td><b>Ekonomik Durum:</b></td><td>${infoForm?.economicStatus || 'Belirtilmemiş'}</td></tr>
+        </table>
+    `;
+
+    const gradesSection = `
+        <h3>C. AKADEMİK DURUMU (${teacherProfile.reportConfig?.lessonName || 'Bu Ders'})</h3>
+        <h4>1. Dönem Notları</h4>
+        <table style="width: 100%;">
+            <tr>
+                <td class="center bold">1. Sınav</td>
+                <td class="center bold">2. Sınav</td>
+                <td class="center bold">1. Performans</td>
+                <td class="center bold">2. Performans</td>
+                <td class="center bold">Proje</td>
+                <td class="center bold">Ortalama</td>
+            </tr>
+            <tr>
+                <td class="center">${student.term1Grades?.exam1 ?? '-'}</td>
+                <td class="center">${student.term1Grades?.exam2 ?? '-'}</td>
+                <td class="center">${calculateAverage(student.term1Grades?.scores1, perfCriteria)?.toFixed(2) ?? '-'}</td>
+                <td class="center">${calculateAverage(student.term1Grades?.scores2, perfCriteria)?.toFixed(2) ?? '-'}</td>
+                <td class="center">${student.hasProject ? (calculateAverage(student.term1Grades?.projectScores, projCriteria)?.toFixed(2) ?? '-') : 'Almadı'}</td>
+                <td class="center bold">${term1Avg.toFixed(2)}</td>
+            </tr>
+        </table>
+        <h4>2. Dönem Notları</h4>
+        <table style="width: 100%;">
+             <tr>
+                <td class="center bold">1. Sınav</td>
+                <td class="center bold">2. Sınav</td>
+                <td class="center bold">1. Performans</td>
+                <td class="center bold">2. Performans</td>
+                <td class="center bold">Proje</td>
+                <td class="center bold">Ortalama</td>
+            </tr>
+            <tr>
+                <td class="center">${student.term2Grades?.exam1 ?? '-'}</td>
+                <td class="center">${student.term2Grades?.exam2 ?? '-'}</td>
+                <td class="center">${calculateAverage(student.term2Grades?.scores1, perfCriteria)?.toFixed(2) ?? '-'}</td>
+                <td class="center">${calculateAverage(student.term2Grades?.scores2, perfCriteria)?.toFixed(2) ?? '-'}</td>
+                <td class="center">${student.hasProject ? (calculateAverage(student.term2Grades?.projectScores, projCriteria)?.toFixed(2) ?? '-') : 'Almadı'}</td>
+                <td class="center bold">${term2Avg.toFixed(2)}</td>
+            </tr>
+        </table>
+        <br/>
+        <div style="text-align: right; font-size: 14pt;"><b>YIL SONU GENEL ORTALAMA: ${finalAverage.toFixed(2)}</b></div>
+    `;
+    
+    const attendanceCount = student.attendance?.filter(a => a.status === 'absent').length || 0;
+    const socialSection = `
+        <h3>D. SOSYAL VE DAVRANIŞSAL DURUMU</h3>
+        <table style="width: 100%;">
+            <tr><td style="width: 30%;"><b>Devamsızlık Durumu:</b></td><td>Toplam ${attendanceCount} gün devamsızlığı bulunmaktadır.</td></tr>
+            <tr><td><b>Risk Faktörleri:</b></td><td>${student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label).filter(Boolean).join(', ') || 'Belirtilen risk faktörü yok.'}</td></tr>
+            <tr><td><b>Davranış (Kanaat) Notu:</b></td><td>${calculateAverage(student.term1Grades?.behaviorScores, behaviorCriteria)?.toFixed(2) ?? 'Hesaplanmadı'}</td></tr>
+        </table>
+    `;
+
+    const observationSection = `
+        <h3>E. ÖĞRETMEN GÖZLEM VE DEĞERLENDİRMELERİ</h3>
+        <div style="border: 1px solid black; height: 200px; padding: 5px;"></div>
+    `;
+
+    const content = `
+        ${header}
+        ${studentInfoSection}
+        ${familyInfoSection}
+        ${gradesSection}
+        ${socialSection}
+        ${observationSection}
+        ${footer}
+    `;
+
+    downloadRtf(generateHtmlShell(content, title), `${title.replace(/ /g, '_')}.rtf`);
 }

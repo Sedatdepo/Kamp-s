@@ -2,13 +2,13 @@
 
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student, Message, Class, TeacherProfile } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor } from '@/lib/types';
+import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -34,7 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { exportStudentListToRtf } from '@/lib/word-export';
+import { exportStudentListToRtf, exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 import { Badge } from '@/components/ui/badge';
 import { StudentDetailModal } from './StudentDetailModal';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
@@ -124,6 +124,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const studentsQuery = useMemo(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
   
+  const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
+  const { data: riskFactors } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   const unreadMessagesQuery = useMemo(() => {
@@ -155,6 +158,34 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         return a.number.localeCompare(b.number, 'tr');
     });
   }, [students]);
+
+  const handleExportStudentReport = async (student: Student) => {
+    if (!db || !teacherProfile || !currentClass) {
+        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli bilgiler yüklenemedi.'});
+        return;
+    }
+    try {
+        const infoFormRef = doc(db, 'infoForms', student.id);
+        const infoFormSnap = await getDocs(query(collection(db, 'infoForms'), where('studentId', '==', student.id)));
+        
+        let infoForm: InfoForm | null = null;
+        if (!infoFormSnap.empty) {
+            const doc = infoFormSnap.docs[0];
+            infoForm = { id: doc.id, ...doc.data() } as InfoForm;
+        }
+
+        exportStudentDevelopmentReportToRtf({
+            student,
+            infoForm,
+            riskFactors,
+            teacherProfile,
+            currentClass
+        });
+    } catch (error) {
+        console.error("Rapor oluşturma hatası:", error);
+        toast({variant: 'destructive', title: 'Hata', description: 'Öğrenci gelişim raporu oluşturulamadı.'});
+    }
+  };
 
   const handleExport = () => {
     if (currentClass && sortedStudents.length > 0) {
@@ -246,10 +277,12 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 <CardTitle className="font-headline">Öğrenci Listesi</CardTitle>
                 <div className="flex items-center gap-2 mt-1">
                   <CardDescription>Sınıf Kodu:</CardDescription>
-                  <Badge variant="secondary" className="text-base font-mono tracking-widest cursor-pointer" onClick={copyClassCode}>
-                    {currentClass?.code}
-                    <ClipboardCopy className="ml-2 h-3 w-3" />
-                  </Badge>
+                  {currentClass?.code && (
+                    <Badge variant="secondary" className="text-base font-mono tracking-widest cursor-pointer" onClick={copyClassCode}>
+                      {currentClass.code}
+                      <ClipboardCopy className="ml-2 h-3 w-3" />
+                    </Badge>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(true)}>
                     <LinkIcon className="mr-2 h-4 w-4" /> Sınıf Davet Linki
                   </Button>
@@ -300,11 +333,14 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Ekle</Button></TableCell>
               </TableRow>
               {sortedStudents.length > 0 ? sortedStudents.map(student => (
-                <TableRow key={student.id} className="cursor-pointer" onClick={() => setSelectedStudent(student)}>
-                  <TableCell className="font-medium">{student.number}</TableCell>
-                  <TableCell>{student.name}</TableCell>
+                <TableRow key={student.id} >
+                  <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.number}</TableCell>
+                  <TableCell className="cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.name}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" onClick={() => handleExportStudentReport(student)}>
+                           <FileDown className="h-4 w-4"/>
+                        </Button>
                         <Dialog>
                             <DialogTrigger asChild>
                                 <div onClick={(e) => e.stopPropagation()}>
@@ -405,5 +441,3 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
-
-    
