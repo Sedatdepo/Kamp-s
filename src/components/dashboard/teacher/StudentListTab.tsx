@@ -298,10 +298,10 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                   <TableCell className="font-medium">{student.number}</TableCell>
                   <TableCell>{student.name}</TableCell>
                   <TableCell className="text-right">
-                    <div className="inline-flex relative z-10">
+                    <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="relative" onClick={(e) => { e.stopPropagation(); }}>
+                                <Button variant="ghost" size="icon" className="relative">
                                     <MessageSquare className="h-4 w-4"/>
                                     {unreadMessagesByStudent.has(student.id) && (
                                         <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
@@ -310,8 +310,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                             </DialogTrigger>
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); resetPassword(e, student); }}><KeyRound className="h-4 w-4"/></Button>
-                        <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(e, student.id); }}><Trash2 className="h-4 w-4"/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => resetPassword(e, student)}><KeyRound className="h-4 w-4"/></Button>
+                        <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={(e) => handleDeleteStudent(e, student.id)}><Trash2 className="h-4 w-4"/></Button>
                     </div>
                   </TableCell>
                 </TableRow>

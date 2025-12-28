@@ -28,26 +28,28 @@ interface StudentDetailModalProps {
 
 const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
 
-const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number => {
-    if (!scores || !criteria.length) return 0;
+const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+    if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
     const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
     if (totalMax === 0) return 0;
     const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
     return (totalScore / totalMax) * 100;
 };
 
-const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNode, value: number | string }) => (
+const GradeCard = ({ title, icon, value }: { title: string, icon: React.ReactNode, value: number | string | null }) => (
     <Card className="flex-1">
         <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 text-xs">{icon} {title}</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-2xl font-bold">{typeof value === 'number' ? value.toFixed(2) : value}</p>
+            <p className="text-2xl font-bold">
+                {value === null || value === undefined ? 'N/A' : typeof value === 'number' ? value.toFixed(2) : value}
+            </p>
         </CardContent>
     </Card>
 );
 
-const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores, teacherProfile: TeacherProfile }) => {
+const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: GradingScores, teacherProfile: TeacherProfile, student: Student }) => {
     const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
@@ -57,7 +59,7 @@ const TermGrades = ({ termGrades, teacherProfile }: { termGrades?: GradingScores
     const exam2 = grades.exam2;
     const perf1 = calculateAverage(grades.scores1, perfCriteria);
     const perf2 = calculateAverage(grades.scores2, perfCriteria);
-    const projAvg = calculateAverage(grades.projectScores, projCriteria);
+    const projAvg = student.hasProject ? calculateAverage(grades.projectScores, projCriteria) : null;
     const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
@@ -149,14 +151,16 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
         
-        const averages = [
-            termGrades.exam1,
-            termGrades.exam2,
-            calculateAverage(termGrades.scores1, perfCriteria),
-            calculateAverage(termGrades.scores2, perfCriteria),
-            calculateAverage(termGrades.projectScores, projCriteria),
-            calculateAverage(termGrades.behaviorScores, behaviorCriteria)
-        ].filter((avg): avg is number => avg !== undefined && avg > 0);
+        const exam1 = termGrades.exam1;
+        const exam2 = termGrades.exam2;
+        const perf1 = calculateAverage(termGrades.scores1, perfCriteria);
+        const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
+        const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
+        const behaviorAvg = calculateAverage(termGrades.behaviorScores, behaviorCriteria);
+
+        const averages = [exam1, exam2, perf1, perf2, projAvg, behaviorAvg].filter(
+            (avg): avg is number => avg !== undefined && avg !== null && avg > 0
+        );
 
         if (averages.length === 0) return 0;
         return averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
@@ -200,10 +204,10 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                             </Card>
                         </div>
                         <TabsContent value="term1">
-                            <TermGrades termGrades={student.term1Grades} teacherProfile={teacherProfile} />
+                            <TermGrades termGrades={student.term1Grades} teacherProfile={teacherProfile} student={student} />
                         </TabsContent>
                         <TabsContent value="term2">
-                            <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} />
+                            <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} student={student} />
                         </TabsContent>
                     </Tabs>
                 </TabsContent>

@@ -79,7 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         const studentData = localStorage.getItem('studentUser');
         if (studentData) {
-          setAppUser({ type: 'student', data: JSON.parse(studentData) });
+          try {
+            setAppUser({ type: 'student', data: JSON.parse(studentData) });
+          } catch(e) {
+             console.error("Failed to parse student data from localStorage", e);
+             localStorage.removeItem('studentUser');
+             setAppUser(null);
+          }
         } else {
           setAppUser(null);
         }
@@ -89,28 +95,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
+  const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
+
   useEffect(() => {
     let unsubscribe: () => void = () => {};
-    if (appUser?.type === 'student') {
-        const studentDocRef = doc(db, 'students', appUser.data.id);
+    if (studentId) {
+        const studentDocRef = doc(db, 'students', studentId);
         unsubscribe = onSnapshot(studentDocRef, (doc) => {
             if (doc.exists()) {
                 const updatedStudent = { id: doc.id, ...doc.data() } as Student;
                 setAppUser({ type: 'student', data: updatedStudent });
                 localStorage.setItem('studentUser', JSON.stringify(updatedStudent));
+            } else {
+                // Student document was deleted, sign out
+                signOut();
             }
         });
-    } else if (appUser?.type === 'teacher') {
-        const teacherDocRef = doc(db, 'teachers', appUser.data.uid);
+    } else if (teacherUid) {
+        const teacherDocRef = doc(db, 'teachers', teacherUid);
         unsubscribe = onSnapshot(teacherDocRef, (doc) => {
             if (doc.exists()) {
                 const updatedProfile = { id: doc.id, ...doc.data() } as TeacherProfile;
-                setAppUser(prev => prev ? { ...prev, profile: updatedProfile } as AppUser : null);
+                setAppUser(prev => (prev && prev.type === 'teacher') ? { ...prev, profile: updatedProfile } : prev);
             }
         });
     }
     return () => unsubscribe();
-  }, [appUser?.type, appUser?.type === 'student' ? appUser.data.id : appUser?.type === 'teacher' ? appUser.data.uid : null]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, teacherUid]);
 
   useEffect(() => {
     if (loading || !isMounted) {

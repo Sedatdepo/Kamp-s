@@ -16,7 +16,6 @@ interface GradingHeaderProps {
   activeTerm: ActiveTerm;
   setActiveTerm: (term: ActiveTerm) => void;
   teacherProfile: TeacherProfile;
-  onExport: () => void;
   onClearScores: () => void;
   updateTeacherProfile: (data: Partial<TeacherProfile>) => Promise<void>;
 }
@@ -27,7 +26,6 @@ export function GradingHeader({
   activeTerm,
   setActiveTerm,
   teacherProfile,
-  onExport,
   onClearScores,
   updateTeacherProfile
 }: GradingHeaderProps) {
@@ -83,9 +81,6 @@ export function GradingHeader({
                 </AlertDialogFooter>
               </AlertDialogContent>
           </AlertDialog>
-          <Button onClick={onExport}>
-            <FileText className="mr-2 h-4 w-4" /> Dışa Aktar
-          </Button>
         </div>
       </div>
       <GradingSettingsDialog
