@@ -427,7 +427,7 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
                 updatePlan(updatedPlan);
                 toast({ title: 'Plan İçe Aktarıldı', description: `${newRows.length} hafta başarıyla eklendi.` });
 
-            } catch (error) => {
+            } catch (error) {
                 console.error("Error parsing file:", error);
                 toast({ variant: 'destructive', title: 'Dosya Okuma Hatası', description: 'Seçilen dosya geçerli bir formatta değil.' });
             }
