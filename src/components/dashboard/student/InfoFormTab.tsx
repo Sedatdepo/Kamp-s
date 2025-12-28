@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -42,7 +41,7 @@ const infoFormSchema = z.object({
 type InfoFormData = z.infer<typeof infoFormSchema>;
 
 export function InfoFormTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isFormLoading, setFormLoading] = useState(true);
@@ -70,7 +69,7 @@ export function InfoFormTab() {
 
   useEffect(() => {
     const fetchFormData = async () => {
-      if (appUser?.type === 'student') {
+      if (appUser?.type === 'student' && db) {
         setFormLoading(true);
         const formRef = doc(db, 'infoForms', appUser.data.id);
         const formSnap = await getDoc(formRef);
@@ -90,10 +89,10 @@ export function InfoFormTab() {
       }
     };
     fetchFormData();
-  }, [appUser, form]);
+  }, [appUser, form, db]);
 
   const onSubmit = async (data: InfoFormData) => {
-    if (appUser?.type !== 'student') return;
+    if (appUser?.type !== 'student' || !db) return;
     setIsLoading(true);
     try {
       const formRef = doc(db, 'infoForms', appUser.data.id);

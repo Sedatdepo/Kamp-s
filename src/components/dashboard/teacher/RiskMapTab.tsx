@@ -5,7 +5,6 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 const commonRiskFactors = [
@@ -59,7 +57,8 @@ interface RiskMapTabProps {
 
 function RiskFactorManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
-  const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);
+  const { db } = useAuth();
+  const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -79,6 +78,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   const handleCancelEdit = () => setIsEditing(null);
 
   const handleSaveEdit = async (factorId: string) => {
+    if (!db) return;
     if (!editingLabel.trim() || editingWeight <= 0) {
       toast({ variant: 'destructive', title: 'Geçersiz giriş', description: 'Faktör adı boş olamaz ve ağırlık 0 dan büyük olmalı.'});
       return;
@@ -90,11 +90,13 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   };
 
   const handleDelete = async (factorId: string) => {
+    if (!db) return;
     await deleteDoc(doc(db, 'riskFactors', factorId));
     toast({ title: 'Risk faktörü silindi', variant: 'destructive' });
   };
   
   const handleAddFactor = async () => {
+      if (!db) return;
       if (!newFactorLabel.trim() || newFactorWeight <= 0) {
         toast({ variant: 'destructive', title: 'Geçersiz giriş', description: 'Faktör adı boş olamaz ve ağırlık 0 dan büyük olmalı.'});
         return;
@@ -210,17 +212,17 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
 
 
 export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTabProps) {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
 
-  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
+  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
-  const riskFactorsQuery = useMemo(() => query(collection(db, 'riskFactors')), []);
+  const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
   const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const handleToggleChange = async (checked: boolean) => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', classId);
     try {
       await updateDoc(classRef, { isRiskFormActive: checked });

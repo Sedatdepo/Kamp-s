@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { TeacherProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -27,6 +26,7 @@ interface ProfileDialogProps {
 
 export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDialogProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState(teacherProfile);
 
@@ -39,6 +39,7 @@ export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDial
   }
 
   const handleSave = async () => {
+    if (!db) return;
     setIsLoading(true);
     try {
         const teacherRef = doc(db, 'teachers', profile.id);

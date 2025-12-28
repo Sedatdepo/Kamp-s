@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from 'react';
@@ -8,7 +7,6 @@ import { Class, Candidate } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Vote, CheckCircle, Crown, UserCheck, Building, ShieldCheck as HonorIcon } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -17,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
 
 export function ElectionVoteTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   
   if (appUser?.type !== 'student') return null;
@@ -25,7 +23,7 @@ export function ElectionVoteTab() {
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => classId ? doc(db, 'classes', classId) : null, [classId]);
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
   const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
 
@@ -71,7 +69,7 @@ export function ElectionVoteTab() {
   const runnerUp = electionType === 'class_president' && sortedCandidates.length > 1 ? sortedCandidates[1] : null;
 
   const handleVote = async (candidateId: string) => {
-    if (!currentClass || !currentClass.election) return;
+    if (!currentClass || !currentClass.election || !db) return;
     if (hasVoted) {
         toast({ title: 'Zaten oy kullandınız.', variant: 'destructive'});
         return;

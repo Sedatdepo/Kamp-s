@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, Query, DocumentData, DocumentReference } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useAuth } from './useAuth';
 
 interface FirestoreData<T> {
   data: T[];
@@ -35,26 +34,32 @@ const getQueryKey = (q: Query<DocumentData> | DocumentReference<DocumentData> | 
 
 
 export function useFirestore<T>(
-  collectionOrQueryKey: string, 
+  collectionKey: string, 
   firestoreQuery?: Query<DocumentData> | DocumentReference<DocumentData> | null
 ): FirestoreData<T> {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { db } = useAuth();
 
   const queryKey = getQueryKey(firestoreQuery);
 
   useEffect(() => {
+    if (!db) {
+        // Don't run the effect if db is not available yet
+        setLoading(true);
+        return;
+    }
+
     if (firestoreQuery === null) {
       setData([]);
       setLoading(false);
       return;
     }
 
-    // Since the key is now stable, we can set loading state here.
     setLoading(true);
 
-    const q = firestoreQuery || query(collection(db, collectionOrQueryKey));
+    const q = firestoreQuery || query(collection(db, collectionKey));
 
     const unsubscribe = onSnapshot(q as any, // Cast to any to handle both signatures
       (snapshot) => {
@@ -75,13 +80,13 @@ export function useFirestore<T>(
       (err) => {
         setError(err);
         setLoading(false);
-        console.error(`Error fetching collection ${collectionOrQueryKey}:`, err);
+        console.error(`Error fetching collection ${collectionKey}:`, err);
       }
     );
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionOrQueryKey, queryKey]);
+  }, [collectionKey, queryKey, db]);
 
   return { data, loading, error };
 }

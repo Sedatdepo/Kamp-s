@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Student, Class } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, Clock, UserMinus, Save } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AttendanceTabProps {
   students: Student[];
@@ -23,6 +22,7 @@ type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
 export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [attendanceRecords, setAttendanceRecords] = useState<{ [key: string]: AttendanceStatus }>({});
   const [showSummary, setShowSummary] = useState(false);
@@ -53,6 +53,7 @@ export function AttendanceTab({ students, currentClass }: AttendanceTabProps) {
   };
 
   const updateAttendance = async (currentDate: string, records: { [key: string]: AttendanceStatus }) => {
+    if (!db) return;
     const batch = writeBatch(db);
 
     Object.keys(records).forEach(studentId => {

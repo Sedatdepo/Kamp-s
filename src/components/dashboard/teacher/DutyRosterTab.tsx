@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -11,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar as CalendarIcon, Download, Users, RotateCcw, Send, AlertTriangle } from 'lucide-react';
 import { exportDutyRosterToRtf } from '@/lib/word-export';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DutyRosterTabProps {
   students: Student[];
@@ -21,6 +20,7 @@ interface DutyRosterTabProps {
 
 export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRosterTabProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState("");
@@ -97,7 +97,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
   };
   
   const saveRoster = async () => {
-    if (!currentClass || roster.length === 0) {
+    if (!currentClass || roster.length === 0 || !db) {
       toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor. Lütfen önce liste oluşturun." });
       return;
     }

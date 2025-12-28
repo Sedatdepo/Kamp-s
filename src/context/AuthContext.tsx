@@ -1,14 +1,26 @@
-
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth } from 'firebase/auth';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc, Firestore } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { getApps, initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+
+// Define firebaseConfig directly here
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
 
 
 export type AppUser = 
@@ -20,6 +32,8 @@ interface AuthContextType {
   loading: boolean;
   signInStudent: (studentId: string, passwordAsNumber: string) => Promise<void>;
   signOut: () => Promise<void>;
+  auth: Auth | null;
+  db: Firestore | null;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,7 +41,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const publicRoutes = ['/', '/auth/register'];
 const studentChangePassRoute = '/auth/change-password';
 
-async function seedDatabase(teacherId: string) {
+async function seedDatabase(db: Firestore, teacherId: string) {
     const teacherRef = doc(db, 'teachers', teacherId);
     const teacherSnap = await getDoc(teacherRef);
     if (!teacherSnap.exists()) return;
@@ -65,13 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const { auth, db } = useMemo(() => {
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+    return { auth: getAuth(app), db: getFirestore(app) };
+  }, []);
   
   useEffect(() => {
     setIsMounted(true);
+    if (!auth || !db) return;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        await seedDatabase(user.uid);
+        await seedDatabase(db, user.uid);
         const profileDocRef = doc(db, 'teachers', user.uid);
         const profileDoc = await getDoc(profileDocRef);
         const profile = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } as TeacherProfile : null;
@@ -93,21 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
-
-  const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
-  const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
+  }, [auth, db]);
 
   const signOut = useCallback(async () => {
+    if (!auth) return;
     await firebaseSignOut(auth);
     localStorage.removeItem('studentUser');
     setAppUser(null);
     router.push('/');
-  }, [router]);
+  }, [auth, router]);
+
+  const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
+  const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
 
   useEffect(() => {
     let unsubscribe: () => void = () => {};
-    if (studentId) {
+    if (studentId && db) {
         const studentDocRef = doc(db, 'students', studentId);
         unsubscribe = onSnapshot(studentDocRef, (doc) => {
             if (doc.exists()) {
@@ -119,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 signOut();
             }
         });
-    } else if (teacherUid) {
+    } else if (teacherUid && db) {
         const teacherDocRef = doc(db, 'teachers', teacherUid);
         unsubscribe = onSnapshot(teacherDocRef, (doc) => {
             if (doc.exists()) {
@@ -129,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }
     return () => unsubscribe();
-  }, [studentId, teacherUid, signOut]);
+  }, [studentId, teacherUid, db, signOut]);
 
   useEffect(() => {
     if (loading || !isMounted) {
@@ -161,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loading, isMounted, appUser, pathname, router]);
 
   const signInStudent = async (studentId: string, passwordAsNumber: string) => {
+    if (!db) throw new Error("Veritabanı başlatılamadı.");
+
     const studentDocRef = doc(db, 'students', studentId);
     const studentDoc = await getDoc(studentDocRef);
 
@@ -196,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut }}>
+    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, auth, db }}>
       {children}
     </AuthContext.Provider>
   );

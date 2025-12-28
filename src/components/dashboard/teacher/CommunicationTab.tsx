@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,8 +18,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface CommunicationTabProps {
@@ -31,8 +30,10 @@ interface CommunicationTabProps {
 export function CommunicationTab({ classId, currentClass }: CommunicationTabProps) {
   const [announcementText, setAnnouncementText] = useState('');
   const { toast } = useToast();
+  const { db } = useAuth();
 
   const handleAddAnnouncement = async () => {
+    if (!db) return;
     if (!announcementText.trim()) {
       toast({ variant: 'destructive', title: 'Duyuru metni boş olamaz.' });
       return;
@@ -59,7 +60,7 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
   };
 
   const handleDeleteAnnouncement = async (announcementId: number) => {
-    if (!currentClass) return;
+    if (!db || !currentClass) return;
 
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = (currentClass.announcements || []).filter(

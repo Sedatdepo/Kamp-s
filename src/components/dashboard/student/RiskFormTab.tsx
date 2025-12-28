@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from 'react';
@@ -6,7 +5,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { RiskFactor, Class } from '@/lib/types';
 import { collection, doc, updateDoc, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -14,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export function RiskFormTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   
   if (appUser?.type !== 'student') return null;
@@ -23,14 +21,15 @@ export function RiskFormTab() {
   const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
 
   const riskFactorsQuery = useMemo(() => {
-    if (!studentClass?.teacherId) return null;
+    if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'riskFactors'));
-  }, [studentClass?.teacherId]);
+  }, [studentClass?.teacherId, db]);
   const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
 
   const studentRisks = appUser.data.risks || [];
 
   const handleRiskChange = async (riskId: string, isChecked: boolean) => {
+    if (!db) return;
     const currentRisks = appUser.data.risks || [];
     const newRisks = isChecked ? [...currentRisks, riskId] : currentRisks.filter(r => r !== riskId);
     const studentRef = doc(db, 'students', appUser.data.id);

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -12,7 +11,7 @@ import { exportSeatingPlanToRtf } from '@/lib/word-export';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SeatingPlanTabProps {
     students: Student[];
@@ -22,6 +21,7 @@ interface SeatingPlanTabProps {
 
 export function SeatingPlanTab({ students, currentClass, teacherProfile }: SeatingPlanTabProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
 
   const [rowCount, setRowCount] = useState(5);
   const [colCount, setColCount] = useState(3);
@@ -73,7 +73,7 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
   }, [toast]);
 
   const handleSavePlan = async () => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
 
     const planToSave: { [key: string]: string } = {};
     for (const key in seatingPlan) {

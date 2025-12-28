@@ -7,13 +7,13 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   name: z.string().min(2, 'İsim en az 2 karakter olmalıdır.'),
@@ -28,6 +28,7 @@ export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { auth, db } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,12 +43,18 @@ export function RegisterForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth || !db) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Firebase bağlantısı kurulamadı.'});
+        return;
+    }
+
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
       await setDoc(doc(db, 'teachers', user.uid), {
+        id: user.uid,
         name: values.name,
         branch: values.branch,
         schoolName: values.schoolName,
@@ -58,7 +65,7 @@ export function RegisterForm() {
         title: 'Kayıt Başarılı',
         description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
       });
-      // Yönlendirmeyi AuthContext halledecek
+      // AuthContext will handle the redirection
       // router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({

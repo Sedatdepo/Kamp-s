@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Student } from '@/lib/types';
 
 const formSchema = z.object({
@@ -26,7 +25,7 @@ interface StudentLoginFormProps {
 export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { signInStudent } = useAuth();
+  const { signInStudent, db } = useAuth();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,6 +36,10 @@ export function StudentLoginForm({ defaultClassCode }: StudentLoginFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!db) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Veritabanı bağlantısı kurulamadı.'});
+        return;
+    }
     setIsLoading(true);
     try {
         // 1. Find the class with the given code

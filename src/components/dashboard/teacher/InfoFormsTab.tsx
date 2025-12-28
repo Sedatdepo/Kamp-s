@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
@@ -6,7 +5,6 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, InfoForm, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { exportStudentInfoToRtf, exportInfoFormsStatusToRtf } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,17 +22,17 @@ interface InfoFormsTabProps {
 }
 
 export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   const [infoForms, setInfoForms] = useState<InfoForm[]>([]);
   const [formsLoading, setFormsLoading] = useState(true);
 
-  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
+  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   useEffect(() => {
     const fetchForms = async () => {
-        if (students.length === 0) {
+        if (!db || students.length === 0) {
             setInfoForms([]);
             setFormsLoading(false);
             return;
@@ -68,10 +66,10 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
     if (!studentsLoading && classId) {
         fetchForms();
     }
-  }, [students, studentsLoading, classId, toast]);
+  }, [students, studentsLoading, classId, toast, db]);
   
   const handleToggleChange = async (checked: boolean) => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', classId);
     try {
       await updateDoc(classRef, { isInfoFormActive: checked });

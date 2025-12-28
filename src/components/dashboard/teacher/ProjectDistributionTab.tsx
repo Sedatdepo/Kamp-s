@@ -5,7 +5,6 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, Lesson, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 const highSchoolLessons = [
@@ -48,7 +46,8 @@ interface ProjectDistributionTabProps {
 
 function LessonManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
-  const lessonsQuery = useMemo(() => query(collection(db, 'lessons'), where('teacherId', '==', teacherId)), [teacherId]);
+  const { db } = useAuth();
+  const lessonsQuery = useMemo(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -70,6 +69,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   };
 
   const handleSaveEdit = async (lessonId: string) => {
+    if (!db) return;
     if (!editingName.trim() || editingQuota <= 0) {
       toast({ variant: 'destructive', title: 'Geçersiz giriş', description: 'Ders adı boş olamaz ve kontenjan 0 dan büyük olmalı.'});
       return;
@@ -81,11 +81,13 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   };
 
   const handleDelete = async (lessonId: string) => {
+    if (!db) return;
     await deleteDoc(doc(db, 'lessons', lessonId));
     toast({ title: 'Ders silindi', variant: 'destructive' });
   };
   
   const handleAddLesson = async () => {
+      if (!db) return;
       if (!newLessonName.trim() || newLessonQuota <= 0) {
         toast({ variant: 'destructive', title: 'Geçersiz giriş', description: 'Ders adı boş olamaz ve kontenjan 0 dan büyük olmalı.'});
         return;
@@ -204,18 +206,18 @@ function LessonManager({ teacherId }: { teacherId: string }) {
 
 
 export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
 
-  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
+  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-  const lessonsQuery = useMemo(() => teacherId ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null, [teacherId]);
+  const lessonsQuery = useMemo(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
   
   const handleToggleChange = async (checked: boolean) => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', classId);
     try {
       await updateDoc(classRef, { isProjectSelectionActive: checked });
@@ -246,6 +248,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   };
 
   const handleAssignLesson = async (studentId: string, lessonId: string | null) => {
+    if (!db) return;
     const studentRef = doc(db, 'students', studentId);
     await updateDoc(studentRef, { assignedLesson: lessonId });
     toast({ title: 'Atama yapıldı!' });

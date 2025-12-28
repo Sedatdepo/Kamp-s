@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Class, Homework } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,8 +22,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/hooks/useAuth';
 
 interface HomeworkTabProps {
   classId: string;
@@ -35,8 +34,10 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
   const [homeworkText, setHomeworkText] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const { toast } = useToast();
+  const { db } = useAuth();
 
   const handleAddHomework = async () => {
+    if (!db) return;
     if (!homeworkText.trim()) {
       toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
       return;
@@ -66,7 +67,7 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
   };
 
   const handleDeleteHomework = async (homeworkId: number) => {
-    if (!currentClass) return;
+    if (!db || !currentClass) return;
 
     const classRef = doc(db, 'classes', classId);
     const updatedHomeworks = (currentClass.homeworks || []).filter(

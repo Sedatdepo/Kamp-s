@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -26,7 +25,7 @@ export function ChangePasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,8 +36,8 @@ export function ChangePasswordForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (appUser?.type !== 'student') {
-      toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci olarak giriş yapmadınız.' });
+    if (!db || appUser?.type !== 'student') {
+      toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci olarak giriş yapmadınız veya veritabanı bağlantısı kurulamadı.' });
       return;
     }
 
@@ -55,7 +54,7 @@ export function ChangePasswordForm() {
         title: 'Şifre Güncellendi',
         description: 'Artık panonuza erişebilirsiniz.',
       });
-      // Yönlendirmeyi AuthContext halledecek
+      // The redirection will be handled by AuthContext
       // router.push('/dashboard/student');
     } catch (error: any) {
         console.error("Şifre güncelleme hatası:", error);

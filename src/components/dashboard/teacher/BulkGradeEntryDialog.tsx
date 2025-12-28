@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -8,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { doc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BulkGradeEntryDialogProps {
   isOpen: boolean;
@@ -21,9 +20,11 @@ type GradeType = 'exam1' | 'exam2' | 'perf1' | 'perf2';
 
 export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
+    if (!db) return;
     const pastedText = e.clipboardData.getData('text');
     const lines = pastedText.split('\n').map(line => line.trim()).filter(line => line);
     

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect } from 'react';
@@ -6,7 +5,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Message, TeacherProfile } from '@/lib/types';
 import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, MessageSquare, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -23,22 +21,23 @@ function getInitials(name: string = '') {
 
 
 export function TeacherChatsTab() {
-    const { appUser } = useAuth();
+    const { appUser, db } = useAuth();
     if (appUser?.type !== 'student') return null;
 
     const studentId = appUser.data.id;
 
     const messagesQuery = useMemo(() => {
+        if (!db) return null;
         return query(
             collection(db, 'messages'), 
             where('participants', 'array-contains', studentId)
         );
-    }, [studentId]);
+    }, [studentId, db]);
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>('studentMessages', messagesQuery);
     
     useEffect(() => {
-        if (messages.length > 0) {
+        if (db && messages.length > 0) {
             const unreadMessages = messages.filter(msg => msg.receiverId === studentId && !msg.isRead);
             if (unreadMessages.length > 0) {
                 const batch = writeBatch(db);
@@ -49,7 +48,7 @@ export function TeacherChatsTab() {
                 batch.commit();
             }
         }
-    }, [messages, studentId]);
+    }, [messages, studentId, db]);
 
     const sortedMessages = useMemo(() => {
         return [...messages].sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
@@ -65,8 +64,8 @@ export function TeacherChatsTab() {
     }, [messages, studentId]);
     
     const teachersQuery = useMemo(() => 
-        teacherIds.length > 0 ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
-    , [teacherIds]);
+        (teacherIds.length > 0 && db) ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null
+    , [teacherIds, db]);
 
     const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile>(
         'teacherProfilesForChats',

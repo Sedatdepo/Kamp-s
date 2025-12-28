@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from 'react';
@@ -6,19 +5,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, RosterItem } from '@/lib/types';
 import { doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Users } from 'lucide-react';
 
 export function DutyRosterTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   if (appUser?.type !== 'student') return null;
 
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => classId ? doc(db, 'classes', classId) : null, [classId]);
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`class-duty-roster-${classId}`, classQuery);
   const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
   const dutyRoster = useMemo(() => currentClass?.dutyRoster || [], [currentClass]);

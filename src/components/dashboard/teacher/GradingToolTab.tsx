@@ -1,15 +1,14 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Student, TeacherProfile, Class, Criterion } from '@/lib/types';
 import { GradingHeader } from './GradingHeader';
 import { GradingTable } from './GradingTable';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
 import { useToast } from '@/hooks/use-toast';
 import { exportGradingToRtf } from '@/lib/word-export';
+import { useAuth } from '@/hooks/useAuth';
 
 interface GradingToolTabProps {
   classId: string;
@@ -23,6 +22,7 @@ export type ActiveTerm = 1 | 2;
 
 export function GradingToolTab({ classId, teacherProfile, students, currentClass }: GradingToolTabProps) {
   const { toast } = useToast();
+  const { db } = useAuth();
   const teacherId = teacherProfile?.id;
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
@@ -68,6 +68,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
   };
   
   const handleClearScores = async () => {
+    if (!db) return;
     const scoreKey = getScoreTargetKey(activeTab);
     const batch = writeBatch(db);
 
@@ -92,7 +93,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
   };
 
   const updateStudents = async (updatedStudents: Student[]) => {
-    if (students.length === 0) return;
+    if (!db || students.length === 0) return;
     const batch = writeBatch(db);
     updatedStudents.forEach(updatedStudent => {
         const originalStudent = students.find(s => s.id === updatedStudent.id);
@@ -120,7 +121,7 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
   };
 
   const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
-    if (!teacherId) return;
+    if (!teacherId || !db) return;
     const teacherRef = doc(db, 'teachers', teacherId);
     await updateDoc(teacherRef, data);
   };
@@ -137,7 +138,6 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
         activeTerm={activeTerm}
         setActiveTerm={setActiveTerm}
         teacherProfile={teacherProfile}
-        onExport={handleExport}
         onClearScores={handleClearScores}
         updateTeacherProfile={updateTeacherProfile}
       />

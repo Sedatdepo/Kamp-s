@@ -6,13 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Lütfen geçerli bir e-posta girin.' }),
@@ -23,6 +23,7 @@ export function TeacherLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { auth } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -33,6 +34,10 @@ export function TeacherLoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Firebase bağlantısı kurulamadı.'});
+        return;
+    }
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
@@ -40,7 +45,7 @@ export function TeacherLoginForm() {
         title: 'Giriş Başarılı',
         description: "Tekrar hoş geldiniz! Yönlendiriliyorsunuz...",
       });
-      // Yönlendirmeyi AuthContext halledecek
+      // The redirection will be handled by AuthContext
       // router.push('/dashboard/teacher');
     } catch (error: any) {
       toast({

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect } from 'react';
@@ -8,12 +7,11 @@ import { Class, Homework } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 export function HomeworkTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   
   if (appUser?.type !== 'student') return null;
   const studentId = appUser.data.id;
@@ -23,7 +21,7 @@ export function HomeworkTab() {
 
   useEffect(() => {
     // Mark homeworks as seen when the component mounts
-    if (studentClass && studentClass.homeworks && studentId) {
+    if (db && studentClass && studentClass.homeworks && studentId) {
       const unseenHomeworks = studentClass.homeworks.filter(
         (hw) => !hw.seenBy?.includes(studentId)
       );
@@ -42,7 +40,7 @@ export function HomeworkTab() {
         updateDoc(classRef, { homeworks: updatedHomeworks });
       }
     }
-  }, [studentClass, studentId]);
+  }, [studentClass, studentId, db]);
 
   if (classLoading) {
     return (

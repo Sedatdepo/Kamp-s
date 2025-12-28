@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect } from 'react';
@@ -8,10 +7,9 @@ import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Bell, Clock } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export function StudentCommunicationTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   
   if (appUser?.type !== 'student') return null;
   const studentId = appUser.data.id;
@@ -20,7 +18,7 @@ export function StudentCommunicationTab() {
   const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
 
   useEffect(() => {
-    if (studentClass && studentClass.announcements && studentId) {
+    if (db && studentClass && studentClass.announcements && studentId) {
       const unseenAnnouncements = studentClass.announcements.filter(
         (ann) => !ann.seenBy?.includes(studentId)
       );
@@ -39,7 +37,7 @@ export function StudentCommunicationTab() {
         updateDoc(classRef, { announcements: updatedAnnouncements });
       }
     }
-  }, [studentClass, studentId]);
+  }, [studentClass, studentId, db]);
 
   if (classLoading) {
     return (

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -12,7 +11,7 @@ import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -53,14 +52,13 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
-    const behaviorCriteria = teacherProfile.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
     const exam1 = grades.exam1;
     const exam2 = grades.exam2;
     const perf1 = calculateAverage(grades.scores1, perfCriteria);
     const perf2 = calculateAverage(grades.scores2, perfCriteria);
     const projAvg = student.hasProject ? calculateAverage(grades.projectScores, projCriteria) : null;
-    const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
+    const behaviorAvg = calculateAverage(grades.behaviorScores, INITIAL_BEHAVIOR_CRITERIA);
     
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -76,6 +74,8 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
 
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
+    const { db } = useAuth();
+
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
     }
@@ -83,7 +83,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
 
     const handleHomeworkStatusChange = async (homework: Homework, isCompleted: boolean) => {
-        if (!currentClass) return;
+        if (!currentClass || !db) return;
 
         const classRef = doc(db, 'classes', currentClass.id);
         
@@ -151,15 +151,21 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         
         const exam1 = termGrades.exam1;
+        const exam2 = termGrades.exam2;
         const perf1 = calculateAverage(termGrades.scores1, perfCriteria);
+        const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
         const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
 
-        const averages = [exam1, perf1, projAvg].filter(
-            (avg): avg is number => avg !== undefined && avg !== null && avg > 0
+        // Collect all valid scores for the average calculation
+        const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
+            (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
         );
-
-        if (averages.length === 0) return 0;
-        return averages.reduce((sum, avg) => sum + avg, 0) / averages.length;
+        
+        if (allScores.length === 0) return 0;
+        
+        // Calculate the average
+        const sum = allScores.reduce((acc, score) => acc + score, 0);
+        return sum / allScores.length;
     };
     
     const term1Avg = calculateTermAverage(student.term1Grades);

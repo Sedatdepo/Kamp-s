@@ -1,4 +1,3 @@
-
 // StudentDashboard.tsx
 "use client";
 
@@ -13,7 +12,6 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 function ProjectSelection() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   
   if (appUser?.type !== 'student') return null;
@@ -32,9 +30,9 @@ function ProjectSelection() {
   const [selected, setSelected] = useState<string[]>(appUser.data.projectPreferences || []);
 
   const lessonsQuery = useMemo(() => {
-    if (!studentClass?.teacherId) return null;
+    if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
-  }, [studentClass?.teacherId]);
+  }, [studentClass?.teacherId, db]);
 
   const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
 
@@ -52,7 +50,7 @@ function ProjectSelection() {
   };
 
   const handleSavePreferences = async () => {
-    if (appUser.type !== 'student') return;
+    if (appUser.type !== 'student' || !db) return;
     const studentRef = doc(db, 'students', appUser.data.id);
     await updateDoc(studentRef, { projectPreferences: selected });
     toast({ title: 'Tercihleriniz kaydedildi!' });

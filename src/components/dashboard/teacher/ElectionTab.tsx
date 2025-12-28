@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -22,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Student, Candidate, ElectionType, Class } from '@/lib/types';
@@ -38,7 +36,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Switch } from '@/components/ui/switch';
 import { exportElectionResultsToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,7 +46,7 @@ interface ElectionTabProps {
 }
 
 export function ElectionTab({ students, currentClass }: ElectionTabProps) {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { toast } = useToast();
   
   const electionData = useMemo(() => currentClass?.election || {
@@ -61,7 +58,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
 
   const updateElection = async (updates: Partial<Class['election']>) => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', currentClass.id);
     await updateDoc(classRef, {
       election: {
@@ -72,7 +69,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   };
   
   const handleToggleActive = async (checked: boolean) => {
-    if (!currentClass) return;
+    if (!currentClass || !db) return;
     
     if (checked && electionData.candidates.length < 2) {
         toast({

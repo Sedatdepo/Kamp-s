@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from 'react';
@@ -6,22 +5,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student } from '@/lib/types';
 import { doc, collection, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Grid } from 'lucide-react';
 
 export function SeatingPlanTab() {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   if (appUser?.type !== 'student') return null;
 
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => classId ? doc(db, 'classes', classId) : null, [classId]);
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`class-seating-plan-${classId}`, classQuery);
   const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
 
-  const studentsQuery = useMemo(() => classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId]);
+  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-for-plan-${classId}`, studentsQuery);
 
   const { seatingPlan, rowCount, colCount } = useMemo(() => {
