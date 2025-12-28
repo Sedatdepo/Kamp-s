@@ -4,14 +4,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, Trash2, Save, X, ArrowDown, Download, 
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
 import type { AnnualPlan, AnnualPlanEntry } from '@/lib/types';
 import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
 import { useToast } from '@/hooks/use-toast';
-import { Home } from 'lucide-react';
 
 // --- YARDIMCI BİLEŞENLER ---
 const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {

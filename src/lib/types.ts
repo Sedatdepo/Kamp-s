@@ -168,6 +168,20 @@ export interface Message {
 }
 
 // Annual Plan Types
+export interface DailyPlan {
+  id: string;
+  date: string;
+  konu: string;
+  kazanim: string;
+  materyal: string;
+  plan: {
+      giris: string;
+      gelisme: string;
+      sonuc: string;
+  };
+  degerlendirme: string;
+}
+
 export interface AnnualPlanEntry {
   id: string;
   hafta: string;
@@ -181,20 +195,6 @@ export interface AnnualPlanEntry {
   isDone: boolean;
   isSpecial: boolean; // For holidays etc.
   dailyPlan: DailyPlan | null;
-}
-
-export interface DailyPlan {
-  id: string;
-  date: string;
-  konu: string;
-  kazanim: string;
-  materyal: string;
-  plan: {
-      giris: string;
-      gelisme: string;
-      sonuc: string;
-  };
-  degerlendirme: string;
 }
 
 export interface AnnualPlan {
