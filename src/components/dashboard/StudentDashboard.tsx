@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +20,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean }) => (
   <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
@@ -43,11 +41,11 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification }: { icon
 
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const { notifications, markAsSeen } = useNotification();
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const classQuery = useMemo(() => (classId ? doc(db, 'classes', classId) : null), [classId]);
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
   const currentClass = useMemo(() => (classData.length > 0 ? classData[0] : null), [classData]);
 
