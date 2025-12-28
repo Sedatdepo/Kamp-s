@@ -340,7 +340,7 @@ export function TeacherDashboard() {
 
       return (
         <div>
-          <div className="mb-6 flex justify-between items-center">
+           <div className="mb-6 flex justify-between items-center">
              <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
               {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
               {TABS_CONFIG[activeTab]?.label}
