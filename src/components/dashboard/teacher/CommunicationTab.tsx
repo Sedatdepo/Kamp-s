@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Megaphone, Clock, Trash2, Eye, Save } from 'lucide-react';
+import { Megaphone, Clock, Trash2, Eye, Save, Edit, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -38,6 +38,9 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
   const { communicationDocuments = [] } = localDb;
 
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<number | null>(null);
+  const [editingAnnouncementText, setEditingAnnouncementText] = useState('');
 
   const displayedAnnouncements = useMemo(() => {
     if (selectedRecordId) {
@@ -90,8 +93,39 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
     }
   };
 
+  const handleStartEdit = (ann: Announcement) => {
+    setEditingAnnouncementId(ann.id);
+    setEditingAnnouncementText(ann.text);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAnnouncementId(null);
+    setEditingAnnouncementText('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!db || !currentClass || editingAnnouncementId === null) return;
+    if (!editingAnnouncementText.trim()) {
+        toast({ variant: 'destructive', title: 'Duyuru metni boş olamaz.' });
+        return;
+    }
+
+    const classRef = doc(db, 'classes', classId);
+    const updatedAnnouncements = (currentClass.announcements || []).map(ann => 
+        ann.id === editingAnnouncementId ? { ...ann, text: editingAnnouncementText } : ann
+    );
+
+    try {
+        await updateDoc(classRef, { announcements: updatedAnnouncements });
+        toast({ title: 'Duyuru güncellendi.' });
+        handleCancelEdit();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Duyuru güncellenemedi.' });
+    }
+  };
+
   const handleSaveToArchive = () => {
-    if (!currentClass || !currentClass.announcements) {
+    if (!currentClass || !currentClass.announcements || currentClass.announcements.length === 0) {
       toast({ variant: 'destructive', title: 'Arşivlenemiyor', description: 'Arşivlenecek duyuru yok.' });
       return;
     }
@@ -157,54 +191,75 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
                 {displayedAnnouncements.length > 0 ? (
                   displayedAnnouncements.map((ann) => (
-                    <div key={ann.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start">
-                      <div>
-                        <p className="text-sm">{ann.text}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{new Date(ann.date).toLocaleDateString('tr-TR')}</span>
-                          </div>
-                          {!selectedRecordId && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1 cursor-default">
-                                  <Eye className="h-3 w-3" />
-                                  <span>{ann.seenBy?.length || 0} Görüldü</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {ann.seenBy && ann.seenBy.length > 0
-                                  ? <p>{ann.seenBy.join(', ')}</p>
-                                  : <p>Henüz kimse görmedi.</p>
-                                }
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
+                    <div key={ann.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start gap-4">
+                      {editingAnnouncementId === ann.id ? (
+                        <div className="w-full space-y-2">
+                            <Textarea 
+                                value={editingAnnouncementText}
+                                onChange={(e) => setEditingAnnouncementText(e.target.value)}
+                                className="bg-white"
+                            />
+                            <div className="flex gap-2">
+                                <Button size="sm" onClick={handleSaveEdit}><Save className="mr-2 h-4 w-4"/>Kaydet</Button>
+                                <Button size="sm" variant="ghost" onClick={handleCancelEdit}>İptal</Button>
+                            </div>
                         </div>
-                      </div>
-                      {!selectedRecordId && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Bu duyuruyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>İptal</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">
-                                Sil
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      ) : (
+                        <>
+                            <div className="flex-1">
+                                <p className="text-sm">{ann.text}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{new Date(ann.date).toLocaleDateString('tr-TR')}</span>
+                                </div>
+                                {!selectedRecordId && (
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 cursor-default">
+                                        <Eye className="h-3 w-3" />
+                                        <span>{ann.seenBy?.length || 0} Görüldü</span>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {ann.seenBy && ann.seenBy.length > 0
+                                        ? <p>{currentClass?.students?.filter(s => ann.seenBy.includes(s.id)).map(s => s.name).join(', ') || 'Gören öğrenci bulunamadı.'}</p>
+                                        : <p>Henüz kimse görmedi.</p>
+                                        }
+                                    </TooltipContent>
+                                    </Tooltip>
+                                )}
+                                </div>
+                            </div>
+                            {!selectedRecordId && (
+                                <div className="flex">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-blue-600" onClick={() => handleStartEdit(ann)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                        Bu duyuruyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">
+                                        Sil
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                </div>
+                            )}
+                        </>
                       )}
                     </div>
                   ))
