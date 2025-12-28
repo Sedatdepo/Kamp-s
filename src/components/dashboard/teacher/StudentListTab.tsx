@@ -20,6 +20,17 @@ import {
   DialogClose,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -208,12 +219,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     toast({ title: `${studentsToAdd.length} öğrenci eklendi!`});
   };
 
-  const handleDeleteStudent = async (e: React.MouseEvent, studentId: string) => {
-    e.stopPropagation();
-    if(window.confirm("Bu öğrenciyi silmek istediğinize emin misiniz?")) {
-        await deleteDoc(doc(db, 'students', studentId));
-        toast({ title: 'Öğrenci silindi', variant: 'destructive' });
-    }
+  const handleDeleteStudent = async (studentId: string) => {
+    await deleteDoc(doc(db, 'students', studentId));
+    toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
   
   const resetPassword = async (e: React.MouseEvent, student: Student) => {
@@ -311,7 +319,25 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
                         <Button type="button" variant="ghost" size="icon" onClick={(e) => resetPassword(e, student)}><KeyRound className="h-4 w-4"/></Button>
-                        <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={(e) => handleDeleteStudent(e, student.id)}><Trash2 className="h-4 w-4"/></Button>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu eylem, {student.name} adlı öğrenciyi kalıcı olarak silecektir. Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">
+                                        Sil
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>

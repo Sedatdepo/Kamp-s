@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -15,6 +14,17 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface HomeworkTabProps {
   classId: string;
@@ -39,6 +49,7 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
       assignedDate: new Date().toISOString(),
       dueDate: dueDate?.toISOString(),
       seenBy: [],
+      completedBy: [],
     };
 
     const classRef = doc(db, 'classes', classId);
@@ -56,7 +67,6 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
 
   const handleDeleteHomework = async (homeworkId: number) => {
     if (!currentClass) return;
-    if (!window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) return;
 
     const classRef = doc(db, 'classes', classId);
     const updatedHomeworks = (currentClass.homeworks || []).filter(
@@ -134,9 +144,27 @@ export function HomeworkTab({ classId, currentClass }: HomeworkTabProps) {
                          )}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500" onClick={() => handleDeleteHomework(hw.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Bu ödevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>İptal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">
+                            Sil
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 ))
               ) : (

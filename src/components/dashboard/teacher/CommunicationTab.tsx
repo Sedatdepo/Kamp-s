@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -11,6 +10,18 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Megaphone, Clock, Trash2, Eye } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 interface CommunicationTabProps {
   classId: string;
@@ -49,7 +60,6 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
 
   const handleDeleteAnnouncement = async (announcementId: number) => {
     if (!currentClass) return;
-    if (!window.confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
 
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = (currentClass.announcements || []).filter(
@@ -120,9 +130,27 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
                          </Tooltip>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500" onClick={() => handleDeleteAnnouncement(ann.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Bu duyuruyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>İptal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">
+                            Sil
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 ))
               ) : (

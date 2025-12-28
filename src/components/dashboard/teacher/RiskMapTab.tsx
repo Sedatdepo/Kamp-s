@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -21,6 +20,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { exportRiskMapToRtf } from '@/lib/word-export';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -80,10 +90,8 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   };
 
   const handleDelete = async (factorId: string) => {
-    if (window.confirm('Bu faktörü silmek istediğinize emin misiniz?')) {
-        await deleteDoc(doc(db, 'riskFactors', factorId));
-        toast({ title: 'Risk faktörü silindi', variant: 'destructive' });
-    }
+    await deleteDoc(doc(db, 'riskFactors', factorId));
+    toast({ title: 'Risk faktörü silindi', variant: 'destructive' });
   };
   
   const handleAddFactor = async () => {
@@ -124,7 +132,25 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
                     <div className="flex items-center gap-4">
                         <Badge variant="destructive">Ağırlık: {factor.weight}</Badge>
                         <Button size="icon" variant="ghost" onClick={() => handleStartEdit(factor)}><Edit className="h-4 w-4"/></Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(factor.id)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu faktörü silmek istediğinize emin misiniz? Bu faktörü seçen öğrencilerin risk puanları etkilenecektir.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(factor.id)} className="bg-destructive hover:bg-destructive/90">
+                                        Sil
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             )

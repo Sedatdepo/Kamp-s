@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -21,6 +20,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { exportProjectDistributionToRtf } from '@/lib/word-export';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const highSchoolLessons = [
     "Matematik", "Fizik", "Kimya", "Biyoloji", "Türk Dili ve Edebiyatı",
@@ -71,10 +81,8 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   };
 
   const handleDelete = async (lessonId: string) => {
-    if (window.confirm('Bu dersi silmek istediğinize emin misiniz?')) {
-        await deleteDoc(doc(db, 'lessons', lessonId));
-        toast({ title: 'Ders silindi', variant: 'destructive' });
-    }
+    await deleteDoc(doc(db, 'lessons', lessonId));
+    toast({ title: 'Ders silindi', variant: 'destructive' });
   };
   
   const handleAddLesson = async () => {
@@ -117,7 +125,25 @@ function LessonManager({ teacherId }: { teacherId: string }) {
                     <div className="flex items-center gap-4">
                         <Badge variant="secondary">Kontenjan: {lesson.quota}</Badge>
                         <Button size="icon" variant="ghost" onClick={() => handleStartEdit(lesson)}><Edit className="h-4 w-4"/></Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(lesson.id)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu dersi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(lesson.id)} className="bg-destructive hover:bg-destructive/90">
+                                        Sil
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             )
@@ -319,5 +345,3 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
     </div>
   );
 }
-
-    
