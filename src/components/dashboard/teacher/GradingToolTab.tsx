@@ -1,14 +1,19 @@
+
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Student, TeacherProfile, Class, Criterion } from '@/lib/types';
+import { Student, TeacherProfile, Class, Criterion, GradingDocument, GradingScores } from '@/lib/types';
 import { GradingHeader } from './GradingHeader';
 import { GradingTable } from './GradingTable';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
 import { useToast } from '@/hooks/use-toast';
 import { exportGradingToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+import { Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GradingToolTabProps {
   classId: string;
@@ -20,18 +25,50 @@ interface GradingToolTabProps {
 export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1: Perf1, 2: Perf2, 3: Proje, 4: Davranış
 export type ActiveTerm = 1 | 2;
 
-export function GradingToolTab({ classId, teacherProfile, students, currentClass }: GradingToolTabProps) {
+export function GradingToolTab({ classId, teacherProfile, students: initialStudents, currentClass }: GradingToolTabProps) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const teacherId = teacherProfile?.id;
+  const { db: localDb, setDb: setLocalDb, loading: localDbLoading } = useDatabase();
+  const { gradingDocuments = [] } = localDb;
+  
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  
+  // This local state will hold the student data, either live from Firestore or from an archive
+  const [students, setStudents] = useState<Student[]>(initialStudents);
+  
+  useEffect(() => {
+    const classRecords = gradingDocuments.filter(doc => doc.classId === classId);
+    
+    if (selectedRecordId) {
+        const record = classRecords.find(doc => doc.id === selectedRecordId);
+        if (record) {
+            const tempStudents = initialStudents.map(student => {
+                const archivedData = record.data.studentGrades.find(sg => sg.studentId === student.id);
+                const termKey = record.data.term === 'term1' ? 'term1Grades' : 'term2Grades';
+                return {
+                    ...student,
+                    [termKey]: archivedData ? archivedData.grades : student[termKey]
+                };
+            });
+            setStudents(tempStudents);
+            setActiveTerm(record.data.term === 'term1' ? 1 : 2);
+        } else {
+             setStudents(initialStudents); // If record not found, fall back to live data
+        }
+    } else {
+        setStudents(initialStudents); // If no record selected, use live data
+    }
+  }, [selectedRecordId, gradingDocuments, initialStudents, classId]);
 
+
+  const teacherId = teacherProfile?.id;
   const perfCriteria = teacherProfile?.perfCriteria ?? INITIAL_PERF_CRITERIA;
   const projCriteria = teacherProfile?.projCriteria ?? INITIAL_PROJ_CRITERIA;
   const behaviorCriteria = teacherProfile?.behaviorCriteria ?? INITIAL_BEHAVIOR_CRITERIA;
   
-  const termGradesKey: keyof Student = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+  const termGradesKey: 'term1Grades' | 'term2Grades' = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
 
   const currentCriteria = useMemo(() => {
     if (activeTab === 3) return projCriteria;
@@ -126,21 +163,81 @@ export function GradingToolTab({ classId, teacherProfile, students, currentClass
     await updateDoc(teacherRef, data);
   };
   
+  const handleSaveToArchive = () => {
+    if (!currentClass) return;
+
+    const studentGrades = students.map(student => ({
+        studentId: student.id,
+        grades: student[termGradesKey] || {}
+    }));
+
+    const newRecord: GradingDocument = {
+        id: `grading_${Date.now()}`,
+        name: `${activeTerm}. Dönem Notları - ${new Date().toLocaleDateString('tr-TR')}`,
+        date: new Date().toISOString(),
+        classId: currentClass.id,
+        data: {
+            term: activeTerm === 1 ? 'term1' : 'term2',
+            studentGrades,
+        }
+    };
+    
+    setLocalDb(prevDb => ({
+        ...prevDb,
+        gradingDocuments: [...(prevDb.gradingDocuments || []), newRecord]
+    }));
+
+    toast({ title: "Notlar Arşive Kaydedildi", description: "Mevcut not tablosunun bir kopyası oluşturuldu." });
+  };
+  
+  const handleNewRecord = useCallback(() => {
+    setSelectedRecordId(null);
+    setStudents(initialStudents); // Revert to live data
+  }, [initialStudents]);
+
+  const handleDeleteRecord = useCallback(() => {
+    if (!selectedRecordId) return;
+    setLocalDb(prevDb => ({
+      ...prevDb,
+      gradingDocuments: (prevDb.gradingDocuments || []).filter(d => d.id !== selectedRecordId)
+    }));
+    handleNewRecord();
+    toast({ title: "Silindi", description: "Not kaydı arşivden silindi.", variant: "destructive" });
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
+  
   if (!teacherProfile || !currentClass) {
     return <p>Öğretmen profili veya sınıf bilgisi yüklenemedi.</p>
   }
 
   return (
     <div className="space-y-6">
-      <GradingHeader
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        activeTerm={activeTerm}
-        setActiveTerm={setActiveTerm}
-        teacherProfile={teacherProfile}
-        onClearScores={handleClearScores}
-        updateTeacherProfile={updateTeacherProfile}
-      />
+       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3">
+                 <GradingHeader
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    activeTerm={activeTerm}
+                    setActiveTerm={setActiveTerm}
+                    teacherProfile={teacherProfile}
+                    onClearScores={handleClearScores}
+                    updateTeacherProfile={updateTeacherProfile}
+                />
+            </div>
+             <div className="lg:col-span-1">
+                 <RecordManager
+                    records={(gradingDocuments || []).filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
+                    selectedRecordId={selectedRecordId}
+                    onSelectRecord={setSelectedRecordId}
+                    onNewRecord={handleNewRecord}
+                    onDeleteRecord={handleDeleteRecord}
+                    noun="Not Kaydı"
+                />
+                 <Button onClick={handleSaveToArchive} className="w-full mt-2 bg-green-600 hover:bg-green-700">
+                    <Save className="mr-2 h-4 w-4" /> Notları Arşive Kaydet
+                </Button>
+            </div>
+        </div>
+     
       <GradingTable
         activeTab={activeTab}
         students={students}

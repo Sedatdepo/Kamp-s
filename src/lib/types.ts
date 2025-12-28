@@ -235,6 +235,14 @@ export interface ElectionDocument extends Archivable {
     data: Election;
 }
 
+export interface GradingDocument extends Archivable {
+    data: {
+        term: 'term1' | 'term2';
+        // A snapshot of the relevant grade parts of all students in a class
+        studentGrades: { studentId: string, grades: GradingScores }[];
+    }
+}
+
 
 // Dilekçe Types
 export interface DilekceDocument extends Archivable {
