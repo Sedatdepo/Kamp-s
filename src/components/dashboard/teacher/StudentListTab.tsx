@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message, Class, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,14 +46,16 @@ interface StudentListTabProps {
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
+    const { db } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     
     const messagesQuery = useMemo(() => {
+        if (!db) return null;
         return query(
             collection(db, 'messages'), 
             where('participants', 'array-contains', student.id)
         );
-    }, [student.id]);
+    }, [student.id, db]);
 
     const { data: messages, loading: messagesLoading } = useFirestore<Message>(`messages-for-student-${student.id}`, messagesQuery);
 
@@ -66,7 +66,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() || !db) return;
         
         await addDoc(collection(db, 'messages'), {
             senderId: teacherId,
@@ -111,7 +111,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
 export function StudentListTab({ classId, teacherProfile, currentClass }: StudentListTabProps) {
   const { toast } = useToast();
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
@@ -120,19 +120,19 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-  const studentsQuery = useMemo(() => query(collection(db, 'students'), where('classId', '==', classId)), [classId]);
+  const studentsQuery = useMemo(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
   
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   const unreadMessagesQuery = useMemo(() => {
-    if (!teacherId) return null;
+    if (!teacherId || !db) return null;
     return query(
         collection(db, 'messages'),
         where('receiverId', '==', teacherId),
         where('isRead', '==', false)
     );
-  }, [teacherId]);
+  }, [teacherId, db]);
 
   const { data: unreadMessages } = useFirestore<Message>(`unread-messages-for-teacher-${teacherId}`, unreadMessagesQuery);
 
@@ -172,6 +172,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const handleAddStudent = async () => {
+    if (!db) return;
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
       toast({ variant: 'destructive', title: 'Ad ve numara boş olamaz.' });
       return;
@@ -195,6 +196,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
   
   const handleBulkAdd = async () => {
+    if (!db) return;
     const lines = bulkStudents.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 
@@ -222,6 +224,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const handleDeleteStudent = async (studentId: string) => {
+    if (!db) return;
     await deleteDoc(doc(db, 'students', studentId));
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
@@ -303,18 +306,22 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                     <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="relative">
-                                    <MessageSquare className="h-4 w-4"/>
-                                    {unreadMessagesByStudent.has(student.id) && (
-                                        <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-                                    )}
-                                </Button>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="relative">
+                                        <MessageSquare className="h-4 w-4"/>
+                                        {unreadMessagesByStudent.has(student.id) && (
+                                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                                        )}
+                                    </Button>
+                                </div>
                             </DialogTrigger>
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon"><KeyRound className="h-4 w-4"/></Button>
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <Button type="button" variant="ghost" size="icon"><KeyRound className="h-4 w-4"/></Button>
+                            </div>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -326,6 +333,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>İptal</AlertDialogCancel>
                                     <AlertDialogAction onClick={async () => {
+                                      if (!db) return;
                                       await updateDoc(doc(db, 'students', student.id), {
                                           password: student.number,
                                           needsPasswordChange: true
@@ -339,7 +347,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                         </AlertDialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                                </div>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -387,10 +397,12 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
       <ClassInviteDialog
         isOpen={isInviteOpen}
         setIsOpen={setIsInviteOpen}
-        classCode={currentClass.code}
+        classCode={currentClass.code!}
         className={currentClass.name}
       />
     )}
     </>
   );
 }
+
+    

@@ -1,12 +1,11 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useFirestore } from './useFirestore';
 import { Class } from '@/lib/types';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election';
 
@@ -19,7 +18,7 @@ interface NotificationState {
 }
 
 export const useNotification = () => {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const [notifications, setNotifications] = useState<NotificationState>({
     announcements: false,
     riskForm: false,
@@ -31,12 +30,12 @@ export const useNotification = () => {
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
 
-  const classQuery = classId ? doc(db, 'classes', classId) : null;
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
   const currentClass = classData.length > 0 ? classData[0] : null;
 
   const checkNotifications = useCallback(async () => {
-    if (!currentClass || !studentId) return;
+    if (!currentClass || !studentId || !db) return;
 
     // 1. Duyuru Kontrolü
     const hasNewAnnouncement = currentClass.announcements?.some(
@@ -68,7 +67,7 @@ export const useNotification = () => {
     ) ?? false;
     
     // 5. Seçim Kontrolü
-    const hasNewElection = currentClass.isElectionActive === true && !currentClass.election?.votedStudentIds.includes(studentId);
+    const hasNewElection = currentClass.isElectionActive === true && currentClass.election?.votedStudentIds && !currentClass.election.votedStudentIds.includes(studentId);
 
     setNotifications({
       announcements: hasNewAnnouncement,
@@ -78,14 +77,14 @@ export const useNotification = () => {
       election: hasNewElection
     });
 
-  }, [currentClass, studentId, appUser]);
+  }, [currentClass, studentId, appUser, db]);
 
   useEffect(() => {
     checkNotifications();
   }, [checkNotifications]);
 
   const markAsSeen = useCallback(async (type: NotificationType) => {
-    if (!studentId || !currentClass || !classId) return;
+    if (!studentId || !currentClass || !classId || !db) return;
 
     const classRef = doc(db, 'classes', classId);
 
@@ -114,7 +113,9 @@ export const useNotification = () => {
     
     // Refresh notifications after marking as seen
     checkNotifications();
-  }, [studentId, classId, currentClass, checkNotifications]);
+  }, [studentId, classId, currentClass, checkNotifications, db]);
 
   return { notifications, markAsSeen };
 };
+
+    

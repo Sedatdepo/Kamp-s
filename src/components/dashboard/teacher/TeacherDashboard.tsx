@@ -28,7 +28,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -66,11 +65,11 @@ function ClassSelectionScreen({
     onSelectClass: (id: string) => void; 
     students: Student[];
 }) {
-    const { appUser } = useAuth();
+    const { appUser, db } = useAuth();
     const { toast } = useToast();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-    const classesQuery = useMemo(() => teacherId ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId]);
+    const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
     const { data: classes, loading } = useFirestore('classes', classesQuery);
 
     const [newClassName, setNewClassName] = useState('');
@@ -78,7 +77,7 @@ function ClassSelectionScreen({
     const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
 
     const handleAddClass = async () => {
-        if (!newClassName.trim() || !teacherId) return;
+        if (!newClassName.trim() || !teacherId || !db) return;
         try {
             await addDoc(collection(db, 'classes'), {
                 name: newClassName,
@@ -99,7 +98,7 @@ function ClassSelectionScreen({
     };
 
     const handleUpdateClass = async () => {
-        if (!editingClass || !editingClass.name.trim()) return;
+        if (!editingClass || !editingClass.name.trim() || !db) return;
         try {
             await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
             toast({ title: 'Sınıf adı güncellendi' });
@@ -110,6 +109,7 @@ function ClassSelectionScreen({
     };
 
     const handleDeleteClass = async (classId: string) => {
+        if (!db) return;
         setDeletingClassId(classId);
         try {
             const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
@@ -221,20 +221,21 @@ function ClassSelectionScreen({
                                     </Dialog>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                onClick={(e) => e.stopPropagation()}
-                                                disabled={deletingClassId === cls.id}
-                                            >
-                                                {deletingClassId === cls.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin"/> 
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4"/>
-                                                )}
-                                            </Button>
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                    disabled={deletingClassId === cls.id}
+                                                >
+                                                    {deletingClassId === cls.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin"/> 
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4"/>
+                                                    )}
+                                                </Button>
+                                            </div>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
@@ -265,27 +266,27 @@ function ClassSelectionScreen({
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("students");
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-  const teacherQuery = useMemo(() => teacherId ? doc(db, 'teachers', teacherId) : null, [teacherId]);
+  const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
   const teacherProfile = teacherData.length > 0 ? teacherData[0] : null;
 
-  const classQuery = useMemo(() => selectedClassId ? doc(db, 'classes', selectedClassId) : null, [selectedClassId]);
+  const classQuery = useMemo(() => (selectedClassId && db) ? doc(db, 'classes', selectedClassId) : null, [selectedClassId, db]);
   const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${selectedClassId}`, classQuery);
   const currentClass = classData.length > 0 ? classData[0] : null;
 
-  const studentsQuery = useMemo(() => selectedClassId ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId]);
+  const studentsQuery = useMemo(() => (selectedClassId && db) ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
   
   const allStudentsForTeacherQuery = useMemo(() => {
-    if (!teacherId) return null;
+    if (!teacherId || !db) return null;
     // This query is intentionally broad to get a count for all classes.
     // It might be inefficient for very large student bodies.
     // A better approach for large scale would be a summary document.
     return query(collection(db, 'students'));
-  }, [teacherId]);
+  }, [teacherId, db]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
@@ -419,3 +420,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
