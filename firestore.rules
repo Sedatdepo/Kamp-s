@@ -152,21 +152,18 @@ service cloud.firestore {
       allow delete: if (isOwner(studentId) || isTeacher()) && docExists();
     }
 
-    /**
-     * @description Manages messages. A user can read/write messages they are a part of.
-     *   A student can only list messages from their own message history.
-     * @path /students/{studentId}/messages/{messageId}
-     * @allow (create) An authenticated user sends a message to another user.
-     * @deny (get) A user attempts to read a message where they are not the sender or receiver.
-     * @principle Enforces participant-only access for communication records.
-     */
-    match /students/{studentId}/messages/{messageId} {
-      allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId));
-      allow list: if isOwner(studentId);
-      allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
-      allow update: if false;
-      allow delete: if isOwner(studentId) && docExists() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId));
+    match /students/{teacherId}/messages/{messageId} {
+       allow read, write: if false;
     }
+    
+    match /messages/{messageId} {
+      allow get: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow list: if isSignedIn() && request.auth.uid in request.query.where.value;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId && request.auth.uid in request.resource.data.participants;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow delete: if false;
+    }
+
 
     /**
      * @description Stores teacher profile data. A teacher can create and manage their own
