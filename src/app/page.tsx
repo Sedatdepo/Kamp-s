@@ -16,13 +16,8 @@ function LoginPageContent() {
   const classCode = searchParams.get('code');
   const isInvite = searchParams.get('invite') === 'true';
 
-  // AuthProvider handles redirection. If user exists or page is loading,
-  // this component should not render a skeleton, because AuthProvider is already
-  // showing a loading screen and then redirecting.
-  // This page should only render for non-logged-in users.
-  // We make an exception for invite links to allow logged-in teachers to see the page.
   if ((loading || appUser) && !isInvite) {
-    return null; // Show a blank screen while AuthProvider does its job.
+    return null; 
   }
 
 
@@ -72,5 +67,5 @@ export default function LoginPage() {
     <Suspense fallback={<div>Yükleniyor...</div>}>
       <LoginPageContent />
     </Suspense>
-  )
+  );
 }
