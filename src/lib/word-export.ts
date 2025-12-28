@@ -1,6 +1,6 @@
 
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem } from './types';
 import { format } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 
@@ -64,16 +64,7 @@ const generateHtmlShell = (content: string, title: string) => {
 
 const downloadRtf = (htmlContent: string, filename: string) => {
     const blob = new Blob([htmlContent], { type: 'application/rtf;charset=utf-8;' });
-    const link = document.createElement("a");
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    saveAs(blob, filename);
 };
 
 const generateReportHeader = (
@@ -425,17 +416,6 @@ export function exportStudentInfoToRtf(student: Student, form: InfoForm, teacher
 
 
 // --- DUTY ROSTER EXPORT ---
-interface RosterItem {
-  date: string;
-  day: string;
-  student: string;
-}
-
-interface ExportDutyRosterArgs {
-    roster: RosterItem[];
-    currentClass: Class;
-    teacherProfile?: TeacherProfile | null;
-}
 export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: ExportDutyRosterArgs) {
     const reportTitle = "Sınıf Nöbetçi Öğrenci Listesi";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
@@ -587,4 +567,10 @@ export function exportSeatingPlanToRtf({
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+interface ExportDutyRosterArgs {
+    roster: RosterItem[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
 }
