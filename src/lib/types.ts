@@ -122,13 +122,16 @@ export interface Student {
   classId: string;
   number: string;
   name: string;
-  email?: string;
-  password?: string;
-  needsPasswordChange: boolean;
+  email?: string; // Kept for potential future use (e.g., password recovery)
+  
+  // These fields are being removed for the simple login system
+  // password?: string;
+  // needsPasswordChange: boolean;
+  // authUid?: string; // UID from Firebase Auth
+
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
-  authUid?: string; // UID from Firebase Auth
   
   // Grading data separated by term
   term1Grades: GradingScores;

@@ -74,18 +74,21 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() && !file) return;
-        if (!db || !storage || !student.authUid) {
-            toast({ variant: "destructive", title: "Hata", description: "Öğrenci kimliği doğrulanmadığı için mesaj gönderilemiyor." });
+        if (!db || !storage) {
+            toast({ variant: "destructive", title: "Hata", description: "Mesaj gönderilemedi. Veritabanı bağlantısı kurulamadı." });
             return;
         }
 
+        // NOTE: With the new simple auth system, students don't have a real authUid.
+        // This means file uploads from teachers WILL WORK, but students cannot reply with files.
+        // This is a trade-off for the simplified login.
         setIsUploading(true);
         let fileData: Message['file'] | undefined = undefined;
 
         if (file) {
             try {
                 const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { ownerUid: student.authUid } });
+                const snapshot = await uploadBytes(storageRef, file);
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = { url: downloadURL, name: file.name, type: file.type };
             } catch (error) {
@@ -169,7 +172,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
 export function StudentListTab({ classId, teacherProfile, currentClass }: StudentListTabProps) {
   const { toast } = useToast();
-  const { appUser, db, auth } = useAuth();
+  const { appUser, db } = useAuth();
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
@@ -260,34 +263,23 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const addStudent = async (name: string, number: string) => {
-    if (!db || !auth || !currentClass?.code) {
+    if (!db || !currentClass?.code) {
         throw new Error("Gerekli yapılandırma eksik.");
     }
-
-    const tempPassword = "123456";
-
-    try {
-        const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
-        
-        await addDoc(collection(db, 'students'), {
-            classId,
-            name: name,
-            number: number,
-            password: tempPassword,
-            authUid: '', // Initially empty, will be filled on first login
-            needsPasswordChange: true,
-            risks: [],
-            projectPreferences: [],
-            assignedLesson: null,
-            term1Grades: {},
-            term2Grades: {},
-            hasProject: false,
-        });
-
-    } catch (error: any) {
-        console.error("Öğrenci ekleme hatası:", error);
-        throw new Error(`Öğrenci eklenemedi: ${error.message}`);
-    }
+    
+    // No auth user creation, just add to DB.
+    await addDoc(collection(db, 'students'), {
+        classId,
+        name: name,
+        number: number,
+        // No password fields
+        risks: [],
+        projectPreferences: [],
+        assignedLesson: null,
+        term1Grades: {},
+        term2Grades: {},
+        hasProject: false,
+    });
   };
 
   const handleAddStudent = async () => {
@@ -308,7 +300,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
   
   const handleBulkAdd = async () => {
-    if (!db || !auth || !currentClass?.code) return;
+    if (!db || !currentClass?.code) return;
     const lines = bulkStudents.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 
@@ -335,8 +327,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
 
   const handleDeleteStudent = async (studentId: string) => {
     if (!db) return;
-    // TODO: Consider what happens to the Auth user. For now, we only delete from Firestore.
-    // Deleting auth users requires Admin SDK.
     await deleteDoc(doc(db, 'students', studentId));
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
@@ -422,7 +412,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                 Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: OkulNo Ad Soyad.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz\n456 Ayşe Kaya" className="h-48" />
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz
+456 Ayşe Kaya" className="h-48" />
                         <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
@@ -528,5 +519,3 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
-
-    

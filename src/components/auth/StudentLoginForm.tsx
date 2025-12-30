@@ -7,18 +7,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-
 
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
-  password: z.string().min(1, { message: 'Lütfen şifrenizi girin.' }),
 });
 
 export function StudentLoginForm() {
@@ -33,7 +30,6 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
-      password: '',
     },
   });
 
@@ -47,7 +43,7 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
       // No toast on success, redirection is handled by AuthContext
     } catch (error: any) {
       toast({
@@ -90,22 +86,6 @@ export function StudentLoginForm() {
               <FormControl>
                 <Input type="text" placeholder="Okul Numaranız" {...field} />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Geçici Şifre</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
-               <FormDescription className="text-xs">
-                İlk girişiniz için geçici şifreniz: <strong>123456</strong>
-              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

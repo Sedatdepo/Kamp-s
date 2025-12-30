@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -15,12 +16,8 @@ export default function StudentDashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!appUser || appUser.type !== 'student') {
-        router.push('/');
-      } else if (appUser.data.needsPasswordChange) {
-        router.push('/auth/change-password');
-      }
+    if (!loading && (!appUser || appUser.type !== 'student')) {
+      router.push('/');
     }
   }, [appUser, loading, router]);
 
