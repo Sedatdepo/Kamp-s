@@ -3,17 +3,14 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { StudentListTab } from '@/components/dashboard/teacher/StudentListTab';
+import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
-import { AttendanceTab } from '@/components/dashboard/teacher/AttendanceTab';
 import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
-import { DutyRosterTab } from '@/components/dashboard/teacher/DutyRosterTab';
-import { SeatingPlanTab } from '@/components/dashboard/teacher/SeatingPlanTab';
 import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +33,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
-type ActiveTab = "dashboard" | "students" | "attendance" | "dutyRoster" | "seatingPlan" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -276,9 +273,6 @@ function ClassSelectionScreen({
 const TABS_CONFIG = {
   "dashboard": { label: "Panel", icon: School },
   "students": { label: "Öğrenci Yönetimi", icon: Users },
-  "attendance": { label: "Yoklama", icon: Calendar },
-  "dutyRoster": { label: "Nöbet Listesi", icon: Users },
-  "seatingPlan": { label: "Oturma Planı", icon: Grid },
   "grading": { label: "Değerlendirme Aracı", icon: Gauge },
   "planning": { label: "Planlama Araçları", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
@@ -306,16 +300,13 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
 
-  const studentsQuery = useMemo(() => (selectedClassId && db) ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
-  
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
     return query(collection(db, 'students'));
   }, [teacherId, db]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
 
-  const isLoading = teacherLoading || (selectedClassId && (classesLoading || studentsLoading));
+  const isLoading = teacherLoading || (selectedClassId && classesLoading);
   
   const renderContent = () => {
     if (isLoading && selectedClassId) {
@@ -332,15 +323,12 @@ export function TeacherDashboard() {
 
     if (activeTab !== "dashboard") {
       const TabComponent = {
-        'students': <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'attendance': <AttendanceTab students={students} currentClass={currentClass} />,
-        'dutyRoster': <DutyRosterTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />,
-        'seatingPlan': <SeatingPlanTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />,
-        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={students} currentClass={currentClass} />,
+        'students': <StudentManagementTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
+        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={allStudents.filter(s => s.classId === selectedClassId)} currentClass={currentClass} />,
         'planning': <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>,
-        'election': <ElectionTab students={students} currentClass={currentClass} />,
+        'election': <ElectionTab students={allStudents.filter(s => s.classId === selectedClassId)} currentClass={currentClass} />,
         'projects': <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={students} />,
+        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={allStudents.filter(s => s.classId === selectedClassId)} />,
         'risks': <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,

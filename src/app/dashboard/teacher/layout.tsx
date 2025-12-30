@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -38,5 +39,6 @@ export default function TeacherDashboardLayout({
     );
   }
 
+  // We render the children directly as the TeacherDashboard now handles all logic
   return <>{children}</>;
 }
