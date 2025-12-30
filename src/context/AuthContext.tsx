@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth || !db) return;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
-      if (user) {
+      if (user && !user.isAnonymous) { // Handle only non-anonymous users here
         const teacherProfileRef = doc(db, 'teachers', user.uid);
         const teacherProfileSnap = await getDoc(teacherProfileRef);
 
@@ -102,14 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
             setAppUser({ type: 'teacher', data: user, profile });
         } else {
-            // This is likely an anonymous student user, but we won't handle their data loading here.
-            // signInStudent will set the appUser directly.
-            // If it's a teacher who was deleted, or some other state, they will be effectively logged out
-            // by the redirection logic if they don't have a student context.
+            // It's a non-anonymous user but not a teacher, sign them out.
+            await firebaseSignOut(auth);
+            setAppUser(null);
         }
-      } else {
+      } else if (!user) { // User is logged out
         setAppUser(null);
       }
+      // For anonymous users, the state is set inside signInStudent.
+      // We don't need to do anything here, just finish loading.
       setLoading(false);
     });
     return () => unsubscribe();
@@ -185,16 +186,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db || !auth) throw new Error("Veritabanı başlatılamadı.");
 
-    // Find the class by its code
+    // Sign out any existing user
+    if (auth.currentUser) {
+       await firebaseSignOut(auth);
+    }
+    
+    // 1. Sign in anonymously FIRST to get a UID
+    const userCredential = await signInAnonymously(auth);
+    const user = userCredential.user;
+
+    // 2. NOW, query the database with the student's class and number
     const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
     const classSnapshot = await getDocs(classQuery);
     if (classSnapshot.empty) {
+        await user.delete(); // Clean up the anonymous user
         throw new Error('Bu koda sahip bir sınıf bulunamadı.');
     }
     const classDoc = classSnapshot.docs[0];
     const classId = classDoc.id;
     
-    // Find the student in that class with the given number
     const studentQuery = query(
         collection(db, 'students'), 
         where('classId', '==', classId),
@@ -203,32 +213,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentSnapshot = await getDocs(studentQuery);
     
     if (studentSnapshot.empty) {
+        await user.delete(); // Clean up the anonymous user
         throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
     }
     const studentDoc = studentSnapshot.docs[0];
     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
     
-    // The student's password is their school number initially
+    // 3. Check password
     if (studentData.password !== studentNumber) {
+        await user.delete(); // Clean up the anonymous user
         throw new Error('Şifre (öğrenci numarası) hatalı.');
     }
     
-    // Sign out any existing user
-    if (auth.currentUser) {
-       await firebaseSignOut(auth);
-    }
-    
-    // Sign in anonymously
-    const userCredential = await signInAnonymously(auth);
-    const user = userCredential.user;
-    
-    // Update the student document with the new anonymous auth UID
-    // This is the critical step that needs correct permissions.
-    // Let's assume the user can update their own authUid after login.
+    // 4. Update the student document with the anonymous auth UID
+    // This is now allowed because the user is authenticated (anonymously)
     const studentRef = doc(db, 'students', studentData.id);
     await updateDoc(studentRef, { authUid: user.uid });
     
-    // Update local state, this will trigger the onAuthStateChanged listener as well
+    // 5. Set the app user state
     const updatedStudentData = { ...studentData, authUid: user.uid };
     setAppUser({ type: 'student', data: updatedStudentData, authUser: user });
   };
