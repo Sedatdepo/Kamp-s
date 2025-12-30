@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -89,7 +89,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
     const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
 
-    useEffect(() => {
+    useMemo(() => {
         const fetchSubmissions = async () => {
             if (!db || !currentClass || homeworksLoading) return;
             setSubmissionsLoading(true);

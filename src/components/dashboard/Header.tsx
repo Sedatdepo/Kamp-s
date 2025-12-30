@@ -58,7 +58,6 @@ export function Header() {
                   <span>Profil</span>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Çıkış Yap</span>

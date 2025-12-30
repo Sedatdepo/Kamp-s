@@ -1,14 +1,13 @@
 
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
 import { collection, doc, addDoc, query, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -16,14 +15,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db, storage, appUser } = useAuth();
+    const { db } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
-    const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const submissionsQuery = useMemo(() => {
       if (!db || !classId) return null;
@@ -37,62 +33,28 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     }, [submissions, student.id]);
 
     const handleSubmit = async () => {
-        if (!submissionText.trim() && !file) {
+        if (!submissionText.trim()) {
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId || !appUser || appUser.type !== 'student') return;
-
-        // AUTH UID KONTROLÜ
-        if (!student.authUid) {
-             toast({ variant: "destructive", title: "Kimlik Doğrulama Hatası", description: "Dosya yükleyebilmek için hesabınızın kalıcı şifre ile doğrulanmış olması gerekir. Lütfen tekrar giriş yapmayı deneyin." });
-             return;
-        }
+        if (!db || !classId) return;
 
         setIsSubmitting(true);
-        
-        let fileInfo: { url: string; name: string; type: string; } | undefined = undefined;
-
-        if (file) {
-            try {
-                // Use student's auth UID for the path to align with storage rules
-                const studentAuthUid = student.authUid;
-                const filePath = `homework_submissions/${classId}/${homework.id}/${studentAuthUid}/${file.name}`;
-                const fileRef = ref(storage, filePath);
-                const uploadResult = await uploadBytes(fileRef, file);
-                const downloadURL = await getDownloadURL(uploadResult.ref);
-                fileInfo = { url: downloadURL, name: file.name, type: file.type };
-            } catch (error) {
-                console.error("File upload error:", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: "Dosya yüklenemedi. Lütfen internet bağlantınızı ve dosya boyutunu kontrol edin. Sorun devam ederse yöneticiyle iletişime geçin." });
-                setIsSubmitting(false);
-                return;
-            }
-        }
         
         const submissionData: any = {
           studentId: student.id,
           studentName: student.name,
           studentNumber: student.number,
           homeworkId: homework.id,
-          studentAuthUid: student.authUid,
           submittedAt: new Date().toISOString(),
           text: submissionText || null,
         };
     
-        if (fileInfo) {
-          submissionData.file = fileInfo;
-        }
-
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             toast({ title: "Ödev başarıyla teslim edildi!" });
-            setFile(null);
             setSubmissionText('');
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
@@ -114,12 +76,6 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
                     <p className='text-xs font-bold text-muted-foreground mb-1'>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md">{existingSubmission.text}</p>}
-                    {existingSubmission.file && (
-                        <a href={existingSubmission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 text-blue-600 hover:underline">
-                            <Paperclip className="h-4 w-4" />
-                            <span className="truncate">{existingSubmission.file.name}</span>
-                        </a>
-                    )}
                 </div>
                 {existingSubmission.feedback && (
                      <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200'>
@@ -153,18 +109,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     onChange={(e) => setSubmissionText(e.target.value)}
                     disabled={isSubmitting}
                 />
-                <div className='flex items-center justify-between gap-2'>
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
-                        <Paperclip className="mr-2 h-4 w-4"/> Dosya Ekle
-                    </Button>
-                    <input type="file" ref={fileInputRef} id={`file-input-${homework.id}`} className="hidden" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
-                    {file && <span className="text-xs text-muted-foreground truncate">{file.name}</span>}
-                    <Button onClick={handleSubmit} disabled={isSubmitting || !student.authUid} className="ml-auto">
+                <div className='flex items-center justify-end gap-2'>
+                    <Button onClick={handleSubmit} disabled={isSubmitting} className="ml-auto">
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
                         Gönder
                     </Button>
                 </div>
-                 {!student.authUid && <p className="text-xs text-destructive text-center">Dosya yükleyebilmek için şifrenizi belirlemiş olmanız gerekir.</p>}
             </div>
         </div>
     )

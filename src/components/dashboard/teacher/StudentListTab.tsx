@@ -1,17 +1,15 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download, ClipboardPaste } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download, ClipboardPaste } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -50,11 +48,8 @@ interface StudentListTabProps {
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
-    const { db, storage } = useAuth();
+    const { db } = useAuth();
     const [newMessage, setNewMessage] = useState('');
-    const [file, setFile] = useState<File | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     const messagesQuery = useMemo(() => {
@@ -73,27 +68,10 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() && !file) return;
-        if (!db || !storage) {
+        if (!newMessage.trim()) return;
+        if (!db) {
             toast({ variant: "destructive", title: "Hata", description: "Mesaj gönderilemedi. Veritabanı bağlantısı kurulamadı." });
             return;
-        }
-
-        setIsUploading(true);
-        let fileData: Message['file'] | undefined = undefined;
-
-        if (file) {
-            try {
-                const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(snapshot.ref);
-                fileData = { url: downloadURL, name: file.name, type: file.type };
-            } catch (error) {
-                console.error("File upload error: ", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
-                setIsUploading(false);
-                return;
-            }
         }
 
         await addDoc(collection(db, 'messages'), {
@@ -103,19 +81,11 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
             text: newMessage,
             timestamp: Timestamp.now(),
             isRead: false,
-            ...(fileData && { file: fileData }),
         });
 
         setNewMessage('');
-        setFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        setIsUploading(false);
     };
     
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
-    };
-
     return (
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -144,22 +114,10 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                         <p className="text-center text-muted-foreground text-sm">Henüz mesaj yok.</p>
                     )}
                 </ScrollArea>
-                {file && (
-                    <div className="p-2 border-t text-sm text-muted-foreground flex justify-between items-center">
-                        <span>Ekli dosya: {file.name}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
                 <div className="flex mt-4 gap-2">
-                    <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && !isUploading && handleSendMessage()} disabled={isUploading} />
-                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                        <Paperclip className="h-5 w-5" />
-                    </Button>
-                    <Button onClick={handleSendMessage} disabled={isUploading}>
-                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
+                    <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
+                    <Button onClick={handleSendMessage}>
+                        <Send className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
@@ -260,7 +218,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const addStudent = async (name: string, number: string) => {
-    if (!db || !currentClass?.code) {
+    if (!db) {
         throw new Error("Gerekli yapılandırma eksik.");
     }
     
@@ -268,7 +226,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         classId,
         name: name,
         number: number,
-        needsPasswordChange: true, // New students must change password
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
@@ -296,7 +253,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
   
   const handleBulkAdd = async () => {
-    if (!db || !currentClass?.code) return;
+    if (!db) return;
     const lines = bulkStudents.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 

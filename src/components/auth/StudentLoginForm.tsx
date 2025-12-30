@@ -16,7 +16,6 @@ import { useSearchParams } from 'next/navigation';
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
-  password: z.string().optional(),
 });
 
 export function StudentLoginForm() {
@@ -31,7 +30,6 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
-      password: '',
     },
   });
 
@@ -45,7 +43,7 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
       // No toast on success, redirection is handled by AuthContext
     } catch (error: any) {
       toast({
@@ -88,20 +86,6 @@ export function StudentLoginForm() {
               <FormControl>
                 <Input type="text" placeholder="Okul Numaranız" {...field} />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-         <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Şifre</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
-              <p className="text-xs text-muted-foreground mt-1">İlk girişinizde geçici şifreniz "123456" dır.</p>
               <FormMessage />
             </FormItem>
           )}

@@ -4,40 +4,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Genel kural: Varsayılan olarak tüm yollara erişimi engelle.
+    // Güvenlik: Varsayılan olarak tüm yollara erişimi engelle.
     match /{allPaths=**} {
       allow read, write: if false;
-    }
-
-    // Ödev teslim dosyaları için kurallar
-    // Yol: /homework_submissions/{classId}/{homeworkId}/{studentAuthUid}/{fileName}
-    match /homework_submissions/{classId}/{homeworkId}/{studentAuthUid}/{fileName} {
-      
-      // OKUMA (GET): Öğretmenler tüm ödevleri okuyabilir.
-      // Öğrenciler sadece kendi teslim ettikleri dosyaları okuyabilir.
-      allow get: if request.auth != null && (
-                    exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) ||
-                    request.auth.uid == studentAuthUid
-                  );
-
-      // YAZMA (CREATE):
-      // Öğrenciler sadece kendi klasörlerine (studentAuthUid eşleşmeli) dosya yükleyebilir.
-      allow create: if request.auth != null && request.auth.uid == studentAuthUid;
-      
-      // Güncelleme ve silmeye izin verilmez.
-      allow update, delete: if false;
-    }
-
-    // Sohbet dosyaları için kurallar
-    // Yol: /chat_files/{teacherId}/{studentId}/{fileName}
-    match /chat_files/{teacherId}/{studentId}/{fileName} {
-        
-      // OKUMA ve YAZMA: Sadece sohbete dahil olan öğretmen veya öğrenci işlem yapabilir.
-      // Öğrencinin authUid'si student dökümanından kontrol edilir.
-      allow read, write: if request.auth != null && (
-                           request.auth.uid == teacherId ||
-                           request.auth.uid == get(/databases/$(database)/documents/students/$(studentId)).data.authUid
-                         );
     }
   }
 }

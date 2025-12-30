@@ -15,6 +15,7 @@ import { useContext, useState } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { ProfileDialog } from './ProfileDialog';
 import { AuthContext } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 function getInitials(name: string = '') {
     return name
@@ -26,8 +27,7 @@ function getInitials(name: string = '') {
 
 
 export function Header() {
-  const authContext = useContext(AuthContext);
-  const { appUser, signOut } = authContext || {};
+  const { appUser, signOut } = useAuth();
   const [isProfileOpen, setProfileOpen] = useState(false);
 
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;

@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -16,7 +15,6 @@ export interface Submission {
   studentNumber: string;
   submittedAt: string;
   homeworkId?: string; // To link back to the homework
-  studentAuthUid?: string; // To verify storage rules
   text?: string;
   file?: {
     url: string;
@@ -97,7 +95,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   announcements?: Announcement[];
-  homeworks?: Homework[]; // Re-added for notification check, but data is in subcollection
+  homeworks?: Homework[];
   election?: Election;
   dutyRoster?: RosterItem[];
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
@@ -122,11 +120,7 @@ export interface Student {
   classId: string;
   number: string;
   name: string;
-  email?: string;
   
-  needsPasswordChange: boolean;
-  authUid?: string; // UID from Firebase Auth
-
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
