@@ -85,7 +85,6 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
         if (file) {
             try {
                 const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                // Use student's authUid for storage security rules
                 const snapshot = await uploadBytes(storageRef, file, { customMetadata: { ownerUid: student.authUid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = { url: downloadURL, name: file.name, type: file.type };
@@ -269,14 +268,13 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
 
     try {
         const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
-        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, tempPassword);
         
         await addDoc(collection(db, 'students'), {
             classId,
             name: name,
             number: number,
             password: tempPassword,
-            authUid: userCredential.user.uid,
+            authUid: '', // Initially empty, will be filled on first login
             needsPasswordChange: true,
             risks: [],
             projectPreferences: [],
@@ -287,9 +285,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         });
 
     } catch (error: any) {
-        console.error("Öğrenci ve Auth hesabı oluşturma hatası:", error);
-        // If there's an error, we might need to clean up if the auth user was created but firestore failed.
-        // For simplicity, we'll just throw the error for now.
+        console.error("Öğrenci ekleme hatası:", error);
         throw new Error(`Öğrenci eklenemedi: ${error.message}`);
     }
   };
@@ -345,6 +341,20 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
   
+  const handleClearClass = async () => {
+    if (!db || students.length === 0) return;
+    const batch = writeBatch(db);
+    students.forEach(student => {
+        batch.delete(doc(db, 'students', student.id));
+    });
+    try {
+        await batch.commit();
+        toast({ title: 'Sınıf temizlendi', description: 'Tüm öğrenciler bu sınıftan silindi.' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Öğrenciler silinemedi.' });
+    }
+  };
+
   const copyClassCode = () => {
     if(currentClass?.code) {
       navigator.clipboard.writeText(currentClass.code);
@@ -380,6 +390,27 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
                   <ClipboardPaste className="mr-2 h-4 w-4" />Toplu Not Girişi
                 </Button>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={students.length === 0}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Temizle
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Bu sınıftaki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleClearClass} className="bg-destructive hover:bg-destructive/90">
+                                Tümünü Sil
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Ekle</Button>
@@ -497,3 +528,5 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
+
+    
