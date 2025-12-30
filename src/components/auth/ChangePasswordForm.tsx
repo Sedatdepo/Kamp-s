@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
-  newPassword: z.string().min(1, 'Şifre boş olamaz.'),
+  newPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Şifreler eşleşmiyor",

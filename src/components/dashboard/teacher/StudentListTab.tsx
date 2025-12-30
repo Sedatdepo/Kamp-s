@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef } from 'react';
@@ -270,37 +271,46 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     }
   };
 
+  const createStudentAccount = async (name: string, number: string) => {
+    if (!db || !auth || !currentClass?.code) {
+        throw new Error("Gerekli yapılandırma eksik.");
+    }
+    
+    const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
+    let studentPassword = number;
+    
+    // Ensure password is at least 6 characters
+    if (studentPassword.length < 6) {
+        studentPassword = `${studentPassword}${currentClass.code.substring(0, 6 - studentPassword.length)}`;
+    }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
+    const authUid = userCredential.user.uid;
+
+    await addDoc(collection(db, 'students'), {
+        classId,
+        name: name,
+        number: number,
+        needsPasswordChange: true,
+        password: studentPassword, 
+        authUid: authUid,
+        risks: [],
+        projectPreferences: [],
+        assignedLesson: null,
+        term1Grades: {},
+        term2Grades: {},
+        hasProject: false,
+    });
+  };
+
   const handleAddStudent = async () => {
-    if (!db || !auth || !currentClass?.code) return;
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
       toast({ variant: 'destructive', title: 'Ad ve numara boş olamaz.' });
       return;
     }
 
-    const studentEmail = `${newStudentNumber}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
-    const studentPassword = newStudentNumber;
-
     try {
-        // Create Firebase Auth user
-        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
-        const authUid = userCredential.user.uid;
-
-        // Add student to Firestore
-        await addDoc(collection(db, 'students'), {
-            classId,
-            name: newStudentName,
-            number: newStudentNumber,
-            needsPasswordChange: true,
-            password: studentPassword, 
-            authUid: authUid, // Store the real auth UID
-            risks: [],
-            projectPreferences: [],
-            assignedLesson: null,
-            term1Grades: {},
-            term2Grades: {},
-            hasProject: false,
-        });
-
+        await createStudentAccount(newStudentName, newStudentNumber);
         setNewStudentName('');
         setNewStudentNumber('');
         toast({ title: 'Öğrenci eklendi ve hesabı oluşturuldu!' });
@@ -324,18 +334,8 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     toast({ title: `${studentsToAdd.length} öğrenci ekleniyor...`, description: 'Bu işlem biraz zaman alabilir.' });
 
     for (const { name, number } of studentsToAdd) {
-        const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
-        const studentPassword = number;
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
-            const authUid = userCredential.user.uid;
-            
-            await addDoc(collection(db, 'students'), {
-                classId, name, number, authUid,
-                needsPasswordChange: true, password: studentPassword,
-                risks: [], projectPreferences: [], assignedLesson: null,
-                term1Grades: {}, term2Grades: {}, hasProject: false,
-            });
+            await createStudentAccount(name, number);
         } catch (error: any) {
              toast({ variant: 'destructive', title: `${name} eklenemedi`, description: error.message });
         }
@@ -463,8 +463,13 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                     <AlertDialogCancel>İptal</AlertDialogCancel>
                                     <AlertDialogAction onClick={async () => {
                                       if (!db) return;
+                                      let newPassword = student.number;
+                                      if (currentClass?.code && newPassword.length < 6) {
+                                        newPassword = `${newPassword}${currentClass.code.substring(0, 6 - newPassword.length)}`;
+                                      }
+
                                       await updateDoc(doc(db, 'students', student.id), {
-                                          password: student.number,
+                                          password: newPassword,
                                           needsPasswordChange: true
                                       });
                                       toast({title: 'Şifre sıfırlandı!'})
