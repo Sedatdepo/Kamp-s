@@ -896,40 +896,59 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
 // --- HOMEWORK STATUS EXPORT ---
 interface ExportHomeworkStatusArgs {
     students: Student[];
-    homeworks: Homework[]; // This now needs to be fetched along with submissions
+    homeworks: Homework[]; 
+    submissions: Submission[];
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
 }
 
-export function exportHomeworkStatusToRtf({ students, homeworks, currentClass, teacherProfile }: ExportHomeworkStatusArgs) {
+export function exportHomeworkStatusToRtf({ students, homeworks, submissions, currentClass, teacherProfile }: ExportHomeworkStatusArgs) {
     const reportTitle = "Ödev Durum Raporu";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
     const footer = generateReportFooter(teacherProfile);
     const title = `${currentClass.name} - ${reportTitle}`;
     
-    let homeworkSections = "Rapor oluşturulamadı: Henüz ödev verisi çekilmedi.";
-
-    // This part is now more complex as submissions are in a subcollection.
-    // A more advanced implementation would require fetching all submissions for all homeworks
-    // before generating the report. This is a placeholder for that logic.
-    // For now, we will just list the homeworks.
+    if (students.length === 0) return;
     
-    if (homeworks.length > 0) {
-       homeworkSections = homeworks.map(hw => {
-            return `
-                <h3>Ödev: ${hw.text}</h3>
-                <p class="small-text">Veriliş: ${format(new Date(hw.assignedDate), 'dd.MM.yyyy')} ${hw.dueDate ? `| Teslim: ${format(new Date(hw.dueDate), 'dd.MM.yyyy')}` : ''}</p>
-                <br>
-                <p><i>Teslim durumları için detaylı raporlama yakında eklenecektir.</i></p>
-                <br>
-            `;
-        }).join('');
-    } else {
-        homeworkSections = "<p>Bu sınıfa henüz ödev atanmamış.</p>";
-    }
+    const sortedHomeworks = [...homeworks].sort((a,b) => new Date(a.assignedDate).getTime() - new Date(b.assignedDate).getTime());
 
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:5%;">S.No</th>
+            <th class="horizontal" style="width:10%;">Okul No</th>
+            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
+            ${sortedHomeworks.map((hw, i) => `<th class="horizontal" style="width:5%;"><span class="small-text">${i+1}. Ödev</span></th>`).join('')}
+        </tr>
+    `;
 
-    const content = `${header}${homeworkSections}${footer}`;
+    const dataRows = students.map((student, index) => {
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${student.number}</td>
+                <td>${student.name}</td>
+                ${sortedHomeworks.map(hw => {
+                    const hasSubmitted = submissions.some(sub => sub.studentId === student.id && sub.homeworkId === hw.id);
+                    return `<td class="center bold">${hasSubmitted ? '+' : '-'}</td>`;
+                }).join('')}
+            </tr>
+        `;
+    }).join('');
+    
+    const homeworkList = sortedHomeworks.map((hw, i) => `<p class="small-text"><b>${i+1}. Ödev:</b> ${hw.text}</p>`).join('');
+
+    const content = `
+      ${header}
+      <table>
+        <thead>${tableHeader}</thead>
+        <tbody>${dataRows}</tbody>
+      </table>
+      <br>
+      <h3>Ödev Listesi</h3>
+      ${homeworkList}
+      ${footer}
+    `;
+
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }

@@ -51,6 +51,44 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
     const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
     const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
 
+    const allSubmissionsQuery = useMemo(() => {
+        if (!db || !classId) return null;
+        return query(collection(db, `classes/${classId}/homeworks`));
+    }, [db, classId]);
+
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
+
+     useEffect(() => {
+        const fetchAllSubmissions = async () => {
+            if (!db || !currentClass || homeworksLoading || homeworks.length === 0) {
+                 if(!homeworksLoading){
+                    setSubmissionsLoading(false);
+                }
+                return;
+            };
+            setSubmissionsLoading(true);
+            try {
+                const submissionsPromises = homeworks.map(hw => getDocs(collection(db, 'classes', currentClass.id, 'homeworks', hw.id, 'submissions')));
+                const submissionsSnapshots = await Promise.all(submissionsPromises);
+                const fetchedSubmissions: Submission[] = [];
+                submissionsSnapshots.forEach(snapshot => {
+                    snapshot.forEach(doc => {
+                        fetchedSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
+                    });
+                });
+                setAllSubmissions(fetchedSubmissions);
+            } catch (e) {
+                console.error("Error fetching all submissions", e);
+            } finally {
+                setSubmissionsLoading(false);
+            }
+        };
+
+        fetchAllSubmissions();
+    }, [db, currentClass, homeworks, homeworksLoading]);
+
+
     const sortedHomeworks = useMemo(() => {
         return [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [homeworks]);
@@ -103,6 +141,7 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
         exportHomeworkStatusToRtf({
             students,
             homeworks,
+            submissions: allSubmissions,
             currentClass,
             teacherProfile
         });
