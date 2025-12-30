@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, signInWithEmailAndPassword } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, updateDoc, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
@@ -30,7 +30,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string) => Promise<void>;
+  signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loading, appUser, pathname, router]);
 
 
- const signInStudent = async (classCode: string, studentNumber: string) => {
+  const signInStudent = async (classCode: string, studentNumber: string, password?: string) => {
     if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
 
     setLoading(true);
@@ -205,7 +205,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const studentData = studentSnapshot.docs[0].data() as Student;
 
-        if (studentData.password !== studentNumber) {
+        // Use the provided password, or default to studentNumber for first login
+        const loginPassword = password || studentNumber;
+
+        if (studentData.password !== loginPassword) {
             throw new Error('Şifre (öğrenci numarası) hatalı.');
         }
 

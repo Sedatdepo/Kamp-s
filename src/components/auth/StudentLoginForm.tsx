@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -15,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
+  password: z.string().min(1, { message: 'Lütfen şifrenizi girin.' }),
 });
 
 export function StudentLoginForm() {
@@ -29,6 +31,7 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
+      password: '',
     },
   });
 
@@ -38,11 +41,20 @@ export function StudentLoginForm() {
     }
   }, [classCodeFromUrl, form]);
 
+  useEffect(() => {
+    // Set password to student number by default if it's empty
+    const studentNumber = form.watch('studentNumber');
+    if (studentNumber && !form.getValues('password')) {
+        form.setValue('password', studentNumber);
+    }
+  }, [form.watch('studentNumber'), form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
+      // Pass the password from the form to signInStudent
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
 
       toast({
         title: 'Giriş Başarılı',
@@ -85,10 +97,26 @@ export function StudentLoginForm() {
           name="studentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Şifre (Öğrenci Numaranız)</FormLabel>
+              <FormLabel>Öğrenci Numarası</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="Okul Numaranız" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Şifre</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
+               <FormDescription className="text-xs">
+                İlk girişinizde şifreniz okul numaranızdır.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
