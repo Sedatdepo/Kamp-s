@@ -122,12 +122,10 @@ export interface Student {
   classId: string;
   number: string;
   name: string;
-  email?: string; // Kept for potential future use (e.g., password recovery)
+  email?: string;
   
-  // These fields are being removed for the simple login system
-  // password?: string;
-  // needsPasswordChange: boolean;
-  // authUid?: string; // UID from Firebase Auth
+  needsPasswordChange: boolean;
+  authUid?: string; // UID from Firebase Auth
 
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs

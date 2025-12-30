@@ -79,9 +79,6 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
             return;
         }
 
-        // NOTE: With the new simple auth system, students don't have a real authUid.
-        // This means file uploads from teachers WILL WORK, but students cannot reply with files.
-        // This is a trade-off for the simplified login.
         setIsUploading(true);
         let fileData: Message['file'] | undefined = undefined;
 
@@ -267,12 +264,11 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         throw new Error("Gerekli yapılandırma eksik.");
     }
     
-    // No auth user creation, just add to DB.
     await addDoc(collection(db, 'students'), {
         classId,
         name: name,
         number: number,
-        // No password fields
+        needsPasswordChange: true, // New students must change password
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
