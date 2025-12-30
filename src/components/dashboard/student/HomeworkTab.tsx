@@ -4,9 +4,9 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Homework, Submission } from '@/lib/types';
+import { Class, Homework, Submission, Criterion } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, ClipboardList, CheckCircle } from 'lucide-react';
 import { collection, doc, addDoc, query, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
@@ -63,59 +64,70 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         }
     };
     
-    if (existingSubmission) {
-        return (
-             <div className="border p-4 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm space-y-3">
-                <div>
-                    <p className="text-sm font-semibold">{homework.text}</p>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
-                        <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMM yyyy', { locale: tr })}</span></div>
-                        {homework.dueDate && <div className="flex items-center gap-1.5 font-medium text-red-600"><CalendarIcon className="h-3 w-3" /><span>Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>}
-                    </div>
-                </div>
-                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
-                    <p className='text-xs font-bold text-muted-foreground mb-1'>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
-                    {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md">{existingSubmission.text}</p>}
-                </div>
-                {existingSubmission.feedback && (
-                     <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200'>
-                         <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
-                         <p className="text-sm">{existingSubmission.feedback}</p>
-                     </div>
-                )}
-                 {existingSubmission.grade !== undefined && (
-                     <div className='flex justify-end'>
-                        <Badge>Not: {existingSubmission.grade}</Badge>
-                     </div>
-                )}
-            </div>
-        )
-    }
-
     return (
-        <div className="border p-4 rounded-lg bg-background shadow-sm space-y-3">
+        <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
             <div>
                 <p className="text-sm font-semibold">{homework.text}</p>
                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     {homework.dueDate && <div className="flex items-center gap-1.5 font-medium text-red-600"><CalendarIcon className="h-3 w-3" /><span>Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>}
-                    {(homework.teacherName || homework.lessonName) && <div className="flex items-center gap-1.5 font-medium text-slate-600"><User className="h-3 w-3" /><span className="font-semibold">{homework.teacherName || ''}</span>{homework.teacherName && homework.lessonName && <span>-</span>}<span>{homework.lessonName || ''}</span></div>}
                  </div>
             </div>
-            <div className='space-y-2'>
-                <Textarea 
-                    placeholder="Ödev cevabını buraya yaz..."
-                    value={submissionText}
-                    onChange={(e) => setSubmissionText(e.target.value)}
-                    disabled={isSubmitting}
-                />
-                <div className='flex items-center justify-end gap-2'>
-                    <Button onClick={handleSubmit} disabled={isSubmitting} className="ml-auto">
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                        Gönder
-                    </Button>
+
+             {homework.criteria && (
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="criteria">
+                        <AccordionTrigger className="text-xs font-semibold">
+                            <div className="flex items-center gap-2">
+                                <ClipboardList className="h-4 w-4" /> Değerlendirme Kriterleri
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                             <ul className="list-disc pl-5 space-y-1 text-xs text-muted-foreground">
+                                {homework.criteria.map(c => (
+                                    <li key={c.id}>{c.name} <span className="font-bold">({c.max} Puan)</span></li>
+                                ))}
+                            </ul>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            )}
+
+            {existingSubmission ? (
+                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
+                        <CheckCircle className="h-5 w-5"/>
+                        <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
+                    </div>
+                    {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
+                     {existingSubmission.feedback && (
+                         <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
+                             <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
+                             <p className="text-sm">{existingSubmission.feedback}</p>
+                         </div>
+                    )}
+                     {existingSubmission.grade !== undefined && (
+                         <div className='flex justify-end mt-2'>
+                            <Badge>Not: {existingSubmission.grade}</Badge>
+                         </div>
+                    )}
                 </div>
-            </div>
+            ) : (
+                <div className='space-y-2'>
+                    <Textarea 
+                        placeholder="Ödev cevabını buraya yaz..."
+                        value={submissionText}
+                        onChange={(e) => setSubmissionText(e.target.value)}
+                        disabled={isSubmitting}
+                    />
+                    <div className='flex items-center justify-end gap-2'>
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="ml-auto">
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                            Gönder
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

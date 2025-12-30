@@ -34,6 +34,7 @@ export interface Homework {
   seenBy: string[];
   teacherName?: string;
   lessonName?: string;
+  criteria?: Criterion[];
 }
 
 export interface Criterion {
@@ -117,6 +118,7 @@ export type GradingScores = {
 
 export interface Student {
   id: string;
+  authUid?: string;
   classId: string;
   number: string;
   name: string;
