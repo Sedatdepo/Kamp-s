@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission, Criterion } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText, Search, Library } from 'lucide-react';
+import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText, Search, Library, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -29,12 +29,67 @@ import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Loader2 } from 'lucide-react';
 
 const branchToSubjectMap: { [key: string]: string } = {
     "Türk Dili ve Edebiyatı": "literature",
     "Fizik": "physics",
 };
+
+const HomeworkSubmissions = ({ homework, students }: { homework: Homework, students: Student[] }) => {
+    const { db } = useAuth();
+    const submissionsQuery = useMemo(() => {
+        if (!db || !homework.classId) return null;
+        return query(collection(db, 'classes', homework.classId, 'homeworks', homework.id, 'submissions'));
+    }, [db, homework.classId, homework.id]);
+
+    const { data: submissions, loading } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
+    
+    if (loading) {
+        return <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+    }
+
+    return (
+        <div className="p-4 bg-slate-50 border-t">
+            <h4 className="font-semibold text-sm mb-2">Öğrenci Teslim Durumları</h4>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>No</TableHead>
+                        <TableHead>Adı Soyadı</TableHead>
+                        <TableHead>Durum</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {students.map(student => {
+                        const hasSubmitted = submissions.some(s => s.studentId === student.id);
+                        return (
+                            <TableRow key={student.id}>
+                                <TableCell>{student.number}</TableCell>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell>
+                                    {hasSubmitted ? (
+                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                            <CheckCircle className="mr-1 h-3 w-3"/>
+                                            Teslim Edildi
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="secondary">
+                                            <XCircle className="mr-1 h-3 w-3"/>
+                                            Bekleniyor
+                                        </Badge>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })}
+                </TableBody>
+            </Table>
+        </div>
+    );
+}
 
 function HomeworkManager({ classId, teacherProfile, students, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null }) {
   const [homeworkText, setHomeworkText] = useState('');
@@ -44,6 +99,10 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
   const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
   const { data: homeworks, loading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
   
+  const sortedHomeworks = useMemo(() => {
+    return [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+  }, [homeworks]);
+
   const handleAddHomework = async () => {
     if (!db || !classId) return;
     if (!homeworkText.trim()) {
@@ -143,46 +202,53 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {homeworks && homeworks.length > 0 ? (
-                homeworks.map((hw) => (
-                  <div key={hw.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start">
-                    <div>
-                      <p className="text-sm whitespace-pre-wrap">{hw.text}</p>
-                      <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
-                         <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3" />
-                            <span>Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</span>
-                         </div>
-                      </div>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>İptal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">
-                            Sil
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
-              )}
-            </div>
+            <ScrollArea className="h-96 pr-4">
+                {loading ? <Loader2 className="mx-auto animate-spin" /> : (
+                  sortedHomeworks && sortedHomeworks.length > 0 ? (
+                    <Accordion type="single" collapsible>
+                        {sortedHomeworks.map((hw) => (
+                          <AccordionItem value={hw.id} key={hw.id}>
+                            <AccordionTrigger>
+                                <div className="text-left">
+                                  <p className="text-sm font-medium">{hw.text}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</p>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <HomeworkSubmissions homework={hw} students={students} />
+                                <div className="p-2 text-right">
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-600">
+                                          <Trash2 className="mr-1 h-3 w-3" />
+                                          Bu Ödevi Sil
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>İptal</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">
+                                            Sil
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                    </Accordion>
+                  ) : (
+                    <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
+                  )
+                )}
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
@@ -194,7 +260,7 @@ function HomeworkLibrary({ classId, teacherProfile, currentClass, onSelect }: { 
   
     const initialGradeFilter = useMemo(() => {
         const gradeMatch = currentClass?.name.match(/\d+/);
-        return gradeMatch ? parseInt(gradeMatch[0], 10) : 0;
+        return gradeMatch ? parseInt(gradeMatch[0], 10) : null;
     }, [currentClass]);
   
     const initialSubjectFilter = useMemo(() => {
