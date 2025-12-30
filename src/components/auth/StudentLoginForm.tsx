@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -47,7 +47,7 @@ export function StudentLoginForm() {
     if (studentNumber && !form.getValues('password')) {
         form.setValue('password', studentNumber);
     }
-  }, [form.watch('studentNumber'), form]);
+  }, [form, form.watch('studentNumber')]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
