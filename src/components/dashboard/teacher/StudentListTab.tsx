@@ -232,7 +232,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         return;
     }
     try {
-        const infoFormRef = doc(db, 'infoForms', student.id);
         const infoFormSnap = await getDocs(query(collection(db, 'infoForms'), where('studentId', '==', student.id)));
         
         let infoForm: InfoForm | null = null;
@@ -508,3 +507,5 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
+
+    

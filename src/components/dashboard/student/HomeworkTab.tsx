@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db, storage } = useAuth();
+    const { auth, db, storage, appUser } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -28,7 +28,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
     }, [db, classId, homework.id]);
 
-    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>('submissions', submissionsQuery);
+    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.find(s => s.studentId === student.id);
@@ -39,7 +39,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId) return;
+        if (!db || !storage || !classId || appUser?.type !== 'student') return;
 
         setIsSubmitting(true);
 
@@ -47,6 +47,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
         if (file) {
             try {
+                // Ensure authUid is available for storage rules
+                if (!appUser.data.authUid) throw new Error("Öğrenci kimliği doğrulaması eksik.");
                 const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${student.id}/${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
                 const downloadURL = await getDownloadURL(snapshot.ref);
@@ -57,7 +59,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 };
             } catch (error) {
                 console.error("File upload error: ", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası" });
+                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
                 setIsSubmitting(false);
                 return;
             }
@@ -68,6 +70,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             studentName: student.name,
             studentNumber: student.number,
             submittedAt: new Date().toISOString(),
+            homeworkId: homework.id,
+            studentAuthUid: appUser.data.authUid,
             text: submissionText,
             ...(fileData && { file: fileData }),
         };
@@ -157,11 +161,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
 function HomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
-    const homeworksQuery = useMemo(() => collection(db, 'classes', classId, 'homeworks'), [db, classId]);
+    const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
     const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
 
     const sortedHomeworks = useMemo(() => {
-        return [...(homeworks || [])].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+        if (!homeworks) return [];
+        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [homeworks]);
 
     if (homeworksLoading) {
@@ -228,3 +233,5 @@ export function HomeworkTab() {
 
   return <HomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
+
+    

@@ -15,6 +15,8 @@ export interface Submission {
   studentName: string;
   studentNumber: string;
   submittedAt: string;
+  homeworkId?: string; // To link back to the homework
+  studentAuthUid?: string; // To verify storage rules
   text?: string;
   file?: {
     url: string;
@@ -124,6 +126,7 @@ export interface Student {
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
+  authUid?: string; // UID from anonymous authentication
   
   // Grading data separated by term
   term1Grades: GradingScores;
@@ -295,3 +298,5 @@ export interface CommunicationDocument extends Archivable {
         announcements: Announcement[];
     }
 }
+
+    

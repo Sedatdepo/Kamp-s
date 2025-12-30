@@ -17,22 +17,28 @@ service firebase.storage {
       // Öğrenciler sadece kendi teslim ettikleri dosyaları okuyabilir.
       allow get: if request.auth != null && (
                     exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) ||
-                    request.auth.uid == studentId
+                    request.auth.uid == get(/databases/$(database)/documents/students/$(studentId)).data.authUid
                   );
 
       // YAZMA (CREATE):
-      // Öğrenciler sadece kendi klasörlerine (studentId eşleşmeli) dosya yükleyebilir (create).
+      // Öğrenciler sadece kendi klasörlerine (studentId eşleşmeli) ve kendi authUid'leri ile dosya yükleyebilir.
       // Mevcut dosyayı güncellemelerine veya silmelerine izin verilmez.
-      allow create: if request.auth != null && request.auth.uid == studentId;
+      allow create: if request.auth != null && 
+                     request.auth.uid == get(/databases/$(database)/documents/students/$(studentId)).data.authUid;
       allow update, delete: if false;
     }
 
     // Sohbet dosyaları için kurallar
     // Yol: /chat_files/{teacherId}/{studentId}/{fileName}
     match /chat_files/{teacherId}/{studentId}/{fileName} {
-
+        
       // OKUMA ve YAZMA: Sadece sohbete dahil olan öğretmen veya öğrenci işlem yapabilir.
-      allow read, write: if request.auth != null && (request.auth.uid == teacherId || request.auth.uid == studentId);
+      allow read, write: if request.auth != null && (
+                           request.auth.uid == teacherId ||
+                           request.auth.uid == get(/databases/$(database)/documents/students/$(studentId)).data.authUid
+                         );
     }
   }
 }
+
+    
