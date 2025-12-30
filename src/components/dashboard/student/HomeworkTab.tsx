@@ -6,7 +6,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 
-const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework: Homework, studentId: string, classId: string, currentClass: Class | null }) => {
+const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, studentId: string, classId: string }) => {
     const { db, storage } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
@@ -32,19 +32,23 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId || !currentClass) return;
+        if (!db || !storage || !classId) return;
 
         setIsSubmitting(true);
 
-        let fileData: Submission['fileUrl'] | undefined = undefined;
-        let fileName: Submission['fileName'] | undefined = undefined;
+        let fileData: Submission['file'] | undefined = undefined;
 
         if (file) {
             try {
                 const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${studentId}/${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
-                fileData = await getDownloadURL(snapshot.ref);
-                fileName = file.name;
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                fileData = {
+                    url: downloadURL,
+                    name: file.name,
+                    type: file.type,
+                };
+
             } catch (error) {
                 console.error("File upload error: ", error);
                 toast({ variant: "destructive", title: "Dosya Yükleme Hatası" });
@@ -57,24 +61,38 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
             studentId,
             submittedAt: new Date().toISOString(),
             text: submissionText,
-            fileUrl: fileData,
-            fileName: fileName,
+            ...(fileData && { file: fileData }),
         };
 
         const classRef = doc(db, 'classes', classId);
-        const updatedSubmissions = [...(homework.submissions || []), newSubmission];
-        const updatedHomeworks = (currentClass.homeworks || []).map(hw => 
-            hw.id === homework.id ? { ...hw, submissions: updatedSubmissions } : hw
-        );
 
         try {
-            await updateDoc(classRef, { homeworks: updatedHomeworks });
+            // Atomically update the homework item in the array
+            // This requires reading the document first, updating in memory, then writing back
+            const classDoc = (await getDoc(classRef)).data() as Class;
+            const homeworks = classDoc.homeworks || [];
+            
+            const homeworkIndex = homeworks.findIndex(hw => hw.id === homework.id);
+            if (homeworkIndex === -1) {
+                throw new Error("Ödev bulunamadı.");
+            }
+
+            const targetHomework = homeworks[homeworkIndex];
+            const updatedSubmissions = [...(targetHomework.submissions || []), newSubmission];
+            
+            homeworks[homeworkIndex] = {
+                ...targetHomework,
+                submissions: updatedSubmissions
+            };
+
+            await updateDoc(classRef, { homeworks: homeworks });
+
             toast({ title: "Ödev başarıyla teslim edildi!" });
             setFile(null);
             setSubmissionText('');
-        } catch (error) {
+        } catch (error: any) {
             console.error("Submission error:", error);
-            toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu." });
+            toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -93,10 +111,10 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
                 <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
                     <p className='text-xs font-bold text-muted-foreground mb-1'>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md">{existingSubmission.text}</p>}
-                    {existingSubmission.fileUrl && (
-                        <a href={existingSubmission.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 text-blue-600 hover:underline">
+                    {existingSubmission.file && (
+                        <a href={existingSubmission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 text-blue-600 hover:underline">
                             <Paperclip className="h-4 w-4" />
-                            <span className="truncate">{existingSubmission.fileName}</span>
+                            <span className="truncate">{existingSubmission.file.name}</span>
                         </a>
                     )}
                 </div>
@@ -150,8 +168,9 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
 
 function HomeworkTabContent({ studentId, classId }: { studentId: string, classId: string }) {
     const { db } = useAuth();
-    const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-    const studentClass = useMemo(() => classes.find(c => c.id === classId), [classes, classId]);
+    const classQuery = useMemo(() => doc(db, 'classes', classId), [db, classId]);
+    const { data: classDataResult, loading: classLoading } = useFirestore<Class>(`class-homeworks-${classId}`, classQuery);
+    const studentClass = useMemo(() => (classDataResult && classDataResult.length > 0 ? classDataResult[0] : null), [classDataResult]);
 
     useEffect(() => {
         if (db && studentClass && studentClass.homeworks && studentId) {
@@ -203,7 +222,7 @@ function HomeworkTabContent({ studentId, classId }: { studentId: string, classId
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             {homeworks.length > 0 ? (
                 homeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} currentClass={studentClass} />
+                <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} />
                 ))
             ) : (
                 <div className="text-center py-10 bg-muted/50 rounded-lg">

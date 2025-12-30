@@ -179,7 +179,7 @@ export function exportGradingToRtf({
     `;
 
     const dataRows = visibleStudents.map((s, index) => {
-        const termGrades = s[termGradesKey];
+        const termGrades = s[termGradesKey] as GradingScores | undefined;
         const scores = termGrades ? termGrades[scoreKey] : undefined;
         const total = calculateTotal(scores);
         return `
@@ -932,8 +932,8 @@ export function exportHomeworkStatusToRtf({ students, currentClass, teacherProfi
     const homeworks = currentClass.homeworks || [];
 
     let homeworkSections = homeworks.map(hw => {
-        const completedStudents = students.filter(s => hw.completedBy?.includes(s.id));
-        const notCompletedStudents = students.filter(s => !hw.completedBy?.includes(s.id));
+        const completedStudents = students.filter(s => hw.submissions?.some(sub => sub.studentId === s.id));
+        const notCompletedStudents = students.filter(s => !hw.submissions?.some(sub => sub.studentId === s.id));
 
         return `
             <h3>Ödev: ${hw.text}</h3>

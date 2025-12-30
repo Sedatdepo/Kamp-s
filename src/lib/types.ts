@@ -13,8 +13,11 @@ export interface Submission {
   studentId: string;
   submittedAt: string;
   text?: string;
-  fileUrl?: string;
-  fileName?: string;
+  file?: {
+    url: string;
+    name: string;
+    type: string;
+  };
   grade?: number;
   feedback?: string;
 }
@@ -24,8 +27,6 @@ export interface Homework {
   text: string;
   assignedDate: string;
   dueDate?: string;
-  fileUrl?: string;
-  fileName?: string;
   seenBy: string[];
   submissions: Submission[];
   teacherName?: string;

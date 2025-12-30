@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -93,27 +93,34 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
         }));
     };
     
-    const handleSaveFeedback = async (hwId: number) => {
+   const handleSaveFeedback = async (hwId: number) => {
         if (!currentClass || !db) return;
 
         const classRef = doc(db, 'classes', currentClass.id);
-        const updatedHomeworks = (currentClass.homeworks || []).map(hw => {
-            if (hw.id === hwId) {
-                const updatedSubmissions = hw.submissions.map(sub => {
-                    if (sub.studentId === student.id) {
-                        const localChanges = submissions[hwId];
-                        return { ...sub, ...localChanges };
-                    }
-                    return sub;
-                });
-                return { ...hw, submissions: updatedSubmissions };
-            }
-            return hw;
-        });
 
         try {
+            const classDoc = await getDoc(classRef);
+            if (!classDoc.exists()) throw new Error("Sınıf bulunamadı.");
+
+            const currentHomeworks = (classDoc.data() as Class).homeworks || [];
+            
+            const updatedHomeworks = currentHomeworks.map(hw => {
+                if (hw.id === hwId) {
+                    const updatedSubmissions = hw.submissions.map(sub => {
+                        if (sub.studentId === student.id) {
+                            const localChanges = submissions[hwId];
+                            return { ...sub, ...localChanges };
+                        }
+                        return sub;
+                    });
+                    return { ...hw, submissions: updatedSubmissions };
+                }
+                return hw;
+            });
+            
             await updateDoc(classRef, { homeworks: updatedHomeworks });
             toast({ title: 'Değerlendirme kaydedildi.' });
+
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
         }
@@ -148,14 +155,14 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                                 <div className='bg-muted p-3 rounded-md'>
                                     <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi ({format(new Date(submission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                                     {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
-                                    {submission.fileUrl && (
-                                        <a href={submission.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-white p-2 rounded-md hover:bg-blue-50 text-blue-600">
+                                    {submission.file && (
+                                        <a href={submission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-white p-2 rounded-md hover:bg-blue-50 text-blue-600">
                                             <Paperclip className="h-4 w-4" />
-                                            <span className="truncate underline">{submission.fileName}</span>
+                                            <span className="truncate underline">{submission.file.name}</span>
                                             <Download className="h-4 w-4 ml-auto" />
                                         </a>
                                     )}
-                                    {!submission.text && !submission.fileUrl && <p className="text-sm text-muted-foreground italic">Öğrenci metin veya dosya göndermedi.</p>}
+                                    {!submission.text && !submission.file && <p className="text-sm text-muted-foreground italic">Öğrenci metin veya dosya göndermedi.</p>}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
                                     <div className='md:col-span-3 space-y-1'>
@@ -175,7 +182,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                                             onChange={(e) => handleFieldChange(hw.id, 'grade', Number(e.target.value))}
                                             className='h-9 text-center font-bold text-lg'
                                         />
-                                         <Button onClick={() => handleSaveFeedback(hw.id)} size="sm" className="w-full" disabled={!localGrade && !localFeedback}>Kaydet</Button>
+                                         <Button onClick={() => handleSaveFeedback(hw.id)} size="sm" className="w-full" disabled={localGrade === undefined && localFeedback === undefined}>Kaydet</Button>
                                     </div>
                                 </div>
                             </div>
