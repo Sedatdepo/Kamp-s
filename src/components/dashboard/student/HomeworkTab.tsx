@@ -1,13 +1,14 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
-import { collection, doc, addDoc, query } from 'firebase/firestore';
+import { collection, doc, addDoc, query, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -15,22 +16,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-// Helper to convert file to Base64
-const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-};
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db, appUser } = useAuth();
+    const { db, storage, appUser } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const submissionsQuery = useMemo(() => {
       if (!db || !classId) return null;
@@ -48,59 +41,55 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !classId) return;
+        if (!db || !storage || !classId || !appUser || appUser.type !== 'student') return;
 
         setIsSubmitting(true);
         
-        let fileDataUrl: string | undefined = undefined;
-        let fileName: string | undefined = undefined;
-        let fileType: string | undefined = undefined;
+        let fileInfo: { url: string; name: string; type: string; } | undefined = undefined;
 
         if (file) {
             try {
-                fileDataUrl = await fileToBase64(file);
-                fileName = file.name;
-                fileType = file.type;
+                // Use student's auth UID for the path to align with storage rules
+                const studentAuthUid = student.authUid;
+                if (!studentAuthUid) {
+                    throw new Error("Öğrenci kimliği doğrulanmadı. Lütfen tekrar giriş yapın.");
+                }
+                const filePath = `homework_submissions/${classId}/${homework.id}/${studentAuthUid}/${file.name}`;
+                const fileRef = ref(storage, filePath);
+                const uploadResult = await uploadBytes(fileRef, file);
+                const downloadURL = await getDownloadURL(uploadResult.ref);
+                fileInfo = { url: downloadURL, name: file.name, type: file.type };
             } catch (error) {
-                console.error("File to Base64 conversion error:", error);
-                toast({ variant: "destructive", title: "Dosya Hazırlama Hatası", description: (error as Error).message });
+                console.error("File upload error:", error);
+                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
                 setIsSubmitting(false);
                 return;
             }
         }
         
-        const studentAuthUid = appUser?.type === 'student' ? appUser.data.id : undefined;
-
-        const payload = {
-            classId,
-            homeworkId: homework.id,
-            studentId: student.id,
-            studentName: student.name,
-            studentNumber: student.number,
-            studentAuthUid: studentAuthUid,
-            text: submissionText,
-            fileDataUrl,
-            fileName,
-            fileType,
+        const submissionData: any = {
+          studentId: student.id,
+          studentName: student.name,
+          studentNumber: student.number,
+          homeworkId: homework.id,
+          studentAuthUid: student.authUid,
+          submittedAt: new Date().toISOString(),
+          text: submissionText || null,
         };
+    
+        if (fileInfo) {
+          submissionData.file = fileInfo;
+        }
 
         try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Bilinmeyen bir hata oluştu.');
-            }
-
+            const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
+            await addDoc(submissionsColRef, submissionData);
             toast({ title: "Ödev başarıyla teslim edildi!" });
             setFile(null);
             setSubmissionText('');
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
@@ -162,16 +151,17 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     disabled={isSubmitting}
                 />
                 <div className='flex items-center justify-between gap-2'>
-                    <Button variant="outline" size="sm" onClick={() => document.getElementById(`file-input-${homework.id}`)?.click()} disabled={isSubmitting}>
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
                         <Paperclip className="mr-2 h-4 w-4"/> Dosya Ekle
                     </Button>
-                    <input type="file" id={`file-input-${homework.id}`} className="hidden" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
+                    <input type="file" ref={fileInputRef} id={`file-input-${homework.id}`} className="hidden" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
                     {file && <span className="text-xs text-muted-foreground truncate">{file.name}</span>}
-                    <Button onClick={handleSubmit} disabled={isSubmitting} className="ml-auto">
+                    <Button onClick={handleSubmit} disabled={isSubmitting || !student.authUid} className="ml-auto">
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
                         Gönder
                     </Button>
                 </div>
+                 {!student.authUid && <p className="text-xs text-destructive text-center">Dosya yükleyebilmek için şifrenizi belirlemiş olmanız gerekir.</p>}
             </div>
         </div>
     )
