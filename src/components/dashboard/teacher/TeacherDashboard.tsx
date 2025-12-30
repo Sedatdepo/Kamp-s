@@ -355,6 +355,26 @@ export function TeacherDashboard() {
               {TABS_CONFIG[activeTab]?.label}
             </h2>
             <div className="flex items-center gap-2">
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      {currentClass?.name}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Tüm Sınıflar
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {classes.map(cls => (
+                        <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                            {cls.name}
+                        </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Panel
               </Button>
@@ -371,26 +391,7 @@ export function TeacherDashboard() {
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="text-2xl font-headline p-0 h-auto">
-                                    {currentClass?.name || 'Sınıf Paneli'}
-                                    <ChevronDown className="ml-2 h-5 w-5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {classes.map(cls => (
-                                    <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
-                                        {cls.name}
-                                    </DropdownMenuItem>
-                                ))}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Tüm Sınıflar
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                         <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
                     </div>
                     <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
                 </CardHeader>
