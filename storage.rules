@@ -1,0 +1,29 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Genel kural: Varsayılan olarak tüm yollara erişimi engelle.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Ödev teslim dosyaları için kurallar
+    // Yol: /homework_submissions/{classId}/{homeworkId}/{studentId}/{fileName}
+    match /homework_submissions/{classId}/{homeworkId}/{studentId}/{fileName} {
+      
+      // OKUMA (GET): Öğretmenler tüm ödevleri okuyabilir.
+      // Öğrenciler sadece kendi teslim ettikleri dosyaları okuyabilir.
+      allow get: if request.auth != null && (
+                    exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) ||
+                    request.auth.uid == studentId
+                  );
+
+      // YAZMA (CREATE, UPDATE, DELETE):
+      // Öğrenciler sadece kendi klasörlerine (studentId eşleşmeli) dosya yükleyebilir (create).
+      // Mevcut dosyayı güncellemelerine veya silmelerine izin verilmez (güvenlik için).
+      allow write: if request.auth != null && request.auth.uid == studentId;
+    }
+  }
+}
