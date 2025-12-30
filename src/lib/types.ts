@@ -9,13 +9,25 @@ export interface Announcement {
   seenBy: string[];
 }
 
+export interface Submission {
+  studentId: string;
+  submittedAt: string;
+  text?: string;
+  fileUrl?: string;
+  fileName?: string;
+  grade?: number;
+  feedback?: string;
+}
+
 export interface Homework {
   id: number;
   text: string;
   assignedDate: string;
   dueDate?: string;
+  fileUrl?: string;
+  fileName?: string;
   seenBy: string[];
-  completedBy: string[]; // List of student IDs who completed the homework
+  submissions: Submission[];
   teacherName?: string;
   lessonName?: string;
 }
