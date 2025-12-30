@@ -1,13 +1,15 @@
+
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // --- Firebase Admin SDK Kurulumu ---
-// Bu kısım, sunucu tarafında yönetici yetkileriyle hareket etmemizi sağlar.
 
-// Ortam değişkenlerini güvenli bir şekilde alıyoruz.
+let adminApp: App;
+
+// Gerekli ortam değişkenlerinin varlığını kontrol et
 const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -18,21 +20,34 @@ const serviceAccount = {
   privateKey,
 };
 
-// Firebase Admin'i başlat (eğer daha önce başlatılmadıysa)
+// Sadece gerekli tüm değişkenler varsa Firebase Admin'i başlat
 if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-    storageBucket: `${projectId}.appspot.com`,
-  });
+    if (privateKey && clientEmail && projectId) {
+        adminApp = initializeApp({
+            credential: cert(serviceAccount),
+            storageBucket: `${projectId}.appspot.com`,
+        });
+    } else {
+        console.error("Firebase Admin SDK için gerekli ortam değişkenleri eksik. Lütfen FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL ve NEXT_PUBLIC_FIREBASE_PROJECT_ID değişkenlerini ayarlayın.");
+    }
+} else {
+    adminApp = getApps()[0];
 }
 
-const adminDb = getFirestore();
-const adminStorage = getStorage();
-const bucket = adminStorage.bucket();
 
 // --- API Rotası (POST Metodu) ---
 
 export async function POST(request: NextRequest) {
+  // Eğer Firebase Admin başlatılamadıysa, hata döndür
+  if (!adminApp) {
+      return NextResponse.json({ error: 'Sunucu yapılandırma hatası: Firebase bağlantısı kurulamadı.' }, { status: 500 });
+  }
+
+  // Admin servislerini başlatılmış app üzerinden al
+  const adminDb = getFirestore(adminApp);
+  const adminStorage = getStorage(adminApp);
+  const bucket = adminStorage.bucket();
+
   try {
     const body = await request.json();
     const {
@@ -41,6 +56,7 @@ export async function POST(request: NextRequest) {
       studentId,
       studentName,
       studentNumber,
+      studentAuthUid, // Bu yeni eklendi
       text,
       fileDataUrl, // Dosya base64 formatında gelecek
       fileName,
@@ -48,7 +64,6 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // --- Güvenlik Kontrolü ---
-    // Gelen verilerin temel düzeyde doğruluğunu kontrol et
     if (!classId || !homeworkId || !studentId) {
       return NextResponse.json({ error: 'Eksik veya geçersiz bilgi.' }, { status: 400 });
     }
@@ -57,7 +72,6 @@ export async function POST(request: NextRequest) {
 
     // --- Dosya Yükleme (Eğer dosya varsa) ---
     if (fileDataUrl && fileName && fileType) {
-      // Base64 data URL'den asıl veriyi ve formatı ayır
       const matches = fileDataUrl.match(/^data:(.+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
         return NextResponse.json({ error: 'Geçersiz dosya formatı.' }, { status: 400 });
@@ -67,15 +81,13 @@ export async function POST(request: NextRequest) {
       const filePath = `homework_submissions/${classId}/${homeworkId}/${studentId}/${fileName}`;
       const file = bucket.file(filePath);
 
-      // Dosyayı Firebase Storage'a yükle
       await file.save(buffer, {
         metadata: { contentType: fileType },
       });
       
-      // Yüklenen dosyanın herkes tarafından okunabilir URL'ini al
       fileUrl = (await file.getSignedUrl({
         action: 'read',
-        expires: '03-09-2491', // Çok uzak bir tarih
+        expires: '03-09-2491',
       }))[0];
     }
     
@@ -85,6 +97,7 @@ export async function POST(request: NextRequest) {
       studentName,
       studentNumber,
       homeworkId,
+      studentAuthUid, // Yeni alanı ekle
       submittedAt: new Date().toISOString(),
       text: text || null,
     };
@@ -97,15 +110,15 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Firestore'da ilgili ödevin altına yeni bir teslimat belgesi ekle
     const submissionsColRef = adminDb.collection(`classes/${classId}/homeworks/${homeworkId}/submissions`);
     await submissionsColRef.add(submissionData);
 
     return NextResponse.json({ success: true, message: 'Ödev başarıyla teslim edildi.' }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload API Error:', error);
-    // Hata durumunda istemciye genel bir hata mesajı gönder
-    return NextResponse.json({ error: 'Sunucu hatası oluştu.' }, { status: 500 });
+    // Hatanın kendisini de loglayarak daha fazla bilgi alabiliriz.
+    // İstemciye daha genel bir hata gönderelim.
+    return NextResponse.json({ error: 'Sunucu hatası oluştu: ' + error.message }, { status: 500 });
   }
 }

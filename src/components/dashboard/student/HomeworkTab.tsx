@@ -26,7 +26,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db } = useAuth();
+    const { db, appUser } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -68,6 +68,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 return;
             }
         }
+        
+        const studentAuthUid = appUser?.type === 'student' ? appUser.data.id : undefined;
 
         const payload = {
             classId,
@@ -75,6 +77,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             studentId: student.id,
             studentName: student.name,
             studentNumber: student.number,
+            studentAuthUid: studentAuthUid,
             text: submissionText,
             fileDataUrl,
             fileName,
