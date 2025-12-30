@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock, BookText } from 'lucide-react';
+import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -90,7 +90,7 @@ function HomeworkManager({ classId, teacherProfile }: { classId: string, teacher
         <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
-              <BookText className="h-6 w-6" />
+              <BookOpen className="h-6 w-6" />
               Yeni Ödev Gönder
             </CardTitle>
             <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
@@ -237,10 +237,41 @@ const getRubricType = (formats: string) => {
 };
 
 const assignmentsData = [
+  // 9. Sınıf Edebiyat
   { id: 901, grade: 9, subject: "literature", title: "Sözün İnceliği: Şiir Tahlili", description: "Bir şiirin ahenk unsurlarını analiz etme.", instructions: "Temaya uygun bir şiir seç. Kafiye, redif ve söz sanatlarını gösteren renkli bir tablo hazırla.", formats: "PDF, Word", size: "5 MB" },
+  { id: 902, grade: 9, subject: "literature", title: "Geçmişe Yolculuk: Dede Korkut Hikayesi", description: "Bir Dede Korkut hikayesini modern dile uyarlama.", instructions: "Seçtiğiniz bir Dede Korkut hikayesini günümüz Türkçesiyle yeniden yazın ve hikayeden bir sahneyi resmedin.", formats: "Word, JPG", size: "10 MB" },
+  { id: 903, grade: 9, subject: "literature", title: "Sahnedeki Roman: Roman Uyarlaması", description: "Okunan bir romandan tiyatro sahnesi oluşturma.", instructions: "Okuduğunuz bir romandan en sevdiğiniz bölümü kısa bir tiyatro sahnesine dönüştürün. Diyalogları ve sahne direktiflerini yazın.", formats: "PDF", size: "2 MB" },
+
+  // 9. Sınıf Fizik
   { id: 936, grade: 9, subject: "physics", title: "Mutfakta Isı Transferi", description: "FİZ.9.4.5. Isı aktarım yolları.", instructions: "Yemek yaparken tencerenin ısınması (iletim), suyun kaynaması (konveksiyon) ve fırının pişirmesi (ışıma) olaylarını mutfaktan fotoğraflarla anlat.", formats: "Görsel Sunum", size: "15 MB" },
-  { id: 1240, grade: 12, subject: "physics", title: "GPS ve Zaman Kayması", description: "Özel görelilik.", instructions: "Uydulardaki saatlerin dünyadaki saatlerden neden farklı çalıştığını ve Einstein'ın teorisinin GPS doğruluğu için önemini anlat.", formats: "Video Sunum", size: "25 MB" }
+  { id: 937, grade: 9, subject: "physics", title: "Evdeki Vektörler", description: "Fiziksel niceliklerin sınıflandırılması.", instructions: "Evinizde bulduğunuz 5 skaler ve 5 vektörel büyüklüğü fotoğraflayarak açıklayın. (Örn: Kapının koluna uygulanan kuvvet - vektörel).", formats: "Canva, PDF", size: "20 MB" },
+  { id: 938, grade: 9, subject: "physics", title: "Enerji Dönüşüm Dedektifi", description: "Enerjinin korunumu ve enerji dönüşümleri.", instructions: "Bir oyuncak arabanın pille çalışmasından hareket etmesine kadar olan enerji dönüşüm zincirini (kimyasal -> elektrik -> kinetik) bir infografik ile anlatın.", formats: "Poster, JPG", size: "8 MB" },
+
+  // 10. Sınıf Edebiyat
+  { id: 1001, grade: 10, subject: "literature", title: "Divan'dan Sesleniş: Gazel Şerhi", description: "Seçilen bir gazelin günümüz diliyle yorumlanması.", instructions: "Fuzuli, Baki veya Nedim'den bir gazel seçerek beyit beyit günümüz Türkçesine çevirin ve ana temasını açıklayan bir kompozisyon yazın.", formats: "Word", size: "3 MB" },
+  { id: 1002, grade: 10, subject: "literature", title: "Halkın Sesi: Mani Derlemesi", description: "Çevreden veya aile büyüklerinden mani derleme.", instructions: "Çevrenizden en az 10 farklı mani derleyerek bir video kaydı oluşturun. Manilerin temalarını (aşk, hasret, gurbet vb.) sınıflandırın.", formats: "Video, MP4", size: "50 MB" },
+
+  // 10. Sınıf Fizik
+  { id: 1036, grade: 10, subject: "physics", title: "Basıncın Gücü", description: "Katı, sıvı ve gaz basıncı deneyleri.", instructions: "Evde basit malzemelerle (şişe, su, balon) Pascal prensibini veya açık hava basıncının etkisini gösteren kısa bir deney videosu çekin.", formats: "Video Sunum", size: "40 MB" },
+  { id: 1037, grade: 10, subject: "physics", title: "Optik Yanılsamalar", description: "Gölge, yansıma ve kırılma olayları.", instructions: "Kaşığın sudan kırık görünmesi veya gölge boyunun değişimi gibi optik yanılsamaları fotoğraflayıp nedenlerini kısaca açıklayan bir sunum hazırlayın.", formats: "Görsel Sunum", size: "15 MB" },
+
+  // 11. Sınıf Edebiyat
+  { id: 1101, grade: 11, subject: "literature", title: "Tanzimat'tan Portreler", description: "Tanzimat dönemi bir yazarını tanıtma.", instructions: "Namık Kemal, Şinasi veya Ziya Paşa gibi bir Tanzimat yazarının hayatını, eserlerini ve fikirlerini anlatan bir podcast bölümü hazırlayın.", formats: "Ses Kaydı, MP3", size: "20 MB" },
+  { id: 1102, grade: 11, subject: "literature", title: "Modern Roman İncelemesi", description: "Servetifünun veya Milli Edebiyat döneminden bir romanı inceleme.", instructions: "Halit Ziya'nın 'Aşk-ı Memnu' veya Yakup Kadri'nin 'Yaban' romanının ana karakterlerini, çatışmalarını ve dönemin zihniyetini yansıtan yönlerini analiz eden bir makale yazın.", formats: "PDF, Word", size: "5 MB" },
+
+  // 11. Sınıf Fizik
+  { id: 1136, grade: 11, subject: "physics", title: "Vektörel Kuvvet Dengesi", description: "Bir cisme etki eden kuvvetlerin dengesi.", instructions: "Bir avize veya saksının asılı durduğu durumu analiz edin. İplerdeki gerilme kuvvetlerini vektörlerle göstererek serbest cisim diyagramını çizin ve açıklayın.", formats: "JPG, PDF", size: "5 MB" },
+  { id: 1137, grade: 11, subject: "physics", title: "Alternatif Akımın İzinde", description: "Doğru akım ve alternatif akımın karşılaştırılması.", instructions: "Evimizdeki prizlerin neden alternatif akım kullandığını, pillerin ise neden doğru akım kaynağı olduğunu araştırıp avantaj ve dezavantajlarını listeleyen bir sunum hazırlayın.", formats: "Görsel Sunum", size: "10 MB" },
+
+  // 12. Sınıf Edebiyat
+  { id: 1201, grade: 12, subject: "literature", title: "Cumhuriyet Şiirinde Bir Ses", description: "Bir Cumhuriyet dönemi şairini ve şiir anlayışını tanıtma.", instructions: "Necip Fazıl, Nazım Hikmet, Orhan Veli veya Cemal Süreya gibi bir şairin şiir anlayışını ve en az iki şiirini yorumlayan bir video analiz hazırlayın.", formats: "Video Sunum", size: "60 MB" },
+  { id: 1202, grade: 12, subject: "literature", title: "Postmodern Anlatı", description: "Postmodern bir romanda kullanılan anlatım teknikleri.", instructions: "Orhan Pamuk'un 'Benim Adım Kırmızı' veya 'Kara Kitap' romanındaki üstkurmaca, metinlerarasılık gibi postmodern teknikleri bularak örneklerle açıklayan bir inceleme yazısı yazın.", formats: "Word", size: "4 MB" },
+
+  // 12. Sınıf Fizik
+  { id: 1240, grade: 12, subject: "physics", title: "GPS ve Zaman Kayması", description: "Özel görelilik.", instructions: "Uydulardaki saatlerin dünyadaki saatlerden neden farklı çalıştığını ve Einstein'ın teorisinin GPS doğruluğu için önemini anlatan bir video hazırlayın.", formats: "Video Sunum", size: "25 MB" },
+  { id: 1241, grade: 12, subject: "physics", title: "Büyük Patlama'nın Kanıtları", description: "Evrenin oluşumu ve genişlemesi.", instructions: "Hubble Yasası (kırmızıya kayma) ve Kozmik Mikrodalga Arka Plan Işıması'nın Büyük Patlama teorisini nasıl desteklediğini anlatan bir infografik tasarlayın.", formats: "Poster, JPG", size: "10 MB" }
 ];
+
 
 const FilterBar = ({ gradeFilter, subjectFilter, setGradeFilter, setSubjectFilter }: { gradeFilter: string, subjectFilter: string, setGradeFilter: (val: string) => void, setSubjectFilter: (val: string) => void }) => (
   <div className="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
