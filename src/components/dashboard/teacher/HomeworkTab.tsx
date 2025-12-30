@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { doc, updateDoc, collection, addDoc, deleteDoc, query } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock } from 'lucide-react';
+import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock, BookText } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -712,6 +712,8 @@ const SuccessModal = ({ isOpen, onClose, assignment }: { isOpen: boolean, onClos
   );
 };
 
+
+// --- Ödev Şablonları Ana Bileşeni (Entegrasyon için) ---
 const HomeworkTemplates = ({ classId, teacherProfile }: { classId: string, teacherProfile: TeacherProfile | null }) => {
   const [gradeFilter, setGradeFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
