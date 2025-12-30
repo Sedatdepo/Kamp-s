@@ -106,11 +106,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await firebaseSignOut(auth);
             setAppUser(null);
         }
+      } else if (user && user.isAnonymous) {
+          // If there's an anonymous user, we need to find their student data
+          const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
+          const studentSnapshot = await getDocs(studentQuery);
+          if (!studentSnapshot.empty) {
+              const studentDoc = studentSnapshot.docs[0];
+              const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+              setAppUser({ type: 'student', data: studentData, authUser: user });
+          } else {
+              // Anonymous user without a matching student record, sign them out.
+              await firebaseSignOut(auth);
+              setAppUser(null);
+          }
       } else if (!user) { // User is logged out
         setAppUser(null);
       }
-      // For anonymous users, the state is set inside signInStudent.
-      // We don't need to do anything here, just finish loading.
       setLoading(false);
     });
     return () => unsubscribe();
@@ -186,16 +197,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db || !auth) throw new Error("Veritabanı başlatılamadı.");
 
-    // Sign out any existing user
+    // Step 1: Sign out any existing user to start fresh
     if (auth.currentUser) {
-       await firebaseSignOut(auth);
+        await firebaseSignOut(auth);
     }
     
-    // 1. Sign in anonymously FIRST to get a UID
+    // Step 2: Sign in anonymously to get a temporary, authorized user session.
     const userCredential = await signInAnonymously(auth);
     const user = userCredential.user;
 
-    // 2. NOW, query the database with the student's class and number
+    // Step 3: Now that we are authenticated, query the database.
     const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
     const classSnapshot = await getDocs(classQuery);
     if (classSnapshot.empty) {
@@ -219,18 +230,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentDoc = studentSnapshot.docs[0];
     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
     
-    // 3. Check password
+    // Step 4: Check password
     if (studentData.password !== studentNumber) {
         await user.delete(); // Clean up the anonymous user
         throw new Error('Şifre (öğrenci numarası) hatalı.');
     }
     
-    // 4. Update the student document with the anonymous auth UID
-    // This is now allowed because the user is authenticated (anonymously)
+    // Step 5: Update the student document with the anonymous auth UID. This is now allowed.
     const studentRef = doc(db, 'students', studentData.id);
     await updateDoc(studentRef, { authUid: user.uid });
     
-    // 5. Set the app user state
+    // Step 6: Set the app user state, which will trigger the useEffect hooks for redirection
     const updatedStudentData = { ...studentData, authUid: user.uid };
     setAppUser({ type: 'student', data: updatedStudentData, authUser: user });
   };
