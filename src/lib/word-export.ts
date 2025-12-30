@@ -16,12 +16,12 @@ const generateHtmlShell = (content: string, title: string) => {
       <title>${title}</title>
       <style>
         @page {
-          size: A4;
-          margin: 1in;
+          size: A4 landscape;
+          margin: 0.5in;
         }
         body {
           font-family: 'Times New Roman', Times, serif;
-          font-size: 12pt;
+          font-size: 10pt;
         }
         table {
           border-collapse: collapse;
@@ -29,26 +29,19 @@ const generateHtmlShell = (content: string, title: string) => {
         }
         th, td {
           border: 1px solid black;
-          padding: 5px;
+          padding: 4px;
           text-align: left;
+          vertical-align: top;
         }
         th {
           font-weight: bold;
           text-align: center;
           background-color: #f2f2f2;
-          /* Rotate text for risk factors */
-          writing-mode: vertical-rl;
-          transform: rotate(180deg);
-          white-space: nowrap;
-        }
-        th.horizontal {
-            writing-mode: horizontal-tb;
-            transform: none;
         }
         .center { text-align: center; }
         .bold { font-weight: bold; }
         .no-border { border: none; }
-        .small-text { font-size: 10pt; }
+        .small-text { font-size: 8pt; }
         .header-p { margin: 0; padding: 0; }
         .word-export-desk-container { vertical-align: top; }
         .word-export-desk { width: 100%; border: 1.5px solid #d97706; background-color: #fef3c7; border-collapse: collapse; }
@@ -83,8 +76,7 @@ const generateReportHeader = (
             <p class="header-p bold">T.C.</p>
             <p class="header-p bold">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜ</p>
             <p class="header-p bold">${year} EĞİTİM ÖĞRETİM YILI ${lesson.toLocaleUpperCase('tr-TR')} DERSİ</p>
-            <p class="header-p bold">${currentClass.name.toLocaleUpperCase('tr-TR')} SINIFI ${term}. DÖNEM</p>
-            <p class="header-p bold">${reportTitle.toLocaleUpperCase('tr-TR')}</p>
+            <p class="header-p bold">${currentClass.name.toLocaleUpperCase('tr-TR')} SINIFI ${reportTitle.toLocaleUpperCase('tr-TR')}</p>
         </div>
         <br>
     `;
@@ -100,19 +92,206 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
         <br><br><br>
         <table class="no-border" style="width:100%;">
             <tr>
-                <td class="no-border center" style="width:50%;">
+                <td class="no-border" style="width:33%;"></td>
+                <td class="no-border center" style="width:34%;">
                     Uygundur<br/>${date}<br/><br/><br/>
                     <span class="bold">${teacher}</span><br/>
                     Ders Öğretmeni
                 </td>
-                <td class="no-border center" style="width:50%;">
-                    Tasdik Olunur<br/><br/><br/><br/>
+                <td class="no-border" style="width:33%;"></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="no-border center">
+                    <br/><br/>
+                    Tasdik Olunur<br/>${date}<br/><br/><br/>
                     <span class="bold">${principal}</span><br/>
                     Okul Müdürü
                 </td>
             </tr>
         </table>
     `;
+}
+
+// --- ANNUAL PLAN EXPORT ---
+interface ExportAnnualPlanArgs {
+    annualPlan: AnnualPlan;
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+
+export function exportAnnualPlanToRtf({ annualPlan, currentClass, teacherProfile }: ExportAnnualPlanArgs) {
+    const reportTitle = "ÜNİTELENDİRİLMİŞ YILLIK DERS PLANI";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${annualPlan.title}`;
+
+    const tableHeader = `
+        <tr>
+            <th style="width:8%;">Hafta / Tarih</th>
+            <th style="width:5%;">Ders Saati</th>
+            <th style="width:15%;">Ünite / Tema</th>
+            <th style="width:20%;">Konu</th>
+            <th style="width:22%;">Kazanımlar / Hedef ve Davranışlar</th>
+            <th style="width:10%;">Yöntem ve Teknikler</th>
+            <th style="width:10%;">Araç-Gereçler</th>
+            <th style="width:10%;">Ölçme-Değerlendirme</th>
+        </tr>
+    `;
+
+    const dataRows = annualPlan.rows.map(row => `
+        <tr>
+            <td class="center">${row.hafta || ''}</td>
+            <td class="center">${row.saat || ''}</td>
+            <td>${row.unite || ''}</td>
+            <td>${row.konu || ''}</td>
+            <td>${row.cikti || ''}</td>
+            <td>${row.yontem || 'Anlatım, Soru-Cevap'}</td>
+            <td>${row.arac || 'Ders Kitabı, Akıllı Tahta'}</td>
+            <td>${row.degerlendirme || 'Sözlü Değerlendirme'}</td>
+        </tr>
+    `).join('');
+
+    const content = `
+        ${header}
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DAILY PLAN EXPORT ---
+interface ExportDailyPlanArgs {
+    dailyPlan: DailyPlan;
+    annualPlanEntry: AnnualPlanEntry;
+    currentClass: Class;
+    teacherProfile: TeacherProfile;
+}
+
+export function exportDailyPlanToRtf({ dailyPlan, annualPlanEntry, currentClass, teacherProfile }: ExportDailyPlanArgs) {
+    const config = teacherProfile.reportConfig || {};
+    const title = `${currentClass.name} - ${dailyPlan.date} Günlük Plan`;
+
+    const content = `
+        <div class="center bold">
+            <p>${config.academicYear || '...'} EĞİTİM-ÖĞRETİM YILI</p>
+            <p>${config.schoolName || '...'} OKULU</p>
+            <p>${config.lessonName || '...'} DERSİ GÜNLÜK DERS PLANI</p>
+        </div>
+        <br>
+        <table style="width: 100%;">
+            <tr><td style="width: 20%;" class="bold">Ders</td><td>${config.lessonName || '...'}</td></tr>
+            <tr><td class="bold">Sınıf</td><td>${currentClass.name}</td></tr>
+            <tr><td class="bold">Tarih</td><td>${dailyPlan.date}</td></tr>
+            <tr><td class="bold">Ünite</td><td>${annualPlanEntry.unite}</td></tr>
+            <tr><td class="bold">Konu</td><td>${dailyPlan.konu}</td></tr>
+            <tr><td class="bold">Kazanımlar</td><td>${dailyPlan.kazanim}</td></tr>
+            <tr><td class="bold">Öğretim Yöntemleri</td><td>${annualPlanEntry.yontem || 'Anlatım, Soru-Cevap, Gösteri'}</td></tr>
+            <tr><td class="bold">Araç-Gereçler</td><td>${dailyPlan.materyal}</td></tr>
+            <tr><td class="bold">Öğrenme-Öğretme Süreci</td><td>
+                <b>Giriş (İlgi Çekme, Güdüleme):</b><br>${dailyPlan.plan.giris}<br><br>
+                <b>Gelişme (Konu Anlatımı, Etkinlikler):</b><br>${dailyPlan.plan.gelisme}<br><br>
+                <b>Sonuç (Özet, Tekrar):</b><br>${dailyPlan.plan.sonuc}
+            </td></tr>
+            <tr><td class="bold">Ölçme-Değerlendirme</td><td>${dailyPlan.degerlendirme}</td></tr>
+        </table>
+        <br><br><br>
+        <table class="no-border" style="width:100%;">
+            <tr>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">${teacherProfile.name}</span><br/>
+                    Ders Öğretmeni
+                </td>
+                <td class="no-border center" style="width:50%;">
+                    <br/>Uygundur<br/>
+                    <span class="bold">${config.date || new Date().toLocaleDateString('tr-TR')}</span><br/><br/>
+                    <span class="bold">${config.principalName || '...'}</span><br/>
+                    Okul Müdürü
+                </td>
+            </tr>
+        </table>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DILEKCE EXPORT ---
+export function exportDilekceToRtf(data: DilekceDocument['data']) {
+    const ilgiList = data.ilgiler?.filter(i => i.value) || [];
+    const eklerList = data.ekler?.filter(e => e.value) || [];
+
+    const content = `
+        <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5;">
+            <div style="text-align: center;">
+                <p style="margin:0;">${data.kurum || 'T.C.'}</p>
+                <p style="margin:0;">${data.kaymakamlik || 'KAYMAKAMLIĞI'}</p>
+                <p style="margin:0;">${data.mudurluk || 'İlçe Milli Eğitim Müdürlüğü'}</p>
+            </div>
+            
+            <table class="no-border" style="width:100%; margin-top: 20px;">
+                <tr>
+                    <td class="no-border" style="width: 50%; vertical-align: top;">
+                        ${data.sayi ? `<p style="margin:0;">Sayı&nbsp;&nbsp;&nbsp;: ${data.sayi}</p>` : ''}
+                        ${data.konu ? `<p style="margin:0;">Konu&nbsp;&nbsp;: ${data.konu}</p>` : ''}
+                    </td>
+                    <td class="no-border" style="width: 50%; text-align: right; vertical-align: top;">
+                        <p style="margin:0;">${data.tarih || '.../.../....'}</p>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="text-align: center; font-weight: bold; text-transform: uppercase; margin-top: 40px; margin-bottom: 20px;">
+                <p style="margin:0;">${data.muhatap || 'İLGİLİ MAKAMA'}</p>
+                ${data.muhatap_detay ? `<p style="margin:0; text-transform: none; font-size: 11pt;">(${data.muhatap_detay})</p>` : ''}
+            </div>
+
+            ${ilgiList.length > 0 ? `
+                <div style="margin-bottom: 10px;">
+                    ${ilgiList.map((ilgi, index) => `
+                        <p style="margin:0; padding-left: 50px; text-indent: -30px;">İlgi: ${String.fromCharCode(97 + index)}) ${ilgi.value}</p>
+                    `).join('')}
+                </div>
+            ` : ''}
+            
+            <p style="text-indent: 50px; text-align: justify; white-space: pre-wrap;">
+                ${data.metin || 'Dilekçe metni...'}
+            </p>
+
+            <p style="text-align: right; margin-top: 20px;">${data.kapanis || 'Gereğini arz ederim.'}</p>
+
+            <div style="width: 50%; margin-left: 50%; text-align: center; margin-top: 40px;">
+                <p style="margin:0; height: 40px;">(İmza)</p>
+                <p style="margin:0; font-weight: bold;">${data.imza_ad_soyad || 'Ad Soyad'}</p>
+                <p style="margin:0;">${data.imza_unvan || 'Unvan'}</p>
+            </div>
+
+            ${(eklerList.length > 0 || data.dagitim_geregi || data.dagitim_bilgi) ? `
+                <div style="margin-top: 20px;">
+                    ${eklerList.length > 0 ? `
+                        <div>
+                            <p style="margin:0; font-weight: bold;">EKLER:</p>
+                            ${eklerList.map((ek, index) => `<p style="margin:0;">${index + 1}. ${ek.value}</p>`).join('')}
+                        </div>
+                    ` : ''}
+                    ${(data.dagitim_geregi || data.dagitim_bilgi) ? `
+                        <div style="margin-top: 10px;">
+                            <p style="margin:0; font-weight: bold;">DAĞITIM:</p>
+                            ${data.dagitim_geregi ? `<p style="margin:0; white-space: pre-wrap;">Gereği:<br/>${data.dagitim_geregi}</p>` : ''}
+                            ${data.dagitim_bilgi ? `<p style="margin:0; margin-top: 5px; white-space: pre-wrap;">Bilgi:<br/>${data.dagitim_bilgi}</p>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
+    const finalHtml = generateHtmlShell(content, data.konu || "Dilekce");
+    downloadRtf(finalHtml, `${(data.konu || "Dilekce").replace(/ /g, '_')}.rtf`);
 }
 
 
