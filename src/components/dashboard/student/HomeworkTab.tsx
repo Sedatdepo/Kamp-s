@@ -8,7 +8,6 @@ import { Class, Homework, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
 import { collection, doc, addDoc, query } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -16,9 +15,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+// Helper to convert file to Base64
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+    });
+};
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db, storage, getStudentAuthUser } = useAuth();
+    const { db } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -29,7 +37,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
     }, [db, classId, homework.id]);
 
-    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
+    const { data: submissions } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.find(s => s.studentId === student.id);
@@ -40,52 +48,53 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId) return;
+        if (!db || !classId) return;
 
         setIsSubmitting(true);
-
-        const studentAuthUser = await getStudentAuthUser();
-        if (!studentAuthUser) {
-            toast({ variant: 'destructive', title: 'Kimlik Doğrulama Hatası', description: 'Dosya yüklemek için kimliğiniz doğrulanamadı. Lütfen tekrar giriş yapın.' });
-            setIsSubmitting(false);
-            return;
-        }
-
-        let fileData: Submission['file'] | undefined = undefined;
+        
+        let fileDataUrl: string | undefined = undefined;
+        let fileName: string | undefined = undefined;
+        let fileType: string | undefined = undefined;
 
         if (file) {
             try {
-                const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${student.id}/${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: studentAuthUser.uid } });
-                const downloadURL = await getDownloadURL(snapshot.ref);
-                fileData = {
-                    url: downloadURL,
-                    name: file.name,
-                    type: file.type,
-                };
+                fileDataUrl = await fileToBase64(file);
+                fileName = file.name;
+                fileType = file.type;
             } catch (error) {
-                console.error("File upload error: ", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
+                console.error("File to Base64 conversion error:", error);
+                toast({ variant: "destructive", title: "Dosya Hazırlama Hatası", description: (error as Error).message });
                 setIsSubmitting(false);
                 return;
             }
         }
 
-        const newSubmission: Omit<Submission, 'id'> = {
+        const payload = {
+            classId,
+            homeworkId: homework.id,
             studentId: student.id,
             studentName: student.name,
             studentNumber: student.number,
-            submittedAt: new Date().toISOString(),
-            homeworkId: homework.id,
-            studentAuthUid: studentAuthUser?.uid,
             text: submissionText,
-            ...(fileData && { file: fileData }),
+            fileDataUrl,
+            fileName,
+            fileType,
         };
 
-        const submissionsColRef = collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions');
-
         try {
-            await addDoc(submissionsColRef, newSubmission);
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Bilinmeyen bir hata oluştu.');
+            }
+
             toast({ title: "Ödev başarıyla teslim edildi!" });
             setFile(null);
             setSubmissionText('');
@@ -229,7 +238,7 @@ export function HomeworkTab() {
         <Card>
             <CardHeader>
                 <CardTitle>Yetki Hatası</CardTitle>
-            </CardHeader>
+            </Header>
             <CardContent>
                 <p>Bu sayfayı görüntülemek için öğrenci olarak giriş yapmalısınız.</p>
             </CardContent>

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { doc, updateDoc, collection, addDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock } from 'lucide-react';
+import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, CalendarIcon, Clock, Download } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -29,11 +29,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
+import { Loader2 } from 'lucide-react';
 
 
 // --- ÖĞRETMENİN MEVCUT ÖDEV YÖNETİMİ BİLEŞENİ ---
 
-function HomeworkManager({ classId, teacherProfile }: { classId: string, teacherProfile: TeacherProfile | null }) {
+function HomeworkManager({ classId, teacherProfile, students }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[] }) {
   const [homeworkText, setHomeworkText] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const { toast } = useToast();
@@ -82,9 +83,32 @@ function HomeworkManager({ classId, teacherProfile }: { classId: string, teacher
     }
   };
 
-  const handleExport = () => {
-    toast({title: 'Raporlama güncelleniyor...', description: 'Bu özellik yeni veri yapısına göre güncellenecektir.'})
+  const handleExport = async () => {
+     if (!db || !currentClass || !teacherProfile || !homeworks) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
+        return;
+    }
+    
+    // Fetch all submissions for all homeworks in the class
+    const allSubmissions: Submission[] = [];
+    for (const hw of homeworks) {
+        const submissionQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
+        const querySnapshot = await getDocs(submissionQuery);
+        querySnapshot.forEach((doc) => {
+            allSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
+        });
+    }
+
+    exportHomeworkStatusToRtf({
+        students,
+        homeworks,
+        submissions: allSubmissions,
+        currentClass,
+        teacherProfile
+    });
   };
+
+  const currentClass = useFirestore<Class>(`class-${classId}`, db ? doc(db, 'classes', classId) : null).data[0];
   
   return (
       <div className="grid gap-6 md:grid-cols-2">
@@ -872,7 +896,7 @@ export function HomeworkTab({ classId, teacherProfile, students }: HomeworkTabPr
         <TabsTrigger value="templates">Hazır Şablonlar</TabsTrigger>
       </TabsList>
       <TabsContent value="manage" className="mt-6">
-        <HomeworkManager classId={classId} teacherProfile={teacherProfile} />
+        <HomeworkManager classId={classId} teacherProfile={teacherProfile} students={students} />
       </TabsContent>
       <TabsContent value="templates" className="mt-6">
         <HomeworkTemplates classId={classId} teacherProfile={teacherProfile} />
