@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -36,7 +37,7 @@ export function ChangePasswordForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!db || appUser?.type !== 'student') {
+    if (!db || appUser?.type !== 'student' || !appUser.data.authUid) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci olarak giriş yapmadınız veya veritabanı bağlantısı kurulamadı.' });
       return;
     }
@@ -45,9 +46,11 @@ export function ChangePasswordForm() {
     try {
       const studentRef = doc(db, 'students', appUser.data.id);
       
+      // Update password, set needsPasswordChange to false, and store the authUid
       await updateDoc(studentRef, {
         password: values.newPassword,
         needsPasswordChange: false,
+        authUid: appUser.data.authUid,
       });
 
       toast({
