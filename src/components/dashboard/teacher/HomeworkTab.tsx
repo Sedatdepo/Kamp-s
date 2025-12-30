@@ -448,20 +448,20 @@ interface HomeworkTabProps {
 
 export function HomeworkTab({ classId, teacherProfile, students, currentClass }: HomeworkTabProps) {
   const { toast } = useToast();
-  const { db, setDb, loading: dbLoading } = useDatabase();
+  const { db: firestoreDb } = useAuth();
+  const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
   const { homeworkDocuments = [] } = db;
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   // Live Data
-  const liveHomeworksQuery = useMemo(() => currentClass ? query(collection(useAuth().db, 'classes', currentClass.id, 'homeworks')) : null, [currentClass]);
+  const liveHomeworksQuery = useMemo(() => currentClass ? query(collection(firestoreDb, 'classes', currentClass.id, 'homeworks')) : null, [currentClass, firestoreDb]);
   const { data: liveHomeworks, loading: liveHomeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, liveHomeworksQuery);
   const [liveSubmissions, setLiveSubmissions] = useState<Submission[]>([]);
   const [liveSubmissionsLoading, setLiveSubmissionsLoading] = useState(true);
 
   useEffect(() => {
     const fetchAllSubmissions = async () => {
-        const firestoreDb = useAuth().db;
         if (!firestoreDb || !currentClass || liveHomeworksLoading || liveHomeworks.length === 0) {
             if (!liveHomeworksLoading) setLiveSubmissionsLoading(false);
             return;
@@ -481,7 +481,7 @@ export function HomeworkTab({ classId, teacherProfile, students, currentClass }:
         }
     };
     fetchAllSubmissions();
-  }, [liveHomeworks, liveHomeworksLoading, currentClass]);
+  }, [liveHomeworks, liveHomeworksLoading, currentClass, firestoreDb]);
 
   const { displayedHomeworks, displayedSubmissions } = useMemo(() => {
     if (selectedRecordId) {
@@ -509,17 +509,17 @@ export function HomeworkTab({ classId, teacherProfile, students, currentClass }:
               submissions: liveSubmissions
           },
       };
-      setDb(prevDb => ({ ...prevDb, homeworkDocuments: [...(prevDb.homeworkDocuments || []), newRecord] }));
+      setLocalDb(prevDb => ({ ...prevDb, homeworkDocuments: [...(prevDb.homeworkDocuments || []), newRecord] }));
       toast({ title: 'Arşivlendi', description: 'Mevcut ödev durumu arşive kaydedildi.' });
   };
   
   const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
   const handleDeleteRecord = useCallback(() => {
       if (!selectedRecordId) return;
-      setDb(prevDb => ({ ...prevDb, homeworkDocuments: (prevDb.homeworkDocuments || []).filter(d => d.id !== selectedRecordId) }));
+      setLocalDb(prevDb => ({ ...prevDb, homeworkDocuments: (prevDb.homeworkDocuments || []).filter(d => d.id !== selectedRecordId) }));
       handleNewRecord();
       toast({ title: 'Arşiv kaydı silindi', variant: 'destructive' });
-  }, [selectedRecordId, setDb, handleNewRecord, toast]);
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
   
   return (
     <Tabs defaultValue="manager">
