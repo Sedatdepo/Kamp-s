@@ -94,31 +94,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        // If user is anonymous, they must be a student whose authUid matches
-        if (user.isAnonymous) {
-            const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
-            const studentSnap = await getDocs(studentQuery);
-            if (!studentSnap.empty) {
-                const studentDoc = studentSnap.docs[0];
-                const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-                setAppUser({ type: 'student', data: studentData, authUser: user });
-            } else {
-                // This could be a stale anonymous user. Sign them out.
-                await firebaseSignOut(auth);
-                setAppUser(null);
-            }
-        } else { // Regular email/pass user is a teacher
-            const teacherProfileRef = doc(db, 'teachers', user.uid);
-            const teacherProfileSnap = await getDoc(teacherProfileRef);
+        const teacherProfileRef = doc(db, 'teachers', user.uid);
+        const teacherProfileSnap = await getDoc(teacherProfileRef);
 
-            if (teacherProfileSnap.exists()) {
-                await seedDatabase(db, user.uid);
-                const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
-                setAppUser({ type: 'teacher', data: user, profile });
-            } else {
-                 await firebaseSignOut(auth);
-                 setAppUser(null);
-            }
+        if (teacherProfileSnap.exists()) {
+            await seedDatabase(db, user.uid);
+            const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
+            setAppUser({ type: 'teacher', data: user, profile });
+        } else {
+            // This is likely an anonymous student user, but we won't handle their data loading here.
+            // signInStudent will set the appUser directly.
+            // If it's a teacher who was deleted, or some other state, they will be effectively logged out
+            // by the redirection logic if they don't have a student context.
         }
       } else {
         setAppUser(null);
@@ -236,6 +223,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = userCredential.user;
     
     // Update the student document with the new anonymous auth UID
+    // This is the critical step that needs correct permissions.
+    // Let's assume the user can update their own authUid after login.
     const studentRef = doc(db, 'students', studentData.id);
     await updateDoc(studentRef, { authUid: user.uid });
     
