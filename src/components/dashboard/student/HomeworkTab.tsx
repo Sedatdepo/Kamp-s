@@ -44,13 +44,17 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
         setIsSubmitting(true);
 
+        const studentAuthUser = await getStudentAuthUser();
+        if (!studentAuthUser) {
+            toast({ variant: 'destructive', title: 'Kimlik Doğrulama Hatası', description: 'Dosya yüklemek için kimliğiniz doğrulanamadı. Lütfen tekrar giriş yapın.' });
+            setIsSubmitting(false);
+            return;
+        }
+
         let fileData: Submission['file'] | undefined = undefined;
 
         if (file) {
             try {
-                const studentAuthUser = await getStudentAuthUser();
-                if (!studentAuthUser) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu. Lütfen tekrar giriş yapın.");
-
                 const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${student.id}/${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: studentAuthUser.uid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
@@ -67,7 +71,6 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             }
         }
 
-        const studentAuthUser = await getStudentAuthUser();
         const newSubmission: Omit<Submission, 'id'> = {
             studentId: student.id,
             studentName: student.name,

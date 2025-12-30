@@ -96,7 +96,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   announcements?: Announcement[];
-  // homeworks?: Homework[]; // REMOVED - Now a subcollection
+  homeworks?: Homework[]; // Re-added for notification check, but data is in subcollection
   election?: Election;
   dutyRoster?: RosterItem[];
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
@@ -298,5 +298,3 @@ export interface CommunicationDocument extends Archivable {
         announcements: Announcement[];
     }
 }
-
-    
