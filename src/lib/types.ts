@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -11,7 +12,7 @@ export interface Announcement {
 export interface Submission {
   id: string; // Document ID
   studentId: string;
-  studentAuthUid: string;
+  studentAuthUid?: string;
   studentName: string;
   studentNumber: string;
   submittedAt: string;
@@ -32,11 +33,9 @@ export interface Homework {
   text: string;
   assignedDate: string;
   dueDate?: string; // Optional due date
-  criteria?: Criterion[]; // Optional criteria
   teacherName?: string;
   lessonName?: string;
-  // This is deprecated, student submissions are in a subcollection
-  submissions?: Submission[];
+  seenBy: string[];
 }
 
 

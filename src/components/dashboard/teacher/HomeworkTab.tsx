@@ -33,8 +33,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { DialogContent } from '@radix-ui/react-dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 
 
 const branchToSubjectMap: { [key: string]: string } = {
@@ -44,6 +45,7 @@ const branchToSubjectMap: { [key: string]: string } = {
 
 const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null }) => {
     const [homeworkText, setHomeworkText] = useState('');
+    const [dueDate, setDueDate] = useState<Date | undefined>();
     const { toast } = useToast();
     const { db } = useAuth();
     const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
@@ -104,6 +106,7 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
             classId: classId,
             text: homeworkText,
             assignedDate: new Date().toISOString(),
+            dueDate: dueDate ? dueDate.toISOString() : undefined,
             teacherName: teacherProfile?.name,
             lessonName: teacherProfile?.branch,
             seenBy: [],
@@ -113,6 +116,7 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
             const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
             await addDoc(homeworksColRef, newHomework);
             setHomeworkText('');
+            setDueDate(undefined);
             toast({ title: 'Ödev gönderildi!' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
@@ -165,10 +169,34 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
                             placeholder="Ödev açıklamasını buraya yazın veya hazır bir şablon seçin..."
                             rows={5}
                         />
-                        <Button onClick={handleAddHomework} className="w-full">
-                            <Send className="mr-2 h-4 w-4"/>
-                            Gönder
-                        </Button>
+                         <div className="flex flex-col sm:flex-row gap-2">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !dueDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dueDate ? format(dueDate, "PPP", { locale: tr }) : <span>Teslim tarihi seçin</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={dueDate}
+                                    onSelect={setDueDate}
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                            </Popover>
+                            <Button onClick={handleAddHomework} className="w-full">
+                                <Send className="mr-2 h-4 w-4"/>
+                                Gönder
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -201,6 +229,7 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { 
                                                 <div className="text-left">
                                                     <p className="text-sm font-medium">{hw.text}</p>
                                                     <p className="text-xs text-muted-foreground mt-1">Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</p>
+                                                     {hw.dueDate && <p className="text-xs text-red-600 font-semibold mt-1">Son Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</p>}
                                                 </div>
                                                  <AlertDialog>
                                                     <AlertDialogTrigger asChild>
