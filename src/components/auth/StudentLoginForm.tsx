@@ -47,13 +47,8 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // We pass the classCode to signInStudent now
       await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
-
-      toast({
-        title: 'Giriş Başarılı',
-        description: 'Hoş geldin! Panele yönlendiriliyorsun...',
-      });
+      // No toast on success, redirection is handled by AuthContext
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -109,7 +104,7 @@ export function StudentLoginForm() {
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
                <FormDescription className="text-xs">
-                İlk şifreniz okul numaranızdır. Eğer numaranız 6 haneden kısaysa, şifreniz: <strong>(Okul No)(Sınıf Kodunun ilk 2 hanesi)</strong> şeklindedir. Örn: 123AB
+                İlk girişiniz için geçici şifreniz: <strong>123456</strong>
               </FormDescription>
               <FormMessage />
             </FormItem>

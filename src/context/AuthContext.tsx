@@ -93,14 +93,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   }, [auth, router]);
 
-  // Main auth state listener for teachers
   useEffect(() => {
     if (!auth || !db) return;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        // Is it a teacher?
         const teacherProfileRef = doc(db, 'teachers', user.uid);
         const teacherProfileSnap = await getDoc(teacherProfileRef);
         if (teacherProfileSnap.exists()) {
@@ -108,30 +106,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
           setAppUser({ type: 'teacher', data: user, profile });
         } else {
-            // Is it a student?
             const q = query(collection(db, "students"), where("authUid", "==", user.uid));
             const studentSnapshot = await getDocs(q);
             if (!studentSnapshot.empty) {
                 const studentDoc = studentSnapshot.docs[0];
                 const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
                 const localUser: AppUser = { type: 'student', data: studentData };
-                localStorage.setItem('appUser', JSON.stringify(localUser));
                 setAppUser(localUser);
             } else {
-                 // Unknown user, clear session
-                signOut();
+                 localStorage.removeItem('appUser');
+                 setAppUser(null);
             }
         }
       } else {
-         // No user is logged in
-        localStorage.removeItem('appUser');
-        setAppUser(null);
+         const localUserData = localStorage.getItem('appUser');
+         if (localUserData) {
+            setAppUser(JSON.parse(localUserData));
+         } else {
+            setAppUser(null);
+         }
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [auth, db, signOut]);
+  }, [auth, db]);
   
 
   const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
@@ -192,8 +191,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loading, appUser, pathname, router]);
 
 
-  const signInStudent = async (classCode: string, studentNumber: string, password?: string) => {
+  const signInStudent = async (classCode: string, studentNumber: string, loginPassword?: string) => {
     if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
+    if (!loginPassword) throw new Error("Şifre girilmelidir.");
 
     setLoading(true);
     try {
@@ -211,10 +211,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const studentDoc = studentSnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-        const loginPassword = password || studentNumber;
 
         if (studentData.password !== loginPassword) {
-            throw new Error('Şifre hatalı.');
+            throw new Error('Geçici şifre hatalı.');
         }
 
         if (studentData.needsPasswordChange) {
@@ -226,16 +225,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (!studentData.authUid) {
-            throw new Error('Öğrenci hesabı henüz tam olarak aktif edilmemiş. Lütfen şifrenizi yenileyin.');
+             // This case should ideally not happen if student creation is robust.
+             // But as a fallback, we can try to create the auth user now.
+             const studentEmail = `${studentNumber}@${classCode.toLowerCase()}.ito-kampus.local`;
+             try {
+                const cred = await createUserWithEmailAndPassword(auth, studentEmail, loginPassword);
+                await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
+             } catch(e) {
+                // If user already exists, sign them in to get authUid if it's missing in DB
+                 if ((e as any).code === 'auth/email-already-exists') {
+                    const cred = await signInWithEmailAndPassword(auth, studentEmail, loginPassword);
+                    await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
+                 } else {
+                     throw e;
+                 }
+             }
         }
         
-        // This is the correct email format used during account creation in ChangePasswordForm
-        const studentEmail = `${studentData.authUid}@ito-kampus.local`;
-        await signInWithEmailAndPassword(auth, studentEmail, studentData.password);
+        const studentEmail = `${studentNumber}@${classCode.toLowerCase()}.ito-kampus.local`;
+        await signInWithEmailAndPassword(auth, studentEmail, loginPassword);
         
         // onAuthStateChanged will handle setting the appUser
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Öğrenci girişi hatası:", error);
         localStorage.removeItem('appUser');
         setAppUser(null);
@@ -250,17 +262,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      if (!auth || !db) {
         throw new Error("Kimlik doğrulama veya veritabanı başlatılamadı.");
      }
+     if (!student.classId) {
+        throw new Error("Öğrenciye ait sınıf bilgisi bulunamadı.");
+     }
      
-     // Use a temporary but unique identifier for the email
-     const tempAuthUid = `student_${student.id}`;
-     const studentEmail = `${tempAuthUid}@ito-kampus.local`;
+     const classDoc = await getDoc(doc(db, "classes", student.classId));
+     if (!classDoc.exists()) {
+        throw new Error("Sınıf bulunamadı.");
+     }
+     const classCode = classDoc.data().code;
+
+     const studentEmail = `${student.number}@${classCode.toLowerCase()}.ito-kampus.local`;
 
      try {
-        // Create the user
         const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, newPassword);
         const authUid = userCredential.user.uid;
         return authUid;
-     } catch(error) {
+     } catch(error: any) {
+        if (error.code === 'auth/email-already-in-use') {
+            // This can happen if the process was interrupted before.
+            // We can try to sign in to verify password and get the UID.
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, studentEmail, newPassword);
+                return userCredential.user.uid;
+            } catch (signInError) {
+                console.error("Existing user sign-in failed:", signInError);
+                throw new Error("Bu hesap zaten mevcut ve şifre yanlış. Lütfen öğretmeninizle iletişime geçin.");
+            }
+        }
         console.error("Firebase hesabı oluşturma hatası:", error);
         throw new Error("Firebase kimlik doğrulama hesabı oluşturulamadı.");
      }

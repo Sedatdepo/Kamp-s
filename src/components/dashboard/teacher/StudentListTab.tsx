@@ -264,21 +264,34 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     if (!db || !auth || !currentClass?.code) {
         throw new Error("Gerekli yapılandırma eksik.");
     }
-    
-    // Create student document
-    await addDoc(collection(db, 'students'), {
-        classId,
-        name: name,
-        number: number,
-        password: number, // Initial password is the student number
-        needsPasswordChange: true,
-        risks: [],
-        projectPreferences: [],
-        assignedLesson: null,
-        term1Grades: {},
-        term2Grades: {},
-        hasProject: false,
-    });
+
+    const tempPassword = "123456";
+
+    try {
+        const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
+        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, tempPassword);
+        
+        await addDoc(collection(db, 'students'), {
+            classId,
+            name: name,
+            number: number,
+            password: tempPassword,
+            authUid: userCredential.user.uid,
+            needsPasswordChange: true,
+            risks: [],
+            projectPreferences: [],
+            assignedLesson: null,
+            term1Grades: {},
+            term2Grades: {},
+            hasProject: false,
+        });
+
+    } catch (error: any) {
+        console.error("Öğrenci ve Auth hesabı oluşturma hatası:", error);
+        // If there's an error, we might need to clean up if the auth user was created but firestore failed.
+        // For simplicity, we'll just throw the error for now.
+        throw new Error(`Öğrenci eklenemedi: ${error.message}`);
+    }
   };
 
   const handleAddStudent = async () => {
