@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission } from '@/lib/types';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 
-const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, studentId: string, classId: string }) => {
+const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework: Homework, studentId: string, classId: string, currentClass: Class | null }) => {
     const { db, storage } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
@@ -32,7 +32,7 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId) return;
+        if (!db || !storage || !classId || !currentClass) return;
 
         setIsSubmitting(true);
 
@@ -80,12 +80,6 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
         }
     };
     
-    // This assumes currentClass is available in the scope, which it is not.
-    // This is a placeholder for the logic that would exist in a real component.
-    // For this demonstration, we'll assume a global `currentClass` which is a simplification.
-    // In a real app, you'd pass currentClass as a prop or get it from context.
-    const currentClass: Class | null = null; // Placeholder
-
     if (existingSubmission) {
         return (
              <div className="border p-4 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm space-y-3">
@@ -215,7 +209,7 @@ export function HomeworkTab() {
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {homeworks.length > 0 ? (
             homeworks.map((hw) => (
-              <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} />
+              <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} currentClass={studentClass} />
             ))
           ) : (
             <div className="text-center py-10 bg-muted/50 rounded-lg">
