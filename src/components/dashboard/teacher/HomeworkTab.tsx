@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -103,6 +104,7 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
       assignedDate: new Date().toISOString(),
       teacherName: teacherProfile?.name,
       lessonName: teacherProfile?.branch,
+      seenBy: [],
     };
 
     try {
