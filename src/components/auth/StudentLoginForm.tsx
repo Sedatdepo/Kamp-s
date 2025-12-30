@@ -47,6 +47,7 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      // We pass the classCode to signInStudent now
       await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
 
       toast({
@@ -103,12 +104,12 @@ export function StudentLoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Şifre</FormLabel>
+              <FormLabel>Geçici Şifre</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
                <FormDescription className="text-xs">
-                İlk girişinizde şifreniz okul numaranızdır.
+                İlk şifreniz okul numaranızdır. Eğer numaranız 6 haneden kısaysa, şifreniz: <strong>(Okul No)(Sınıf Kodunun ilk 2 hanesi)</strong> şeklindedir. Örn: 123AB
               </FormDescription>
               <FormMessage />
             </FormItem>
