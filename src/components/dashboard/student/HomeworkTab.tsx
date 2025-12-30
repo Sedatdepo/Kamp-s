@@ -43,6 +43,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         }
         if (!db || !storage || !classId || !appUser || appUser.type !== 'student') return;
 
+        // AUTH UID KONTROLÜ
+        if (!student.authUid) {
+             toast({ variant: "destructive", title: "Kimlik Doğrulama Hatası", description: "Dosya yükleyebilmek için hesabınızın kalıcı şifre ile doğrulanmış olması gerekir. Lütfen tekrar giriş yapmayı deneyin." });
+             return;
+        }
+
         setIsSubmitting(true);
         
         let fileInfo: { url: string; name: string; type: string; } | undefined = undefined;
@@ -51,9 +57,6 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             try {
                 // Use student's auth UID for the path to align with storage rules
                 const studentAuthUid = student.authUid;
-                if (!studentAuthUid) {
-                    throw new Error("Öğrenci kimliği doğrulanmadı. Lütfen tekrar giriş yapın.");
-                }
                 const filePath = `homework_submissions/${classId}/${homework.id}/${studentAuthUid}/${file.name}`;
                 const fileRef = ref(storage, filePath);
                 const uploadResult = await uploadBytes(fileRef, file);
@@ -61,7 +64,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 fileInfo = { url: downloadURL, name: file.name, type: file.type };
             } catch (error) {
                 console.error("File upload error:", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
+                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: "Dosya yüklenemedi. Lütfen internet bağlantınızı ve dosya boyutunu kontrol edin. Sorun devam ederse yöneticiyle iletişime geçin." });
                 setIsSubmitting(false);
                 return;
             }
