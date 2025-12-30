@@ -362,7 +362,7 @@ export function TeacherDashboard() {
                       <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Tüm Sınıflar
@@ -392,6 +392,26 @@ export function TeacherDashboard() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                          <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline">
+                                {currentClass?.name}
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Tüm Sınıflar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {classes.map(cls => (
+                                  <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                                      {cls.name}
+                                  </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
                 </CardHeader>
