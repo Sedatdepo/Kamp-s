@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck } from 'lucide-react';
+import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 
 
 interface StudentDetailModalProps {
@@ -75,65 +76,111 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
     const { db } = useAuth();
+    const [submissions, setSubmissions] = useState<{[key: number]: Partial<Submission>}>({});
 
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
     }
     const homeworks = currentClass.homeworks || [];
 
-
-    const handleHomeworkStatusChange = async (homework: Homework, isCompleted: boolean) => {
+    const handleFieldChange = (hwId: number, field: 'grade' | 'feedback', value: string | number) => {
+        setSubmissions(prev => ({
+            ...prev,
+            [hwId]: {
+                ...prev[hwId],
+                [field]: value
+            }
+        }));
+    };
+    
+    const handleSaveFeedback = async (hwId: number) => {
         if (!currentClass || !db) return;
 
         const classRef = doc(db, 'classes', currentClass.id);
-        
         const updatedHomeworks = (currentClass.homeworks || []).map(hw => {
-            if (hw.id === homework.id) {
-                const currentCompletedBy = hw.completedBy || [];
-                const newCompletedBy = isCompleted
-                    ? [...currentCompletedBy, student.id]
-                    : currentCompletedBy.filter(id => id !== student.id);
-                return { ...hw, completedBy: newCompletedBy };
+            if (hw.id === hwId) {
+                const updatedSubmissions = hw.submissions.map(sub => {
+                    if (sub.studentId === student.id) {
+                        const localChanges = submissions[hwId];
+                        return { ...sub, ...localChanges };
+                    }
+                    return sub;
+                });
+                return { ...hw, submissions: updatedSubmissions };
             }
             return hw;
         });
 
         try {
             await updateDoc(classRef, { homeworks: updatedHomeworks });
-            toast({ title: 'Ödev durumu güncellendi.' });
+            toast({ title: 'Değerlendirme kaydedildi.' });
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme başarısız oldu.' });
+            toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
         }
     };
+
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Ödev Durumu</CardTitle>
-                <CardDescription>Öğrencinin ödev tamamlama durumunu buradan takip edebilirsiniz.</CardDescription>
+                <CardTitle>Ödev Değerlendirme</CardTitle>
+                <CardDescription>Öğrencinin teslim ettiği ödevleri inceleyip not ve geri bildirim girin.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
                 {homeworks.length > 0 ? (
-                    homeworks.map(hw => (
-                        <div key={hw.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div>
-                                <p className="text-sm font-medium">{hw.text}</p>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}
-                                    {hw.dueDate && ` | Teslim: ${format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}`}
+                    homeworks.map(hw => {
+                        const submission = hw.submissions?.find(s => s.studentId === student.id);
+                        if (!submission) {
+                            return (
+                                <div key={hw.id} className="p-4 border rounded-lg bg-muted/50">
+                                    <p className="text-sm font-medium">{hw.text}</p>
+                                    <p className="text-xs text-center text-muted-foreground mt-2">Öğrenci bu ödevi henüz teslim etmedi.</p>
+                                </div>
+                            );
+                        }
+
+                        const localGrade = submissions[hw.id]?.grade;
+                        const localFeedback = submissions[hw.id]?.feedback;
+
+                        return (
+                            <div key={hw.id} className="p-4 border rounded-lg space-y-3">
+                                <p className="text-sm font-semibold">{hw.text}</p>
+                                <div className='bg-muted p-3 rounded-md'>
+                                    <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi ({format(new Date(submission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
+                                    {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
+                                    {submission.fileUrl && (
+                                        <a href={submission.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-white p-2 rounded-md hover:bg-blue-50 text-blue-600">
+                                            <Paperclip className="h-4 w-4" />
+                                            <span className="truncate underline">{submission.fileName}</span>
+                                            <Download className="h-4 w-4 ml-auto" />
+                                        </a>
+                                    )}
+                                    {!submission.text && !submission.fileUrl && <p className="text-sm text-muted-foreground italic">Öğrenci metin veya dosya göndermedi.</p>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
+                                    <div className='md:col-span-3 space-y-1'>
+                                        <Textarea 
+                                            placeholder="Geri bildirim yazın..." 
+                                            defaultValue={submission.feedback}
+                                            onChange={(e) => handleFieldChange(hw.id, 'feedback', e.target.value)}
+                                            className='text-xs'
+                                            rows={2}
+                                        />
+                                    </div>
+                                    <div className='space-y-1'>
+                                         <Input 
+                                            type="number" 
+                                            placeholder="Not" 
+                                            defaultValue={submission.grade}
+                                            onChange={(e) => handleFieldChange(hw.id, 'grade', Number(e.target.value))}
+                                            className='h-9 text-center font-bold text-lg'
+                                        />
+                                         <Button onClick={() => handleSaveFeedback(hw.id)} size="sm" className="w-full" disabled={!localGrade && !localFeedback}>Kaydet</Button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-3">
-                                <Label htmlFor={`hw-switch-${hw.id}`} className="text-sm font-medium text-muted-foreground">Yapmadı</Label>
-                                <Switch
-                                    id={`hw-switch-${hw.id}`}
-                                    checked={(hw.completedBy || []).includes(student.id)}
-                                    onCheckedChange={(checked) => handleHomeworkStatusChange(hw, !!checked)}
-                                />
-                                <Label htmlFor={`hw-switch-${hw.id}`} className="text-sm font-medium">Yaptı</Label>
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfa henüz ödev atanmamış.</p>
                 )}
