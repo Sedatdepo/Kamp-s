@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef } from 'react';
@@ -6,6 +5,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ interface StudentListTabProps {
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
-    const { db, storage, getStudentAuthUser } = useAuth();
+    const { db, storage } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -84,11 +84,10 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
         if (file) {
             try {
-                const studentAuthUser = await getStudentAuthUser();
-                if (!studentAuthUser) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu.");
+                if(!student.authUid) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu.");
 
                 const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: studentAuthUser.uid } });
+                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: student.authUid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = {
                     url: downloadURL,
@@ -181,7 +180,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
 export function StudentListTab({ classId, teacherProfile, currentClass }: StudentListTabProps) {
   const { toast } = useToast();
-  const { appUser, db } = useAuth();
+  const { appUser, db, auth } = useAuth();
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
@@ -272,31 +271,47 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const handleAddStudent = async () => {
-    if (!db) return;
+    if (!db || !auth || !currentClass?.code) return;
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
       toast({ variant: 'destructive', title: 'Ad ve numara boş olamaz.' });
       return;
     }
-    await addDoc(collection(db, 'students'), {
-      classId,
-      name: newStudentName,
-      number: newStudentNumber,
-      needsPasswordChange: true,
-      password: newStudentNumber, 
-      risks: [],
-      projectPreferences: [],
-      assignedLesson: null,
-      term1Grades: {},
-      term2Grades: {},
-      hasProject: false,
-    });
-    setNewStudentName('');
-    setNewStudentNumber('');
-    toast({ title: 'Öğrenci eklendi!' });
+
+    const studentEmail = `${newStudentNumber}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
+    const studentPassword = newStudentNumber;
+
+    try {
+        // Create Firebase Auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
+        const authUid = userCredential.user.uid;
+
+        // Add student to Firestore
+        await addDoc(collection(db, 'students'), {
+            classId,
+            name: newStudentName,
+            number: newStudentNumber,
+            needsPasswordChange: true,
+            password: studentPassword, 
+            authUid: authUid, // Store the real auth UID
+            risks: [],
+            projectPreferences: [],
+            assignedLesson: null,
+            term1Grades: {},
+            term2Grades: {},
+            hasProject: false,
+        });
+
+        setNewStudentName('');
+        setNewStudentNumber('');
+        toast({ title: 'Öğrenci eklendi ve hesabı oluşturuldu!' });
+    } catch (error: any) {
+        console.error("Öğrenci ekleme hatası:", error);
+        toast({ variant: 'destructive', title: 'Hata', description: error.message });
+    }
   };
   
   const handleBulkAdd = async () => {
-    if (!db) return;
+    if (!db || !auth || !currentClass?.code) return;
     const lines = bulkStudents.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 
@@ -306,25 +321,34 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         return { number, name };
     }).filter(s => s.number && s.name);
 
-    const batch = writeBatch(db);
-    studentsToAdd.forEach(({name, number}) => {
-        const studentRef = doc(collection(db, 'students'));
-        batch.set(studentRef, {
-            classId, name, number,
-            needsPasswordChange: true, password: number,
-            risks: [], projectPreferences: [], assignedLesson: null,
-            term1Grades: {}, term2Grades: {}, hasProject: false,
-        });
-    });
+    toast({ title: `${studentsToAdd.length} öğrenci ekleniyor...`, description: 'Bu işlem biraz zaman alabilir.' });
 
-    await batch.commit();
+    for (const { name, number } of studentsToAdd) {
+        const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
+        const studentPassword = number;
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
+            const authUid = userCredential.user.uid;
+            
+            await addDoc(collection(db, 'students'), {
+                classId, name, number, authUid,
+                needsPasswordChange: true, password: studentPassword,
+                risks: [], projectPreferences: [], assignedLesson: null,
+                term1Grades: {}, term2Grades: {}, hasProject: false,
+            });
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: `${name} eklenemedi`, description: error.message });
+        }
+    }
 
     setBulkStudents('');
-    toast({ title: `${studentsToAdd.length} öğrenci eklendi!`});
+    toast({ title: 'Toplu ekleme tamamlandı!'});
   };
 
   const handleDeleteStudent = async (studentId: string) => {
     if (!db) return;
+    // TODO: Delete Firebase Auth user as well. This requires Admin SDK.
+    // For now, we only delete from Firestore.
     await deleteDoc(doc(db, 'students', studentId));
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
