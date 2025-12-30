@@ -212,34 +212,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentDoc = studentSnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
 
-        if (studentData.password !== loginPassword) {
-            throw new Error('Geçici şifre hatalı.');
-        }
-
         if (studentData.needsPasswordChange) {
+            // İlk giriş: Sadece geçici şifreyi kontrol et
+            if (loginPassword !== "123456") {
+                throw new Error('Geçici şifre hatalı.');
+            }
              const user: AppUser = { type: 'student', data: studentData };
              localStorage.setItem('appUser', JSON.stringify(user));
              setAppUser(user);
-             router.push('/auth/change-password');
+             // Yönlendirme useEffect içinde yapılacak
              return;
         }
 
+        // Normal giriş: Firebase Auth ile oturum açmayı dene
         if (!studentData.authUid) {
-             // This case should ideally not happen if student creation is robust.
-             // But as a fallback, we can try to create the auth user now.
-             const studentEmail = `${studentNumber}@${classCode.toLowerCase()}.ito-kampus.local`;
-             try {
-                const cred = await createUserWithEmailAndPassword(auth, studentEmail, loginPassword);
-                await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
-             } catch(e) {
-                // If user already exists, sign them in to get authUid if it's missing in DB
-                 if ((e as any).code === 'auth/email-already-exists') {
-                    const cred = await signInWithEmailAndPassword(auth, studentEmail, loginPassword);
-                    await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
-                 } else {
-                     throw e;
-                 }
-             }
+            throw new Error("Öğrenci hesabı aktif değil. Lütfen şifrenizi yenileyin.");
         }
         
         const studentEmail = `${studentNumber}@${classCode.toLowerCase()}.ito-kampus.local`;
@@ -252,6 +239,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('appUser');
         setAppUser(null);
         if (auth.currentUser) await firebaseSignOut(auth);
+        
+        if (error.code === 'auth/invalid-credential') {
+             throw new Error("Girdiğiniz bilgiler hatalı veya şifreniz yanlış.");
+        }
         throw error;
     } finally {
         setLoading(false);
@@ -307,3 +298,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
+    
