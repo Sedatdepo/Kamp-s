@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
@@ -29,6 +28,13 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 type ActiveTab = "dashboard" | "students" | "attendance" | "dutyRoster" | "seatingPlan" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce";
 
@@ -64,17 +70,18 @@ function generateClassCode() {
 
 function ClassSelectionScreen({ 
     onSelectClass, 
-    students: allStudents 
+    classes,
+    students: allStudents,
+    loading
 }: { 
-    onSelectClass: (id: string) => void; 
+    onSelectClass: (id: string) => void;
+    classes: Class[];
     students: Student[];
+    loading: boolean;
 }) {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-
-    const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
-    const { data: classes, loading } = useFirestore('classes', classesQuery);
 
     const [newClassName, setNewClassName] = useState('');
     const [editingClass, setEditingClass] = useState<Class | null>(null);
@@ -294,9 +301,10 @@ export function TeacherDashboard() {
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
   const teacherProfile = teacherData.length > 0 ? teacherData[0] : null;
 
-  const classQuery = useMemo(() => (selectedClassId && db) ? doc(db, 'classes', selectedClassId) : null, [selectedClassId, db]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`classes/${selectedClassId}`, classQuery);
-  const currentClass = classData.length > 0 ? classData[0] : null;
+  const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
+  const { data: classes, loading: classesLoading } = useFirestore('classes', classesQuery);
+
+  const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
 
   const studentsQuery = useMemo(() => (selectedClassId && db) ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null, [selectedClassId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${selectedClassId}`, studentsQuery);
@@ -307,7 +315,7 @@ export function TeacherDashboard() {
   }, [teacherId, db]);
   const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
 
-  const isLoading = teacherLoading || (selectedClassId && (classLoading || studentsLoading));
+  const isLoading = teacherLoading || (selectedClassId && (classesLoading || studentsLoading));
   
   const renderContent = () => {
     if (isLoading && selectedClassId) {
@@ -319,7 +327,7 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={setSelectedClassId} students={allStudents} />;
+        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={classes} students={allStudents} loading={classesLoading} />;
     }
 
     if (activeTab !== "dashboard") {
@@ -348,10 +356,7 @@ export function TeacherDashboard() {
             </h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Geri
-              </Button>
-               <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
-                <Home className="mr-2 h-4 w-4" /> Ana Sayfa
+                <ArrowLeft className="mr-2 h-4 w-4" /> Panel
               </Button>
             </div>
           </div>
@@ -366,11 +371,26 @@ export function TeacherDashboard() {
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <CardTitle className="font-headline text-2xl">{currentClass?.name || 'Sınıf Paneli'}</CardTitle>
-                        <Button variant="ghost" onClick={() => setSelectedClassId(null)}>
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Tüm Sınıflar
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="text-2xl font-headline p-0 h-auto">
+                                    {currentClass?.name || 'Sınıf Paneli'}
+                                    <ChevronDown className="ml-2 h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {classes.map(cls => (
+                                    <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                                        {cls.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Tüm Sınıflar
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
                 </CardHeader>
