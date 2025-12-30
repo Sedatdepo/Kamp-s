@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText, Search, Library, CheckCircle, XCircle } from 'lucide-react';
+import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText, Search, Library, CheckCircle, XCircle, File, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -32,228 +32,272 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DialogContent } from '@radix-ui/react-dialog';
+
 
 const branchToSubjectMap: { [key: string]: string } = {
     "Türk Dili ve Edebiyatı": "literature",
     "Fizik": "physics",
 };
 
-const HomeworkSubmissions = ({ homework, students }: { homework: Homework, students: Student[] }) => {
+const HomeworkManager = ({ classId, teacherProfile, students, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null }) => {
+    const [homeworkText, setHomeworkText] = useState('');
+    const { toast } = useToast();
     const { db } = useAuth();
-    const submissionsQuery = useMemo(() => {
-        if (!db || !homework.classId) return null;
-        return query(collection(db, 'classes', homework.classId, 'homeworks', homework.id, 'submissions'));
-    }, [db, homework.classId, homework.id]);
+    const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
-    const { data: submissions, loading } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
-    
-    if (loading) {
-        return <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>;
-    }
+    const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
+
+    const sortedHomeworks = useMemo(() => {
+        return [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
+
+    const handleAddHomework = async () => {
+        if (!db || !classId) return;
+        if (!homeworkText.trim()) {
+            toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
+            return;
+        }
+
+        const newHomework: Omit<Homework, 'id'> = {
+            classId: classId,
+            text: homeworkText,
+            assignedDate: new Date().toISOString(),
+            teacherName: teacherProfile?.name,
+            lessonName: teacherProfile?.branch,
+            seenBy: [],
+        };
+
+        try {
+            const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+            await addDoc(homeworksColRef, newHomework);
+            setHomeworkText('');
+            toast({ title: 'Ödev gönderildi!' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
+        }
+    };
+
+    const handleDeleteHomework = async (homeworkId: string) => {
+        if (!db || !classId) return;
+        try {
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+            await deleteDoc(homeworkRef);
+            toast({ title: 'Ödev silindi.' });
+            if(selectedHomework?.id === homeworkId) {
+                setSelectedHomework(null);
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
+        }
+    };
+
+    const handleExport = async () => {
+        if (!db || !currentClass || !teacherProfile || !homeworks) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
+            return;
+        }
+        exportHomeworkStatusToRtf({
+            students,
+            homeworks,
+            currentClass,
+            teacherProfile
+        });
+    };
 
     return (
-        <div className="p-4 bg-slate-50 border-t">
-            <h4 className="font-semibold text-sm mb-2">Öğrenci Teslim Durumları</h4>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>No</TableHead>
-                        <TableHead>Adı Soyadı</TableHead>
-                        <TableHead>Durum</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {students.map(student => {
-                        const hasSubmitted = submissions.some(s => s.studentId === student.id);
-                        return (
-                            <TableRow key={student.id}>
-                                <TableCell>{student.number}</TableCell>
-                                <TableCell>{student.name}</TableCell>
-                                <TableCell>
-                                    {hasSubmitted ? (
-                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                                            <CheckCircle className="mr-1 h-3 w-3"/>
-                                            Teslim Edildi
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary">
-                                            <XCircle className="mr-1 h-3 w-3"/>
-                                            Bekleniyor
-                                        </Badge>
-                                    )}
-                                </TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
+        <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2">
+                            <Plus className="h-6 w-6" />
+                            Yeni Ödev Gönder
+                        </CardTitle>
+                        <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Textarea
+                            value={homeworkText}
+                            onChange={(e) => setHomeworkText(e.target.value)}
+                            placeholder="Ödev açıklamasını buraya yazın veya hazır bir şablon seçin..."
+                            rows={5}
+                        />
+                        <Button onClick={handleAddHomework} className="w-full">
+                            <Send className="mr-2 h-4 w-4"/>
+                            Gönder
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
+                                <CardDescription>İncelemek için bir ödev seçin.</CardDescription>
+                            </div>
+                            <Button variant="outline" onClick={handleExport} disabled={!homeworks || homeworks.length === 0}>
+                                <FileText className="mr-2 h-4 w-4"/>
+                                Raporu Dışa Aktar
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-64 pr-4">
+                            {homeworksLoading ? <Loader2 className="mx-auto animate-spin" /> : (
+                                sortedHomeworks && sortedHomeworks.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {sortedHomeworks.map((hw) => (
+                                            <div
+                                                key={hw.id}
+                                                onClick={() => setSelectedHomework(hw)}
+                                                className={cn(
+                                                    "p-3 border rounded-lg cursor-pointer transition-colors flex justify-between items-start",
+                                                    selectedHomework?.id === hw.id ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                                                )}
+                                            >
+                                                <div className="text-left">
+                                                    <p className="text-sm font-medium">{hw.text}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</p>
+                                                </div>
+                                                 <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-red-500/70 hover:text-red-500">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                            <AlertDialogDescription>Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
+                                )
+                            )}
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
+            {selectedHomework && (
+                <HomeworkSubmissionsTable homework={selectedHomework} students={students} classId={classId} />
+            )}
         </div>
     );
 }
 
-function HomeworkManager({ classId, teacherProfile, students, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null }) {
-  const [homeworkText, setHomeworkText] = useState('');
-  const { toast } = useToast();
-  const { db } = useAuth();
-  
-  const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
-  const { data: homeworks, loading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
-  
-  const sortedHomeworks = useMemo(() => {
-    return [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-  }, [homeworks]);
+const HomeworkSubmissionsTable = ({ homework, students, classId }: { homework: Homework, students: Student[], classId: string }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
 
-  const handleAddHomework = async () => {
-    if (!db || !classId) return;
-    if (!homeworkText.trim()) {
-      toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
-      return;
-    }
+    const submissionsQuery = useMemo(() => {
+        if (!db || !classId) return null;
+        return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
+    }, [db, classId, homework.id]);
 
-    const newHomework: Omit<Homework, 'id'> = {
-      classId: classId,
-      text: homeworkText,
-      assignedDate: new Date().toISOString(),
-      teacherName: teacherProfile?.name,
-      lessonName: teacherProfile?.branch,
-      seenBy: [],
+    const { data: submissions, loading } = useFirestore<Submission>(`submissions-for-homework-${homework.id}`, submissionsQuery);
+
+    const handleSetStatus = async (student: Student, done: boolean) => {
+        if (!db) return;
+
+        const existingSubmission = submissions?.find(s => s.studentId === student.id);
+
+        if (done && !existingSubmission) {
+            // Mark as done: create a placeholder submission
+            const submissionData: Partial<Submission> = {
+                studentId: student.id,
+                studentName: student.name,
+                studentNumber: student.number,
+                homeworkId: homework.id,
+                submittedAt: new Date().toISOString(),
+                text: "Öğretmen tarafından 'yapıldı' olarak işaretlendi.",
+            };
+            try {
+                const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
+                await addDoc(submissionsColRef, submissionData);
+                toast({ title: `${student.name} için ödev 'yapıldı' olarak işaretlendi.` });
+            } catch (error: any) {
+                toast({ variant: "destructive", title: "Hata", description: error.message });
+            }
+        } else if (!done && existingSubmission) {
+            // Mark as not done: delete submission
+            try {
+                const subDocRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', existingSubmission.id);
+                await deleteDoc(subDocRef);
+                toast({ title: `${student.name} için ödev 'yapılmadı' olarak işaretlendi.` });
+            } catch (error: any) {
+                toast({ variant: "destructive", title: "Hata", description: error.message });
+            }
+        }
     };
 
-    try {
-      const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-      await addDoc(homeworksColRef, newHomework);
-      
-      setHomeworkText('');
-      toast({ title: 'Ödev gönderildi!' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
-    }
-  };
 
-  const handleDeleteHomework = async (homeworkId: string) => {
-    if (!db || !classId) return;
-    try {
-      const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
-      await deleteDoc(homeworkRef);
-      toast({ title: 'Ödev silindi.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
-    }
-  };
-
-  const handleExport = async () => {
-     if (!db || !currentClass || !teacherProfile || !homeworks) {
-        toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
-        return;
+    if (loading) {
+        return <Card><CardContent className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>;
     }
     
-    const allSubmissions: Submission[] = [];
-    for (const hw of homeworks) {
-        const submissionQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
-        const querySnapshot = await getDocs(submissionQuery);
-        querySnapshot.forEach((doc) => {
-            allSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
-        });
-    }
-
-    exportHomeworkStatusToRtf({
-        students,
-        homeworks,
-        submissions: allSubmissions,
-        currentClass,
-        teacherProfile
-    });
-  };
-
-  return (
-      <div className="grid gap-6 md:grid-cols-2">
+    return (
         <Card>
-          <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-              <Plus className="h-6 w-6" />
-              Yeni Ödev Gönder
-            </CardTitle>
-            <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              value={homeworkText}
-              onChange={(e) => setHomeworkText(e.target.value)}
-              placeholder="Ödev açıklamasını buraya yazın veya hazır bir şablon seçin..."
-              rows={5}
-            />
-            <Button onClick={handleAddHomework} className="w-full">
-                <Send className="mr-2 h-4 w-4"/>
-                Gönder
-            </Button>
-          </CardContent>
+            <CardHeader>
+                <CardTitle className="font-headline">Ödev Teslim Durumları: {homework.text}</CardTitle>
+                <CardDescription>Aşağıdaki listeden öğrencilerin teslim durumlarını takip edebilir ve manuel olarak işaretleyebilirsiniz.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[80px]">No</TableHead>
+                            <TableHead>Adı Soyadı</TableHead>
+                            <TableHead className="w-[150px]">Durum</TableHead>
+                            <TableHead className="w-[200px] text-center">İşlemler</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {students.map(student => {
+                            const submission = submissions.find(s => s.studentId === student.id);
+                            const hasSubmitted = !!submission;
+                            return (
+                                <TableRow key={student.id}>
+                                    <TableCell>{student.number}</TableCell>
+                                    <TableCell>{student.name}</TableCell>
+                                    <TableCell>
+                                        {hasSubmitted ? (
+                                            <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                                <CheckCircle className="mr-1 h-3 w-3"/>
+                                                Teslim Edildi
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="secondary">
+                                                <XCircle className="mr-1 h-3 w-3"/>
+                                                Bekleniyor
+                                            </Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-center space-x-2">
+                                         <Button size="sm" variant="outline" className="text-green-600" onClick={() => handleSetStatus(student, true)} disabled={hasSubmitted}>Yaptı</Button>
+                                         <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleSetStatus(student, false)} disabled={!hasSubmitted}>Yapmadı</Button>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
+                    </TableBody>
+                </Table>
+            </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-             <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
-                    <CardDescription>Bu sınıfa daha önce gönderilmiş ödevler.</CardDescription>
-                </div>
-                 <Button variant="outline" onClick={handleExport} disabled={!homeworks || homeworks.length === 0}>
-                    <FileText className="mr-2 h-4 w-4"/>
-                    Raporu Dışa Aktar
-                </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-96 pr-4">
-                {loading ? <Loader2 className="mx-auto animate-spin" /> : (
-                  sortedHomeworks && sortedHomeworks.length > 0 ? (
-                    <Accordion type="single" collapsible>
-                        {sortedHomeworks.map((hw) => (
-                          <AccordionItem value={hw.id} key={hw.id}>
-                            <AccordionTrigger>
-                                <div className="text-left">
-                                  <p className="text-sm font-medium">{hw.text}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</p>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                <HomeworkSubmissions homework={hw} students={students} />
-                                <div className="p-2 text-right">
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-600">
-                                          <Trash2 className="mr-1 h-3 w-3" />
-                                          Bu Ödevi Sil
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>İptal</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">
-                                            Sil
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                    </Accordion>
-                  ) : (
-                    <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
-                  )
-                )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-  );
-}
+    );
+};
 
 function HomeworkLibrary({ classId, teacherProfile, currentClass, onSelect }: { classId: string, teacherProfile: TeacherProfile | null, currentClass: Class | null, onSelect: (text: string) => void }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -361,7 +405,7 @@ export function HomeworkTab({ classId, teacherProfile, students, currentClass }:
           Hazır Ödev Kütüphanesi
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="manager">
+      <TabsContent value="manager" className="mt-4">
         <HomeworkManager 
             classId={classId} 
             teacherProfile={teacherProfile} 
@@ -369,7 +413,7 @@ export function HomeworkTab({ classId, teacherProfile, students, currentClass }:
             currentClass={currentClass} 
         />
       </TabsContent>
-      <TabsContent value="library">
+      <TabsContent value="library" className="mt-4">
         <HomeworkLibrary
             classId={classId}
             teacherProfile={teacherProfile}
