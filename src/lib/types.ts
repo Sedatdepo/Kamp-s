@@ -10,7 +10,10 @@ export interface Announcement {
 }
 
 export interface Submission {
+  id: string; // Document ID
   studentId: string;
+  studentName: string;
+  studentNumber: string;
   submittedAt: string;
   text?: string;
   file?: {
@@ -23,12 +26,12 @@ export interface Submission {
 }
 
 export interface Homework {
-  id: number;
+  id: string; // Document ID
+  classId: string;
   text: string;
   assignedDate: string;
   dueDate?: string;
   seenBy: string[];
-  submissions: Submission[];
   teacherName?: string;
   lessonName?: string;
 }
@@ -91,7 +94,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   announcements?: Announcement[];
-  homeworks?: Homework[];
+  // homeworks?: Homework[]; // REMOVED - Now a subcollection
   election?: Election;
   dutyRoster?: RosterItem[];
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId

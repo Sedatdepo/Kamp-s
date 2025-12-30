@@ -6,7 +6,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, User, Paperclip, Send, Download } from 'lucide-react';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, addDoc, query } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -16,16 +16,23 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 
-const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, studentId: string, classId: string }) => {
+const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db, storage } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const submissionsQuery = useMemo(() => {
+      if (!db || !classId) return null;
+      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
+    }, [db, classId, homework.id]);
+
+    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>('submissions', submissionsQuery);
+
     const existingSubmission = useMemo(() => {
-        return homework.submissions?.find(s => s.studentId === studentId);
-    }, [homework.submissions, studentId]);
+        return submissions?.find(s => s.studentId === student.id);
+    }, [submissions, student.id]);
 
     const handleSubmit = async () => {
         if (!submissionText.trim() && !file) {
@@ -40,7 +47,7 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
 
         if (file) {
             try {
-                const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${studentId}/${file.name}`);
+                const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${student.id}/${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = {
@@ -48,7 +55,6 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
                     name: file.name,
                     type: file.type,
                 };
-
             } catch (error) {
                 console.error("File upload error: ", error);
                 toast({ variant: "destructive", title: "Dosya Yükleme Hatası" });
@@ -57,36 +63,19 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
             }
         }
 
-        const newSubmission: Submission = {
-            studentId,
+        const newSubmission: Omit<Submission, 'id'> = {
+            studentId: student.id,
+            studentName: student.name,
+            studentNumber: student.number,
             submittedAt: new Date().toISOString(),
             text: submissionText,
             ...(fileData && { file: fileData }),
         };
 
-        const classRef = doc(db, 'classes', classId);
+        const submissionsColRef = collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions');
 
         try {
-            // Atomically update the homework item in the array
-            // This requires reading the document first, updating in memory, then writing back
-            const classDoc = (await getDoc(classRef)).data() as Class;
-            const homeworks = classDoc.homeworks || [];
-            
-            const homeworkIndex = homeworks.findIndex(hw => hw.id === homework.id);
-            if (homeworkIndex === -1) {
-                throw new Error("Ödev bulunamadı.");
-            }
-
-            const targetHomework = homeworks[homeworkIndex];
-            const updatedSubmissions = [...(targetHomework.submissions || []), newSubmission];
-            
-            homeworks[homeworkIndex] = {
-                ...targetHomework,
-                submissions: updatedSubmissions
-            };
-
-            await updateDoc(classRef, { homeworks: homeworks });
-
+            await addDoc(submissionsColRef, newSubmission);
             toast({ title: "Ödev başarıyla teslim edildi!" });
             setFile(null);
             setSubmissionText('');
@@ -166,40 +155,16 @@ const HomeworkItem = ({ homework, studentId, classId }: { homework: Homework, st
     )
 }
 
-function HomeworkTabContent({ studentId, classId }: { studentId: string, classId: string }) {
+function HomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
-    const classQuery = useMemo(() => doc(db, 'classes', classId), [db, classId]);
-    const { data: classDataResult, loading: classLoading } = useFirestore<Class>(`class-homeworks-${classId}`, classQuery);
-    const studentClass = useMemo(() => (classDataResult && classDataResult.length > 0 ? classDataResult[0] : null), [classDataResult]);
+    const homeworksQuery = useMemo(() => collection(db, 'classes', classId, 'homeworks'), [db, classId]);
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
 
-    useEffect(() => {
-        if (db && studentClass && studentClass.homeworks && studentId) {
-        const unseenHomeworks = studentClass.homeworks.filter(
-            (hw) => !hw.seenBy?.includes(studentId)
-        );
+    const sortedHomeworks = useMemo(() => {
+        return [...(homeworks || [])].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
 
-        if (unseenHomeworks.length > 0) {
-            const classRef = doc(db, 'classes', studentClass.id);
-            const updatedHomeworks = studentClass.homeworks.map((hw) => {
-            if (!hw.seenBy?.includes(studentId)) {
-                return {
-                ...hw,
-                seenBy: [...(hw.seenBy || []), studentId],
-                };
-            }
-            return hw;
-            });
-            updateDoc(classRef, { homeworks: updatedHomeworks });
-        }
-        }
-    }, [studentClass, studentId, db]);
-    
-    const homeworks = useMemo(() => {
-        return [...(studentClass?.homeworks || [])].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [studentClass]);
-
-
-    if (classLoading) {
+    if (homeworksLoading) {
         return (
         <Card>
             <CardContent className="flex justify-center items-center p-6">
@@ -220,9 +185,9 @@ function HomeworkTabContent({ studentId, classId }: { studentId: string, classId
         </CardHeader>
         <CardContent>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            {homeworks.length > 0 ? (
-                homeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} />
+            {sortedHomeworks.length > 0 ? (
+                sortedHomeworks.map((hw) => (
+                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
                 ))
             ) : (
                 <div className="text-center py-10 bg-muted/50 rounded-lg">
@@ -261,5 +226,5 @@ export function HomeworkTab() {
     );
   }
 
-  return <HomeworkTabContent studentId={appUser.data.id} classId={appUser.data.classId} />;
+  return <HomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }

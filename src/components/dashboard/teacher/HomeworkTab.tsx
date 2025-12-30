@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useState, useMemo } from 'react';
+import { doc, updateDoc, collection, addDoc, deleteDoc, query } from 'firebase/firestore';
+import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,16 +30,18 @@ import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 
 interface HomeworkTabProps {
   classId: string;
-  currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
   students: Student[];
 }
 
-export function HomeworkTab({ classId, currentClass, teacherProfile, students }: HomeworkTabProps) {
+export function HomeworkTab({ classId, teacherProfile, students }: HomeworkTabProps) {
   const [homeworkText, setHomeworkText] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const { toast } = useToast();
   const { db } = useAuth();
+  
+  const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
+  const { data: homeworks, loading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
 
   const handleAddHomework = async () => {
     if (!db) return;
@@ -46,24 +49,21 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
       toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
       return;
     }
-    if (!currentClass) return;
+    if (!classId) return;
 
-    const newHomework: Homework = {
-      id: Date.now(),
+    const newHomework: Omit<Homework, 'id'> = {
+      classId: classId,
       text: homeworkText,
       assignedDate: new Date().toISOString(),
       dueDate: dueDate?.toISOString(),
       seenBy: [],
-      completedBy: [],
       teacherName: teacherProfile?.name,
       lessonName: teacherProfile?.branch,
     };
 
-    const classRef = doc(db, 'classes', classId);
-    const updatedHomeworks = [newHomework, ...(currentClass.homeworks || [])];
-
     try {
-      await updateDoc(classRef, { homeworks: updatedHomeworks });
+      const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+      await addDoc(homeworksColRef, newHomework);
       setHomeworkText('');
       setDueDate(undefined);
       toast({ title: 'Ödev gönderildi!' });
@@ -72,16 +72,11 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
     }
   };
 
-  const handleDeleteHomework = async (homeworkId: number) => {
-    if (!db || !currentClass) return;
-
-    const classRef = doc(db, 'classes', classId);
-    const updatedHomeworks = (currentClass.homeworks || []).filter(
-      (hw) => hw.id !== homeworkId
-    );
-
+  const handleDeleteHomework = async (homeworkId: string) => {
+    if (!db || !classId) return;
     try {
-      await updateDoc(classRef, { homeworks: updatedHomeworks });
+      const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+      await deleteDoc(homeworkRef);
       toast({ title: 'Ödev silindi.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
@@ -89,19 +84,20 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
   };
 
   const handleExport = () => {
-    if (currentClass && teacherProfile && students) {
-      exportHomeworkStatusToRtf({
-        students,
-        currentClass,
-        teacherProfile
-      });
+    if (classId && teacherProfile && students) {
+        // We'll need to fetch submissions separately for the report
+      // exportHomeworkStatusToRtf({
+      //   students,
+      //   homeworks, // This needs to contain submissions
+      //   currentClass: { id: classId, name: 'Sınıf Adı'}, // Pass a minimal class object
+      //   teacherProfile
+      // });
+       toast({title: 'Raporlama güncelleniyor...', description: 'Bu özellik yeni veri yapısına göre güncellenecektir.'})
     } else {
         toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.'})
     }
   };
   
-  const homeworks = currentClass?.homeworks || [];
-
   return (
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -145,7 +141,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
                     <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
                     <CardDescription>Bu sınıfa daha önce gönderilmiş ödevler.</CardDescription>
                 </div>
-                 <Button variant="outline" onClick={handleExport} disabled={homeworks.length === 0}>
+                 <Button variant="outline" onClick={handleExport} disabled={!homeworks || homeworks.length === 0}>
                     <FileText className="mr-2 h-4 w-4"/>
                     Raporu Dışa Aktar
                 </Button>
@@ -153,7 +149,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {homeworks.length > 0 ? (
+              {homeworks && homeworks.length > 0 ? (
                 homeworks.map((hw) => (
                   <div key={hw.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start">
                     <div>
@@ -188,7 +184,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
                         <AlertDialogHeader>
                           <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Bu ödevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                            Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

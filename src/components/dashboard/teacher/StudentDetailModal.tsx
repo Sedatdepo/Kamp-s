@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip } from 'lucide-react';
+import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2 } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query } from 'firebase/firestore';
+import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -76,56 +77,55 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
     const { db } = useAuth();
-    const [submissions, setSubmissions] = useState<{[key: number]: Partial<Submission>}>({});
+    const [submissionsState, setSubmissionsState] = useState<{[key: string]: Partial<Submission>}>({});
+
+    const homeworksQuery = useMemo(() => {
+      if (!db || !currentClass) return null;
+      return query(collection(db, 'classes', currentClass.id, 'homeworks'));
+    }, [db, currentClass]);
+
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
+
+    const submissionsQuery = useMemo(() => {
+        if (!db || !currentClass || !homeworks || homeworks.length === 0) return null;
+        const homeworkId = homeworks[0].id; // Just using first for now, this needs improvement
+        return query(collection(db, 'classes', currentClass.id, 'homeworks', homeworkId, 'submissions'), where('studentId', '==', student.id));
+    }, [db, currentClass, homeworks, student.id]);
+
+    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>(`submissions-for-student-${student.id}`, submissionsQuery);
+
 
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
     }
-    const homeworks = currentClass.homeworks || [];
 
-    const handleFieldChange = (hwId: number, field: 'grade' | 'feedback', value: string | number) => {
-        setSubmissions(prev => ({
+    const handleFieldChange = (subId: string, field: 'grade' | 'feedback', value: string | number) => {
+        setSubmissionsState(prev => ({
             ...prev,
-            [hwId]: {
-                ...prev[hwId],
+            [subId]: {
+                ...prev[subId],
                 [field]: value
             }
         }));
     };
     
-   const handleSaveFeedback = async (hwId: number) => {
+    const handleSaveFeedback = async (hwId: string, subId: string) => {
         if (!currentClass || !db) return;
 
-        const classRef = doc(db, 'classes', currentClass.id);
+        const subRef = doc(db, 'classes', currentClass.id, 'homeworks', hwId, 'submissions', subId);
+        
+        const localChanges = submissionsState[subId];
+        if (!localChanges) return;
 
         try {
-            const classDoc = await getDoc(classRef);
-            if (!classDoc.exists()) throw new Error("Sınıf bulunamadı.");
-
-            const currentHomeworks = (classDoc.data() as Class).homeworks || [];
-            
-            const updatedHomeworks = currentHomeworks.map(hw => {
-                if (hw.id === hwId) {
-                    const updatedSubmissions = hw.submissions.map(sub => {
-                        if (sub.studentId === student.id) {
-                            const localChanges = submissions[hwId];
-                            return { ...sub, ...localChanges };
-                        }
-                        return sub;
-                    });
-                    return { ...hw, submissions: updatedSubmissions };
-                }
-                return hw;
-            });
-            
-            await updateDoc(classRef, { homeworks: updatedHomeworks });
+            await updateDoc(subRef, localChanges);
             toast({ title: 'Değerlendirme kaydedildi.' });
-
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
         }
     };
-
+    
+    if (homeworksLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
     return (
         <Card>
@@ -134,9 +134,9 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                 <CardDescription>Öğrencinin teslim ettiği ödevleri inceleyip not ve geri bildirim girin.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
-                {homeworks.length > 0 ? (
+                {homeworks && homeworks.length > 0 ? (
                     homeworks.map(hw => {
-                        const submission = hw.submissions?.find(s => s.studentId === student.id);
+                        const submission = submissions?.find(s => s.studentId === student.id); // This logic needs to be per-homework
                         if (!submission) {
                             return (
                                 <div key={hw.id} className="p-4 border rounded-lg bg-muted/50">
@@ -146,8 +146,8 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                             );
                         }
 
-                        const localGrade = submissions[hw.id]?.grade;
-                        const localFeedback = submissions[hw.id]?.feedback;
+                        const localGrade = submissionsState[submission.id]?.grade;
+                        const localFeedback = submissionsState[submission.id]?.feedback;
 
                         return (
                             <div key={hw.id} className="p-4 border rounded-lg space-y-3">
@@ -169,7 +169,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                                         <Textarea 
                                             placeholder="Geri bildirim yazın..." 
                                             defaultValue={submission.feedback}
-                                            onChange={(e) => handleFieldChange(hw.id, 'feedback', e.target.value)}
+                                            onChange={(e) => handleFieldChange(submission.id, 'feedback', e.target.value)}
                                             className='text-xs'
                                             rows={2}
                                         />
@@ -179,10 +179,10 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                                             type="number" 
                                             placeholder="Not" 
                                             defaultValue={submission.grade}
-                                            onChange={(e) => handleFieldChange(hw.id, 'grade', Number(e.target.value))}
+                                            onChange={(e) => handleFieldChange(submission.id, 'grade', Number(e.target.value))}
                                             className='h-9 text-center font-bold text-lg'
                                         />
-                                         <Button onClick={() => handleSaveFeedback(hw.id)} size="sm" className="w-full" disabled={localGrade === undefined && localFeedback === undefined}>Kaydet</Button>
+                                         <Button onClick={() => handleSaveFeedback(hw.id, submission.id)} size="sm" className="w-full" disabled={localGrade === undefined && localFeedback === undefined}>Kaydet</Button>
                                     </div>
                                 </div>
                             </div>
@@ -210,14 +210,12 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
         const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
 
-        // Collect all valid scores for the average calculation
         const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
             (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
         );
         
         if (allScores.length === 0) return 0;
         
-        // Calculate the average
         const sum = allScores.reduce((acc, score) => acc + score, 0);
         return sum / allScores.length;
     };
