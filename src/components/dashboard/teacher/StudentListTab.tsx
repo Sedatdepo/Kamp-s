@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, ClipboardPaste, Link as LinkIcon, FileDown, Paperclip, Download } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -74,27 +74,21 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() && !file) return;
-        if (!db || !storage) {
-            toast({ variant: "destructive", title: "Hata", description: "Veritabanı veya depolama hizmeti başlatılamadı." });
+        if (!db || !storage || !student.authUid) {
+            toast({ variant: "destructive", title: "Hata", description: "Öğrenci kimliği doğrulanmadığı için mesaj gönderilemiyor." });
             return;
         }
 
         setIsUploading(true);
-
         let fileData: Message['file'] | undefined = undefined;
 
         if (file) {
             try {
-                if(!student.authUid) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu.");
-
                 const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: student.authUid } });
+                // Use student's authUid for storage security rules
+                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { ownerUid: student.authUid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
-                fileData = {
-                    url: downloadURL,
-                    name: file.name,
-                    type: file.type,
-                };
+                fileData = { url: downloadURL, name: file.name, type: file.type };
             } catch (error) {
                 console.error("File upload error: ", error);
                 toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
@@ -115,18 +109,13 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
         setNewMessage('');
         setFile(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
         setIsUploading(false);
     };
     
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-        }
+        if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
     };
-
 
     return (
         <DialogContent className="sm:max-w-[425px]">
@@ -185,6 +174,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
+  const [newStudentEmail, setNewStudentEmail] = useState('');
   const [bulkStudents, setBulkStudents] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
@@ -271,29 +261,18 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     }
   };
 
-  const createStudentAccount = async (name: string, number: string) => {
+  const inviteStudent = async (name: string, number: string, email: string) => {
     if (!db || !auth || !currentClass?.code) {
         throw new Error("Gerekli yapılandırma eksik.");
     }
     
-    const studentEmail = `${number}@${currentClass.code.toLowerCase()}.ito-kampus.local`;
-    let studentPassword = number;
-    
-    // Ensure password is at least 6 characters
-    if (studentPassword.length < 6) {
-        studentPassword = `${studentPassword}${currentClass.code.substring(0, 6 - studentPassword.length)}`;
-    }
-
-    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, studentPassword);
-    const authUid = userCredential.user.uid;
-
+    // Add student to the database as "invited"
     await addDoc(collection(db, 'students'), {
         classId,
         name: name,
         number: number,
-        needsPasswordChange: true,
-        password: studentPassword, 
-        authUid: authUid,
+        email: email, // Store email for later lookup
+        needsPasswordChange: true, // They will register and set their password
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
@@ -304,18 +283,19 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const handleAddStudent = async () => {
-    if (!newStudentName.trim() || !newStudentNumber.trim()) {
-      toast({ variant: 'destructive', title: 'Ad ve numara boş olamaz.' });
+    if (!newStudentName.trim() || !newStudentNumber.trim() || !newStudentEmail.trim()) {
+      toast({ variant: 'destructive', title: 'Tüm alanlar zorunludur.' });
       return;
     }
 
     try {
-        await createStudentAccount(newStudentName, newStudentNumber);
+        await inviteStudent(newStudentName, newStudentNumber, newStudentEmail);
         setNewStudentName('');
         setNewStudentNumber('');
-        toast({ title: 'Öğrenci eklendi ve hesabı oluşturuldu!' });
+        setNewStudentEmail('');
+        toast({ title: 'Öğrenci davet edildi!', description: 'Öğrenci, verdiğiniz e-posta ile kayıt olmalıdır.' });
     } catch (error: any) {
-        console.error("Öğrenci ekleme hatası:", error);
+        console.error("Öğrenci davet hatası:", error);
         toast({ variant: 'destructive', title: 'Hata', description: error.message });
     }
   };
@@ -326,29 +306,31 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     if (lines.length === 0) return;
 
     const studentsToAdd = lines.map(line => {
-        const [number, ...nameParts] = line.trim().split(/\s+/);
-        const name = nameParts.join(' ');
-        return { number, name };
-    }).filter(s => s.number && s.name);
+        const parts = line.trim().split(/\s+/);
+        const number = parts[0];
+        const email = parts[1];
+        const name = parts.slice(2).join(' ');
+        return { number, email, name };
+    }).filter(s => s.number && s.email && s.name);
 
-    toast({ title: `${studentsToAdd.length} öğrenci ekleniyor...`, description: 'Bu işlem biraz zaman alabilir.' });
+    toast({ title: `${studentsToAdd.length} öğrenci davet ediliyor...`, description: 'Bu işlem biraz zaman alabilir.' });
 
-    for (const { name, number } of studentsToAdd) {
+    for (const { name, number, email } of studentsToAdd) {
         try {
-            await createStudentAccount(name, number);
+            await inviteStudent(name, number, email);
         } catch (error: any) {
-             toast({ variant: 'destructive', title: `${name} eklenemedi`, description: error.message });
+             toast({ variant: 'destructive', title: `${name} davet edilemedi`, description: error.message });
         }
     }
 
     setBulkStudents('');
-    toast({ title: 'Toplu ekleme tamamlandı!'});
+    toast({ title: 'Toplu davet tamamlandı!'});
   };
 
   const handleDeleteStudent = async (studentId: string) => {
     if (!db) return;
-    // TODO: Delete Firebase Auth user as well. This requires Admin SDK.
-    // For now, we only delete from Firestore.
+    // TODO: Consider what happens to the Auth user. For now, we only delete from Firestore.
+    // Deleting auth users requires Admin SDK.
     await deleteDoc(doc(db, 'students', studentId));
     toast({ title: 'Öğrenci silindi', variant: 'destructive' });
   };
@@ -376,7 +358,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                     </Badge>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(true)}>
-                    <LinkIcon className="mr-2 h-4 w-4" /> Sınıf Davet Linki
+                    <LinkIcon className="mr-2 h-4 w-4" /> Sınıfa Davet Et
                   </Button>
                 </div>
             </div>
@@ -390,17 +372,17 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </Button>
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Ekle</Button>
+                        <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Daveti</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Öğrencileri Toplu Ekle</DialogTitle>
+                            <DialogTitle>Öğrencileri Toplu Davet Et</DialogTitle>
                             <DialogDescription>
-                                Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: Okul Numarası Ad Soyad.
+                                Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: OkulNo Eposta Ad Soyad.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz\n456 Ayşe Kaya" className="h-48" />
-                        <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 ahmet@mail.com Ahmet Yılmaz\n456 ayse@mail.com Ayşe Kaya" className="h-48" />
+                        <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Davet Et</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -415,6 +397,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableHead>No</TableHead>
                 <TableHead>Ad Soyad</TableHead>
+                <TableHead>E-posta</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
@@ -422,12 +405,14 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableCell><Input value={newStudentNumber} onChange={e => setNewStudentNumber(e.target.value)} placeholder="No" className="h-8 w-20"/></TableCell>
                 <TableCell><Input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Yeni Öğrenci Adı" className="h-8" /></TableCell>
-                <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Ekle</Button></TableCell>
+                <TableCell><Input value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} placeholder="ogrenci@mail.com" className="h-8" /></TableCell>
+                <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Davet Et</Button></TableCell>
               </TableRow>
               {sortedStudents.length > 0 ? sortedStudents.map(student => (
                 <TableRow key={student.id} >
                   <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.number}</TableCell>
                   <TableCell className="cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.email}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" onClick={() => handleExportStudentReport(student)}>
@@ -446,39 +431,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                             </DialogTrigger>
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <div onClick={(e) => e.stopPropagation()}>
-                                <Button type="button" variant="ghost" size="icon"><KeyRound className="h-4 w-4"/></Button>
-                            </div>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Şifre Sıfırlama</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        {student.name} adlı öğrencinin şifresini okul numarası ({student.number}) olarak sıfırlamak istediğinize emin misiniz? Öğrenci bir sonraki girişinde yeni şifre belirlemek zorunda kalacaktır.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={async () => {
-                                      if (!db) return;
-                                      let newPassword = student.number;
-                                      if (currentClass?.code && newPassword.length < 6) {
-                                        newPassword = `${newPassword}${currentClass.code.substring(0, 6 - newPassword.length)}`;
-                                      }
-
-                                      await updateDoc(doc(db, 'students', student.id), {
-                                          password: newPassword,
-                                          needsPasswordChange: true
-                                      });
-                                      toast({title: 'Şifre sıfırlandı!'})
-                                    }}>
-                                        Sıfırla
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <div onClick={(e) => e.stopPropagation()}>
@@ -505,7 +457,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </TableRow>
               )) : (
                 <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
                 </TableRow>
               )}
             </TableBody>

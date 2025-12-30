@@ -7,11 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { FormDescription } from '../ui/form';
+import Link from 'next/link';
+
 
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
@@ -40,15 +43,6 @@ export function StudentLoginForm() {
       form.setValue('classCode', classCodeFromUrl.toUpperCase());
     }
   }, [classCodeFromUrl, form]);
-
-  useEffect(() => {
-    // Set password to student number by default if it's empty
-    const studentNumber = form.watch('studentNumber');
-    const password = form.watch('password');
-    if (studentNumber && !password) {
-        form.setValue('password', studentNumber);
-    }
-  }, [form]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -125,9 +119,13 @@ export function StudentLoginForm() {
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Giriş Yap
         </Button>
+         <p className="text-center text-sm text-muted-foreground">
+          Hesabınız yok mu veya şifrenizi mi unuttunuz?{' '}
+          <Link href="/auth/register" className="font-medium text-primary hover:underline">
+            Kayıt Ol / Şifre Yenile
+          </Link>
+        </p>
       </form>
     </Form>
   );
 }
-
-    

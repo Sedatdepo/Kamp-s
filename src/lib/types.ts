@@ -57,6 +57,7 @@ export interface ReportConfig {
 export interface TeacherProfile {
   id: string;
   name: string;
+  email?: string;
   branch: string;
   schoolName: string;
   principalName: string;
@@ -121,12 +122,13 @@ export interface Student {
   classId: string;
   number: string;
   name: string;
+  email?: string;
   password?: string;
   needsPasswordChange: boolean;
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
-  authUid?: string; // UID from anonymous authentication
+  authUid?: string; // UID from Firebase Auth
   
   // Grading data separated by term
   term1Grades: GradingScores;

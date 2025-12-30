@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,8 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
   const { toast } = useToast();
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  const inviteLink = `https://ito-kampus.web.app/?tab=student&code=${classCode}&invite=true`;
+  // The invite link now points to the registration page, passing the class code
+  const inviteLink = `${window.location.origin}/auth/register?code=${classCode}&invite=true`;
 
   useEffect(() => {
     if (isOpen && inviteLink) {
@@ -61,10 +63,10 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode />
-            {className} Sınıfı Davet Linki
+            {className} Sınıfına Davet Et
           </DialogTitle>
           <DialogDescription>
-            Bu linki veya QR kodu öğrencilerle paylaşarak onların doğrudan giriş yapmasını sağlayın.
+            Bu linki veya QR kodu öğrencilerle paylaşarak onların sınıfa kaydolmasını sağlayın.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">

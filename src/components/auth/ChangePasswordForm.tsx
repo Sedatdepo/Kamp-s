@@ -26,7 +26,7 @@ export function ChangePasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { appUser, db } = useAuth();
+  const { appUser, createStudentAuthAccount, db } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,30 +37,33 @@ export function ChangePasswordForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!db || appUser?.type !== 'student' || !appUser.data.authUid) {
+    if (!db || appUser?.type !== 'student' || !appUser.data.id) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci olarak giriş yapmadınız veya veritabanı bağlantısı kurulamadı.' });
       return;
     }
 
     setIsLoading(true);
     try {
-      const studentRef = doc(db, 'students', appUser.data.id);
-      
-      // Update password, set needsPasswordChange to false, and store the authUid
-      await updateDoc(studentRef, {
-        password: values.newPassword,
-        needsPasswordChange: false,
-        authUid: appUser.data.authUid,
-      });
+        // Create the actual Firebase Auth account for the student HERE
+        const authUid = await createStudentAuthAccount(appUser.data, values.newPassword);
+        
+        const studentRef = doc(db, 'students', appUser.data.id);
+        
+        // Update password, set needsPasswordChange to false, and store the REAL authUid
+        await updateDoc(studentRef, {
+            password: values.newPassword,
+            needsPasswordChange: false,
+            authUid: authUid,
+        });
 
       toast({
-        title: 'Şifre Güncellendi',
+        title: 'Şifre Güncellendi ve Hesap Aktif Edildi!',
         description: 'Artık panonuza erişebilirsiniz.',
       });
-      // The redirection will be handled by AuthContext
+      // The redirection will be handled by AuthContext upon state change
       // router.push('/dashboard/student');
     } catch (error: any) {
-        console.error("Şifre güncelleme hatası:", error);
+        console.error("Şifre güncelleme ve hesap oluşturma hatası:", error);
       toast({
         variant: 'destructive',
         title: 'Güncelleme Başarısız',
@@ -102,7 +105,7 @@ export function ChangePasswordForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Şifreyi Güncelle
+          Şifreyi Güncelle ve Hesabı Aktifleştir
         </Button>
       </form>
     </Form>

@@ -54,25 +54,52 @@ export function RegisterForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, 'teachers', user.uid), {
-        id: user.uid,
-        name: values.name,
-        branch: values.branch,
-        schoolName: values.schoolName,
-        principalName: values.principalName,
-      });
+      // Check if this email is pre-registered as a student
+      // This is a simplified check. A more robust system might use a 'pending_users' collection.
+      const studentQuery = query(collection(db, 'students'), where('email', '==', values.email));
+      const studentSnapshot = await getDocs(studentQuery);
 
-      toast({
-        title: 'Kayıt Başarılı',
-        description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
-      });
+      if (!studentSnapshot.empty) {
+        // This is a student finishing their registration
+        const studentDoc = studentSnapshot.docs[0];
+        await updateDoc(studentDoc.ref, { 
+          authUid: user.uid,
+          name: values.name, 
+          needsPasswordChange: false // They just set a password
+        });
+
+        toast({
+          title: 'Öğrenci Kaydı Başarılı',
+          description: 'Hesabınız oluşturuldu. Panele yönlendiriliyorsunuz...',
+        });
+
+      } else {
+        // This is a new teacher registration
+        await setDoc(doc(db, 'teachers', user.uid), {
+          id: user.uid,
+          name: values.name,
+          email: values.email, // store email in teacher profile
+          branch: values.branch,
+          schoolName: values.schoolName,
+          principalName: values.principalName,
+        });
+
+        toast({
+          title: 'Öğretmen Kaydı Başarılı',
+          description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
+        });
+      }
+      
       // AuthContext will handle the redirection
-      // router.push('/dashboard/teacher');
     } catch (error: any) {
+      let description = 'Bilinmeyen bir hata oluştu.';
+      if (error.code === 'auth/email-already-in-use') {
+        description = 'Bu e-posta adresi zaten başka bir hesap tarafından kullanılıyor.';
+      }
       toast({
         variant: 'destructive',
         title: 'Kayıt Başarısız',
-        description: 'Bu e-posta adresi zaten kullanılıyor veya bir hata oluştu.',
+        description,
       });
     } finally {
       setIsLoading(false);
@@ -122,7 +149,7 @@ export function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Şifre</FormLabel>
+              <FormLabel>Şifre (en az 6 karakter)</FormLabel>
               <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
