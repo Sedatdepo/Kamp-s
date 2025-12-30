@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2 } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc, collection, query } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -78,6 +78,8 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
     const { toast } = useToast();
     const { db } = useAuth();
     const [submissionsState, setSubmissionsState] = useState<{[key: string]: Partial<Submission>}>({});
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
     const homeworksQuery = useMemo(() => {
       if (!db || !currentClass) return null;
@@ -86,13 +88,27 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
     const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
 
-    const submissionsQuery = useMemo(() => {
-        if (!db || !currentClass || !homeworks || homeworks.length === 0) return null;
-        const homeworkId = homeworks[0].id; // Just using first for now, this needs improvement
-        return query(collection(db, 'classes', currentClass.id, 'homeworks', homeworkId, 'submissions'), where('studentId', '==', student.id));
-    }, [db, currentClass, homeworks, student.id]);
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            if (!db || !currentClass || homeworksLoading) return;
+            setSubmissionsLoading(true);
+            const submissionsPromises = homeworks.map(hw => {
+                const subQuery = query(collection(db, 'classes', currentClass.id, 'homeworks', hw.id, 'submissions'), where('studentId', '==', student.id));
+                return getDocs(subQuery);
+            });
 
-    const { data: submissions, loading: submissionsLoading } = useFirestore<Submission>(`submissions-for-student-${student.id}`, submissionsQuery);
+            const snapshots = await Promise.all(submissionsPromises);
+            const fetchedSubmissions: Submission[] = [];
+            snapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    fetchedSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
+                });
+            });
+            setAllSubmissions(fetchedSubmissions);
+            setSubmissionsLoading(false);
+        };
+        fetchSubmissions();
+    }, [db, currentClass, homeworks, student.id, homeworksLoading]);
 
 
     if (!currentClass) {
@@ -125,7 +141,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
         }
     };
     
-    if (homeworksLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    if (homeworksLoading || submissionsLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
     return (
         <Card>
@@ -136,7 +152,8 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
             <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
                 {homeworks && homeworks.length > 0 ? (
                     homeworks.map(hw => {
-                        const submission = submissions?.find(s => s.studentId === student.id); // This logic needs to be per-homework
+                        const submission = allSubmissions.find(s => s.homeworkId === hw.id);
+
                         if (!submission) {
                             return (
                                 <div key={hw.id} className="p-4 border rounded-lg bg-muted/50">
