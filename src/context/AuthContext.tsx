@@ -197,41 +197,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db || !auth) throw new Error("Veritabanı başlatılamadı.");
-    
+
+    // Find the class by its code
     const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
     const classSnapshot = await getDocs(classQuery);
-
     if (classSnapshot.empty) {
         throw new Error('Bu koda sahip bir sınıf bulunamadı.');
     }
     const classDoc = classSnapshot.docs[0];
     const classId = classDoc.id;
-
+    
+    // Find the student in that class with the given number
     const studentQuery = query(
         collection(db, 'students'), 
         where('classId', '==', classId),
         where('number', '==', studentNumber)
     );
     const studentSnapshot = await getDocs(studentQuery);
-
+    
     if (studentSnapshot.empty) {
         throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
     }
-    
     const studentDoc = studentSnapshot.docs[0];
     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-
+    
+    // The student's password is their school number initially
     if (studentData.password !== studentNumber) {
         throw new Error('Şifre (öğrenci numarası) hatalı.');
     }
     
+    // Sign out any existing user
     if (auth.currentUser) {
        await firebaseSignOut(auth);
     }
     
+    // Sign in anonymously
     const userCredential = await signInAnonymously(auth);
     const user = userCredential.user;
-
+    
+    // Update the student document with the new anonymous auth UID
+    const studentRef = doc(db, 'students', studentData.id);
+    await updateDoc(studentRef, { authUid: user.uid });
+    
+    // Update local state, this will trigger the onAuthStateChanged listener as well
     const updatedStudentData = { ...studentData, authUid: user.uid };
     setAppUser({ type: 'student', data: updatedStudentData, authUser: user });
   };
