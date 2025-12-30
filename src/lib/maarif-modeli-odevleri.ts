@@ -1,3 +1,4 @@
+
 export const assignmentsData = [
   // 9. Sınıf Edebiyat
   { id: 901, grade: 9, subject: "literature", title: "Sözün İnceliği: Şiir Tahlili", description: "Bir şiirin ahenk unsurlarını analiz etme.", instructions: "Temaya uygun bir şiir seç. Kafiye, redif ve söz sanatlarını gösteren renkli bir tablo hazırla.", formats: "PDF, Word", size: "5 MB" },
@@ -95,3 +96,44 @@ export const assignmentsData = [
   { id: 1239, grade: 12, subject: "physics", title: "Radyoaktivite ve Yarı Ömür", description: "Radyoaktif bozunmayı modelleme.", instructions: "100 adet madeni parayı aynı anda atarak ve tura gelenleri her seferinde çıkararak radyoaktif bozunma sürecini simüle edin. Kalan para sayısını atış sayısına göre grafiğe dökerek yarı ömür kavramını açıklayın.", formats: "Word, PDF, JPG", size: "5 MB" },
   { id: 1240, grade: 12, subject: "physics", title: "GPS ve Zaman Kayması", description: "Özel ve genel görelilik.", instructions: "Uydulardaki saatlerin dünyadaki saatlerden neden farklı çalıştığını ve Einstein'ın görelilik teorilerinin GPS doğruluğu için önemini anlatan bir video hazırlayın.", formats: "Video", size: "25 MB" }
 ];
+
+export const initialRubricDefinitions = {
+  research: {
+    title: "Araştırma ve Yazma Rubriği",
+    description: "Makale, Rapor, Hikaye, Deneme türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "İçerik Doğruluğu ve Zenginliği", score: 40, desc: "Konu tam ve doğru anlatılmış mı? Bilgi eksikliği var mı?" },
+      { label: "Dil ve Anlatım (İmla/Noktalama)", score: 20, desc: "Yazım kurallarına uyulmuş mu? Akıcı bir dil kullanılmış mı?" },
+      { label: "Özgünlük ve Yorum", score: 20, desc: "Kopya içerik var mı? Öğrenci kendi yorumunu katmış mı?" },
+      { label: "Düzen ve Kaynakça", score: 20, desc: "Sayfa düzeni temiz mi? Yararlanılan kaynaklar belirtilmiş mi?" }
+    ]
+  },
+  multimedia: {
+    title: "Multimedya ve Sunum Rubriği",
+    description: "Video, Ses Kaydı, Animasyon türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "İçerik ve Konuya Hakimiyet", score: 30, desc: "Videoda anlatılan bilgiler doğru ve konuyla ilgili mi?" },
+      { label: "Yaratıcılık ve Kurgu", score: 30, desc: "Senaryo özgün mü? İlgi çekici bir kurgu var mı?" },
+      { label: "İletişim ve Diksiyon", score: 20, desc: "Ses net anlaşılıyor mu? Akıcı bir anlatım var mı?" },
+      { label: "Teknik Kalite (Görüntü/Ses)", score: 20, desc: "Görüntü net mi? Ses cızırtılı mı? Süreye uyulmuş mu?" }
+    ]
+  },
+  visual: {
+    title: "Görsel Tasarım Rubriği",
+    description: "Poster, İnfografik, Dergi Kapağı türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "Görsel Düzen ve Estetik", score: 30, desc: "Renk uyumu, yerleşim ve okunabilirlik iyi mi?" },
+      { label: "Konuyu Görselleştirme", score: 30, desc: "Görseller konuyla alakalı mı? Mesajı doğru iletiyor mu?" },
+      { label: "Yaratıcılık", score: 20, desc: "Sıradan görseller yerine özgün tasarımlar kullanılmış mı?" },
+      { label: "Özen ve Emek", score: 20, desc: "Tasarım detaylarına dikkat edilmiş mi? Baştan savma mı?" }
+    ]
+  }
+};
+
+// Ödev tipine göre otomatik rubrik seçici
+export const getRubricType = (formats: string) => {
+  if (formats.includes("Video") || formats.includes("MP4") || formats.includes("Ses") || formats.includes("MP3")) return 'multimedia';
+  if (formats.includes("Canva") || formats.includes("JPG") || formats.includes("Poster") || formats.includes("Fotoğraf") || formats.includes("Görsel")) return 'visual';
+  return 'research';
+};
+
