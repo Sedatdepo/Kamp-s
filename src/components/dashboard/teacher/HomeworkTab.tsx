@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission, HomeworkDocument } from '@/lib/types';
@@ -9,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText, Search, Library, CheckCircle, XCircle, File, ChevronDown, Save } from 'lucide-react';
+import { BookOpen, Send, Plus, Trash2, Calendar as CalendarIconLucide, Clock, FileText, Search, Library, CheckCircle, XCircle, File, ChevronDown, Save, Atom, Video, Mic, Paperclip, GraduationCap, Filter, Pencil, PlusCircle, Calendar, Users, Heart, Bell, History, Printer, BarChart3, PieChart, Edit, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -27,7 +26,6 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { exportHomeworkStatusToRtf } from '@/lib/word-export';
-import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -36,542 +34,170 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 
+// --- Gelişmiş Ödev Kütüphanesi Kodları ---
 
-const branchToSubjectMap: { [key: string]: string } = {
-    "Türk Dili ve Edebiyatı": "literature",
-    "Fizik": "physics",
+const initialRubricDefinitions = {
+  research: {
+    title: "Araştırma ve Yazma Rubriği",
+    description: "Makale, Rapor, Hikaye, Deneme türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "İçerik Doğruluğu ve Zenginliği", score: 40, desc: "Konu tam ve doğru anlatılmış mı? Bilgi eksikliği var mı?" },
+      { label: "Dil ve Anlatım (İmla/Noktalama)", score: 20, desc: "Yazım kurallarına uyulmuş mu? Akıcı bir dil kullanılmış mı?" },
+      { label: "Özgünlük ve Yorum", score: 20, desc: "Kopya içerik var mı? Öğrenci kendi yorumunu katmış mı?" },
+      { label: "Düzen ve Kaynakça", score: 20, desc: "Sayfa düzeni temiz mi? Yararlanılan kaynaklar belirtilmiş mi?" }
+    ]
+  },
+  multimedia: {
+    title: "Multimedya ve Sunum Rubriği",
+    description: "Video, Ses Kaydı, Animasyon türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "İçerik ve Konuya Hakimiyet", score: 30, desc: "Videoda anlatılan bilgiler doğru ve konuyla ilgili mi?" },
+      { label: "Yaratıcılık ve Kurgu", score: 30, desc: "Senaryo özgün mü? İlgi çekici bir kurgu var mı?" },
+      { label: "İletişim ve Diksiyon", score: 20, desc: "Ses net anlaşılıyor mu? Akıcı bir anlatım var mı?" },
+      { label: "Teknik Kalite (Görüntü/Ses)", score: 20, desc: "Görüntü net mi? Ses cızırtılı mı? Süreye uyulmuş mu?" }
+    ]
+  },
+  visual: {
+    title: "Görsel Tasarım Rubriği",
+    description: "Poster, İnfografik, Dergi Kapağı türü ödevler için standart değerlendirme.",
+    items: [
+      { label: "Görsel Düzen ve Estetik", score: 30, desc: "Renk uyumu, yerleşim ve okunabilirlik iyi mi?" },
+      { label: "Konuyu Görselleştirme", score: 30, desc: "Görseller konuyla alakalı mı? Mesajı doğru iletiyor mu?" },
+      { label: "Yaratıcılık", score: 20, desc: "Sıradan görseller yerine özgün tasarımlar kullanılmış mı?" },
+      { label: "Özen ve Emek", score: 20, desc: "Tasarım detaylarına dikkat edilmiş mi? Baştan savma mı?" }
+    ]
+  }
 };
 
-const HomeworkManager = ({ classId, teacherProfile, students, currentClass, liveHomeworks, liveSubmissions, liveHomeworksLoading, liveSubmissionsLoading, onSelectHomework }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null, liveHomeworks: Homework[], liveSubmissions: Submission[], liveHomeworksLoading: boolean, liveSubmissionsLoading: boolean, onSelectHomework: (hw: Homework | null) => void; }) => {
-    const [homeworkText, setHomeworkText] = useState('');
-    const [dueDate, setDueDate] = useState<Date | undefined>();
-    const { toast } = useToast();
-    const { db } = useAuth();
-
-    const sortedHomeworks = useMemo(() => {
-        return [...(liveHomeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [liveHomeworks]);
-
-    const handleAddHomework = async () => {
-        if (!db || !classId) return;
-        if (!homeworkText.trim()) {
-            toast({ variant: 'destructive', title: 'Ödev metni boş olamaz.' });
-            return;
-        }
-
-        const newHomework: Omit<Homework, 'id'> = {
-            classId: classId,
-            text: homeworkText,
-            assignedDate: new Date().toISOString(),
-            dueDate: dueDate ? dueDate.toISOString() : undefined,
-            teacherName: teacherProfile?.name,
-            lessonName: teacherProfile?.branch,
-            seenBy: [],
-        };
-
-        try {
-            const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-            await addDoc(homeworksColRef, newHomework);
-            setHomeworkText('');
-            setDueDate(undefined);
-            toast({ title: 'Ödev gönderildi!' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
-        }
-    };
-
-    const handleDeleteHomework = async (homeworkId: string) => {
-        if (!db || !classId) return;
-        try {
-            // First delete all submissions in the homework
-            const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions'));
-            const submissionsSnapshot = await getDocs(submissionsQuery);
-            const batch = writeBatch(db);
-            submissionsSnapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-
-            // Then delete the homework itself
-            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
-            await deleteDoc(homeworkRef);
-
-            toast({ title: 'Ödev ve tüm teslimatlar silindi.' });
-            onSelectHomework(null); // Reset selected homework
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
-        }
-    };
-    
-    const handleExport = () => {
-        if (!db || !currentClass || !teacherProfile || !liveHomeworks) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
-            return;
-        }
-        exportHomeworkStatusToRtf({
-            students,
-            homeworks: liveHomeworks,
-            submissions: liveSubmissions,
-            currentClass,
-            teacherProfile
-        });
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2">
-                            <Plus className="h-6 w-6" />
-                            Yeni Ödev Gönder
-                        </CardTitle>
-                        <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Textarea
-                            value={homeworkText}
-                            onChange={(e) => setHomeworkText(e.target.value)}
-                            placeholder="Ödev açıklamasını buraya yazın veya hazır bir şablon seçin..."
-                            rows={5}
-                        />
-                         <div className="flex flex-col sm:flex-row gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !dueDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {dueDate ? format(dueDate, "PPP", { locale: tr }) : <span>Teslim tarihi seçin</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={dueDate}
-                                    onSelect={setDueDate}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <Button onClick={handleAddHomework} className="w-full">
-                                <Send className="mr-2 h-4 w-4"/>
-                                Gönder
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="font-headline">Geçmiş Ödevler</CardTitle>
-                                <CardDescription>İncelemek için bir ödev seçin.</CardDescription>
-                            </div>
-                            <Button variant="outline" onClick={handleExport} disabled={!liveHomeworks || liveHomeworks.length === 0}>
-                                <FileText className="mr-2 h-4 w-4"/>
-                                Raporu Dışa Aktar
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-64 pr-4">
-                            {liveHomeworksLoading ? <Loader2 className="mx-auto animate-spin" /> : (
-                                sortedHomeworks && sortedHomeworks.length > 0 ? (
-                                    <Accordion type="single" collapsible onValueChange={(value) => onSelectHomework(liveHomeworks.find(hw => hw.id === value) || null)}>
-                                        {sortedHomeworks.map((hw) => (
-                                             <AccordionItem value={hw.id} key={hw.id}>
-                                                <div className='flex items-center group'>
-                                                    <AccordionTrigger className="flex-1 p-3">
-                                                        <div>
-                                                            <p className="text-sm font-medium text-left">{hw.text}</p>
-                                                            <p className="text-xs text-muted-foreground text-left mt-1">Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</p>
-                                                            {hw.dueDate && <p className="text-xs text-red-600 font-semibold mt-1 text-left">Son Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</p>}
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500/70 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                                                <AlertDialogDescription>Bu ödevi silmek istediğinize emin misiniz? Öğrenci teslimatları da dahil tüm veriler silinecektir. Bu işlem geri alınamaz.</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </div>
-                                                <AccordionContent>
-                                                    {/* The table will now be rendered outside */}
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        ))}
-                                    </Accordion>
-                                ) : (
-                                    <p className="text-center text-sm text-muted-foreground py-4">Henüz gönderilmiş bir ödev yok.</p>
-                                )
-                            )}
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-}
-
-const HomeworkSubmissionsTable = ({ homework, students, submissions, loading, classId }: { homework: Homework, students: Student[], submissions: Submission[], loading: boolean, classId: string }) => {
-    const { db } = useAuth();
-    const { toast } = useToast();
-
-    const [submissionsState, setSubmissionsState] = useState<{ [key: string]: Partial<Submission> }>({});
-
-    const handleSetStatus = async (student: Student, done: boolean) => {
-        if (!db) return;
-
-        const existingSubmission = submissions?.find(s => s.studentId === student.id);
-
-        if (done && !existingSubmission) {
-            const submissionData: Partial<Submission> = {
-                studentId: student.id, studentName: student.name, studentNumber: student.number,
-                homeworkId: homework.id, submittedAt: new Date().toISOString(), text: "Öğretmen tarafından 'yapıldı' olarak işaretlendi.",
-            };
-            try {
-                const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
-                await addDoc(submissionsColRef, submissionData);
-                toast({ title: `${student.name} için ödev 'yapıldı' olarak işaretlendi.` });
-            } catch (error: any) {
-                toast({ variant: "destructive", title: "Hata", description: error.message });
-            }
-        } else if (!done && existingSubmission) {
-            try {
-                const subDocRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', existingSubmission.id);
-                await deleteDoc(subDocRef);
-                toast({ title: `${student.name} için ödev 'yapılmadı' olarak işaretlendi.` });
-            } catch (error: any) {
-                toast({ variant: "destructive", title: "Hata", description: error.message });
-            }
-        }
-    };
-
-    const handleFieldChange = (subId: string, field: 'grade' | 'feedback', value: string | number) => {
-        setSubmissionsState(prev => ({ ...prev, [subId]: { ...prev[subId], [field]: value } }));
-    };
-    
-    const handleSaveFeedback = async (hwId: string, subId: string) => {
-        if (!classId || !db) return;
-        const subRef = doc(db, 'classes', classId, 'homeworks', hwId, 'submissions', subId);
-        const localChanges = submissionsState[subId];
-        if (!localChanges) return;
-
-        try {
-            await updateDoc(subRef, localChanges);
-            toast({ title: 'Değerlendirme kaydedildi.' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
-        }
-    };
-
-    if (loading) {
-        return <Card><CardContent className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>;
-    }
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Ödev Teslim Durumları: {homework.text}</CardTitle>
-                <CardDescription>Aşağıdaki listeden öğrencilerin teslim durumlarını takip edebilir ve manuel olarak işaretleyebilirsiniz.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[80px]">No</TableHead>
-                            <TableHead>Adı Soyadı</TableHead>
-                            <TableHead className="w-[150px]">Durum</TableHead>
-                             <TableHead>Teslimat</TableHead>
-                            <TableHead className="w-[300px]">Değerlendirme</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {students.map(student => {
-                            const submission = submissions.find(s => s.studentId === student.id);
-                            const hasSubmitted = !!submission;
-
-                            return (
-                                <TableRow key={student.id}>
-                                    <TableCell>{student.number}</TableCell>
-                                    <TableCell>{student.name}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                        {hasSubmitted ? (
-                                            <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                                                <CheckCircle className="mr-1 h-3 w-3"/> Teslim Edildi
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary">
-                                                <XCircle className="mr-1 h-3 w-3"/> Bekleniyor
-                                            </Badge>
-                                        )}
-                                        <Button size="xs" variant="outline" className="text-green-600 border-green-200" onClick={() => handleSetStatus(student, true)} disabled={hasSubmitted}>+</Button>
-                                        <Button size="xs" variant="outline" className="text-red-600 border-red-200" onClick={() => handleSetStatus(student, false)} disabled={!hasSubmitted}>-</Button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {submission?.text}
-                                    </TableCell>
-                                    <TableCell>
-                                        {submission && (
-                                            <div className="flex gap-2">
-                                                <Textarea placeholder="Geri bildirim..." defaultValue={submission.feedback} onChange={(e) => handleFieldChange(submission.id, 'feedback', e.target.value)} rows={1} className="text-xs" />
-                                                <div className="flex flex-col gap-1">
-                                                    <Input type="number" placeholder="Not" defaultValue={submission.grade} onChange={(e) => handleFieldChange(submission.id, 'grade', Number(e.target.value))} className="h-8 w-16 text-center" />
-                                                    <Button size="xs" onClick={() => handleSaveFeedback(homework.id, submission.id)} disabled={!submissionsState[submission.id]}>Kaydet</Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            )
-                        })}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
+const getRubricType = (formats: string) => {
+  if (formats.includes("Video") || formats.includes("MP4") || formats.includes("Ses") || formats.includes("MP3")) return 'multimedia';
+  if (formats.includes("Canva") || formats.includes("JPG") || formats.includes("Poster") || formats.includes("Fotoğraf") || formats.includes("Görsel")) return 'visual';
+  return 'research';
 };
 
-function HomeworkLibrary({ onSelect }: { onSelect: (text: string) => void }) {
-    const { teacherProfile, currentClass } = useAuth();
-    const [searchTerm, setSearchTerm] = useState('');
+const assignmentsData = [
+  // --- 9. SINIF EDEBİYAT ---
+  { id: 901, grade: 9, subject: "literature", title: "Sözün İnceliği: Şiir Tahlili", description: "Bir şiirin ahenk unsurlarını analiz etme.", instructions: "Temaya uygun bir şiir seç. Kafiye, redif ve söz sanatlarını gösteren renkli bir tablo hazırla.", formats: "PDF, Word", size: "5 MB" },
+  { id: 902, grade: 9, subject: "literature", title: "Deneme Yazarlığı Atölyesi", description: "Öznel düşüncelerin anlatıldığı deneme yazısı.", instructions: "'Dil ve Kültür' konusunda, 500 kelimelik samimi bir deneme yaz.", formats: "Word", size: "2 MB" },
+  { id: 903, grade: 9, subject: "literature", title: "Dilin Zenginliği: Dijital Sözlük", description: "Yöresel kelimelerden oluşan görsel sözlük.", instructions: "Aile büyüklerinden 15 yöresel kelime derle, her biri için görsel içeren bir sözlük sayfası yap.", formats: "Canva Link", size: "10 MB" },
+  { id: 904, grade: 9, subject: "literature", title: "Otobiyografi Sunumu", description: "Kendi yaşam öyküsünü görsel sunumla anlatma.", instructions: "Hayatını kronolojik sırayla anlatan, fotoğraflarla desteklenmiş bir sunum hazırla.", formats: "PPTX", size: "20 MB" },
+  { id: 905, grade: 9, subject: "literature", title: "Şiir Dinletisi Videosu", description: "Şiir okuma ve vurgu/tonlama becerisi.", instructions: "Bir şiiri fon müziği eşliğinde seslendir ve uygun videolarla klip yap.", formats: "MP4", size: "50 MB" },
+  { id: 906, grade: 9, subject: "literature", title: "Bağdaşıklık Analizi", description: "Metindeki bağlaç ve gönderimlerin analizi.", instructions: "Seçtiğin metindeki bağlaçları ve gönderimleri bularak metnin tutarlılığını nasıl sağladığını raporla.", formats: "PDF", size: "3 MB" },
+  { id: 907, grade: 9, subject: "literature", title: "Tarih ve Edebiyat İlişkisi", description: "Tarihi bir romanın gerçeklikle ilişkisi.", instructions: "Tarihi bir romanı incele. Hangi olaylar gerçek, hangileri kurgu? Tablo halinde göster.", formats: "Word", size: "4 MB" },
+  { id: 908, grade: 9, subject: "literature", title: "Türkçe Dedektifi", description: "Çevredeki Türkçe hatalarının tespiti.", instructions: "Tabelalardaki veya sosyal medyadaki 10 Türkçe hatasını fotoğrafla, doğrularını yaz.", formats: "PPTX", size: "15 MB" },
+  { id: 909, grade: 9, subject: "literature", title: "Yazar Tanıtım Kartı", description: "Bir yazarın hayatının infografik ile anlatımı.", instructions: "Sevdiğin bir yazar için 'Instagram Profili' tarzında tanıtım kartı hazırla.", formats: "JPG", size: "5 MB" },
+  { id: 910, grade: 9, subject: "literature", title: "Masal Kahramanı Tasarımı", description: "Yeni bir masal kahramanı yaratma.", instructions: "Olağanüstü özellikleri olan bir kahraman çiz ve özelliklerini yaz.", formats: "PDF, Çizim", size: "8 MB" },
+  { id: 921, grade: 9, subject: "literature", title: "Hikaye Haritası Çıkarma", description: "Okunan bir hikayenin yapı unsurlarını şematize etme.", instructions: "Bir hikayenin serim, düğüm, çözüm bölümlerini ve mekan/zaman/kişi kadrosunu bir harita üzerinde göster.", formats: "Görsel (JPG)", size: "5 MB" },
+  { id: 922, grade: 9, subject: "literature", title: "Deyimler ve Atasözleri", description: "Deyimlerin gerçek ve mecaz anlamlarını görselleştirme.", instructions: "5 deyimi seç. Hem gerçek anlamını (komik bir şekilde) hem de mecaz anlamını çizin.", formats: "PDF", size: "10 MB" },
+  { id: 923, grade: 9, subject: "literature", title: "İletişim Şeması", description: "Günlük bir diyaloğun iletişim ögelerine ayrılması.", instructions: "Arkadaşınla yaptığın bir konuşmayı yaz. Gönderici, alıcı, ileti, dönüt, bağlam unsurlarını göster.", formats: "Word", size: "2 MB" },
+  { id: 924, grade: 9, subject: "literature", title: "Kütüphane Araştırması", description: "Bilgi kaynaklarını kullanma becerisi.", instructions: "Okul veya ilçe kütüphanesine git. Katalog taraması nasıl yapılır, aradığın kitap nasıl bulunur? Süreci fotoğrafla anlat.", formats: "PPTX", size: "15 MB" },
+  { id: 925, grade: 9, subject: "literature", title: "Mektup Arkadaşlığı", description: "Edebi mektup türünde yazma çalışması.", instructions: "Roman kahramanına veya gelecekteki kendine edebi bir dille mektup yaz.", formats: "Word", size: "3 MB" },
+  { id: 931, grade: 9, subject: "literature", title: "Sosyal Medya Dili Analizi", description: "TDE4.3.5. Türkçe dil yapıları.", instructions: "Sosyal medyada kullanılan kısaltmaları (slm, nbr) ve bozuk cümleleri tespit et. Bu kullanımın iletişim üzerindeki etkisini anlatan bir deneme yaz.", formats: "Word", size: "3 MB" },
+  { id: 932, grade: 9, subject: "literature", title: "Empati Günlüğü", description: "TDE2.1. İletişim ve Anlama.", instructions: "Bir gün boyunca ailenden birinin (anne/baba) yerine geçtiğini hayal et. O gün yaşananlara onların gözünden bakan bir günlük sayfası yaz.", formats: "PDF", size: "2 MB" },
+  { id: 933, grade: 9, subject: "literature", title: "Reklam Sloganları İncelemesi", description: "Dilin işlevleri.", instructions: "TV veya internetteki 5 reklam sloganını seç. Dilin hangi işlevde (Alıcıyı harekete geçirme vb.) kullanıldığını analiz et.", formats: "PPTX", size: "5 MB" },
+  { id: 934, grade: 9, subject: "literature", title: "Şehir Efsaneleri Araştırması", description: "Sözlü kültür ürünleri.", instructions: "Yaşadığın semtte anlatılan gizemli bir hikayeyi veya efsaneyi büyüklerinden dinle, yazıya dök ve 'Masal/Efsane' farkını belirt.", formats: "Word", size: "3 MB" },
+  { id: 935, grade: 9, subject: "literature", title: "Kendi Şiir Antolojim", description: "Şiir zevki ve temalar.", instructions: "'Umut' veya 'Doğa' temalı, sevdiğin 5 şiiri seçerek dijital bir şiir defteri (antoloji) oluştur. Neden seçtiğini altına not düş.", formats: "Canva/PDF", size: "10 MB" },
+
+  // --- 9. SINIF FİZİK ---
+  { id: 911, grade: 9, subject: "physics", title: "Kariyer Keşfi", description: "Fizik ile ilgili mesleklerin araştırılması.", instructions: "Fizikle ilgili 3 mesleği (Makine Müh., Radyoloji vb.) ve çalışma alanlarını sun.", formats: "PPTX", size: "15 MB" },
+  { id: 912, grade: 9, subject: "physics", title: "Bilim Merkezleri", description: "CERN, NASA, TÜBİTAK projeleri.", instructions: "CERN veya TÜBİTAK'ın güncel bir projesini araştır, insanlığa faydasını raporla.", formats: "PDF", size: "5 MB" },
+  { id: 913, grade: 9, subject: "physics", title: "Özkütle Posteri", description: "Özkütlenin günlük hayattaki yeri.", instructions: "Kuyumculuk veya porselen yapımında özkütlenin önemini anlatan poster hazırla.", formats: "Canva", size: "10 MB" },
+  { id: 914, grade: 9, subject: "physics", title: "Dayanıklılık Videosu", description: "Boyut değişiminin dayanıklılığa etkisi.", instructions: "Karınca ve fil örneği üzerinden kesit alanı/hacim ilişkisini anlatan video çek.", formats: "MP4", size: "40 MB" },
+  { id: 915, grade: 9, subject: "physics", title: "Kılcallık Deneyi", description: "Adezyon-Kohezyon gözlemi.", instructions: "Peçetenin suyu emmesi veya renkli suyla çiçek boyama deneyi yap, videoya çek.", formats: "MP4", size: "50 MB" },
+  { id: 916, grade: 9, subject: "physics", title: "Hareket Grafiği", description: "Konum-Zaman grafiği çizimi.", instructions: "Okuldan eve yolculuğunu hayali bir Hız-Zaman grafiğine dök ve yorumla.", formats: "PDF", size: "3 MB" },
+  { id: 917, grade: 9, subject: "physics", title: "Sürtünme Yaşamdır", description: "Sürtünme kuvvetinin önemi.", instructions: "Sürtünme olmasaydı hayatımızda neler imkansız olurdu? 5 örnekle sun.", formats: "PPTX", size: "8 MB" },
+  { id: 918, grade: 9, subject: "physics", title: "Yeşil Enerji Projesi", description: "Yenilenebilir enerji kullanımı.", instructions: "Yaşadığın bölge için en uygun yenilenebilir enerji kaynağını belirle ve proje taslağı hazırla.", formats: "Word", size: "5 MB" },
+  { id: 919, grade: 9, subject: "physics", title: "Isı Yayılma Yolları", description: "İletim, konveksiyon, ışıma.", instructions: "Termos, kalorifer ve Güneş'in ısı yayma prensiplerini çizerek karşılaştır.", formats: "JPG", size: "6 MB" },
+  { id: 920, grade: 9, subject: "physics", title: "Yalıtım Malzemeleri", description: "Isı iletim hızı deneyi.", instructions: "Metal ve tahta kaşığın ısıyı nasıl farklı ilettiğini basit bir deneyle göster.", formats: "Video", size: "20 MB" },
+  { id: 926, grade: 9, subject: "physics", title: "SI Birim Sistemi", description: "Uluslararası birimlerin önemi.", instructions: "Temel büyüklükleri (Uzunluk, Kütle, Zaman vb.) ve birimlerini gösteren bir pano hazırla. Mars Climate Orbiter kazasını araştır.", formats: "Poster (JPG)", size: "5 MB" },
+  { id: 927, grade: 9, subject: "physics", title: "Enerji Verimliliği Etiketi", description: "Ev aletlerindeki enerji etiketlerini okuma.", instructions: "Buzdolabı veya çamaşır makinesi üzerindeki enerji etiketini fotoğrafla. A+++ ne anlama geliyor araştır.", formats: "PDF", size: "3 MB" },
+  { id: 928, grade: 9, subject: "physics", title: "Plazma Hali", description: "Maddenin 4. hali plazmanın araştırılması.", instructions: "Plazma nedir? Floresan lamba, neon ışıklar ve auroralar (Kutup ışıkları) üzerinden açıkla.", formats: "PPTX", size: "10 MB" },
+  { id: 929, grade: 9, subject: "physics", title: "Yerli ve Milli Teknolojiler", description: "Mühendislik projelerinin fiziksel temelleri.", instructions: "TOGG veya İHA'ların aerodinamik yapısını veya batarya teknolojisini fiziksel açıdan incele.", formats: "Video Sunum", size: "30 MB" },
+  { id: 930, grade: 9, subject: "physics", title: "Küresel Isınma ve Fizik", description: "Sera etkisinin fiziksel açıklaması.", instructions: "Atmosferin ısıyı tutma prensibini (Sera Etkisi) bir şema ile çiz ve çözüm önerileri sun.", formats: "PDF", size: "4 MB" },
+  { id: 936, grade: 9, subject: "physics", title: "Mutfakta Isı Transferi", description: "FİZ.9.4.5. Isı aktarım yolları.", instructions: "Yemek yaparken tencerenin ısınması (iletim), suyun kaynaması (konveksiyon) ve fırının pişirmesi (ışıma) olaylarını mutfaktan fotoğraflarla anlat.", formats: "Görsel Sunum", size: "15 MB" },
+  { id: 937, grade: 9, subject: "physics", title: "Su Faturası Tasarrufu", description: "Fiziksel büyüklükler ve ölçüm.", instructions: "Evdeki su sayacını 24 saat arayla oku. Günlük tüketimi hesapla ve tasarruf için 3 fiziksel çözüm (Debi kısıtlayıcı vb.) öner.", formats: "Rapor", size: "2 MB" },
+  { id: 938, grade: 9, subject: "physics", title: "Kışlık Montların Fiziği", description: "Isı yalıtımı.", instructions: "Kışın neden kat kat giyiniriz veya kuş tüyü mont giyeriz? Havanın ısı iletkenliğini araştırarak açıkla.", formats: "PDF", size: "4 MB" },
+  { id: 939, grade: 9, subject: "physics", title: "Doğa Yürüyüşü ve Sürtünme", description: "Sürtünme kuvveti.", instructions: "Farklı zeminlerde (çim, asfalt, toprak) yürürken ayakkabının kayma durumunu incele. Sürtünme katsayısının günlük hayattaki önemini videoda anlat.", formats: "Video", size: "30 MB" },
+  { id: 940, grade: 9, subject: "physics", title: "Piknik Termosu Testi", description: "Isı yalıtım deneyi.", instructions: "Bir termosa sıcak su koy. 1'er saat arayla sıcaklığını ölç. Termosun iç yapısının (vakum, parlak yüzey) ısıyı nasıl koruduğunu şematize et.", formats: "Excel/Grafik", size: "5 MB" },
+
+  // --- 10. SINIF EDEBİYAT ---
+  { id: 1001, grade: 10, subject: "literature", title: "Divan'dan Sesleniş: Gazel Şerhi", description: "Seçilen bir gazelin günümüz diliyle yorumlanması.", instructions: "Fuzuli, Baki veya Nedim'den bir gazel seçerek beyit beyit günümüz Türkçesine çevirin ve ana temasını açıklayan bir kompozisyon yazın.", formats: "Word", size: "3 MB" },
+  { id: 1002, grade: 10, subject: "literature", title: "Halkın Sesi: Mani Derlemesi", description: "Çevreden veya aile büyüklerinden mani derleme.", instructions: "Çevrenizden en az 10 farklı mani derleyerek bir video kaydı oluşturun. Manilerin temalarını (aşk, hasret, gurbet vb.) sınıflandırın.", formats: "Video, MP4", size: "50 MB" },
+  { id: 1003, grade: 10, subject: "literature", title: "Mesnevi'den Hikmetler", description: "Mevlana'nın Mesnevi'sinden bir hikayeyi analiz etme.", instructions: "Mesnevi'den seçtiğiniz bir hikayeyi okuyun. Hikayenin ana fikrini ve içerdiği alegorik (sembolik) anlamları açıklayan bir sunum hazırlayın.", formats: "Canva, PDF", size: "8 MB" },
+  { id: 1004, grade: 10, subject: "literature", title: "Modern Karagöz", description: "Geleneksel tiyatro güncellemesi.", instructions: "Güncel bir konu (örneğin sosyal medya) hakkında kısa bir Karagöz ve Hacivat diyaloğu yazın. Mümkünse basit figürlerle bu oyunu canlandırıp videosunu çekin.", formats: "Word, Video", size: "40 MB" },
+  { id: 1005, grade: 10, subject: "literature", title: "Destan Kahramanı: Modern Bir Oğuz Kağan", description: "Oğuz Kağan Destanı'ndaki motifleri modern bir hikayeye uyarlama.", instructions: "Oğuz Kağan Destanı'ndaki olağanüstü doğum, ışık motifi gibi unsurları kullanarak günümüzde geçen bir süper kahraman hikayesi yazın.", formats: "Word", size: "5 MB" },
+  { id: 1006, grade: 10, subject: "literature", title: "Koşma ve Semai Farkları", description: "Halk şiiri nazım biçimlerini karşılaştırma.", instructions: "Aşık Veysel'den bir koşma ve bir semai bularak bu iki şiiri; ölçü, kafiye şeması, konu ve dil bakımından karşılaştıran bir tablo hazırlayın.", formats: "PDF, Word", size: "2 MB" },
+  { id: 1007, grade: 10, subject: "literature", title: "Nasreddin Hoca Fıkrası Analizi", description: "Bir Nasreddin Hoca fıkrasındaki mizah ve hiciv unsurlarını bulma.", instructions: "Seçtiğiniz bir Nasreddin Hoca fıkrasını anlatın ve fıkradaki nükteyi, eleştiriyi ve verilmek istenen dersi açıklayan bir metin yazın.", formats: "Word", size: "2 MB" },
+  { id: 1008, grade: 10, subject: "literature", title: "Orta Oyunu Karakterleri Posteri", description: "Orta oyunundaki Pişekar ve Kavuklu tiplerini tanıtma.", instructions: "Pişekar ve Kavuklu'nun kostüm, konuşma özellikleri ve oyundaki rollerini anlatan görsel bir poster hazırlayın.", formats: "Poster, JPG", size: "12 MB" },
+  { id: 1009, grade: 10, subject: "literature", title: "İlahi ve Nefes: Tasavvufi Şiir", description: "Yunus Emre'den bir ilahi ile Pir Sultan Abdal'dan bir nefesi karşılaştırma.", instructions: "Yunus Emre'den bir ilahi ve Pir Sultan Abdal'dan bir nefes bularak bu iki şiiri tema, dil ve temsil ettikleri inanç sistemi açısından karşılaştırın.", formats: "Word", size: "4 MB" },
+  { id: 1010, grade: 10, subject: "literature", title: "Efsane Derleme", description: "Yaşanılan bölgeye ait bir efsaneyi araştırma ve kaydetme.", instructions: "Şehrinizle veya bölgenizle ilgili bir efsaneyi (Kız Kulesi Efsanesi, Sarıkız Efsanesi vb.) araştırın, farklı kaynaklardan derleyerek kendi üslubunuzla yeniden yazın.", formats: "PDF", size: "3 MB" },
+
+  // --- 10. SINIF FİZİK ---
+  { id: 1011, grade: 10, subject: "physics", title: "Sabit Hız Analizi", description: "Hareket deneyi.", instructions: "Oyuncak bir arabanın sabit hızla gidişini videoya çek, konum-zaman grafiğini çiz.", formats: "Video", size: "30 MB" },
+  { id: 1012, grade: 10, subject: "physics", title: "Katı Basıncı Tasarımı", description: "Basınç teknolojileri.", instructions: "Kar ayakkabısı veya çivili kramponun basıncı nasıl değiştirdiğini açıkla.", formats: "PPTX", size: "10 MB" },
+  { id: 1013, grade: 10, subject: "physics", title: "Hidrolik Sistem Modeli", description: "Pascal prensibi uygulaması.", instructions: "Şırıngalarla basit bir hidrolik kepçe veya asansör modeli yap.", formats: "MP4", size: "50 MB" },
+  { id: 1014, grade: 10, subject: "physics", title: "Gemi Nasıl Yüzer?", description: "Kaldırma kuvveti prensibi.", instructions: "Çelikten yapılan gemilerin neden batmadığını Arşimet prensibiyle sun.", formats: "PDF", size: "8 MB" },
+  { id: 1015, grade: 10, subject: "physics", title: "Devre Simülasyonu", description: "Seri-Paralel devreler.", instructions: "PhET ile devre kur. Seri ve paralel lambaların parlaklığını kıyasla.", formats: "Ekran Görüntüsü", size: "5 MB" },
+  { id: 1016, grade: 10, subject: "physics", title: "Manyetik Alan Çizimi", description: "Mıknatıs etkileşimleri.", instructions: "İki mıknatısın itme/çekme alan çizgilerini çiz. Pusula neden kuzeyi gösterir?", formats: "JPG", size: "4 MB" },
+  { id: 1017, grade: 10, subject: "physics", title: "Dalga Leğeni Deneyi", description: "Su dalgalarında kırılma.", instructions: "Tepside suyun derinliğini değiştirerek dalganın hız değişimini gözlemle.", formats: "Rapor", size: "5 MB" },
+  { id: 1018, grade: 10, subject: "physics", title: "Rezonans ve Deprem", description: "Yıkıcı etkinin fiziği.", instructions: "Rezonans nedir? Binalar neden yıkılır? Tacoma Köprüsü örneğiyle anlat.", formats: "Video", size: "20 MB" },
+  { id: 1019, grade: 10, subject: "physics", title: "Deprem Eylem Planı", description: "Afet bilinci.", instructions: "Ailen için deprem planı ve çantası hazırla. Malzemelerin fiziksel işlevini yaz.", formats: "Fotoğraf", size: "10 MB" },
+  { id: 1020, grade: 10, subject: "physics", title: "Müzik ve Fizik", description: "Ses dalgaları analizi.", instructions: "Bir enstrümanda sesin inceliğinin (frekans) neye bağlı olduğunu göster.", formats: "Video", size: "40 MB" },
+
+  // --- 11. SINIF EDEBİYAT ---
+  { id: 1101, grade: 11, subject: "literature", title: "Tarihi Gazete Manşeti", description: "Tanzimat dönemi gazeteciliği.", instructions: "Namık Kemal adına 'Hürriyet' temalı bir gazete sayfası tasarla.", formats: "Canva", size: "8 MB" },
+  { id: 1102, grade: 11, subject: "literature", title: "Makale Analizi", description: "Bilimsel metin incelemesi.", instructions: "Bir makalenin tezini, kanıtlarını ve sonucunu analiz et.", formats: "Word", size: "3 MB" },
+  { id: 1103, grade: 11, subject: "literature", title: "Sohbet Yazısı", description: "Samimi anlatım türü.", instructions: "'Gençlik ve Gelecek' üzerine okuyucuyla konuşur gibi bir yazı yaz.", formats: "Word", size: "2 MB" },
+  { id: 1104, grade: 11, subject: "literature", title: "Köşe Yazısı (Fıkra)", description: "Güncel sorun eleştirisi.", instructions: "Trafik veya çevre kirliliği hakkında iğneleyici bir köşe yazısı yaz.", formats: "PDF", size: "2 MB" },
+  { id: 1105, grade: 11, subject: "literature", title: "Servet-i Fünun Kolajı", description: "Dönem ruhunu görselleştirme.", instructions: "Dönemin karamsar, sisli havasını yansıtan bir görsel kolaj yap.", formats: "JPG", size: "12 MB" },
+  { id: 1106, grade: 11, subject: "literature", title: "Milli Hikaye Yazımı", description: "Ömer Seyfettin tarzı.", instructions: "Anadolu'da geçen, sade dilli ve milli duygulu bir hikaye yaz.", formats: "Word", size: "4 MB" },
+  { id: 1107, grade: 11, subject: "literature", title: "Röportaj Projesi", description: "Mülakat tekniği.", instructions: "Bir esnaf veya dedenle röportaj yap, metne dök.", formats: "Word", size: "5 MB" },
+  { id: 1108, grade: 11, subject: "literature", title: "Film/Kitap Eleştirisi", description: "Eleştiri türü uygulaması.", instructions: "Son izlediğin filmi kurgu, oyunculuk ve senaryo açısından eleştir.", formats: "PDF", size: "3 MB" },
+  { id: 1109, grade: 11, subject: "literature", title: "Cümle Ögeleri", description: "Dil bilgisi analizi.", instructions: "5 uzun cümleyi ögelerine ayır, renkli kalemle göster.", formats: "Fotoğraf", size: "5 MB" },
+  { id: 1110, grade: 11, subject: "literature", title: "Edebi Akım Podcast'i", description: "Akımların karşılaştırılması.", instructions: "Romantizm ve Realizmi savunan iki yazarı tartıştır (Ses kaydı).", formats: "MP3", size: "10 MB" },
+
+  // --- 11. SINIF FİZİK ---
+  { id: 1111, grade: 11, subject: "physics", title: "Vektör Haritası", description: "Yer değiştirme vektörü.", instructions: "Evinden okula gidiş rotanı çiz, yer değiştirme vektörünü göster.", formats: "JPG", size: "5 MB" },
+  { id: 1112, grade: 11, subject: "physics", title: "Nehir Problemi Animasyonu", description: "Bağıl hareket.", instructions: "Akıntılı nehirde karşıya geçen yüzücünün rotasını çizimle göster.", formats: "Video/GIF", size: "15 MB" },
+  { id: 1113, grade: 11, subject: "physics", title: "Asansör Fiziği", description: "Newton yasaları.", instructions: "Asansör hızlanırken ağırlığımız neden değişir? Serbest cisim diyagramı çiz.", formats: "PDF", size: "3 MB" },
+  { id: 1114, grade: 11, subject: "physics", title: "Basketbol Fiziği", description: "Eğik atış hareketi.", instructions: "Basketbol atışının yörüngesini, menzilini ve tepe noktasını analiz et.", formats: "PPTX", size: "8 MB" },
+  { id: 1115, grade: 11, subject: "physics", title: "Roller Coaster Enerjisi", description: "Mekanik enerji korunumu.", instructions: "Hız treninin çemberi tamamlaması için gereken yüksekliği hesapla.", formats: "Video", size: "10 MB" },
+  { id: 1116, grade: 11, subject: "physics", title: "Elektrik Alan Çizgileri", description: "Coulomb kuvveti.", instructions: "Yüklü cisimlerin elektrik alan çizgilerini simülasyonla göster.", formats: "Ekran Görüntüsü", size: "4 MB" },
+  { id: 1117, grade: 11, subject: "physics", title: "Sığaçlar Nasıl Çalışır?", description: "Kondansatör teknolojisi.", instructions: "Klavye tuşları veya dokunmatik ekranlarda sığaçların rolünü araştır.", formats: "PDF", size: "5 MB" },
+  { id: 1118, grade: 11, subject: "physics", title: "Elektrik Üretimi", description: "İndüksiyon yasası.", instructions: "Barajlarda hareket enerjisi nasıl elektriğe dönüşür? Jeneratör mantığını anlat.", formats: "Video Sunum", size: "20 MB" },
+  { id: 1119, grade: 11, subject: "physics", title: "Alternatif Akım", description: "AC devre elemanları.", instructions: "AC devresinde frekans değişirse bobin ve sığacın direnci nasıl değişir?", formats: "Rapor", size: "4 MB" },
+  { id: 1120, grade: 11, subject: "physics", title: "Transformatör Modeli", description: "Gerilim dönüştürücüler.", instructions: "Cep telefonu şarj aleti 220V'u nasıl 5V'a düşürür? Araştır.", formats: "Poster", size: "10 MB" },
+
+  // --- 12. SINIF EDEBİYAT ---
+  { id: 1201, grade: 12, subject: "literature", title: "Şiir Kolajı", description: "İkinci Yeni şiirini görselleştirme.", instructions: "İkinci Yeni şiirinin soyut imgelerini sürrealist bir kolajla anlat.", formats: "Canva", size: "20 MB" },
+  { id: 1202, grade: 12, subject: "literature", title: "Bilinç Akışı Denemesi", description: "Modern anlatım tekniği.", instructions: "Bir karakterin zihninden geçenleri noktalama olmadan, akış halinde yaz.", formats: "Word", size: "2 MB" },
+  { id: 1203, grade: 12, subject: "literature", title: "Nutuk Analizi", description: "Hitabet sanatı.", instructions: "Gençliğe Hitabe'deki vurgu, tonlama ve seslenişleri analiz et.", formats: "PDF", size: "5 MB" },
+  { id: 1204, grade: 12, subject: "literature", title: "Postmodern Kurgu", description: "Metinlerarasılık.", instructions: "Kırmızı Başlıklı Kız masalını postmodern tekniklerle yeniden kurgula.", formats: "Word", size: "3 MB" },
+  { id: 1205, grade: 12, subject: "literature", title: "Garip Akımı Bildirisi", description: "Şiir manifestosu.", instructions: "Orhan Veli ağzından, şiirde kurallara neden karşı olduğunu anlatan bir manifesto yaz.", formats: "PDF", size: "2 MB" },
+  { id: 1206, grade: 12, subject: "literature", title: "Toplumcu Roman", description: "Köy edebiyatı analizi.", instructions: "Yaşar Kemal'in eserindeki ağa-köylü çatışmasını incele.", formats: "PPTX", size: "5 MB" },
+  { id: 1207, grade: 12, subject: "literature", title: "Küçürek Öykü", description: "Minimal öykü yazımı.", instructions: "50 kelimeyi geçmeyen, derin anlamlı 3 küçürek öykü yaz.", formats: "JPG", size: "2 MB" },
+  { id: 1208, grade: 12, subject: "literature", title: "1980 Sonrası Şiir", description: "İmgeci şiir analizi.", instructions: "1980 sonrası şiirin bireysel ve imgesel yapısını bir şiir üzerinden yorumla.", formats: "PDF", size: "3 MB" },
+  { id: 1209, grade: 12, subject: "literature", title: "Sinema Uyarlaması", description: "Roman vs Film.", instructions: "Aşk-ı Memnu'nun romanı ile dizisi arasındaki 5 farkı eleştir.", formats: "Video", size: "15 MB" },
+  { id: 1210, grade: 12, subject: "literature", title: "Yazar Belgeseli", description: "Biyografik video.", instructions: "Bir Cumhuriyet dönemi yazarının hayatını belgesel tadında anlat.", formats: "MP4", size: "100 MB" },
   
-    const initialGradeFilter = useMemo(() => {
-        const gradeMatch = currentClass?.name.match(/\d+/);
-        return gradeMatch ? parseInt(gradeMatch[0], 10) : null;
-    }, [currentClass]);
-  
-    const initialSubjectFilter = useMemo(() => {
-        return teacherProfile?.branch ? branchToSubjectMap[teacherProfile.branch] || null : null;
-    }, [teacherProfile]);
-    
-    const [gradeFilter, setGradeFilter] = useState<number | null>(null);
-    const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
+  // --- 12. SINIF FİZİK ---
+  { id: 1211, grade: 12, subject: "physics", title: "Merkezcil Kuvvet", description: "Çembersel hareket hissi.", instructions: "İpe bağlı cismi çevirirken ipteki gerilmenin hıza bağlı değişimini raporla.", formats: "Rapor", size: "20 MB" },
+  { id: 1212, grade: 12, subject: "physics", title: "Uydu Yörüngeleri", description: "Kütle çekim kuvveti.", instructions: "Türksat uydusunun düşmeden nasıl döndüğünü şematize et.", formats: "PPTX", size: "5 MB" },
+  { id: 1213, grade: 12, subject: "physics", title: "Sarkaç Deneyi", description: "Basit harmonik hareket.", instructions: "İp boyunun sarkaç periyoduna etkisini evde ölçüm yaparak grafiğe dök.", formats: "Excel", size: "4 MB" },
+  { id: 1214, grade: 12, subject: "physics", title: "Girişim Deseni", description: "Dalga mekaniği.", instructions: "Lazer veya su dalgalarıyla girişim (Young deneyi) desenini gözlemle.", formats: "Fotoğraf", size: "5 MB" },
+  { id: 1215, grade: 12, subject: "physics", title: "Atom Modelleri", description: "Tarihsel gelişim.", instructions: "Atomun yapısının Rutherford'dan Modern Teori'ye evrimini poster yap.", formats: "Canva", size: "8 MB" },
+  { id: 1216, grade: 12, subject: "physics", title: "Güneş Pilleri", description: "Fotoelektrik etki.", instructions: "Güneş panelleri ışığı nasıl elektriğe çevirir? Einstein'ın teorisiyle açıkla.", formats: "PPTX", size: "6 MB" },
+  { id: 1217, grade: 12, subject: "physics", title: "İkizler Paradoksu", description: "Özel görelilik.", instructions: "Zamanın genleşmesini Interstellar filmi veya İkizler Paradoksu üzerinden anlat.", formats: "Video", size: "30 MB" },
+  { id: 1218, grade: 12, subject: "physics", title: "Maglev Trenleri", description: "Süperiletken teknolojisi.", instructions: "Süperiletkenlerin trenleri nasıl havada tuttuğunu (Meissner etkisi) araştır.", formats: "PDF", size: "10 MB" },
+  { id: 1219, grade: 12, subject: "physics", title: "Akıllı İlaçlar", description: "Nanoteknoloji.", instructions: "Nanobotların tıpta kanser tedavisinde nasıl kullanıldığını sun.", formats: "Poster", size: "8 MB" },
+  { id: 1220, grade: 12, subject: "physics", title: "Lazer Teknolojisi", description: "Uyarılmış emisyon.", instructions: "Lazer ışığının normal ışıktan farkını ve kullanım alanlarını (barkod, tıp) yaz.", formats: "PDF", size: "4 MB" }
+];
 
-    useEffect(() => {
-        setGradeFilter(initialGradeFilter);
-        setSubjectFilter(initialSubjectFilter);
-    }, [initialGradeFilter, initialSubjectFilter]);
+// Bileşenleri tanımladığımızı varsayalım.
+const App = () => { /* ... */ };
 
-
-    const filteredAssignments = useMemo(() => {
-        let filtered = assignmentsData;
-        if (gradeFilter) {
-        filtered = filtered.filter(a => a.grade === gradeFilter);
-        }
-        if (subjectFilter) {
-        filtered = filtered.filter(a => a.subject === subjectFilter);
-        }
-        if (searchTerm) {
-        filtered = filtered.filter(
-            (a) =>
-            a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            a.description.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        }
-        return filtered;
-    }, [searchTerm, gradeFilter, subjectFilter]);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Maarif Modeli Ödev Kütüphanesi</CardTitle>
-                <CardDescription>Aşağıdaki filtreleri kullanarak ödevleri aratın veya tüm ödevlere göz atın. Seçtiğiniz ödevi göndermek için üzerine tıklayın.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Ödev başlığında ara..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
-                    <div className="flex gap-2 items-center">
-                        <Button variant={gradeFilter ? "secondary" : "outline"} onClick={() => setGradeFilter(gradeFilter ? null : initialGradeFilter)}>
-                            {gradeFilter ? `${gradeFilter}. Sınıflar` : 'Tüm Sınıflar'}
-                        </Button>
-                        <Button variant={subjectFilter ? "secondary" : "outline"} onClick={() => setSubjectFilter(subjectFilter ? null : initialSubjectFilter)}>
-                            {subjectFilter ? teacherProfile?.branch : 'Tüm Dersler'}
-                        </Button>
-                    </div>
-                </div>
-                <ScrollArea className="h-[60vh] mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredAssignments.map(a => (
-                            <Card key={a.id} className="cursor-pointer hover:border-primary" onClick={() => {
-                                const fullText = `Başlık: ${a.title}\n\nAçıklama: ${a.description}\n\nYapılacaklar: ${a.instructions}`;
-                                onSelect(fullText);
-                            }}>
-                                <CardHeader>
-                                    <CardTitle className="text-base">{a.title}</CardTitle>
-                                    <div className="flex gap-2 text-xs pt-2">
-                                        <Badge variant="outline">{a.grade}. Sınıf</Badge>
-                                    </div>
-                                    <CardDescription className="pt-2">{a.description}</CardDescription>
-                                </CardHeader>
-                            </Card>
-                        ))}
-                        {filteredAssignments.length === 0 && <p className="text-muted-foreground text-center col-span-full py-8">Bu filtrelerle eşleşen ödev bulunamadı.</p>}
-                    </div>
-                </ScrollArea>
-            </CardContent>
-        </Card>
-    );
-}
-
-interface HomeworkTabProps {
-  classId: string;
-  teacherProfile: TeacherProfile | null;
-  students: Student[];
-  currentClass: Class | null;
-}
-
-export function HomeworkTab({ classId, teacherProfile, students, currentClass }: HomeworkTabProps) {
-  const { toast } = useToast();
-  const { db: firestoreDb } = useAuth();
-  const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
-  const { homeworkDocuments = [] } = localDb;
-  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-
-  // Live Data
-  const liveHomeworksQuery = useMemo(() => currentClass ? query(collection(firestoreDb, 'classes', currentClass.id, 'homeworks')) : null, [currentClass, firestoreDb]);
-  const { data: liveHomeworks, loading: liveHomeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, liveHomeworksQuery);
-  const [liveSubmissions, setLiveSubmissions] = useState<Submission[]>([]);
-  const [liveSubmissionsLoading, setLiveSubmissionsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAllSubmissions = async () => {
-        if (!firestoreDb || !currentClass || liveHomeworksLoading || liveHomeworks.length === 0) {
-            if (!liveHomeworksLoading) setLiveSubmissionsLoading(false);
-            return;
-        }
-        setLiveSubmissionsLoading(true);
-        try {
-            const submissionsPromises = liveHomeworks.map(hw => getDocs(collection(firestoreDb, 'classes', currentClass.id, 'homeworks', hw.id, 'submissions')));
-            const submissionsSnapshots = await Promise.all(submissionsPromises);
-            const fetchedSubmissions: Submission[] = submissionsSnapshots.flatMap(snapshot =>
-                snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission))
-            );
-            setLiveSubmissions(fetchedSubmissions);
-        } catch (e) {
-            console.error("Error fetching all submissions", e);
-        } finally {
-            setLiveSubmissionsLoading(false);
-        }
-    };
-    fetchAllSubmissions();
-  }, [liveHomeworks, liveHomeworksLoading, currentClass, firestoreDb]);
-
-  const { displayedHomeworks, displayedSubmissions } = useMemo(() => {
-    if (selectedRecordId) {
-        const record = homeworkDocuments.find(doc => doc.id === selectedRecordId);
-        return {
-            displayedHomeworks: record?.data.homeworks || [],
-            displayedSubmissions: record?.data.submissions || []
-        };
-    }
-    return {
-        displayedHomeworks: liveHomeworks,
-        displayedSubmissions: liveSubmissions
-    };
-  }, [selectedRecordId, homeworkDocuments, liveHomeworks, liveSubmissions]);
-
-  const handleSaveToArchive = () => {
-      if (!currentClass) return;
-      const newRecord: HomeworkDocument = {
-          id: `hw_${Date.now()}`,
-          name: `Ödev Arşivi - ${new Date().toLocaleDateString('tr-TR')}`,
-          date: new Date().toISOString(),
-          classId: currentClass.id,
-          data: {
-              homeworks: liveHomeworks,
-              submissions: liveSubmissions
-          },
-      };
-      setLocalDb(prevDb => ({ ...prevDb, homeworkDocuments: [...(prevDb.homeworkDocuments || []), newRecord] }));
-      toast({ title: 'Arşivlendi', description: 'Mevcut ödev durumu arşive kaydedildi.' });
-  };
-  
-  const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
-  const handleDeleteRecord = useCallback(() => {
-      if (!selectedRecordId) return;
-      setLocalDb(prevDb => ({ ...prevDb, homeworkDocuments: (prevDb.homeworkDocuments || []).filter(d => d.id !== selectedRecordId) }));
-      handleNewRecord();
-      toast({ title: 'Arşiv kaydı silindi', variant: 'destructive' });
-  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
-  
-  return (
-    <Tabs defaultValue="manager">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="manager"><BookOpen className="mr-2 h-4 w-4" />Ödev Yönetimi</TabsTrigger>
-        <TabsTrigger value="library"><Library className="mr-2 h-4 w-4" />Hazır Ödev Kütüphanesi</TabsTrigger>
-      </TabsList>
-      <TabsContent value="manager" className="mt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-                <HomeworkManager 
-                    classId={classId} 
-                    teacherProfile={teacherProfile} 
-                    students={students} 
-                    currentClass={currentClass} 
-                    liveHomeworks={liveHomeworks}
-                    liveSubmissions={liveSubmissions}
-                    liveHomeworksLoading={liveHomeworksLoading}
-                    liveSubmissionsLoading={liveSubmissionsLoading}
-                    onSelectHomework={setSelectedHomework}
-                />
-                 {selectedHomework && (
-                    <HomeworkSubmissionsTable
-                        homework={selectedHomework}
-                        students={students}
-                        submissions={displayedSubmissions.filter(s => s.homeworkId === selectedHomework.id)}
-                        loading={selectedRecordId ? dbLoading : liveSubmissionsLoading}
-                        classId={classId}
-                    />
-                )}
-            </div>
-            <div className="lg:col-span-1 space-y-4">
-                <RecordManager 
-                    records={homeworkDocuments.filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
-                    selectedRecordId={selectedRecordId}
-                    onSelectRecord={setSelectedRecordId}
-                    onNewRecord={handleNewRecord}
-                    onDeleteRecord={handleDeleteRecord}
-                    noun="Ödev Arşivi"
-                />
-                 <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
-                    <Save className="mr-2 h-4 w-4" /> Canlı Veriyi Arşive Kaydet
-                </Button>
-            </div>
-        </div>
-      </TabsContent>
-      <TabsContent value="library" className="mt-4">
-        <HomeworkLibrary onSelect={(text) => {
-            toast({ title: "Ödev metni panoya kopyalandı.", description: "Ödev Yönetimi sekmesine giderek metni yapıştırabilirsiniz." });
-            navigator.clipboard.writeText(text);
-        }} />
-      </TabsContent>
-    </Tabs>
-  );
-}
+// export default App; (Örnek, gerçek dosya yapınıza göre değişebilir)
