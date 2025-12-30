@@ -298,3 +298,10 @@ export interface CommunicationDocument extends Archivable {
         announcements: Announcement[];
     }
 }
+
+export interface HomeworkDocument extends Archivable {
+    data: {
+        homeworks: Homework[];
+        submissions: Submission[];
+    }
+}
