@@ -11,6 +11,7 @@ export interface Announcement {
 export interface Submission {
   id: string; // Document ID
   studentId: string;
+  studentAuthUid: string;
   studentName: string;
   studentNumber: string;
   submittedAt: string;
@@ -30,10 +31,14 @@ export interface Homework {
   classId: string;
   text: string;
   assignedDate: string;
-  seenBy: string[];
+  dueDate?: string; // Optional due date
+  criteria?: Criterion[]; // Optional criteria
   teacherName?: string;
   lessonName?: string;
+  // This is deprecated, student submissions are in a subcollection
+  submissions?: Submission[];
 }
+
 
 export interface Criterion {
   id: string;
@@ -94,7 +99,6 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   announcements?: Announcement[];
-  homeworks?: Homework[];
   election?: Election;
   dutyRoster?: RosterItem[];
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
