@@ -11,6 +11,7 @@ import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 // Define firebaseConfig directly here
 const firebaseConfig = {
@@ -31,6 +32,7 @@ interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<void>;
+  createStudentAuthAccount: (student: Student, newPassword: string) => Promise<string>;
   getStudentAuthUser: () => Promise<User | null>;
   signOut: () => Promise<void>;
   auth: Auth | null;
@@ -96,48 +98,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth || !db) return;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && !user.isAnonymous) { // Only handle non-anonymous users here
+      setLoading(true);
+      if (user) {
+        // Is it a teacher?
         const teacherProfileRef = doc(db, 'teachers', user.uid);
         const teacherProfileSnap = await getDoc(teacherProfileRef);
-
         if (teacherProfileSnap.exists()) {
-            await seedDatabase(db, user.uid);
-            const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
-            setAppUser({ type: 'teacher', data: user, profile });
+          await seedDatabase(db, user.uid);
+          const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
+          setAppUser({ type: 'teacher', data: user, profile });
         } else {
-             // If a non-anonymous user exists but has no teacher profile, sign out.
-            await firebaseSignOut(auth);
-            setAppUser(null);
+            // Is it a student?
+            const q = query(collection(db, "students"), where("authUid", "==", user.uid));
+            const studentSnapshot = await getDocs(q);
+            if (!studentSnapshot.empty) {
+                const studentDoc = studentSnapshot.docs[0];
+                const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+                const localUser: AppUser = { type: 'student', data: studentData };
+                localStorage.setItem('appUser', JSON.stringify(localUser));
+                setAppUser(localUser);
+            } else {
+                 // Unknown user, clear session
+                signOut();
+            }
         }
-      } else if (!user) { // No user is logged in
-        // Check for local student session
-        const localUser = localStorage.getItem('appUser');
-        if (!localUser) {
-            setAppUser(null);
-        }
+      } else {
+         // No user is logged in
+        localStorage.removeItem('appUser');
+        setAppUser(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [auth, db]);
+  }, [auth, db, signOut]);
   
-  // Load student from local storage
-  useEffect(() => {
-      try {
-          const localUserStr = localStorage.getItem('appUser');
-          if(localUserStr) {
-              const localUser = JSON.parse(localUserStr);
-              if (localUser && localUser.type === 'student') {
-                  setAppUser(localUser);
-              }
-          }
-      } catch (e) {
-        console.error("Could not parse student session from localStorage", e);
-      }
-      setLoading(false);
-  }, []);
-
 
   const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
   const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
@@ -216,34 +211,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const studentDoc = studentSnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-
         const loginPassword = password || studentNumber;
 
         if (studentData.password !== loginPassword) {
             throw new Error('Şifre hatalı.');
         }
-        
-        const user: AppUser = { type: 'student', data: studentData };
-        localStorage.setItem('appUser', JSON.stringify(user));
-        setAppUser(user);
 
-        // This is a temporary auth for file upload, not for session management.
-        if (!studentData.authUid) {
-             const studentEmail = `${studentNumber}@${classCode.toLowerCase()}.ito-kampus.local`;
-             try {
-                const cred = await createUserWithEmailAndPassword(auth, studentEmail, loginPassword);
-                await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
-             } catch(e) {
-                // If user already exists, sign them in to get authUid if it's missing in DB
-                 if ((e as any).code === 'auth/email-already-in-use') {
-                    const cred = await signInWithEmailAndPassword(auth, studentEmail, loginPassword);
-                    await updateDoc(studentDoc.ref, { authUid: cred.user.uid });
-                 } else {
-                     throw e;
-                 }
-             }
+        if (studentData.needsPasswordChange) {
+             const user: AppUser = { type: 'student', data: studentData };
+             localStorage.setItem('appUser', JSON.stringify(user));
+             setAppUser(user);
+             router.push('/auth/change-password');
+             return;
         }
 
+        if (!studentData.authUid) {
+            throw new Error('Öğrenci hesabı henüz tam olarak aktif edilmemiş. Lütfen şifrenizi yenileyin.');
+        }
+        
+        // This is the correct email format used during account creation in ChangePasswordForm
+        const studentEmail = `${studentData.authUid}@ito-kampus.local`;
+        await signInWithEmailAndPassword(auth, studentEmail, studentData.password);
+        
+        // onAuthStateChanged will handle setting the appUser
 
     } catch (error) {
         console.error("Öğrenci girişi hatası:", error);
@@ -255,42 +245,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     }
   };
+
+  const createStudentAuthAccount = async (student: Student, newPassword: string): Promise<string> => {
+     if (!auth || !db) {
+        throw new Error("Kimlik doğrulama veya veritabanı başlatılamadı.");
+     }
+     
+     // Use a temporary but unique identifier for the email
+     const tempAuthUid = `student_${student.id}`;
+     const studentEmail = `${tempAuthUid}@ito-kampus.local`;
+
+     try {
+        // Create the user
+        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, newPassword);
+        const authUid = userCredential.user.uid;
+        return authUid;
+     } catch(error) {
+        console.error("Firebase hesabı oluşturma hatası:", error);
+        throw new Error("Firebase kimlik doğrulama hesabı oluşturulamadı.");
+     }
+  }
   
   const getStudentAuthUser = async (): Promise<User | null> => {
-      if (!auth || !db || appUser?.type !== 'student') {
-        return null;
-      }
-      const student = appUser.data;
-      if (!student.authUid || !student.password || !student.classId) return null;
-
-      if (auth.currentUser && auth.currentUser.uid === student.authUid) {
-        return auth.currentUser;
-      }
-
-      // Re-authenticate if not already logged in as the correct user
-      try {
-          const classRef = doc(db, 'classes', student.classId);
-          const classSnap = await getDoc(classRef);
-          if (!classSnap.exists()) return null;
-          
-          const classCode = classSnap.data().code;
-          const studentEmail = `${student.number}@${classCode.toLowerCase()}.ito-kampus.local`;
-
-          const userCredential = await signInWithEmailAndPassword(auth, studentEmail, student.password);
-          return userCredential.user;
-      } catch (error) {
-          console.error("Student re-authentication failed", error);
-          return null;
-      }
+      // This function might be deprecated if the main auth flow is solid
+      return auth?.currentUser || null;
   };
 
 
   return (
-    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, getStudentAuthUser, auth, db, storage }}>
+    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, createStudentAuthAccount, getStudentAuthUser, auth, db, storage }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-
-    

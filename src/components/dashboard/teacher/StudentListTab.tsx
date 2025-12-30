@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, KeyRound, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download, ClipboardPaste } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -174,7 +174,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
-  const [newStudentEmail, setNewStudentEmail] = useState('');
   const [bulkStudents, setBulkStudents] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
@@ -261,18 +260,18 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     }
   };
 
-  const inviteStudent = async (name: string, number: string, email: string) => {
+  const addStudent = async (name: string, number: string) => {
     if (!db || !auth || !currentClass?.code) {
         throw new Error("Gerekli yapılandırma eksik.");
     }
     
-    // Add student to the database as "invited"
+    // Create student document
     await addDoc(collection(db, 'students'), {
         classId,
         name: name,
         number: number,
-        email: email, // Store email for later lookup
-        needsPasswordChange: true, // They will register and set their password
+        password: number, // Initial password is the student number
+        needsPasswordChange: true,
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
@@ -283,19 +282,18 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
 
   const handleAddStudent = async () => {
-    if (!newStudentName.trim() || !newStudentNumber.trim() || !newStudentEmail.trim()) {
+    if (!newStudentName.trim() || !newStudentNumber.trim()) {
       toast({ variant: 'destructive', title: 'Tüm alanlar zorunludur.' });
       return;
     }
 
     try {
-        await inviteStudent(newStudentName, newStudentNumber, newStudentEmail);
+        await addStudent(newStudentName, newStudentNumber);
         setNewStudentName('');
         setNewStudentNumber('');
-        setNewStudentEmail('');
-        toast({ title: 'Öğrenci davet edildi!', description: 'Öğrenci, verdiğiniz e-posta ile kayıt olmalıdır.' });
+        toast({ title: 'Öğrenci eklendi!' });
     } catch (error: any) {
-        console.error("Öğrenci davet hatası:", error);
+        console.error("Öğrenci ekleme hatası:", error);
         toast({ variant: 'destructive', title: 'Hata', description: error.message });
     }
   };
@@ -308,23 +306,22 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     const studentsToAdd = lines.map(line => {
         const parts = line.trim().split(/\s+/);
         const number = parts[0];
-        const email = parts[1];
-        const name = parts.slice(2).join(' ');
-        return { number, email, name };
-    }).filter(s => s.number && s.email && s.name);
+        const name = parts.slice(1).join(' ');
+        return { number, name };
+    }).filter(s => s.number && s.name);
 
-    toast({ title: `${studentsToAdd.length} öğrenci davet ediliyor...`, description: 'Bu işlem biraz zaman alabilir.' });
+    toast({ title: `${studentsToAdd.length} öğrenci ekleniyor...`, description: 'Bu işlem biraz zaman alabilir.' });
 
-    for (const { name, number, email } of studentsToAdd) {
+    for (const { name, number } of studentsToAdd) {
         try {
-            await inviteStudent(name, number, email);
+            await addStudent(name, number);
         } catch (error: any) {
-             toast({ variant: 'destructive', title: `${name} davet edilemedi`, description: error.message });
+             toast({ variant: 'destructive', title: `${name} eklenemedi`, description: error.message });
         }
     }
 
     setBulkStudents('');
-    toast({ title: 'Toplu davet tamamlandı!'});
+    toast({ title: 'Toplu ekleme tamamlandı!'});
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -372,17 +369,17 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </Button>
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Daveti</Button>
+                        <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Ekle</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Öğrencileri Toplu Davet Et</DialogTitle>
+                            <DialogTitle>Öğrencileri Toplu Ekle</DialogTitle>
                             <DialogDescription>
-                                Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: OkulNo Eposta Ad Soyad.
+                                Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: OkulNo Ad Soyad.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 ahmet@mail.com Ahmet Yılmaz\n456 ayse@mail.com Ayşe Kaya" className="h-48" />
-                        <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Davet Et</Button></DialogClose>
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz\n456 Ayşe Kaya" className="h-48" />
+                        <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -397,7 +394,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableHead>No</TableHead>
                 <TableHead>Ad Soyad</TableHead>
-                <TableHead>E-posta</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
@@ -405,14 +401,12 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
               <TableRow>
                 <TableCell><Input value={newStudentNumber} onChange={e => setNewStudentNumber(e.target.value)} placeholder="No" className="h-8 w-20"/></TableCell>
                 <TableCell><Input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Yeni Öğrenci Adı" className="h-8" /></TableCell>
-                <TableCell><Input value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} placeholder="ogrenci@mail.com" className="h-8" /></TableCell>
-                <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Davet Et</Button></TableCell>
+                <TableCell className="text-right"><Button size="sm" onClick={handleAddStudent}>Ekle</Button></TableCell>
               </TableRow>
               {sortedStudents.length > 0 ? sortedStudents.map(student => (
                 <TableRow key={student.id} >
                   <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.number}</TableCell>
                   <TableCell className="cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.email}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" onClick={() => handleExportStudentReport(student)}>
@@ -457,7 +451,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </TableRow>
               )) : (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground h-24">Bu sınıfta henüz öğrenci yok.</TableCell>
                 </TableRow>
               )}
             </TableBody>

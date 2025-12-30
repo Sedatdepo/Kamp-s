@@ -54,41 +54,19 @@ export function RegisterForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Check if this email is pre-registered as a student
-      // This is a simplified check. A more robust system might use a 'pending_users' collection.
-      const studentQuery = query(collection(db, 'students'), where('email', '==', values.email));
-      const studentSnapshot = await getDocs(studentQuery);
+      await setDoc(doc(db, 'teachers', user.uid), {
+        id: user.uid,
+        name: values.name,
+        email: values.email, // store email in teacher profile
+        branch: values.branch,
+        schoolName: values.schoolName,
+        principalName: values.principalName,
+      });
 
-      if (!studentSnapshot.empty) {
-        // This is a student finishing their registration
-        const studentDoc = studentSnapshot.docs[0];
-        await updateDoc(studentDoc.ref, { 
-          authUid: user.uid,
-          name: values.name, 
-          needsPasswordChange: false // They just set a password
-        });
-
-        toast({
-          title: 'Öğrenci Kaydı Başarılı',
-          description: 'Hesabınız oluşturuldu. Panele yönlendiriliyorsunuz...',
-        });
-
-      } else {
-        // This is a new teacher registration
-        await setDoc(doc(db, 'teachers', user.uid), {
-          id: user.uid,
-          name: values.name,
-          email: values.email, // store email in teacher profile
-          branch: values.branch,
-          schoolName: values.schoolName,
-          principalName: values.principalName,
-        });
-
-        toast({
-          title: 'Öğretmen Kaydı Başarılı',
-          description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
-        });
-      }
+      toast({
+        title: 'Öğretmen Kaydı Başarılı',
+        description: 'Hesabınız oluşturuldu. Yönlendiriliyorsunuz...',
+      });
       
       // AuthContext will handle the redirection
     } catch (error: any) {

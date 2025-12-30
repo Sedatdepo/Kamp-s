@@ -58,10 +58,13 @@ export function ChangePasswordForm() {
 
       toast({
         title: 'Şifre Güncellendi ve Hesap Aktif Edildi!',
-        description: 'Artık panonuza erişebilirsiniz.',
+        description: 'Artık panonuza erişebilirsiniz. Lütfen tekrar giriş yapın.',
       });
-      // The redirection will be handled by AuthContext upon state change
-      // router.push('/dashboard/student');
+
+      // Sign out the temporary session and redirect to login
+      localStorage.removeItem('appUser');
+      router.push('/');
+      
     } catch (error: any) {
         console.error("Şifre güncelleme ve hesap oluşturma hatası:", error);
       toast({

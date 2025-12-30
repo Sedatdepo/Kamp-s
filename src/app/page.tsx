@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +8,7 @@ import { TeacherLoginForm } from '@/components/auth/TeacherLoginForm';
 import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
 import { useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { appUser, loading } = useAuth();
@@ -14,8 +16,12 @@ export default function LoginPage() {
   const defaultTab = searchParams.get('tab') || 'teacher';
   const isInvite = searchParams.get('invite') === 'true';
 
-  if ((loading || appUser) && !isInvite) {
-    return null;
+  if (loading || (appUser && !isInvite)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (

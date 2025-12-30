@@ -21,8 +21,8 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
   const { toast } = useToast();
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  // The invite link now points to the registration page, passing the class code
-  const inviteLink = `${window.location.origin}/auth/register?code=${classCode}&invite=true`;
+  // The invite link now points to the student tab with the class code
+  const inviteLink = `${window.location.origin}/?tab=student&code=${classCode}&invite=true`;
 
   useEffect(() => {
     if (isOpen && inviteLink) {
