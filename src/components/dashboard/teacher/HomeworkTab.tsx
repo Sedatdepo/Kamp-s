@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Send, Plus, Trash2, Calendar as CalendarIconLucide, Clock, FileText, Search, Library, CheckCircle, XCircle, File, ChevronDown, Save, Atom, Video, Mic, Paperclip, GraduationCap, Filter, Pencil, PlusCircle, Calendar, Users, Heart, Bell, History, Printer, BarChart3, PieChart, Edit, X } from 'lucide-react';
+import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, GraduationCap, Filter, Send, ClipboardList, X, Plus, Trash2, Save, Edit, Pencil, PlusCircle, Calendar, Users, Clock, Search, Heart, Bell, History, Printer, BarChart3, PieChart } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -38,7 +38,7 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 
-// --- Gelişmiş Ödev Kütüphanesi Kodları ---
+// --- ÖDEV KÜTÜPHANESİ ---
 
 const initialRubricDefinitions = {
   research: {
@@ -194,10 +194,240 @@ const assignmentsData = [
   { id: 1217, grade: 12, subject: "physics", title: "İkizler Paradoksu", description: "Özel görelilik.", instructions: "Zamanın genleşmesini Interstellar filmi veya İkizler Paradoksu üzerinden anlat.", formats: "Video", size: "30 MB" },
   { id: 1218, grade: 12, subject: "physics", title: "Maglev Trenleri", description: "Süperiletken teknolojisi.", instructions: "Süperiletkenlerin trenleri nasıl havada tuttuğunu (Meissner etkisi) araştır.", formats: "PDF", size: "10 MB" },
   { id: 1219, grade: 12, subject: "physics", title: "Akıllı İlaçlar", description: "Nanoteknoloji.", instructions: "Nanobotların tıpta kanser tedavisinde nasıl kullanıldığını sun.", formats: "Poster", size: "8 MB" },
-  { id: 1220, grade: 12, subject: "physics", title: "Lazer Teknolojisi", description: "Uyarılmış emisyon.", instructions: "Lazer ışığının normal ışıktan farkını ve kullanım alanlarını (barkod, tıp) yaz.", formats: "PDF", size: "4 MB" }
+  { id: 1220, grade: 12, subject: "physics", title: "Lazer Teknolojisi", description: "Uyarılmış emisyon.", instructions: "Lazer ışığının normal ışıktan farkını ve kullanım alanlarını (barkod, tıp) yaz.", formats: "PDF", size: "4 MB" },
+  { id: 1226, grade: 12, subject: "physics", title: "Açısal Momentum", description: "Korunum yasası deneyi.", instructions: "Dönen bir sandalyede kollarını açıp kapatarak dönüş hızının değişimini videoya çek ve açıkla.", formats: "Video", size: "25 MB" },
+  { id: 1227, grade: 12, subject: "physics", title: "Kara Delikler", description: "Genel görelilik.", instructions: "Kara delik nedir, olay ufku ne demektir? Popüler bilim diliyle anlat.", formats: "PPTX", size: "15 MB" },
+  { id: 1228, grade: 12, subject: "physics", title: "Tıbbi Görüntüleme", description: "Fizik ve sağlık.", instructions: "MR, Tomografi ve Ultrason cihazlarının hangi fiziksel prensiplerle çalıştığını karşılaştır.", formats: "Tablo (PDF)", size: "5 MB" },
+  { id: 1229, grade: 12, subject: "physics", title: "Yarı İletkenler", description: "Elektronik teknolojisi.", instructions: "Diyot ve transistör nedir? Bilgisayar çiplerinin temelini nasıl oluştururlar?", formats: "Poster", size: "8 MB" },
+  { id: 1230, grade: 12, subject: "physics", title: "Big Bang Teorisi", description: "Evrenin oluşumu.", instructions: "Evrenin genişlemesi ve Büyük Patlama teorisinin kanıtlarını (Kozmik Ardalan Işıması) araştır.", formats: "Video Sunum", size: "20 MB" },
+  { id: 1236, grade: 12, subject: "physics", title: "Çamaşır Makinesi Santrifüjü", description: "Merkezcil kuvvet.", instructions: "Sıkma programında çamaşırların neden dışa savrulduğunu (eylemsizlik) ve suyun nasıl ayrıldığını fiziksel olarak açıkla.", formats: "Video", size: "20 MB" },
+  { id: 1237, grade: 12, subject: "physics", title: "Market Barkod Okuyucuları", description: "Lazer teknolojisi.", instructions: "Kasiyerin okuttuğu barkod sisteminde lazer ışığının yansıması ve veriye dönüşmesi sürecini araştır.", formats: "PDF", size: "5 MB" },
+  { id: 1238, grade: 12, subject: "physics", title: "Otomatik Kapı Sensörleri", description: "Fotoelektrik olay.", instructions: "AVM girişlerindeki kapıların sizi gördüğünde açılmasını sağlayan fotosel sistemini (ışık-akım ilişkisi) şematize et.", formats: "PPTX", size: "8 MB" },
+  { id: 1239, grade: 12, subject: "physics", title: "MR Cihazı Güvenliği", description: "Süperiletken ve Manyetizma.", instructions: "MR çektirecek birinin neden üzerindeki metalleri çıkarması gerekir? Cihazın içindeki dev mıknatısı araştır.", formats: "Poster", size: "6 MB" },
+  { id: 1240, grade: 12, subject: "physics", title: "GPS ve Zaman Kayması", description: "Özel görelilik.", instructions: "Uydulardaki saatlerin dünyadaki saatlerden neden farklı çalıştığını ve Einstein'ın teorisinin GPS doğruluğu için önemini anlat.", formats: "Video Sunum", size: "25 MB" }
 ];
 
-// Bileşenleri tanımladığımızı varsayalım.
-const App = () => { /* ... */ };
+const HomeworkLibrary = () => {
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  
+  // Modallar
+  const [rubricModalOpen, setRubricModalOpen] = useState(false);
+  const [addRubricModalOpen, setAddRubricModalOpen] = useState(false);
+  const [editAssignmentModalOpen, setEditAssignmentModalOpen] = useState(false);
+  const [createAssignmentModalOpen, setCreateAssignmentModalOpen] = useState(false);
+  const [assignSettingsModalOpen, setAssignSettingsModalOpen] = useState(false);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [assignDetails, setAssignDetails] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  
+  const [assignments, setAssignments] = useState(assignmentsData);
+  const [rubrics, setRubrics] = useState(initialRubricDefinitions);
 
-// export default App; (Örnek, gerçek dosya yapınıza göre değişebilir)
+  const toggleFavorite = (id) => {
+    setFavorites(prev => 
+      prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleFavoritesOnly = () => {
+    setShowFavoritesOnly(!showFavoritesOnly);
+    if (!showFavoritesOnly) {
+      setGradeFilter('');
+      setSubjectFilter('');
+    }
+  };
+
+  const filteredAssignments = assignments.filter(item => {
+    if (showFavoritesOnly) {
+      return favorites.includes(item.id);
+    }
+    if (gradeFilter === '' || subjectFilter === '') return false;
+    
+    const gradeMatch = item.grade === parseInt(gradeFilter);
+    const subjectMatch = item.subject === subjectFilter;
+    return gradeMatch && subjectMatch;
+  });
+
+  const handleAssignClick = (assignment) => {
+    setSelectedAssignment(assignment);
+    setAssignSettingsModalOpen(true);
+  };
+
+  const handleAssignConfirm = (details) => {
+    setAssignDetails(details);
+    const newHistoryItem = {
+      title: selectedAssignment.title,
+      class: details.class,
+      date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    };
+    setHistory(prev => [newHistoryItem, ...prev]);
+    setSuccessModalOpen(true);
+  };
+
+  const handleShowRubric = (assignment) => {
+    setSelectedAssignment(assignment);
+    setRubricModalOpen(true);
+  };
+
+  const handleEditAssignment = (assignment) => {
+    setSelectedAssignment(assignment);
+    setEditAssignmentModalOpen(true);
+  };
+  
+  const handlePrintAssignment = (assignment) => {
+    setSelectedAssignment(assignment);
+    setPrintModalOpen(true);
+  }
+
+  const handleSaveEditedAssignment = (updatedFields) => {
+    setAssignments(prev => prev.map(a => 
+      a.id === selectedAssignment.id ? { ...a, ...updatedFields } : a
+    ));
+  };
+
+  const handleSaveNewAssignment = (newAssignment) => {
+    const assignmentWithId = {
+        ...newAssignment,
+        id: Date.now(), 
+        grade: parseInt(newAssignment.grade)
+    };
+    setAssignments(prev => [assignmentWithId, ...prev]);
+  };
+
+  const handleSaveNewRubric = (newRubric) => {
+    const key = `custom_${Date.now()}`;
+    setRubrics(prev => ({
+      ...prev,
+      [key]: newRubric
+    }));
+  };
+
+  const hasSelection = (gradeFilter !== '' && subjectFilter !== '') || showFavoritesOnly;
+
+  return (
+    <div className="bg-gray-50 text-gray-800 font-sans p-4">
+      <Header 
+          onOpenAddRubric={() => setAddRubricModalOpen(true)} 
+          onOpenCreateAssignment={() => setCreateAssignmentModalOpen(true)}
+          history={history}
+          toggleFavoritesOnly={toggleFavoritesOnly}
+          showFavoritesOnly={showFavoritesOnly}
+      />
+      
+      <main>
+        
+        <div className="my-8">
+           {!hasSelection && (
+             <StatsCards 
+               total={assignments.length} 
+               assignedCount={history.length} 
+               favoritesCount={favorites.length} 
+             />
+           )}
+        </div>
+
+        {!showFavoritesOnly && (
+          <FilterBar 
+            gradeFilter={gradeFilter}
+            subjectFilter={subjectFilter}
+            setGradeFilter={setGradeFilter}
+            setSubjectFilter={setSubjectFilter}
+            disabled={showFavoritesOnly}
+          />
+        )}
+
+        {showFavoritesOnly && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
+            <span className="text-red-700 font-medium flex items-center gap-2"><Heart className="fill-current" size={18}/> Favori Ödevleriniz Listeleniyor</span>
+            <button onClick={toggleFavoritesOnly} className="text-sm text-red-600 hover:underline">Tümüne Dön</button>
+          </div>
+        )}
+
+        {!hasSelection ? (
+          <EmptyState />
+        ) : filteredAssignments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAssignments.map(item => (
+              <AssignmentCard 
+                key={item.id} 
+                item={item} 
+                onAssign={handleAssignClick}
+                onShowRubric={handleShowRubric}
+                onEdit={handleEditAssignment}
+                isFavorite={favorites.includes(item.id)}
+                onToggleFavorite={toggleFavorite}
+                onPrint={handlePrintAssignment}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+            <div className="bg-gray-100 p-4 rounded-full mb-4">
+              <Filter size={32} className="text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">Sonuç Bulunamadı</h3>
+            <p className="text-gray-500">
+              {showFavoritesOnly 
+                ? "Henüz favorilere eklediğiniz bir ödev yok." 
+                : "Seçili filtrelere uygun ödev yok. Lütfen filtreleri değiştirin."}
+            </p>
+          </div>
+        )}
+      </main>
+
+      {/* MODALLAR */}
+      <AssignSettingsModal 
+        isOpen={assignSettingsModalOpen}
+        onClose={() => setAssignSettingsModalOpen(false)}
+        assignment={selectedAssignment}
+        onConfirm={handleAssignConfirm}
+      />
+
+      <SuccessModal 
+        isOpen={successModalOpen} 
+        onClose={() => setSuccessModalOpen(false)} 
+        assignment={selectedAssignment}
+        details={assignDetails}
+      />
+
+      <RubricModal 
+        isOpen={rubricModalOpen}
+        onClose={() => setRubricModalOpen(false)}
+        assignment={selectedAssignment}
+        rubrics={rubrics}
+        onAddRubricClick={() => setAddRubricModalOpen(true)}
+      />
+
+      <AddRubricModal 
+        isOpen={addRubricModalOpen}
+        onClose={() => setAddRubricModalOpen(false)}
+        onSave={handleSaveNewRubric}
+      />
+
+      <EditAssignmentModal 
+        isOpen={editAssignmentModalOpen}
+        onClose={() => setEditAssignmentModalOpen(false)}
+        assignment={selectedAssignment}
+        onSave={handleSaveEditedAssignment}
+      />
+
+      <CreateAssignmentModal
+        isOpen={createAssignmentModalOpen}
+        onClose={() => setCreateAssignmentModalOpen(false)}
+        onSave={handleSaveNewAssignment}
+      />
+      
+      <PrintPreviewModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        assignment={selectedAssignment}
+      />
+    </div>
+  );
+};
