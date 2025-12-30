@@ -30,11 +30,9 @@ export interface Homework {
   classId: string;
   text: string;
   assignedDate: string;
-  dueDate?: string;
   seenBy: string[];
   teacherName?: string;
   lessonName?: string;
-  criteria?: Criterion[];
 }
 
 export interface Criterion {

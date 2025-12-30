@@ -70,28 +70,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 <p className="text-sm font-semibold">{homework.text}</p>
                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
-                    {homework.dueDate && <div className="flex items-center gap-1.5 font-medium text-red-600"><CalendarIcon className="h-3 w-3" /><span>Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>}
                  </div>
             </div>
-
-             {homework.criteria && (
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="criteria">
-                        <AccordionTrigger className="text-xs font-semibold">
-                            <div className="flex items-center gap-2">
-                                <ClipboardList className="h-4 w-4" /> Değerlendirme Kriterleri
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                             <ul className="list-disc pl-5 space-y-1 text-xs text-muted-foreground">
-                                {homework.criteria.map(c => (
-                                    <li key={c.id}>{c.name} <span className="font-bold">({c.max} Puan)</span></li>
-                                ))}
-                            </ul>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            )}
 
             {existingSubmission ? (
                 <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>

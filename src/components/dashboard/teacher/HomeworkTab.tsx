@@ -10,9 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BookOpen, Send, Plus, Trash2, CalendarIcon, Clock, FileText } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -28,16 +25,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { exportHomeworkStatusToRtf } from '@/lib/word-export';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
 
 
 function HomeworkManager({ classId, teacherProfile, students }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[] }) {
   const [homeworkText, setHomeworkText] = useState('');
-  const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [criteriaType, setCriteriaType] = useState<'perf' | 'proj' | 'behavior'>('perf');
   const { toast } = useToast();
   const { db } = useAuth();
   
@@ -51,36 +42,19 @@ function HomeworkManager({ classId, teacherProfile, students }: { classId: strin
       return;
     }
 
-    let selectedCriteria: Criterion[] = [];
-    switch(criteriaType) {
-        case 'proj':
-            selectedCriteria = teacherProfile?.projCriteria || INITIAL_PROJ_CRITERIA;
-            break;
-        case 'behavior':
-             selectedCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
-             break;
-        case 'perf':
-        default:
-            selectedCriteria = teacherProfile?.perfCriteria || INITIAL_PERF_CRITERIA;
-            break;
-    }
-
     const newHomework: Omit<Homework, 'id'> = {
       classId: classId,
       text: homeworkText,
       assignedDate: new Date().toISOString(),
-      dueDate: dueDate?.toISOString(),
       seenBy: [],
       teacherName: teacherProfile?.name,
       lessonName: teacherProfile?.branch,
-      criteria: selectedCriteria
     };
 
     try {
       const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
       await addDoc(homeworksColRef, newHomework);
       setHomeworkText('');
-      setDueDate(undefined);
       toast({ title: 'Ödev gönderildi!' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Ödev gönderilemedi.' });
@@ -141,30 +115,6 @@ function HomeworkManager({ classId, teacherProfile, students }: { classId: strin
               placeholder="Ödev açıklamasını buraya yazın..."
               rows={5}
             />
-            <div className='grid grid-cols-2 gap-2'>
-                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dueDate ? format(dueDate, "PPP", { locale: tr }) : <span>Teslim tarihi seçin</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
-                    </PopoverContent>
-                </Popover>
-
-                <Select value={criteriaType} onValueChange={(value: any) => setCriteriaType(value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Değerlendirme Kriteri" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="perf">Performans Kriterleri</SelectItem>
-                        <SelectItem value="proj">Proje Kriterleri</SelectItem>
-                        <SelectItem value="behavior">Davranış Kriterleri</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
             <Button onClick={handleAddHomework} className="w-full">
                 <Send className="mr-2 h-4 w-4"/>
                 Gönder
@@ -196,12 +146,6 @@ function HomeworkManager({ classId, teacherProfile, students }: { classId: strin
                             <Clock className="h-3 w-3" />
                             <span>Veriliş: {format(new Date(hw.assignedDate), 'd MMMM yyyy', { locale: tr })}</span>
                          </div>
-                         {hw.dueDate && (
-                            <div className="flex items-center gap-2 font-medium text-red-600">
-                                <CalendarIcon className="h-3 w-3" />
-                                <span>Teslim: {format(new Date(hw.dueDate), 'd MMMM yyyy', { locale: tr })}</span>
-                            </div>
-                         )}
                       </div>
                     </div>
                     <AlertDialog>
