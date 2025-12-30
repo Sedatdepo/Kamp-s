@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { doc, updateDoc, collection, addDoc, deleteDoc, query } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Homework, TeacherProfile, Student } from '@/lib/types';
+import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { BookOpen, Atom, FileText, Video, Mic, Paperclip, CheckCircle, Graduatio
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format }s from 'date-fns';
+import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
   AlertDialog,
