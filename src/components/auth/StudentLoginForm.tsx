@@ -44,16 +44,16 @@ export function StudentLoginForm() {
   useEffect(() => {
     // Set password to student number by default if it's empty
     const studentNumber = form.watch('studentNumber');
-    if (studentNumber && !form.getValues('password')) {
+    const password = form.watch('password');
+    if (studentNumber && !password) {
         form.setValue('password', studentNumber);
     }
-  }, [form, form.watch('studentNumber')]);
+  }, [form]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Pass the password from the form to signInStudent
       await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
 
       toast({
@@ -129,3 +129,5 @@ export function StudentLoginForm() {
     </Form>
   );
 }
+
+    
