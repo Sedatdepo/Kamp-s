@@ -87,7 +87,7 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
                     <p className="text-sm font-semibold">{homework.text}</p>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
                         <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMM yyyy', { locale: tr })}</span></div>
-                        {homework.dueDate && <div className="flex items-center gap-1.5 font-medium text-red-600"><CalendarIcon className="h-3 w-3" /><span>Teslim: {format(new Date(homework.dueDate), 'd MMM yyyy', { locale: tr })}</span></div>}
+                        {homework.dueDate && <div className="flex items-center gap-1.5 font-medium text-red-600"><CalendarIcon className="h-3 w-3" /><span>Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>}
                     </div>
                 </div>
                 <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
@@ -148,76 +148,99 @@ const HomeworkItem = ({ homework, studentId, classId, currentClass }: { homework
     )
 }
 
-export function HomeworkTab() {
-  const { appUser, db } = useAuth();
-  
-  if (appUser?.type !== 'student') return null;
-  const studentId = appUser.data.id;
-  const classId = appUser.data.classId;
+function HomeworkTabContent({ studentId, classId }: { studentId: string, classId: string }) {
+    const { db } = useAuth();
+    const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
+    const studentClass = useMemo(() => classes.find(c => c.id === classId), [classes, classId]);
 
-  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+    useEffect(() => {
+        if (db && studentClass && studentClass.homeworks && studentId) {
+        const unseenHomeworks = studentClass.homeworks.filter(
+            (hw) => !hw.seenBy?.includes(studentId)
+        );
 
-  useEffect(() => {
-    // Mark homeworks as seen when the component mounts
-    if (db && studentClass && studentClass.homeworks && studentId) {
-      const unseenHomeworks = studentClass.homeworks.filter(
-        (hw) => !hw.seenBy?.includes(studentId)
-      );
+        if (unseenHomeworks.length > 0) {
+            const classRef = doc(db, 'classes', studentClass.id);
+            const updatedHomeworks = studentClass.homeworks.map((hw) => {
+            if (!hw.seenBy?.includes(studentId)) {
+                return {
+                ...hw,
+                seenBy: [...(hw.seenBy || []), studentId],
+                };
+            }
+            return hw;
+            });
+            updateDoc(classRef, { homeworks: updatedHomeworks });
+        }
+        }
+    }, [studentClass, studentId, db]);
+    
+    const homeworks = useMemo(() => {
+        return [...(studentClass?.homeworks || [])].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [studentClass]);
 
-      if (unseenHomeworks.length > 0) {
-        const classRef = doc(db, 'classes', studentClass.id);
-        const updatedHomeworks = studentClass.homeworks.map((hw) => {
-          if (!hw.seenBy?.includes(studentId)) {
-            return {
-              ...hw,
-              seenBy: [...(hw.seenBy || []), studentId],
-            };
-          }
-          return hw;
-        });
-        updateDoc(classRef, { homeworks: updatedHomeworks });
-      }
+
+    if (classLoading) {
+        return (
+        <Card>
+            <CardContent className="flex justify-center items-center p-6">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
+        );
     }
-  }, [studentClass, studentId, db]);
-
-  if (classLoading) {
+    
     return (
-      <Card>
-        <CardContent className="flex justify-center items-center p-6">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <Card>
+        <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+                <BookText className="h-6 w-6"/>
+                Ödevlerim
+            </CardTitle>
+            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {homeworks.length > 0 ? (
+                homeworks.map((hw) => (
+                <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} currentClass={studentClass} />
+                ))
+            ) : (
+                <div className="text-center py-10 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                </div>
+            )}
+            </div>
         </CardContent>
-      </Card>
+        </Card>
+    );
+}
+
+export function HomeworkTab() {
+  const { appUser, loading } = useAuth();
+  
+  if (loading) {
+    return (
+        <Card>
+            <CardContent className="flex justify-center items-center p-6">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
     );
   }
-  
-  const homeworks = useMemo(() => {
-    return [...(studentClass?.homeworks || [])].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-  }, [studentClass]);
 
+  if (appUser?.type !== 'student') {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Yetki Hatası</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Bu sayfayı görüntülemek için öğrenci olarak giriş yapmalısınız.</p>
+            </CardContent>
+        </Card>
+    );
+  }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline flex items-center gap-2">
-            <BookText className="h-6 w-6"/>
-            Ödevlerim
-        </CardTitle>
-        <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {homeworks.length > 0 ? (
-            homeworks.map((hw) => (
-              <HomeworkItem key={hw.id} homework={hw} studentId={studentId} classId={classId} currentClass={studentClass} />
-            ))
-          ) : (
-            <div className="text-center py-10 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <HomeworkTabContent studentId={appUser.data.id} classId={appUser.data.classId} />;
 }
