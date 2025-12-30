@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where } from 'firebase/firestore';
+import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission, HomeworkDocument } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +46,7 @@ const branchToSubjectMap: { [key: string]: string } = {
     "Fizik": "physics",
 };
 
-const HomeworkManager = ({ classId, teacherProfile, students, currentClass, liveHomeworks, liveSubmissions, liveHomeworksLoading, liveSubmissionsLoading, onSelectHomework }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null, liveHomeworks: Homework[], liveSubmissions: Submission[], liveHomeworksLoading: boolean, liveSubmissionsLoading: boolean, onSelectHomework: (hw: Homework) => void; }) => {
+const HomeworkManager = ({ classId, teacherProfile, students, currentClass, liveHomeworks, liveSubmissions, liveHomeworksLoading, liveSubmissionsLoading, onSelectHomework }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null, liveHomeworks: Homework[], liveSubmissions: Submission[], liveHomeworksLoading: boolean, liveSubmissionsLoading: boolean, onSelectHomework: (hw: Homework | null) => void; }) => {
     const [homeworkText, setHomeworkText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const { toast } = useToast();
@@ -101,7 +101,7 @@ const HomeworkManager = ({ classId, teacherProfile, students, currentClass, live
             await deleteDoc(homeworkRef);
 
             toast({ title: 'Ödev ve tüm teslimatlar silindi.' });
-            onSelectHomework(null as any); // Reset selected homework
+            onSelectHomework(null); // Reset selected homework
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
         }
@@ -450,7 +450,7 @@ export function HomeworkTab({ classId, teacherProfile, students, currentClass }:
   const { toast } = useToast();
   const { db: firestoreDb } = useAuth();
   const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
-  const { homeworkDocuments = [] } = db;
+  const { homeworkDocuments = [] } = localDb;
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
