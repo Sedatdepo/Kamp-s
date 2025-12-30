@@ -91,7 +91,7 @@ function HomeworkManager({ classId, teacherProfile }: { classId: string, teacher
         <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
-              <BookOpen className="h-6 w-6" />
+              <Plus className="h-6 w-6" />
               Yeni Ödev Gönder
             </CardTitle>
             <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir ödev oluşturun.</CardDescription>
@@ -373,7 +373,7 @@ const EditAssignmentModal = ({ isOpen, onClose, assignment, onSave }: { isOpen: 
 
   if (!isOpen || !assignment) return null;
 
-  const handleSave = () => {
+  const handleSaveClick = () => {
     onSave(formData);
     onClose();
   };
@@ -426,7 +426,7 @@ const EditAssignmentModal = ({ isOpen, onClose, assignment, onSave }: { isOpen: 
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
           <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
           <button 
-            onClick={handleSave}
+            onClick={handleSaveClick}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
           >
             <Save size={16} /> Değişiklikleri Kaydet
@@ -786,9 +786,9 @@ const HomeworkTemplates = ({ classId, teacherProfile }: { classId: string, teach
     <div className="space-y-6">
         <div className="flex justify-between items-center">
             <div>
-                <h2 className="text-2xl font-bold text-gray-800">Performans Ödevleri (2025-2026 Maarif Modeli)</h2>
+                <h2 className="text-2xl font-bold text-gray-800">Performans Ödevleri (Maarif Modeli)</h2>
                 <p className="text-gray-500">
-                Yüklediğiniz yıllık planlardaki güncel tema ve kazanımlara uygun, araştırma odaklı performans ödevlerini filtreleyin ve özelleştirin.
+                Yıllık planlardaki güncel tema ve kazanımlara uygun, araştırma odaklı performans ödevlerini filtreleyin ve özelleştirin.
                 </p>
             </div>
             <Button onClick={() => setAddRubricModalOpen(true)}>

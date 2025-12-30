@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
@@ -17,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { auth, db, storage, appUser } = useAuth();
+    const { db, storage, getStudentAuthUser } = useAuth();
     const { toast } = useToast();
     const [submissionText, setSubmissionText] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -39,7 +40,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId || appUser?.type !== 'student') return;
+        if (!db || !storage || !classId) return;
 
         setIsSubmitting(true);
 
@@ -47,10 +48,11 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
         if (file) {
             try {
-                // Ensure authUid is available for storage rules
-                if (!appUser.data.authUid) throw new Error("Öğrenci kimliği doğrulaması eksik.");
+                const studentAuthUser = await getStudentAuthUser();
+                if (!studentAuthUser) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu. Lütfen tekrar giriş yapın.");
+
                 const storageRef = ref(storage, `homework_submissions/${classId}/${homework.id}/${student.id}/${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
+                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: studentAuthUser.uid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = {
                     url: downloadURL,
@@ -65,13 +67,14 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             }
         }
 
+        const studentAuthUser = await getStudentAuthUser();
         const newSubmission: Omit<Submission, 'id'> = {
             studentId: student.id,
             studentName: student.name,
             studentNumber: student.number,
             submittedAt: new Date().toISOString(),
             homeworkId: homework.id,
-            studentAuthUid: appUser.data.authUid,
+            studentAuthUid: studentAuthUser?.uid,
             text: submissionText,
             ...(fileData && { file: fileData }),
         };
@@ -233,5 +236,3 @@ export function HomeworkTab() {
 
   return <HomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
-
-    

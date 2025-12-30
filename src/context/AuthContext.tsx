@@ -1,13 +1,11 @@
-
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, writeBatch, setDoc, Firestore, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -24,10 +22,9 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-
 export type AppUser = 
   | { type: 'teacher'; data: User; profile: TeacherProfile | null }
-  | { type: 'student'; data: Student; authUser: User };
+  | { type: 'student'; data: Student }; // Removed authUser from here
 
 interface AuthContextType {
   appUser: AppUser | null;
@@ -37,12 +34,14 @@ interface AuthContextType {
   auth: Auth | null;
   db: Firestore | null;
   storage: FirebaseStorage | null;
+  getStudentAuthUser: () => Promise<User | null>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/', '/auth/register'];
 const studentChangePassRoute = '/auth/change-password';
+const STUDENT_STORAGE_KEY = 'ito_kampus_student';
 
 async function seedDatabase(db: Firestore, teacherId: string) {
     const teacherRef = doc(db, 'teachers', teacherId);
@@ -50,7 +49,6 @@ async function seedDatabase(db: Firestore, teacherId: string) {
     if (!teacherSnap.exists()) return;
 
     const teacherData = teacherSnap.data();
-
     const updates: Partial<TeacherProfile> = {};
 
     if (!teacherData.perfCriteria) updates.perfCriteria = INITIAL_PERF_CRITERIA;
@@ -69,17 +67,13 @@ async function seedDatabase(db: Firestore, teacherId: string) {
     }
     
     if (Object.keys(updates).length > 0) {
-        console.log("Seeding teacher profile with default grading data...");
         await setDoc(teacherRef, updates, { merge: true });
-        console.log("Seeding complete.");
     }
 }
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -89,11 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   
   useEffect(() => {
-    setIsMounted(true);
     if (!auth || !db) return;
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
-      if (user && !user.isAnonymous) { // Handle only non-anonymous users here
+
+    // Separate listener for TEACHER auth
+    const unsubscribeTeacher = onAuthStateChanged(auth, async (user) => {
+      if (user && !user.isAnonymous) {
         const teacherProfileRef = doc(db, 'teachers', user.uid);
         const teacherProfileSnap = await getDoc(teacherProfileRef);
 
@@ -102,34 +96,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
             setAppUser({ type: 'teacher', data: user, profile });
         } else {
-            // It's a non-anonymous user but not a teacher, sign them out.
             await firebaseSignOut(auth);
             setAppUser(null);
         }
-      } else if (user && user.isAnonymous) {
-          // If there's an anonymous user, we need to find their student data
-          const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
-          const studentSnapshot = await getDocs(studentQuery);
-          if (!studentSnapshot.empty) {
-              const studentDoc = studentSnapshot.docs[0];
-              const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-              setAppUser({ type: 'student', data: studentData, authUser: user });
-          } else {
-              // Anonymous user without a matching student record, sign them out.
-              await firebaseSignOut(auth);
-              setAppUser(null);
-          }
-      } else if (!user) { // User is logged out
-        setAppUser(null);
+      } else if (appUser?.type === 'teacher' && !user) {
+        // Teacher logged out, but student might be in localStorage
+        const studentData = localStorage.getItem(STUDENT_STORAGE_KEY);
+        if (!studentData) {
+            setAppUser(null);
+        }
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    // Student session check from localStorage
+    try {
+        const studentDataStr = localStorage.getItem(STUDENT_STORAGE_KEY);
+        if (studentDataStr) {
+            const studentData = JSON.parse(atob(studentDataStr));
+            setAppUser({ type: 'student', data: studentData });
+        }
+    } catch (e) {
+        console.error("Failed to parse student data from storage", e);
+        localStorage.removeItem(STUDENT_STORAGE_KEY);
+    }
+    setLoading(false);
+
+    return () => unsubscribeTeacher();
   }, [auth, db]);
 
   const signOut = useCallback(async () => {
-    if (!auth) return;
-    await firebaseSignOut(auth);
+    localStorage.removeItem(STUDENT_STORAGE_KEY);
+    if(auth) {
+        await firebaseSignOut(auth);
+    }
     setAppUser(null);
     router.push('/');
   }, [auth, router]);
@@ -145,6 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (doc.exists()) {
                 const updatedStudent = { id: doc.id, ...doc.data() } as Student;
                  setAppUser(prev => prev?.type === 'student' ? { ...prev, data: updatedStudent } : prev);
+                 // Update localStorage as well
+                 localStorage.setItem(STUDENT_STORAGE_KEY, btoa(JSON.stringify(updatedStudent)));
             } else {
                 signOut();
             }
@@ -162,59 +164,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [studentId, teacherUid, db, signOut]);
 
   useEffect(() => {
-    if (loading || !isMounted) {
-      return; 
-    }
+    if (loading) return;
 
     const isPublic = publicRoutes.includes(pathname) || pathname.startsWith('/auth/register');
     if (pathname === '/' && typeof window !== 'undefined' && window.location.search.includes('invite=true')) {
         return;
     }
-
     const isChangePass = pathname === studentChangePassRoute;
 
     if (appUser) {
       if (appUser.type === 'student') {
         if (appUser.data.needsPasswordChange) {
-          if (!isChangePass) {
-            router.push(studentChangePassRoute);
-          }
+          if (!isChangePass) router.push(studentChangePassRoute);
         } else if (isPublic || isChangePass) {
           router.push('/dashboard/student');
         }
       } else if (appUser.type === 'teacher') {
-        if (isPublic) {
-          router.push('/dashboard/teacher');
-        }
+        if (isPublic) router.push('/dashboard/teacher');
       }
     } else {
       if (!isPublic && !isChangePass) {
         router.push('/');
       }
     }
-  }, [loading, isMounted, appUser, pathname, router]);
+  }, [loading, appUser, pathname, router]);
 
   const signInStudent = async (classCode: string, studentNumber: string) => {
-    if (!db || !auth) throw new Error("Veritabanı başlatılamadı.");
+    if (!db) throw new Error("Veritabanı başlatılamadı.");
 
-    // Step 1: Sign out any existing user to start fresh
-    if (auth.currentUser) {
-        await firebaseSignOut(auth);
-    }
-    
-    // Step 2: Sign in anonymously to get a temporary, authorized user session.
-    const userCredential = await signInAnonymously(auth);
-    const user = userCredential.user;
-
-    // Step 3: Now that we are authenticated, query the database.
     const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
     const classSnapshot = await getDocs(classQuery);
-    if (classSnapshot.empty) {
-        await user.delete(); // Clean up the anonymous user
-        throw new Error('Bu koda sahip bir sınıf bulunamadı.');
-    }
-    const classDoc = classSnapshot.docs[0];
-    const classId = classDoc.id;
+    if (classSnapshot.empty) throw new Error('Bu koda sahip bir sınıf bulunamadı.');
+    
+    const classId = classSnapshot.docs[0].id;
     
     const studentQuery = query(
         collection(db, 'students'), 
@@ -223,30 +205,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     const studentSnapshot = await getDocs(studentQuery);
     
-    if (studentSnapshot.empty) {
-        await user.delete(); // Clean up the anonymous user
-        throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
-    }
+    if (studentSnapshot.empty) throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
+
     const studentDoc = studentSnapshot.docs[0];
     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
     
-    // Step 4: Check password
     if (studentData.password !== studentNumber) {
-        await user.delete(); // Clean up the anonymous user
         throw new Error('Şifre (öğrenci numarası) hatalı.');
     }
     
-    // Step 5: Update the student document with the anonymous auth UID. This is now allowed.
-    const studentRef = doc(db, 'students', studentData.id);
-    await updateDoc(studentRef, { authUid: user.uid });
-    
-    // Step 6: Set the app user state, which will trigger the useEffect hooks for redirection
-    const updatedStudentData = { ...studentData, authUid: user.uid };
-    setAppUser({ type: 'student', data: updatedStudentData, authUser: user });
+    // Store student data in local storage instead of logging in with Firebase
+    localStorage.setItem(STUDENT_STORAGE_KEY, btoa(JSON.stringify(studentData)));
+    setAppUser({ type: 'student', data: studentData });
   };
   
+  const getStudentAuthUser = useCallback(async (): Promise<User | null> => {
+      if (!auth) return null;
+      if (auth.currentUser && auth.currentUser.isAnonymous) {
+          return auth.currentUser;
+      }
+      try {
+          const userCredential = await signInAnonymously(auth);
+          return userCredential.user;
+      } catch (error) {
+          console.error("Anonymous sign-in failed", error);
+          return null;
+      }
+  }, [auth]);
+
   return (
-    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, auth, db, storage }}>
+    <AuthContext.Provider value={{ appUser, loading, signInStudent, signOut, auth, db, storage, getStudentAuthUser }}>
       {children}
     </AuthContext.Provider>
   );

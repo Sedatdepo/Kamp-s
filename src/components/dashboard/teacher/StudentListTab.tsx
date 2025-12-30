@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, useRef } from 'react';
@@ -50,7 +49,7 @@ interface StudentListTabProps {
 }
 
 function ChatModal({ student, teacherId }: { student: Student; teacherId: string }) {
-    const { db, storage } = useAuth();
+    const { db, storage, getStudentAuthUser } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -85,8 +84,11 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 
         if (file) {
             try {
+                const studentAuthUser = await getStudentAuthUser();
+                if (!studentAuthUser) throw new Error("Öğrenci kimliği doğrulaması başarısız oldu.");
+
                 const storageRef = ref(storage, `chat_files/${teacherId}/${student.id}/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
+                const snapshot = await uploadBytes(storageRef, file, { customMetadata: { studentAuthUid: studentAuthUser.uid } });
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 fileData = {
                     url: downloadURL,
@@ -95,7 +97,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                 };
             } catch (error) {
                 console.error("File upload error: ", error);
-                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: "Dosya yüklenirken bir sorun oluştu." });
+                toast({ variant: "destructive", title: "Dosya Yükleme Hatası", description: (error as Error).message });
                 setIsUploading(false);
                 return;
             }
@@ -507,5 +509,3 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
-
-    
