@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -208,1249 +207,237 @@ const assignmentsData = [
   { id: 1240, grade: 12, subject: "physics", title: "GPS ve Zaman Kayması", description: "Özel görelilik.", instructions: "Uydulardaki saatlerin dünyadaki saatlerden neden farklı çalıştığını ve Einstein'ın teorisinin GPS doğruluğu için önemini anlat.", formats: "Video Sunum", size: "25 MB" }
 ];
 
-
-// --- BİLEŞENLER ---
-
-const Header = ({ onOpenAddRubric, onOpenCreateAssignment, history, toggleFavoritesOnly, showFavoritesOnly }) => {
-  const [showHistory, setShowHistory] = useState(false);
-
-  return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-10 gap-4">
-      <div className="flex items-center gap-3 w-full md:w-auto">
-        <div className="bg-blue-600 p-2 rounded-lg text-white">
-          <GraduationCap size={24} />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">E-Ödev Yönetim Paneli</h1>
-          <p className="text-sm text-gray-500">Hoş Geldiniz, Öğretmenim</p>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end relative">
-        <button 
-          onClick={toggleFavoritesOnly}
-          className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors border ${showFavoritesOnly ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
-        >
-          <Heart size={16} className={showFavoritesOnly ? "fill-current" : ""} />
-          Favorilerim
-        </button>
-
-        <button 
-          onClick={onOpenCreateAssignment}
-          className="flex items-center gap-2 text-sm font-medium text-white bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-        >
-          <PlusCircle size={16} />
-          Yeni Ödev
-        </button>
-        
-        <button 
-          onClick={onOpenAddRubric}
-          className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
-        >
-          <Plus size={16} />
-          Kriter
-        </button>
-
-        <div className="relative">
-          <button 
-            onClick={() => setShowHistory(!showHistory)}
-            className="p-2 rounded-full hover:bg-gray-100 relative text-gray-600"
-          >
-            <Bell size={20} />
-            {history.length > 0 && (
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            )}
-          </button>
-          
-          {showHistory && (
-            <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                <span className="font-bold text-gray-700 text-sm">Son İşlemler</span>
-                <button onClick={() => setShowHistory(false)}><X size={14} className="text-gray-400" /></button>
-              </div>
-              <div className="max-h-64 overflow-y-auto">
-                {history.length === 0 ? (
-                  <div className="p-4 text-center text-gray-400 text-sm">Henüz işlem yapılmadı.</div>
-                ) : (
-                  history.map((item, index) => (
-                    <div key={index} className="p-3 border-b border-gray-50 hover:bg-gray-50 flex gap-3">
-                      <div className="mt-1"><CheckCircle size={16} className="text-green-500" /></div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 line-clamp-1">{item.title}</p>
-                        <p className="text-xs text-gray-500">{item.class} • {item.date}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
-  );
-};
-
-const StatsCards = ({ total, assignedCount, favoritesCount }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-      <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
-        <BookOpen size={24} />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500 font-medium">Toplam Ödev</p>
-        <h3 className="text-2xl font-bold text-gray-800">{total}</h3>
-      </div>
-    </div>
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-      <div className="p-3 bg-green-50 text-green-600 rounded-full">
-        <CheckCircle size={24} />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500 font-medium">Bu Ay Atanan</p>
-        <h3 className="text-2xl font-bold text-gray-800">{assignedCount}</h3>
-      </div>
-    </div>
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-      <div className="p-3 bg-red-50 text-red-600 rounded-full">
-        <Heart size={24} />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500 font-medium">Favoriler</p>
-        <h3 className="text-2xl font-bold text-gray-800">{favoritesCount}</h3>
-      </div>
-    </div>
-  </div>
-);
-
-const FilterBar = ({ gradeFilter, subjectFilter, setGradeFilter, setSubjectFilter, disabled }) => (
-  <div className={`flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-opacity ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
-    <div className="flex items-center gap-2 text-gray-700 font-medium min-w-fit">
-      <Filter size={18} />
-      Filtrele:
-    </div>
-    
-    <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-      <div className="relative">
-        <select 
-          value={gradeFilter}
-          onChange={(e) => setGradeFilter(e.target.value)}
-          className={`appearance-none w-full md:w-48 border text-gray-700 py-2.5 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${gradeFilter === '' ? 'border-blue-400 bg-blue-50 font-semibold' : 'border-gray-300 bg-gray-50'}`}
-        >
-          <option value="" disabled>Sınıf Seçiniz</option>
-          <option value="9">9. Sınıf</option>
-          <option value="10">10. Sınıf</option>
-          <option value="11">11. Sınıf</option>
-          <option value="12">12. Sınıf</option>
-        </select>
-      </div>
-
-      <div className="relative">
-        <select 
-          value={subjectFilter}
-          onChange={(e) => setSubjectFilter(e.target.value)}
-          className={`appearance-none w-full md:w-48 border text-gray-700 py-2.5 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${subjectFilter === '' ? 'border-blue-400 bg-blue-50 font-semibold' : 'border-gray-300 bg-gray-50'}`}
-        >
-          <option value="" disabled>Ders Seçiniz</option>
-          <option value="physics">Fizik</option>
-          <option value="literature">Türk Dili ve Edebiyatı</option>
-        </select>
-      </div>
-    </div>
-  </div>
-);
-
-const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border-2 border-dashed border-blue-100 text-center px-4">
-    <div className="bg-blue-50 p-6 rounded-full mb-6">
-      <Search size={48} className="text-blue-400" />
-    </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">Ödevleri Görüntülemek İçin Seçim Yapınız</h3>
-    <p className="text-gray-500 max-w-md mx-auto">
-      İlgili sınıf ve dersi yukarıdaki filtrelerden seçerek, o gruba ait performans ödevlerini listeleyebilirsiniz.
-    </p>
-  </div>
-);
-
-const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onToggleFavorite, onPrint }) => {
-  const isPhysics = item.subject === 'physics';
+const HomeworkLibrary = () => {
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
-  const getFormatIcon = () => {
-    if (item.formats.includes('Video')) return <Video size={14} />;
-    if (item.formats.includes('Ses')) return <Mic size={14} />;
-    return <FileText size={14} />;
+  // Modals
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [rubricModalOpen, setRubricModalOpen] = useState(false);
+  const [addRubricModalOpen, setAddRubricModalOpen] = useState(false);
+  const [editAssignmentModalOpen, setEditAssignmentModalOpen] = useState(false);
+  const [createAssignmentModalOpen, setCreateAssignmentModalOpen] = useState(false);
+  const [assignSettingsModalOpen, setAssignSettingsModalOpen] = useState(false);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [assignDetails, setAssignDetails] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  
+  const [assignments, setAssignments] = useState(assignmentsData);
+  const [rubrics, setRubrics] = useState(initialRubricDefinitions);
+
+  const toggleFavorite = (id) => {
+    setFavorites(prev => 
+      prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
+    );
   };
 
-  return (
-    <div className={`group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col h-full ${isPhysics ? 'hover:border-cyan-400' : 'hover:border-rose-400'}`}>
-      <div className={`h-1.5 w-full ${isPhysics ? 'bg-cyan-600' : 'bg-rose-600'}`}></div>
-
-      <div className="p-5 flex-grow flex flex-col relative">
-        <div className="absolute top-4 right-4 flex gap-2 z-10">
-          <button 
-            onClick={() => onPrint(item)}
-            className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-            title="Ödevi Yazdır"
-          >
-            <Printer size={16} />
-          </button>
-          <button 
-            onClick={() => onToggleFavorite(item.id)}
-            className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-50 hover:text-gray-500'}`}
-            title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}
-          >
-            <Heart size={16} className={isFavorite ? "fill-current" : ""} />
-          </button>
-          <button 
-            onClick={() => onEdit(item)}
-            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-            title="Ödevi Düzenle"
-          >
-            <Pencil size={16} />
-          </button>
-        </div>
-
-        <div className="flex justify-between items-start mb-3 pr-24">
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
-            isPhysics ? 'bg-cyan-50 text-cyan-700' : 'bg-rose-50 text-rose-700'
-          }`}>
-            {isPhysics ? <Atom size={12} /> : <BookOpen size={12} />}
-            {isPhysics ? 'Fizik' : 'Edebiyat'}
-          </div>
-          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">
-            {item.grade}. Sınıf
-          </span>
-        </div>
-
-        <h3 className="text-lg font-bold text-gray-800 mb-2 leading-tight group-hover:text-blue-600 transition-colors pr-6">
-          {item.title}
-        </h3>
-        
-        <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-          {item.description}
-        </p>
-
-        <div className="bg-gray-50 border-l-4 border-gray-300 p-3 rounded-r-md mb-4 text-xs text-gray-600 italic relative">
-           <span className="font-semibold block not-italic mb-1 text-gray-700">Öğrenci Yönergesi:</span>
-           "{item.instructions}"
-        </div>
-
-        <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 font-medium">
-          <div className="flex items-center gap-1.5" title="Kabul Edilen Formatlar">
-            {getFormatIcon()}
-            {item.formats}
-          </div>
-          <div className="flex items-center gap-1.5" title="Maksimum Dosya Boyutu">
-            <Paperclip size={14} />
-            Max: {item.size}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 pt-0 grid grid-cols-2 gap-3">
-        <button
-          onClick={() => onShowRubric(item)}
-          className="py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-xs"
-        >
-          <ClipboardList size={14} />
-          Kriterler
-        </button>
-        <button 
-          onClick={() => onAssign(item)}
-          className={`py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all active:scale-95 ${
-            isPhysics 
-              ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-cyan-200' 
-              : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
-          } shadow-sm hover:shadow-md text-xs`}
-        >
-          <Send size={14} />
-          Sınıfa Ata
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Ödev Düzenleme Modalı
-const EditAssignmentModal = ({ isOpen, onClose, assignment, onSave }) => {
-  const [formData, setFormData] = useState({ title: '', description: '', instructions: '' });
-
-  useEffect(() => {
-    if (assignment) {
-      setFormData({
-        title: assignment.title,
-        description: assignment.description,
-        instructions: assignment.instructions
-      });
+  const toggleFavoritesOnly = () => {
+    setShowFavoritesOnly(!showFavoritesOnly);
+    if (!showFavoritesOnly) {
+      setGradeFilter('');
+      setSubjectFilter('');
     }
-  }, [assignment]);
-
-  if (!isOpen || !assignment) return null;
-
-  const handleSave = () => {
-    onSave(formData);
-    onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Edit size={18} className="text-blue-600" />
-            Ödevi Düzenle
-          </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Ödev Başlığı</label>
-            <input 
-              type="text" 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
-              value={formData.title}
-              onChange={e => setFormData({...formData, title: e.target.value})}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Kısa Açıklama</label>
-            <textarea 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-gray-800 text-sm"
-              rows="2"
-              value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
-            />
-            <p className="text-xs text-gray-500 mt-1">Kart üzerinde görünecek özet bilgi.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Öğrenci Yönergesi</label>
-            <textarea 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-gray-800 bg-gray-50 font-medium"
-              rows="4"
-              value={formData.instructions}
-              onChange={e => setFormData({...formData, instructions: e.target.value})}
-            />
-            <p className="text-xs text-gray-500 mt-1">Öğrencinin ne yapması gerektiğini detaylıca anlatın.</p>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
-          <button 
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
-          >
-            <Save size={16} /> Değişiklikleri Kaydet
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// YENİ: Ödev Oluşturma Modalı
-const CreateAssignmentModal = ({ isOpen, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    instructions: '',
-    grade: '9',
-    subject: 'physics',
-    formats: 'PDF, Word',
-    size: '10 MB'
+  const filteredAssignments = assignments.filter(item => {
+    if (showFavoritesOnly) {
+      return favorites.includes(item.id);
+    }
+    if (gradeFilter === '' || subjectFilter === '') return false;
+    
+    const gradeMatch = item.grade === parseInt(gradeFilter);
+    const subjectMatch = item.subject === subjectFilter;
+    return gradeMatch && subjectMatch;
   });
 
-  if (!isOpen) return null;
-
-  const handleSave = () => {
-    if (!formData.title || !formData.description) return alert("Başlık ve açıklama zorunludur.");
-    onSave(formData);
-    onClose();
-    // Reset form defaults
-    setFormData({
-        title: '',
-        description: '',
-        instructions: '',
-        grade: '9',
-        subject: 'physics',
-        formats: 'PDF, Word',
-        size: '10 MB'
-    });
+  const handleAssignClick = (assignment) => {
+    setSelectedAssignment(assignment);
+    setAssignSettingsModalOpen(true);
   };
+
+  const handleAssignConfirm = (details) => {
+    setAssignDetails(details);
+    const newHistoryItem = {
+      title: selectedAssignment.title,
+      class: details.class,
+      date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    };
+    setHistory(prev => [newHistoryItem, ...prev]);
+    setSuccessModalOpen(true);
+  };
+
+  const handleShowRubric = (assignment) => {
+    setSelectedAssignment(assignment);
+    setRubricModalOpen(true);
+  };
+
+  const handleEditAssignment = (assignment) => {
+    setSelectedAssignment(assignment);
+    setEditAssignmentModalOpen(true);
+  };
+
+  const handlePrintAssignment = (assignment) => {
+    setSelectedAssignment(assignment);
+    setPrintModalOpen(true);
+  }
+
+  const handleSaveEditedAssignment = (updatedFields) => {
+    setAssignments(prev => prev.map(a => 
+      a.id === selectedAssignment.id ? { ...a, ...updatedFields } : a
+    ));
+  };
+
+  const handleSaveNewAssignment = (newAssignment) => {
+    const assignmentWithId = {
+        ...newAssignment,
+        id: Date.now(), 
+        grade: parseInt(newAssignment.grade)
+    };
+    setAssignments(prev => [assignmentWithId, ...prev]);
+  };
+
+  const handleSaveNewRubric = (newRubric) => {
+    const key = `custom_${Date.now()}`;
+    setRubrics(prev => ({
+      ...prev,
+      [key]: newRubric
+    }));
+  };
+
+  const hasSelection = (gradeFilter !== '' && subjectFilter !== '') || showFavoritesOnly;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <PlusCircle size={20} className="text-green-600" />
-            Yeni Ödev Oluştur
-          </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Sınıf Seviyesi</label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none"
-                value={formData.grade}
-                onChange={e => setFormData({...formData, grade: e.target.value})}
-              >
-                <option value="9">9. Sınıf</option>
-                <option value="10">10. Sınıf</option>
-                <option value="11">11. Sınıf</option>
-                <option value="12">12. Sınıf</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Ders</label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none"
-                value={formData.subject}
-                onChange={e => setFormData({...formData, subject: e.target.value})}
-              >
-                <option value="physics">Fizik</option>
-                <option value="literature">Türk Dili ve Edebiyatı</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Ödev Başlığı</label>
-            <input 
-              type="text" 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none"
-              placeholder="Örn: Newton'un Hareket Yasaları"
-              value={formData.title}
-              onChange={e => setFormData({...formData, title: e.target.value})}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Kısa Açıklama</label>
-            <textarea 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none"
-              rows="2"
-              placeholder="Ödevin amacı ve kapsamı hakkında kısa bilgi..."
-              value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Öğrenci Yönergesi</label>
-            <textarea 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50"
-              rows="3"
-              placeholder="Öğrenci bu ödevi yaparken hangi adımları izlemeli?"
-              value={formData.instructions}
-              onChange={e => setFormData({...formData, instructions: e.target.value})}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div>
-               <label className="block text-sm font-bold text-gray-700 mb-1">Kabul Edilen Formatlar</label>
-               <input 
-                 type="text" 
-                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none text-sm"
-                 placeholder="Örn: PDF, Word, Video"
-                 value={formData.formats}
-                 onChange={e => setFormData({...formData, formats: e.target.value})}
-               />
-             </div>
-             <div>
-               <label className="block text-sm font-bold text-gray-700 mb-1">Maks. Dosya Boyutu</label>
-               <input 
-                 type="text" 
-                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none text-sm"
-                 placeholder="Örn: 20 MB"
-                 value={formData.size}
-                 onChange={e => setFormData({...formData, size: e.target.value})}
-               />
-             </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
-          <button 
-            onClick={handleSave}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
-          >
-            <Save size={16} /> Ödevi Oluştur
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// YENİ: Atama Ayarları Modalı (Sınıf ve Tarih Seçimi)
-const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm }: {isOpen: boolean, onClose: () => void, assignment: any, onConfirm: (details: any) => void}) => {
-  const [selectedClass, setSelectedClass] = useState('');
-  const [dueDate, setDueDate] = useState('');
-
-  // Ödev her değiştiğinde sınıf listesini resetle ve varsayılanları ayarla
-  useEffect(() => {
-    if (assignment) {
-      setSelectedClass(`${assignment.grade}-A`); // Varsayılan sınıf
-      // Varsayılan tarih: bugünden 1 hafta sonra
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      setDueDate(nextWeek.toISOString().split('T')[0]);
-    }
-  }, [assignment]);
-
-  if (!isOpen || !assignment) return null;
-
-  // Sınıf seviyesine göre şubeleri oluştur (Örn: 9-A, 9-B...)
-  const sections = ['A', 'B', 'C', 'D', 'E'];
-  const classOptions = sections.map(section => `${assignment.grade}-${section}`);
-
-  const handleConfirm = () => {
-    onConfirm({ class: selectedClass, date: dueDate });
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-2xl">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Send size={18} className="text-blue-600" />
-            Ödev Atama Ayarları
-          </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800 mb-2">
-            <span className="font-bold">{assignment.title}</span> ödevi için atama yapıyorsunuz.
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-              <Users size={16} /> Hangi Şubeye Atanacak?
-            </label>
-            <select 
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-            >
-              {classOptions.map(cls => (
-                <option key={cls} value={cls}>{cls} Sınıfı</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-              <Clock size={16} /> Son Teslim Tarihi
-            </label>
-            <div className="relative">
-              <input 
-                type="date" 
-                className="w-full border border-gray-300 rounded-lg p-2.5 pl-10 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-              <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
-          <button 
-            onClick={handleConfirm}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
-          >
-            <CheckCircle size={16} /> Atamayı Tamamla
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Yeni Kriter Seti Ekleme Modalı
-const AddRubricModal = ({ isOpen, onClose, onSave }: {isOpen: boolean, onClose: () => void, onSave: (rubric: any) => void}) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [items, setItems] = useState([{ label: '', score: '', desc: '' }]);
-
-  if (!isOpen) return null;
-
-  const handleAddItem = () => {
-    setItems([...items, { label: '', score: '', desc: '' }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-  };
-
-  const handleItemChange = (index: number, field: string, value: string) => {
-    const newItems: any = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
-  };
-
-  const totalScore = items.reduce((sum, item) => sum + (parseInt(item.score) || 0), 0);
-
-  const handleSave = () => {
-    if (!title || !description) return alert("Lütfen başlık ve açıklama giriniz.");
-    if (items.some(i => !i.label || !i.score)) return alert("Lütfen tüm kriter alanlarını doldurunuz.");
-    
-    onSave({ title, description, items });
-    onClose();
-    setTitle('');
-    setDescription('');
-    setItems([{ label: '', score: '', desc: '' }]);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">Yeni Değerlendirme Kriteri Ekle</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kriter Başlığı</label>
-            <input 
-              type="text" 
-              className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="Örn: Proje Değerlendirme Ölçeği"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Açıklama</label>
-            <textarea 
-              className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="Bu kriter seti hangi tür ödevlerde kullanılacak?"
-              rows={2}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="border-t pt-4">
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-medium text-gray-700">Değerlendirme Maddeleri</label>
-              <div className={`text-sm font-bold ${totalScore === 100 ? 'text-green-600' : 'text-orange-500'}`}>
-                Toplam Puan: {totalScore} / 100
-              </div>
-            </div>
-            
-            {items.map((item, index) => (
-              <div key={index} className="flex gap-2 mb-2 items-start bg-gray-50 p-3 rounded-lg">
-                <div className="flex-grow space-y-2">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Madde Adı (Örn: Sunum)" 
-                      className="flex-grow border rounded p-1 text-sm"
-                      value={item.label}
-                      onChange={e => handleItemChange(index, 'label', e.target.value)}
-                    />
-                    <input 
-                      type="number" 
-                      placeholder="Puan" 
-                      className="w-16 border rounded p-1 text-sm text-center"
-                      value={item.score}
-                      onChange={e => handleItemChange(index, 'score', e.target.value)}
-                    />
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Açıklama (Örn: Ses tonu ve hakimiyet)" 
-                    className="w-full border rounded p-1 text-xs text-gray-600"
-                    value={item.desc}
-                    onChange={e => handleItemChange(index, 'desc', e.target.value)}
-                  />
-                </div>
-                <button 
-                  onClick={() => handleRemoveItem(index)}
-                  className="p-2 text-red-500 hover:bg-red-100 rounded self-center"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-
-            <button 
-              onClick={handleAddItem}
-              className="mt-2 text-sm text-blue-600 flex items-center gap-1 hover:underline"
-            >
-              <Plus size={14} /> Yeni Madde Ekle
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg">İptal</button>
-          <button 
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
-          >
-            <Save size={16} /> Kaydet
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Rubrik Görüntüleme ve Seçme Modalı
-const RubricModal = ({ isOpen, onClose, assignment, rubrics, onAddRubricClick }: {isOpen: boolean, onClose: () => void, assignment: any, rubrics: any, onAddRubricClick: () => void}) => {
-  const [selectedRubricKey, setSelectedRubricKey] = React.useState('');
-
-  React.useEffect(() => {
-    if (isOpen && assignment) {
-      const defaultKey = getRubricType(assignment.formats);
-      setSelectedRubricKey(defaultKey);
-    }
-  }, [isOpen, assignment]);
-
-  if (!isOpen || !assignment) return null;
-
-  const currentRubric = rubrics[selectedRubricKey] || rubrics['research'];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Değerlendirme Kriterleri</h2>
-            <p className="text-sm text-gray-500 mt-1">{assignment.title}</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-            <X size={20} className="text-gray-500" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto">
-          
-          <div className="mb-6 flex gap-2 items-end">
-            <div className="flex-grow">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kullanılacak Kriter Seti</label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                value={selectedRubricKey}
-                onChange={(e) => setSelectedRubricKey(e.target.value)}
-              >
-                <optgroup label="Standart Kriterler">
-                  <option value="research">Araştırma ve Yazma Rubriği</option>
-                  <option value="multimedia">Multimedya ve Sunum Rubriği</option>
-                  <option value="visual">Görsel Tasarım Rubriği</option>
-                </optgroup>
-                <optgroup label="Özel Kriterler">
-                  {Object.keys(rubrics).filter(k => k.startsWith('custom')).map(key => (
-                    <option key={key} value={key}>{rubrics[key].title}</option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-            <button 
-              onClick={() => { onClose(); onAddRubricClick(); }}
-              className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 border border-blue-200" 
-              title="Yeni Kriter Seti Ekle"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
-
-          <div className="mb-4 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
-             <span className="font-semibold">Açıklama:</span> {currentRubric.description}
-          </div>
-
-          <div className="space-y-4">
-            {currentRubric.items.map((item: any, index: number) => (
-              <div key={index} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-300 transition-colors shadow-sm">
-                <div className="flex-grow">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">{index + 1}</span>
-                    <h4 className="font-bold text-gray-800">{item.label}</h4>
-                  </div>
-                  <p className="text-sm text-gray-600 ml-8">{item.desc}</p>
-                </div>
-                <div className="flex items-center justify-center min-w-[80px]">
-                  <div className="text-center">
-                    <span className="block text-2xl font-bold text-blue-600">{item.score}</span>
-                    <span className="text-xs text-gray-400 uppercase font-semibold">Puan</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex justify-end items-center border-t border-gray-100 pt-4">
-             <div className="text-right">
-                <span className="text-sm text-gray-500 mr-2">Toplam Puan:</span>
-                <span className="text-2xl font-bold text-gray-900">
-                  {currentRubric.items.reduce((acc: number, curr: any) => acc + (parseInt(curr.score) || 0), 0)}
-                </span>
-             </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-          <button 
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-medium transition-colors"
-          >
-            Tamam
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SuccessModal = ({ isOpen, onClose, assignment, details }: {isOpen: boolean, onClose: () => void, assignment: any, details: any}) => {
-  if (!isOpen || !assignment) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
-        <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-            <CheckCircle size={32} />
+        <Header 
+            onOpenAddRubric={() => setAddRubricModalOpen(true)} 
+            onOpenCreateAssignment={() => setCreateAssignmentModalOpen(true)}
+            history={history}
+            toggleFavoritesOnly={toggleFavoritesOnly}
+            showFavoritesOnly={showFavoritesOnly}
+        />
+        
+        <main>
+          
+          <div className="mb-8">
+             {!hasSelection && (
+               <StatsCards 
+                 total={assignments.length} 
+                 assignedCount={history.length} 
+                 favoritesCount={favorites.length} 
+               />
+             )}
           </div>
-          
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Ödev Atandı!</h2>
-          
-          <div className="bg-gray-50 p-4 rounded-xl w-full mb-6 border border-gray-100">
-            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{assignment.title}</h3>
-            <p className="text-sm text-gray-500 mb-2">{assignment.grade}. Sınıf • {assignment.subject === 'physics' ? 'Fizik' : 'Edebiyat'}</p>
-            
-            {details && (
-              <div className="flex justify-between items-center text-xs font-medium text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
-                <span className="flex items-center gap-1"><Users size={12}/> {details.class}</span>
-                <span className="flex items-center gap-1"><Calendar size={12}/> {details.date}</span>
-              </div>
-            )}
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Performans Ödevleri (2025-2026 Maarif Modeli)</h2>
+            <p className="text-gray-500">
+              Yüklediğiniz yıllık planlardaki güncel tema ve kazanımlara uygun, araştırma odaklı performans ödevlerini filtreleyin ve özelleştirin.
+            </p>
           </div>
-          
-          <p className="text-gray-500 text-sm mb-6">
-            Ödev başarıyla ilgili sınıfın paneline gönderildi. Öğrencilere bildirim iletildi.
-          </p>
 
-          <button 
-            onClick={onClose}
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-xl font-medium transition-colors"
-          >
-            Tamam
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+          {!showFavoritesOnly && (
+            <FilterBar 
+              gradeFilter={gradeFilter}
+              subjectFilter={subjectFilter}
+              setGradeFilter={setGradeFilter}
+              setSubjectFilter={setSubjectFilter}
+              disabled={showFavoritesOnly}
+            />
+          )}
 
-// YENİ: Yazdırma Önizleme Modalı
-const PrintPreviewModal = ({ isOpen, onClose, assignment }: {isOpen: boolean, onClose: () => void, assignment: any}) => {
-  if (!isOpen || !assignment) return null;
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
-      <style>
-        {`
-          @media print {
-            body > *:not(.print-modal-container) {
-              display: none !important;
-            }
-            .print-modal-container {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              background: white;
-              z-index: 9999;
-              display: block !important;
-            }
-            .print-hidden {
-              display: none !important;
-            }
-            .print-page {
-              padding: 40px !important;
-              box-shadow: none !important;
-              border: none !important;
-            }
-          }
-        `}
-      </style>
-      
-      <div className="print-modal-container bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col print:h-auto print:shadow-none print:w-full">
-        {/* Header - Ekranda görünür, baskıda gizlenir */}
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center print-hidden rounded-t-xl">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Printer size={18} className="text-blue-600" />
-            Ödev Çıktısı Önizleme
-          </h2>
-          <div className="flex gap-2">
-            <button 
-              onClick={handlePrint}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Printer size={16} /> Yazdır
-            </button>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
-          </div>
-        </div>
-
-        {/* Yazdırılacak İçerik */}
-        <div className="p-8 overflow-y-auto flex-grow bg-gray-100 print:bg-white print:p-0 print-page">
-          <div className="bg-white max-w-2xl mx-auto p-12 shadow-sm min-h-full border border-gray-200 print:border-0 print:shadow-none print:max-w-full">
-            
-            {/* Kağıt Başlığı */}
-            <div className="border-b-2 border-black pb-4 mb-8 flex justify-between items-end">
-              <div>
-                <h1 className="text-2xl font-bold text-black mb-1">PERFORMANS ÖDEVİ</h1>
-                <p className="text-sm text-gray-600">Eğitim - Öğretim Yılı: 2025-2026</p>
-              </div>
-              <div className="text-right">
-                <span className="block text-sm font-bold text-black uppercase">{assignment.subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
-                <span className="block text-sm text-gray-600">{assignment.grade}. Sınıf</span>
-              </div>
+          {showFavoritesOnly && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
+              <span className="text-red-700 font-medium flex items-center gap-2"><Heart className="fill-current" size={18}/> Favori Ödevleriniz Listeleniyor</span>
+              <button onClick={toggleFavoritesOnly} className="text-sm text-red-600 hover:underline">Tümüne Dön</button>
             </div>
+          )}
 
-            {/* Öğrenci Bilgileri Alanı */}
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 p-4 border border-gray-300 rounded bg-gray-50 print:bg-white">
-              <div className="border-b border-dashed border-gray-400 pb-1">
-                <span className="font-bold text-sm">Adı Soyadı:</span>
-              </div>
-              <div className="border-b border-dashed border-gray-400 pb-1">
-                <span className="font-bold text-sm">Sınıfı / No:</span>
-              </div>
-              <div className="border-b border-dashed border-gray-400 pb-1">
-                <span className="font-bold text-sm">Teslim Tarihi:</span>
-              </div>
-              <div className="border-b border-dashed border-gray-400 pb-1">
-                <span className="font-bold text-sm">Aldığı Not:</span>
-              </div>
+          {!hasSelection ? (
+            <EmptyState />
+          ) : filteredAssignments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAssignments.map(item => (
+                <AssignmentCard 
+                  key={item.id} 
+                  item={item} 
+                  onAssign={handleAssignClick}
+                  onShowRubric={handleShowRubric}
+                  onEdit={handleEditAssignment}
+                  isFavorite={favorites.includes(item.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onPrint={handlePrintAssignment}
+                />
+              ))}
             </div>
-
-            {/* Ödev İçeriği */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                  <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">1</span>
-                  Ödev Konusu
-                </h3>
-                <div className="p-4 border-l-4 border-gray-300 bg-gray-50 print:bg-white print:border-black text-gray-800">
-                  <h4 className="font-bold mb-1">{assignment.title}</h4>
-                  <p className="text-sm">{assignment.description}</p>
-                </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                <Filter size={32} className="text-gray-400" />
               </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                  <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">2</span>
-                  Yönerge
-                </h3>
-                <div className="text-sm text-gray-700 leading-relaxed text-justify">
-                  {assignment.instructions}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                  <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">3</span>
-                  Teslim Formatı
-                </h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                  <li>Bu ödev <strong>{assignment.formats}</strong> formatında hazırlanmalıdır.</li>
-                  <li>Dijital dosya boyutu <strong>{assignment.size}</strong>'ı geçmemelidir.</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Alt Bilgi */}
-            <div className="mt-16 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
-              <p>Bu belge E-Ödev Yönetim Sistemi üzerinden oluşturulmuştur.</p>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-const HomeworkLibrary = () => {
-    const [gradeFilter, setGradeFilter] = useState('');
-    const [subjectFilter, setSubjectFilter] = useState('');
-    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-    
-    // Modallar
-    const [modalOpen, setModalOpen] = useState(false);
-    const [rubricModalOpen, setRubricModalOpen] = useState(false);
-    const [addRubricModalOpen, setAddRubricModalOpen] = useState(false);
-    const [editAssignmentModalOpen, setEditAssignmentModalOpen] = useState(false);
-    const [createAssignmentModalOpen, setCreateAssignmentModalOpen] = useState(false);
-    const [assignSettingsModalOpen, setAssignSettingsModalOpen] = useState(false);
-    const [printModalOpen, setPrintModalOpen] = useState(false);
-    
-    const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-    const [assignDetails, setAssignDetails] = useState<any>(null);
-    const [history, setHistory] = useState<any[]>([]);
-    const [favorites, setFavorites] = useState<any[]>([]);
-    
-    const [assignments, setAssignments] = useState(assignmentsData);
-    const [rubrics, setRubrics] = useState(initialRubricDefinitions);
-  
-    const toggleFavorite = (id: number) => {
-      setFavorites(prev => 
-        prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
-      );
-    };
-  
-    const toggleFavoritesOnly = () => {
-      setShowFavoritesOnly(!showFavoritesOnly);
-      if (!showFavoritesOnly) {
-        setGradeFilter('');
-        setSubjectFilter('');
-      }
-    };
-  
-    const filteredAssignments = assignments.filter(item => {
-      if (showFavoritesOnly) {
-        return favorites.includes(item.id);
-      }
-      if (gradeFilter === '' || subjectFilter === '') return false;
-      
-      const gradeMatch = item.grade === parseInt(gradeFilter);
-      const subjectMatch = item.subject === subjectFilter;
-      return gradeMatch && subjectMatch;
-    });
-  
-    const handleAssignClick = (assignment: any) => {
-      setSelectedAssignment(assignment);
-      setAssignSettingsModalOpen(true);
-    };
-  
-    const handleAssignConfirm = (details: any) => {
-      setAssignDetails(details);
-      const newHistoryItem = {
-        title: selectedAssignment.title,
-        class: details.class,
-        date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-      };
-      setHistory(prev => [newHistoryItem, ...prev]);
-      setModalOpen(true);
-    };
-  
-    const handleShowRubric = (assignment: any) => {
-      setSelectedAssignment(assignment);
-      setRubricModalOpen(true);
-    };
-  
-    const handleEditAssignment = (assignment: any) => {
-      setSelectedAssignment(assignment);
-      setEditAssignmentModalOpen(true);
-    };
-  
-    const handlePrintAssignment = (assignment: any) => {
-      setSelectedAssignment(assignment);
-      setPrintModalOpen(true);
-    }
-  
-    const handleSaveEditedAssignment = (updatedFields: any) => {
-      setAssignments(prev => prev.map(a => 
-        a.id === selectedAssignment.id ? { ...a, ...updatedFields } : a
-      ));
-    };
-  
-    const handleSaveNewAssignment = (newAssignment: any) => {
-      const assignmentWithId = {
-          ...newAssignment,
-          id: Date.now(), 
-          grade: parseInt(newAssignment.grade)
-      };
-      setAssignments(prev => [assignmentWithId, ...prev]);
-    };
-  
-    const handleSaveNewRubric = (newRubric: any) => {
-      const key = `custom_${Date.now()}`;
-      setRubrics((prev: any) => ({
-        ...prev,
-        [key]: newRubric
-      }));
-    };
-  
-    const hasSelection = (gradeFilter !== '' && subjectFilter !== '') || showFavoritesOnly;
-  
-    return (
-      <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          
-          <Header 
-              onOpenAddRubric={() => setAddRubricModalOpen(true)} 
-              onOpenCreateAssignment={() => setCreateAssignmentModalOpen(true)}
-              history={history}
-              toggleFavoritesOnly={toggleFavoritesOnly}
-              showFavoritesOnly={showFavoritesOnly}
-          />
-          
-          <main>
-            
-            <div className="mb-8">
-               {!hasSelection && (
-                 <StatsCards 
-                   total={assignments.length} 
-                   assignedCount={history.length} 
-                   favoritesCount={favorites.length} 
-                 />
-               )}
-            </div>
-  
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Performans Ödevleri (2025-2026 Maarif Modeli)</h2>
+              <h3 className="text-lg font-medium text-gray-900">Sonuç Bulunamadı</h3>
               <p className="text-gray-500">
-                Yüklediğiniz yıllık planlardaki güncel tema ve kazanımlara uygun, araştırma odaklı performans ödevlerini filtreleyin ve özelleştirin.
+                {showFavoritesOnly 
+                  ? "Henüz favorilere eklediğiniz bir ödev yok." 
+                  : "Seçili filtrelere uygun ödev yok. Lütfen filtreleri değiştirin."}
               </p>
             </div>
-  
-            {!showFavoritesOnly && (
-              <FilterBar 
-                gradeFilter={gradeFilter}
-                subjectFilter={subjectFilter}
-                setGradeFilter={setGradeFilter}
-                setSubjectFilter={setSubjectFilter}
-                disabled={showFavoritesOnly}
-              />
-            )}
-  
-            {showFavoritesOnly && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
-                <span className="text-red-700 font-medium flex items-center gap-2"><Heart className="fill-current" size={18}/> Favori Ödevleriniz Listeleniyor</span>
-                <button onClick={toggleFavoritesOnly} className="text-sm text-red-600 hover:underline">Tümüne Dön</button>
-              </div>
-            )}
-  
-            {!hasSelection ? (
-              <EmptyState />
-            ) : filteredAssignments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredAssignments.map(item => (
-                  <AssignmentCard 
-                    key={item.id} 
-                    item={item} 
-                    onAssign={handleAssignClick}
-                    onShowRubric={handleShowRubric}
-                    onEdit={handleEditAssignment}
-                    isFavorite={favorites.includes(item.id)}
-                    onToggleFavorite={toggleFavorite}
-                    onPrint={handlePrintAssignment}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                <div className="bg-gray-100 p-4 rounded-full mb-4">
-                  <Filter size={32} className="text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900">Sonuç Bulunamadı</h3>
-                <p className="text-gray-500">
-                  {showFavoritesOnly 
-                    ? "Henüz favorilere eklediğiniz bir ödev yok." 
-                    : "Seçili filtrelere uygun ödev yok. Lütfen filtreleri değiştirin."}
-                </p>
-              </div>
-            )}
-          </main>
-        </div>
-  
-        {/* MODALLAR */}
-        <AssignSettingsModal 
-          isOpen={assignSettingsModalOpen}
-          onClose={() => setAssignSettingsModalOpen(false)}
-          assignment={selectedAssignment}
-          onConfirm={handleAssignConfirm}
-        />
-  
-        <SuccessModal 
-          isOpen={modalOpen} 
-          onClose={() => setModalOpen(false)} 
-          assignment={selectedAssignment}
-          details={assignDetails}
-        />
-  
-        <RubricModal 
-          isOpen={rubricModalOpen}
-          onClose={() => setRubricModalOpen(false)}
-          assignment={selectedAssignment}
-          rubrics={rubrics}
-          onAddRubricClick={() => setAddRubricModalOpen(true)}
-        />
-  
-        <AddRubricModal 
-          isOpen={addRubricModalOpen}
-          onClose={() => setAddRubricModalOpen(false)}
-          onSave={handleSaveNewRubric}
-        />
-  
-        <EditAssignmentModal 
-          isOpen={editAssignmentModalOpen}
-          onClose={() => setEditAssignmentModalOpen(false)}
-          assignment={selectedAssignment}
-          onSave={handleSaveEditedAssignment}
-        />
-  
-        <CreateAssignmentModal
-          isOpen={createAssignmentModalOpen}
-          onClose={() => setCreateAssignmentModalOpen(false)}
-          onSave={handleSaveNewAssignment}
-        />
-  
-        <PrintPreviewModal
-          isOpen={printModalOpen}
-          onClose={() => setPrintModalOpen(false)}
-          assignment={selectedAssignment}
-        />
+          )}
+        </main>
       </div>
-    );
-};
 
-interface HomeworkTabProps {
-  classId: string;
-  teacherProfile?: TeacherProfile | null;
-  currentClass?: Class | null;
-  students: Student[];
-}
+      {/* MODALLAR */}
+      <AssignSettingsModal 
+        isOpen={assignSettingsModalOpen}
+        onClose={() => setAssignSettingsModalOpen(false)}
+        assignment={selectedAssignment}
+        onConfirm={handleAssignConfirm}
+      />
 
-export function HomeworkTab({ classId, currentClass, teacherProfile, students }: HomeworkTabProps) {
-  return (
-      <Tabs defaultValue="live">
-          <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
-              <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
-          </TabsList>
-          <TabsContent value="live" className="mt-4">
-              <p>Canlı ödev yönetimi burada olacak...</p>
-          </TabsContent>
-          <TabsContent value="library" className="mt-4">
-              <HomeworkLibrary />
-          </TabsContent>
-      </Tabs>
+      <SuccessModal 
+        isOpen={successModalOpen} 
+        onClose={() => setSuccessModalOpen(false)} 
+        assignment={selectedAssignment}
+        details={assignDetails}
+      />
+
+      <RubricModal 
+        isOpen={rubricModalOpen}
+        onClose={() => setRubricModalOpen(false)}
+        assignment={selectedAssignment}
+        rubrics={rubrics}
+        onAddRubricClick={() => setAddRubricModalOpen(true)}
+      />
+
+      <AddRubricModal 
+        isOpen={addRubricModalOpen}
+        onClose={() => setAddRubricModalOpen(false)}
+        onSave={handleSaveNewRubric}
+      />
+
+      <EditAssignmentModal 
+        isOpen={editAssignmentModalOpen}
+        onClose={() => setEditAssignmentModalOpen(false)}
+        assignment={selectedAssignment}
+        onSave={handleSaveEditedAssignment}
+      />
+
+      <CreateAssignmentModal
+        isOpen={createAssignmentModalOpen}
+        onClose={() => setCreateAssignmentModalOpen(false)}
+        onSave={handleSaveNewAssignment}
+      />
+
+      <PrintPreviewModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        assignment={selectedAssignment}
+      />
+    </div>
   );
-}
-
-// export default HomeworkLibrary;
+};
