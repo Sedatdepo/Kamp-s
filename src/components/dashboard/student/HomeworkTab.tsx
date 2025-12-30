@@ -238,7 +238,7 @@ export function HomeworkTab() {
         <Card>
             <CardHeader>
                 <CardTitle>Yetki Hatası</CardTitle>
-            </Header>
+            </CardHeader>
             <CardContent>
                 <p>Bu sayfayı görüntülemek için öğrenci olarak giriş yapmalısınız.</p>
             </CardContent>
