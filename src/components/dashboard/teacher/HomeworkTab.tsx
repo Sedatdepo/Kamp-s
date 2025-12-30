@@ -35,7 +35,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
+import { Badge } from '@/components/ui/badge';
 
+
+const branchToSubjectMap: { [key: string]: string } = {
+    "Türk Dili ve Edebiyatı": "literature",
+    "Fizik": "physics",
+};
 
 function HomeworkManager({ classId, teacherProfile, students, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, students: Student[], currentClass: Class | null }) {
   const [homeworkText, setHomeworkText] = useState('');
@@ -44,18 +50,45 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
   
   const homeworksQuery = useMemo(() => (db ? query(collection(db, 'classes', classId, 'homeworks')) : null), [db, classId]);
   const { data: homeworks, loading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, homeworksQuery);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  
+  const initialGradeFilter = useMemo(() => {
+    const gradeMatch = currentClass?.name.match(/\d+/);
+    return gradeMatch ? parseInt(gradeMatch[0], 10) : 0;
+  }, [currentClass]);
+  
+  const initialSubjectFilter = useMemo(() => {
+      return teacherProfile?.branch ? branchToSubjectMap[teacherProfile.branch] || null : null;
+  }, [teacherProfile]);
+  
+  const [gradeFilter, setGradeFilter] = useState<number | null>(null);
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGradeFilter(initialGradeFilter);
+    setSubjectFilter(initialSubjectFilter);
+  }, [initialGradeFilter, initialSubjectFilter]);
+
 
   const filteredAssignments = useMemo(() => {
-    if (!searchTerm) return assignmentsData;
-    return assignmentsData.filter(
-      (a) =>
-        a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+    let filtered = assignmentsData;
+    if (gradeFilter) {
+      filtered = filtered.filter(a => a.grade === gradeFilter);
+    }
+    if (subjectFilter) {
+      filtered = filtered.filter(a => a.subject === subjectFilter);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (a) =>
+          a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          a.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [searchTerm, gradeFilter, subjectFilter]);
 
   const handleAddHomework = async () => {
     if (!db || !classId) return;
@@ -75,13 +108,7 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
     try {
       const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
       await addDoc(homeworksColRef, newHomework);
-
-      // Add a seenBy field to the newly created homework in the local state
-      const updatedHomeworks = [...(currentClass?.homeworks || []), { ...newHomework, seenBy: [] }];
-      if (currentClass) {
-        await updateDoc(doc(db, 'classes', currentClass.id), { homeworks: updatedHomeworks });
-      }
-
+      
       setHomeworkText('');
       toast({ title: 'Ödev gönderildi!' });
     } catch (error) {
@@ -94,15 +121,6 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
     try {
       const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
       await deleteDoc(homeworkRef);
-
-      // Also remove submissions subcollection if needed - for simplicity, we skip this here
-      // as it requires more complex logic. Firestore extensions can handle this.
-
-      if (currentClass) {
-        const updatedHomeworks = (currentClass.homeworks || []).filter(hw => hw.id !== homeworkId);
-        await updateDoc(doc(db, 'classes', currentClass.id), { homeworks: updatedHomeworks });
-      }
-
       toast({ title: 'Ödev silindi.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Ödev silinemedi.' });
@@ -115,7 +133,6 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
         return;
     }
     
-    // Since submissions are in a subcollection, we need to fetch them for each homework
     const allSubmissions: Submission[] = [];
     for (const hw of homeworks) {
         const submissionQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
@@ -152,34 +169,49 @@ function HomeworkManager({ classId, teacherProfile, students, currentClass }: { 
               rows={5}
             />
              <div className="flex gap-2">
-                <Dialog>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">
                             <BookOpen className="mr-2"/> Hazır Ödev Ekle
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+                    <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
                         <DialogHeader>
                             <DialogTitle>Maarif Modeli Ödev Kütüphanesi</DialogTitle>
+                            <DialogDescription>Aşağıdaki filtreleri kullanarak ödevleri aratın veya tüm ödevlere göz atın.</DialogDescription>
                         </DialogHeader>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Ödev ara..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                            <div className="relative flex-1 w-full">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Ödev başlığında ara..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <Button variant={gradeFilter ? "secondary" : "outline"} onClick={() => setGradeFilter(gradeFilter ? null : initialGradeFilter)}>
+                                    {gradeFilter ? `${gradeFilter}. Sınıflar` : 'Tüm Sınıflar'}
+                                </Button>
+                                <Button variant={subjectFilter ? "secondary" : "outline"} onClick={() => setSubjectFilter(subjectFilter ? null : initialSubjectFilter)}>
+                                    {subjectFilter ? teacherProfile?.branch : 'Tüm Dersler'}
+                                </Button>
+                            </div>
                         </div>
-                         <ScrollArea className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                         <ScrollArea className="flex-1 mt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {filteredAssignments.map(a => (
                                     <Card key={a.id} className="cursor-pointer hover:border-primary" onClick={() => {
                                         const fullText = `Başlık: ${a.title}\n\nAçıklama: ${a.description}\n\nYapılacaklar: ${a.instructions}`;
                                         setHomeworkText(fullText);
-                                        // Close dialog - needs manual state management if we want this
+                                        setIsDialogOpen(false);
                                     }}>
                                         <CardHeader>
                                             <CardTitle className="text-base">{a.title}</CardTitle>
-                                            <CardDescription>{a.description}</CardDescription>
+                                            <div className="flex gap-2 text-xs pt-2">
+                                                <Badge variant="outline">{a.grade}. Sınıf</Badge>
+                                            </div>
+                                            <CardDescription className="pt-2">{a.description}</CardDescription>
                                         </CardHeader>
                                     </Card>
                                 ))}
+                                {filteredAssignments.length === 0 && <p className="text-muted-foreground text-center col-span-2 py-8">Bu filtrelerle eşleşen ödev bulunamadı.</p>}
                             </div>
                         </ScrollArea>
                     </DialogContent>
