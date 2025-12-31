@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     function isTeacher() {
-      return exists(/databases/$(database)/documents/roles_teacher/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
     function isOwner(userId) {
@@ -18,13 +18,19 @@ service cloud.firestore {
     
     match /classes/{classId} {
       allow read, write: if isTeacher();
-      
-      // Öğrenciler sadece kendi sınıflarının bilgilerini okuyabilir.
-      allow get: if isSignedIn();
+      // Öğrenciler sadece kendi kayıtlı oldukları sınıfın belgesini okuyabilir.
+      allow get: if exists(/databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid));
+
+      match /students/{studentId} {
+        allow read, create, update, delete: if isTeacher();
+        // Öğrenci kendi bilgilerini okuyabilir/güncelleyebilir
+        allow get, update: if isOwner(studentId);
+      }
 
       match /homeworks/{homeworkId} {
         allow read, write: if isTeacher();
-        allow read: if isSignedIn();
+        // Öğrenci, kayıtlı olduğu sınıftaki ödevleri okuyabilir.
+        allow read: if exists(/databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid));
 
         match /submissions/{submissionId} {
           allow read, write: if isTeacher();
@@ -35,10 +41,10 @@ service cloud.firestore {
     }
     
     match /students/{studentId} {
-      allow get: if isOwner(studentId) || isTeacher();
+      allow get, update: if isOwner(studentId) || isTeacher();
+      // Bu kök koleksiyona sadece öğretmenler yazabilir veya listeleyebilir.
+      // Öğrenciler kendi belgelerini /classes/{classId}/students/{studentId} yolundan günceller.
       allow list, create, delete: if isTeacher();
-      // Öğrencinin kendi risklerini vs. güncellemesine izin ver
-      allow update: if isOwner(studentId) || isTeacher();
     }
 
     match /teachers/{teacherId} {
@@ -47,9 +53,9 @@ service cloud.firestore {
     }
 
     match /infoForms/{formId} {
+      // formId öğrencinin UID'si ile aynıdır.
       allow read, write: if isTeacher();
-      allow create, update: if isOwner(formId);
-      allow get: if isOwner(formId);
+      allow create, update, get: if isOwner(formId);
     }
     
     match /riskFactors/{factorId} {
@@ -67,11 +73,11 @@ service cloud.firestore {
     }
     
     match /roles_teacher/{uid} {
-        allow read, write: if false;
+        allow read, write: if false; // Bu koleksiyona doğrudan erişim olmamalı.
     }
 
     match /studentCredentials/{uid} {
-        allow read, write: if false; // Should only be accessible by backend/admin
+        allow read, write: if false; // Sadece backend/admin erişebilmeli.
     }
 
      match /surveys/{surveyId} {
