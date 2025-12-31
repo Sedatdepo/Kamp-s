@@ -5,7 +5,6 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { StudentListTab } from './StudentListTab';
 import { AttendanceTab } from './AttendanceTab';
 import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
@@ -18,9 +17,10 @@ interface StudentManagementTabProps {
   classId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
+  children: React.ReactNode;
 }
 
-export function StudentManagementTab({ classId, teacherProfile, currentClass }: StudentManagementTabProps) {
+export function StudentManagementTab({ classId, teacherProfile, currentClass, children }: StudentManagementTabProps) {
   const { db } = useAuth();
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
@@ -47,7 +47,7 @@ export function StudentManagementTab({ classId, teacherProfile, currentClass }: 
         </TabsTrigger>
       </TabsList>
       <TabsContent value="student-list" className="mt-4">
-        <StudentListTab />
+        {children}
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
         <AttendanceTab students={students || []} currentClass={currentClass} />
@@ -61,5 +61,3 @@ export function StudentManagementTab({ classId, teacherProfile, currentClass }: 
     </Tabs>
   );
 }
-
-    

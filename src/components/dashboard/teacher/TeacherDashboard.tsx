@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
+import { StudentListTab } from './StudentListTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
@@ -394,19 +395,48 @@ export function TeacherDashboard() {
     }
 
     if (activeTab !== "dashboard") {
-      const TabComponent = {
-        'students': <StudentManagementTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />,
-        'planning': <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>,
-        'election': <ElectionTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />,
-        'projects': <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} classes={classes || []}/>,
-        'risks': <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,
-        'dilekce': <DilekceTab teacherProfile={teacherProfile} />,
-        'surveys': <SurveyTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} teacherProfile={teacherProfile}/>,
-      }[activeTab];
+        let tabContent;
+        switch(activeTab) {
+            case 'students':
+                tabContent = (
+                    <StudentManagementTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass}>
+                         <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />
+                    </StudentManagementTab>
+                );
+                break;
+            case 'grading':
+                tabContent = <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />;
+                break;
+            case 'planning':
+                tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
+                break;
+            case 'election':
+                tabContent = <ElectionTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />;
+                break;
+            case 'projects':
+                tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                break;
+            case 'homework':
+                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} classes={classes || []}/>;
+                break;
+            case 'risks':
+                tabContent = <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                break;
+            case 'forms':
+                tabContent = <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                break;
+            case 'communication':
+                tabContent = <CommunicationTab classId={selectedClassId} currentClass={currentClass} />;
+                break;
+            case 'dilekce':
+                tabContent = <DilekceTab teacherProfile={teacherProfile} />;
+                break;
+            case 'surveys':
+                tabContent = <SurveyTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} teacherProfile={teacherProfile}/>;
+                break;
+            default:
+                tabContent = null;
+        }
 
       return (
         <div>
@@ -441,7 +471,7 @@ export function TeacherDashboard() {
               </Button>
             </div>
           </div>
-          {TabComponent}
+          {tabContent}
         </div>
       );
     }
