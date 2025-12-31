@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -91,8 +90,9 @@ export interface RosterItem {
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'short-text' | 'paragraph';
-  options?: string[]; // for multiple-choice
+  type: 'multiple' | 'checkbox' | 'text' | 'paragraph' | 'dropdown' | 'linear' | 'date';
+  options?: string[]; // for multiple-choice, checkbox, dropdown
+  required: boolean;
 }
 
 export interface Survey {
@@ -103,6 +103,7 @@ export interface Survey {
   teacherId: string;
   isActive: boolean;
   questions: Question[];
+  createdAt: string;
 }
 
 export interface SurveyResponse {
