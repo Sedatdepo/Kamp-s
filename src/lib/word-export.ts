@@ -441,7 +441,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
 
         return `
-            <div style="border: 1px solid #ccc; padding: 15px; page-break-inside: avoid; height: 45%; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="border: 1px solid #ccc; padding: 15px; height: 48%; margin-bottom: 2%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div class="center bold">
                         <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
@@ -476,34 +476,52 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         `;
     };
 
-    let content = '';
-    for (let i = 0; i < students.length; i += 4) {
-        const pageStudents = students.slice(i, i + 4);
-        content += `
-            <table class="no-border" style="width: 100%; height: 100%; page-break-after: always;">
-                <tr>
-                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
-                        ${pageStudents[0] ? generateDilekce(pageStudents[0]) : ''}
-                    </td>
-                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
-                        ${pageStudents[1] ? generateDilekce(pageStudents[1]) : ''}
-                    </td>
-                </tr>
-                 <tr>
-                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
-                        ${pageStudents[2] ? generateDilekce(pageStudents[2]) : ''}
-                    </td>
-                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
-                        ${pageStudents[3] ? generateDilekce(pageStudents[3]) : ''}
-                    </td>
-                </tr>
-            </table>
+    let dilekcelerContent = students.map(generateDilekce).join('');
+
+    const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
+    const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
+    const summaryTableHeader = `
+        <tr>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:35%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:35%;">Atanan Proje Ödevi</th>
+        </tr>
+    `;
+    const summaryDataRows = students.map((s, index) => {
+        const assignedLesson = lessons.find(l => l.id === s.assignedLesson);
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
+                <td>${s.name}</td>
+                <td>${assignedLesson ? assignedLesson.name : 'Atanmadı'}</td>
+            </tr>
         `;
-    }
+    }).join('');
+    
+    const summaryFooter = generateReportFooter(teacherProfile);
+
+    const summaryContent = `
+        <div style="page-break-before: always;">
+            ${summaryHeader}
+            <table>
+                <thead>${summaryTableHeader}</thead>
+                <tbody>${summaryDataRows}</tbody>
+            </table>
+            ${summaryFooter}
+        </div>
+    `;
+
+    const content = `
+        ${dilekcelerContent}
+        ${summaryContent}
+    `;
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
+
 
 // --- RISK MAP EXPORT ---
 interface ExportRiskMapArgs {
