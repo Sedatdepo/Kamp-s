@@ -427,56 +427,87 @@ interface ExportProjectDistributionArgs {
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
 }
+
 export function exportProjectDistributionToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectDistributionArgs) {
     const reportTitle = "Proje Ödevi Dağılım Listesi";
     const title = `${currentClass.name} - ${reportTitle}`;
     const config = teacherProfile?.reportConfig;
     const school = config?.schoolName || "..........................................";
+    const academicYear = config?.academicYear || "20....-20....";
 
     const generateDilekce = (student: Student) => {
-        const preferences = student.projectPreferences?.slice(0, 5).map((prefId, i) => {
-            const lesson = lessons.find(l => l.id === prefId);
-            return lesson ? `<tr><td class="center">${i + 1}</td><td>${lesson.name}</td></tr>` : '';
-        }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
+        // Tercih satırlarını oluştur
+        const preferencesRows = Array.from({ length: 5 }).map((_, i) => {
+            const prefId = student.projectPreferences?.[i];
+            const lesson = prefId ? lessons.find(l => l.id === prefId) : null;
+            return `
+                <tr style="height: 30px;">
+                    <td class="center" style="width: 10%;">${i + 1}</td>
+                    <td style="width: 90%;">${lesson ? lesson.name : ''}</td>
+                </tr>
+            `;
+        }).join('');
 
+        // Flexbox YERİNE %100 yükseklikli tablo yapısı kullanıyoruz.
+        // Bu yapı Word'de sayfa düzeninin bozulmasını engeller ve imzayı alta iter.
         return `
-            <div style="page-break-after: always; display: flex; flex-direction: column; justify-content: space-between; height: 28cm;">
-                <div>
-                    <div class="center bold">
-                        <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
-                    </div>
-                    <br>
-                    <p style="text-indent: 2em; line-height: 1.5;">
-                        ${teacherProfile?.reportConfig?.academicYear || '2025-2026'} Eğitim-Öğretim yılında almam gereken proje ödevi için, aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.<br>
-                        Gereğini bilgilerinize arz ederim.
-                    </p>
-                    <br>
-                    <table style="width: 80%; margin: 0 auto;">
-                        <thead>
-                            <tr>
-                                <th style="width: 20%;">Sıra</th>
-                                <th>İstenilen Dersin Adı</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                           ${preferences}
-                           ${Array.from({ length: 5 - (student.projectPreferences?.length || 0) }).map((_, i) => `<tr><td class="center">${(student.projectPreferences?.length || 0) + i + 1}</td><td></td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                <div style="text-align: right; margin-top: 30px;">
-                    <p style="margin-bottom: 5px;">${new Date().toLocaleDateString('tr-TR')}</p>
-                    <p style="margin-bottom: 5px;" class="bold">${student.name}</p>
-                    <p style="margin-bottom: 5px;">Sınıfı: ${currentClass.name}</p>
-                    <p style="margin-bottom: 5px;">No: ${student.number}</p>
-                    <p style="margin-bottom: 5px;">İmza:</p>
-                </div>
+            <div style="page-break-after: always; width: 100%; height: 95%;">
+                <table class="no-border" style="width: 100%; height: 100%; border-collapse: collapse;">
+                    
+                    <tr>
+                        <td class="no-border" style="vertical-align: top;">
+                            <div class="center bold" style="font-size: 14pt;">
+                                <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
+                            </div>
+                            <br><br>
+                            <p style="text-indent: 2em; line-height: 1.5; font-size: 12pt; text-align: justify;">
+                                Okulunuzun ${currentClass.name} sınıfı, ${student.number} numaralı öğrencisiyim. 
+                                ${academicYear} Eğitim-Öğretim yılında almam gereken proje ödevi için, 
+                                aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.
+                            </p>
+                            <p style="text-indent: 2em; margin-top: 10px;">Gereğini bilgilerinize arz ederim.</p>
+                            <br><br>
+                            
+                            <h4 style="margin-bottom: 5px;">Proje Ödevi İstediğim Dersler:</h4>
+                            <table style="width: 100%; border: 1px solid black;">
+                                <thead>
+                                    <tr style="background-color: #f2f2f2;">
+                                        <th style="width: 10%;">Sıra</th>
+                                        <th style="width: 90%;">Dersin Adı</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${preferencesRows}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="no-border" style="vertical-align: bottom; height: 100px;">
+                            <table class="no-border" style="width: 100%;">
+                                <tr>
+                                    <td class="no-border" style="width: 60%;">
+                                        </td>
+                                    <td class="no-border" style="width: 40%; text-align: center;">
+                                        <p style="margin: 0;">${new Date().toLocaleDateString('tr-TR')}</p>
+                                        <br>
+                                        <p style="margin: 0;">(İmza)</p>
+                                        <p style="margin: 0; font-weight: bold;">${student.name}</p>
+                                        <p style="margin: 0;">No: ${student.number}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </div>
         `;
     };
 
     let dilekcelerContent = students.map(generateDilekce).join('');
 
+    // --- ÖZET LİSTE (DEĞİŞİKLİK YOK, AYNEN KORUNDU) ---
     const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
     const summaryTableHeader = `
