@@ -1,4 +1,3 @@
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -335,4 +334,14 @@ export interface HomeworkDocument extends Archivable {
         homeworks: Homework[];
         submissions: Submission[];
     }
+}
+
+// Yeni eklenen DisciplineRecord tipi
+export interface DisciplineRecord {
+    id: string;
+    name: string;
+    date: string;
+    currentPhase: number;
+    formData: any;
+    classId: string;
 }
