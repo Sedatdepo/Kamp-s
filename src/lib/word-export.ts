@@ -441,16 +441,16 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
 
         return `
-            <div style="border: 1px solid #ccc; padding: 15px; height: 48%; margin-bottom: 2%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="border: 1px solid #ccc; padding: 15px; height: 49%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid;">
                 <div>
                     <div class="center bold">
                         <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
                     </div>
                     <br>
                     <p style="text-indent: 2em; line-height: 1.5;">
-                        ${year} Eğitim-Öğretim yılında ${teacherProfile?.branch || 'ilgili'} dersinden almam gereken proje ödevi için, aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.
+                        2025-2026 Eğitim-Öğretim yılında almam gereken proje ödevi için, aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.<br>
+                        Gereğini bilgilerinize arz ederim.
                     </p>
-                    <p>Gereğini bilgilerinize arz ederim.</p>
                     <br>
                     <table style="width: 80%; margin: 0 auto;">
                         <thead>
@@ -476,7 +476,19 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         `;
     };
 
-    let dilekcelerContent = students.map(generateDilekce).join('');
+    let dilekcelerContent = students.map((student, index) => {
+        const dilekce = generateDilekce(student);
+        // Add a horizontal rule between petitions unless it's the last one on a page or overall
+        if ((index + 1) % 2 !== 0 && index < students.length - 1) {
+            return dilekce + '<hr style="border: none; border-top: 1px dashed #ccc; margin: 1% 0;">';
+        }
+        // Add a page break after every 2 petitions
+        if ((index + 1) % 2 === 0 && index < students.length - 1) {
+             return dilekce + '<div style="page-break-after: always;"></div>';
+        }
+        return dilekce;
+    }).join('');
+
 
     const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
