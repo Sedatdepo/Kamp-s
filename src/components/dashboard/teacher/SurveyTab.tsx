@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Student, Class, TeacherProfile, Survey, Question } from '@/lib/types';
+import { Student, Class, TeacherProfile, Survey, Question, SurveyResponse } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck } from 'lucide-react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, query, where, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 
 interface SurveyTabProps {
@@ -209,6 +220,29 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     });
   };
 
+  const handleDeleteSurvey = async (surveyId: string) => {
+    if (!db) return;
+    try {
+      const batch = writeBatch(db);
+      
+      // Delete the survey document
+      const surveyRef = doc(db, 'surveys', surveyId);
+      batch.delete(surveyRef);
+
+      // Find and delete all related responses
+      const responsesQuery = query(collection(db, 'surveyResponses'), where('surveyId', '==', surveyId));
+      const responsesSnapshot = await getDocs(responsesQuery);
+      responsesSnapshot.forEach(responseDoc => {
+        batch.delete(responseDoc.ref);
+      });
+
+      await batch.commit();
+      toast({ title: 'Anket Silindi', description: 'Anket ve ilgili tüm yanıtlar başarıyla silindi.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Hata', description: 'Anket silinirken bir sorun oluştu.' });
+    }
+  };
+
 
   if (view === 'builder') {
     return (
@@ -391,6 +425,27 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
                             </div>
                             <Button variant="outline" size="sm">Sonuçları Gör</Button>
                             <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 h-9 w-9">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      "{survey.title}" anketini ve bu ankete ait tüm yanıtları kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteSurvey(survey.id)} className="bg-destructive hover:bg-destructive/90">
+                                      Sil
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                         </div>
                     </div>
                 ))}
