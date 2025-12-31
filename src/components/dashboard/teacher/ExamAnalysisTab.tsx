@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -35,6 +36,7 @@ import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquar
 import { Button } from '@/components/ui/button';
 import { saveAs } from 'file-saver';
 import { useDatabase } from '@/hooks/use-database';
+import { Input } from '@/components/ui/input';
 
 
 interface ExamAnalysisTabProps {
@@ -497,128 +499,5 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     </Card>
   );
 }
+```
 
-
-export function ExamAnalysisTab({
-  students,
-  currentClass,
-  teacherProfile,
-}: ExamAnalysisTabProps) {
-  const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
-
-  const { selectedTerm, selectedExam } = useMemo(() => {
-    const [term, exam] = selectedExamKey.split('-');
-    return { selectedTerm: term as TermKey, selectedExam: exam as ExamKey };
-  }, [selectedExamKey]);
-
-  const examData = useMemo(() => {
-    return students
-      .map((student) => {
-        const termGrades = student[selectedTerm === 'term1' ? 'term1Grades' : 'term2Grades'];
-        const grade = termGrades?.[selectedExam];
-        return { student, grade };
-      })
-      .filter((item): item is { student: Student; grade: number } => 
-        item.grade !== undefined && item.grade !== null
-      );
-  }, [students, selectedTerm, selectedExam]);
-
-  const stats = useMemo(() => {
-    if (examData.length === 0) {
-      return { average: 0, successRate: 0, highest: 0, lowest: 0 };
-    }
-    const grades = examData.map(d => d.grade);
-    const sum = grades.reduce((a, b) => a + b, 0);
-    const average = sum / grades.length;
-    const successCount = grades.filter(g => g >= 50).length;
-    const successRate = (successCount / examData.length) * 100;
-    const highest = Math.max(...grades);
-    const lowest = Math.min(...grades);
-
-    return {
-      average: average,
-      successRate: successRate,
-      highest: highest,
-      lowest: lowest,
-    };
-  }, [examData]);
-
-  const sortedStudents = useMemo(() => {
-    return [...examData].sort((a,b) => b.grade - a.grade);
-  }, [examData]);
-
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Sınav Analizi ve Telafi Planı</CardTitle>
-          <CardDescription>
-            Sınav sonuçlarını analiz edin, sınıfın genel durumunu görün ve
-            telafi çalışmaları planlayın.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex gap-4">
-           <Select
-            value={selectedExamKey}
-            onValueChange={(v) => setSelectedExamKey(v)}
-          >
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Sınav Seçin" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="term1-exam1">1. Dönem 1. Yazılı</SelectItem>
-              <SelectItem value="term1-exam2">1. Dönem 2. Yazılı</SelectItem>
-              <SelectItem value="term2-exam1">2. Dönem 1. Yazılı</SelectItem>
-              <SelectItem value="term2-exam2">2. Dönem 2. Yazılı</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Sınıf Ortalaması" value={stats.average.toFixed(2)} icon={<BarChart className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard title="Başarı Oranı (50+)" value={`%${stats.successRate.toFixed(2)}`} icon={<Target className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard title="En Yüksek Not" value={stats.highest.toString()} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard title="En Düşük Not" value={stats.lowest.toString()} icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
-            <CardHeader>
-                <CardTitle>Öğrenci Performans Sıralaması</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-96">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Öğrenci</TableHead>
-                            <TableHead className="text-right">Not</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {sortedStudents.map(({ student, grade }) => (
-                            <TableRow key={student.id}>
-                                <TableCell>{student.name}</TableCell>
-                                <TableCell className="text-right font-bold">{grade}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-                </ScrollArea>
-            </CardContent>
-        </Card>
-        <div className="lg:col-span-2">
-            <ExamReportForm 
-                teacherProfile={teacherProfile} 
-                currentClass={currentClass} 
-                examData={examData} 
-                selectedTerm={selectedTerm}
-                selectedExam={selectedExam}
-            />
-        </div>
-      </div>
-    </div>
-  );
-}
