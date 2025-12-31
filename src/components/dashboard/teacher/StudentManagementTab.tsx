@@ -47,7 +47,7 @@ export function StudentManagementTab({ classId, teacherProfile, currentClass }: 
         </TabsTrigger>
       </TabsList>
       <TabsContent value="student-list" className="mt-4">
-        <StudentListTab classId={classId} teacherProfile={teacherProfile} currentClass={currentClass} />
+        <StudentListTab />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
         <AttendanceTab students={students || []} currentClass={currentClass} />
