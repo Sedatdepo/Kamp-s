@@ -88,6 +88,35 @@ export interface RosterItem {
   studentIds: string[];
 }
 
+export interface Question {
+  id: string;
+  text: string;
+  type: 'multiple-choice' | 'short-text' | 'paragraph';
+  options?: string[]; // for multiple-choice
+}
+
+export interface Survey {
+  id: string;
+  title: string;
+  description: string;
+  classId: string;
+  teacherId: string;
+  isActive: boolean;
+  questions: Question[];
+}
+
+export interface SurveyResponse {
+  id: string;
+  surveyId: string;
+  studentId: string;
+  submittedAt: Timestamp;
+  answers: {
+      questionId: string;
+      answer: string | string[];
+  }[];
+}
+
+
 export interface Class {
   id: string;
   name:string;
