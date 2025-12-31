@@ -499,5 +499,117 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     </Card>
   );
 }
-```
 
+
+
+export function ExamAnalysisTab({ students, currentClass, teacherProfile }: ExamAnalysisTabProps) {
+  const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
+
+  const { term, exam } = useMemo(() => {
+    const [termKey, examKey] = selectedExamKey.split('-');
+    return {
+      term: termKey as TermKey,
+      exam: examKey as ExamKey,
+    };
+  }, [selectedExamKey]);
+
+  const examData = useMemo(() => {
+    const termGradesKey = term === 'term1' ? 'term1Grades' : 'term2Grades';
+    return students
+      .map(student => {
+        const grade = student[termGradesKey]?.[exam] ?? -1;
+        return { student, grade };
+      })
+      .filter(item => item.grade !== -1);
+  }, [students, term, exam]);
+
+  const classAverage = useMemo(() => {
+    if (examData.length === 0) return 0;
+    const total = examData.reduce((sum, item) => sum + item.grade, 0);
+    return total / examData.length;
+  }, [examData]);
+
+  const successRate = useMemo(() => {
+    if (examData.length === 0) return 0;
+    const passingStudents = examData.filter(item => item.grade >= 50).length;
+    return (passingStudents / examData.length) * 100;
+  }, [examData]);
+  
+  const sortedStudents = useMemo(() => {
+      return [...examData].sort((a,b) => b.grade - a.grade);
+  }, [examData]);
+
+  const highestScorers = sortedStudents.slice(0, 3);
+  const lowestScorers = sortedStudents.slice(-3).reverse();
+
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="xl:col-span-1 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Sınav Seçimi ve Genel İstatistikler</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+              <Select value={selectedExamKey} onValueChange={setSelectedExamKey}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Sınav seçin..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="term1-exam1">1. Dönem 1. Yazılı</SelectItem>
+                    <SelectItem value="term1-exam2">1. Dönem 2. Yazılı</SelectItem>
+                    <SelectItem value="term2-exam1">2. Dönem 1. Yazılı</SelectItem>
+                    <SelectItem value="term2-exam2">2. Dönem 2. Yazılı</SelectItem>
+                </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-4">
+                <StatCard title="Sınıf Ortalaması" value={classAverage.toFixed(2)} icon={<BarChart className="text-blue-500" />} />
+                <StatCard title="Başarı Oranı" value={`%${successRate.toFixed(2)}`} icon={<Users className="text-green-500" />} />
+                <StatCard title="En Yüksek Not" value={highestScorers[0]?.grade.toString() || 'N/A'} icon={<TrendingUp className="text-emerald-500" />} />
+                <StatCard title="En Düşük Not" value={lowestScorers[0]?.grade.toString() || 'N/A'} icon={<TrendingDown className="text-red-500" />} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Target/> Öğrenci Performans Sıralaması</CardTitle>
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Öğrenci</TableHead>
+                            <TableHead className="text-right">Not</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedStudents.map(({student, grade}) => (
+                            <TableRow key={student.id}>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell className="text-right font-bold">{grade}</TableCell>
+                            </TableRow>
+                        ))}
+                        {sortedStudents.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={2} className="text-center text-muted-foreground">Bu sınav için not girilmemiş.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
+      </div>
+      <div className="xl:col-span-2">
+         <ExamReportForm 
+            teacherProfile={teacherProfile} 
+            currentClass={currentClass} 
+            examData={examData}
+            selectedTerm={term}
+            selectedExam={exam}
+        />
+      </div>
+    </div>
+  );
+}
