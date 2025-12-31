@@ -293,18 +293,18 @@ export function TeacherDashboard() {
 
   const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
-  const teacherProfile = teacherData.length > 0 ? teacherData[0] : null;
+  const teacherProfile = teacherData ? teacherData : null;
 
   const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
   const { data: classes, loading: classesLoading } = useFirestore('classes', classesQuery);
 
-  const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
+  const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
     return query(collection(db, 'students'));
   }, [teacherId, db]);
-  const { data: allStudents } = useFirestore<Student>('all-students-for-count', allStudentsForTeacherQuery);
+  const { data: allStudents } = useFirestore('all-students-for-count', allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && classesLoading);
   
@@ -318,17 +318,17 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={classes} students={allStudents} loading={classesLoading} />;
+        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={classes || []} students={allStudents || []} loading={classesLoading} />;
     }
 
     if (activeTab !== "dashboard") {
       const TabComponent = {
         'students': <StudentManagementTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={allStudents.filter(s => s.classId === selectedClassId)} currentClass={currentClass} />,
+        'grading': <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />,
         'planning': <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>,
-        'election': <ElectionTab students={allStudents.filter(s => s.classId === selectedClassId)} currentClass={currentClass} />,
+        'election': <ElectionTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />,
         'projects': <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
-        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={allStudents.filter(s => s.classId === selectedClassId)} />,
+        'homework': <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} />,
         'risks': <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,
@@ -356,7 +356,7 @@ export function TeacherDashboard() {
                         Tüm Sınıflar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {classes.map(cls => (
+                    {(classes || []).map((cls: Class) => (
                         <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
                             {cls.name}
                         </DropdownMenuItem>
@@ -393,7 +393,7 @@ export function TeacherDashboard() {
                                   Tüm Sınıflar
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {classes.map(cls => (
+                              {(classes || []).map((cls: Class) => (
                                   <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
                                       {cls.name}
                                   </DropdownMenuItem>
@@ -429,3 +429,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
