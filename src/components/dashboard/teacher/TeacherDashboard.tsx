@@ -36,6 +36,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { AttendanceTab } from './AttendanceTab';
+import { DutyRosterTab } from './DutyRosterTab';
+import { SeatingPlanTab } from './SeatingPlanTab';
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys";
@@ -373,6 +376,9 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => orderedClasses?.find((c: Class) => c.id === selectedClassId), [orderedClasses, selectedClassId]);
 
+  const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
+  const { data: students } = useFirestore<Student[]>('students-in-class', studentsQuery);
+
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
     return query(collection(db, 'students'));
@@ -399,25 +405,28 @@ export function TeacherDashboard() {
         switch(activeTab) {
             case 'students':
                 tabContent = (
-                    <StudentManagementTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass}>
-                         <StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />
-                    </StudentManagementTab>
+                    <StudentManagementTab
+                        studentList={<StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />}
+                        attendance={<AttendanceTab students={students || []} currentClass={currentClass} />}
+                        dutyRoster={<DutyRosterTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />}
+                        seatingPlan={<SeatingPlanTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />}
+                    />
                 );
                 break;
             case 'grading':
-                tabContent = <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />;
+                tabContent = <GradingToolTab classId={selectedClassId} teacherProfile={teacherProfile} students={students || []} currentClass={currentClass} />;
                 break;
             case 'planning':
                 tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
                 break;
             case 'election':
-                tabContent = <ElectionTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} />;
+                tabContent = <ElectionTab students={students || []} currentClass={currentClass} />;
                 break;
             case 'projects':
                 tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
                 break;
             case 'homework':
-                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} classes={classes || []}/>;
+                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={students || []} classes={classes || []}/>;
                 break;
             case 'risks':
                 tabContent = <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
@@ -432,7 +441,7 @@ export function TeacherDashboard() {
                 tabContent = <DilekceTab teacherProfile={teacherProfile} />;
                 break;
             case 'surveys':
-                tabContent = <SurveyTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} teacherProfile={teacherProfile}/>;
+                tabContent = <SurveyTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile}/>;
                 break;
             default:
                 tabContent = null;
