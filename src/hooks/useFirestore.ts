@@ -43,7 +43,7 @@ export function useFirestore<T>(
   const [loading, setLoading] = useState<boolean>(!cache.has(key));
   const [error, setError] = useState<Error | null>(null);
 
-  const deps = [key, options.subscribe, ...(options.dependencies || [])];
+  const depsString = JSON.stringify([key, options.subscribe, ...(options.dependencies || [])]);
 
   useEffect(() => {
     if (!ref) {
@@ -99,7 +99,7 @@ export function useFirestore<T>(
       getAsync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [depsString, ref]);
 
   return { data, loading, error };
 }
