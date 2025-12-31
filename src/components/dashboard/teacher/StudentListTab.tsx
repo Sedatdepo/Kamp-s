@@ -157,13 +157,16 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
 
   const unreadMessagesByStudent = useMemo(() => {
     const map = new Map<string, number>();
-    unreadMessages.forEach(msg => {
-        map.set(msg.senderId, (map.get(msg.senderId) || 0) + 1);
-    });
+    if (unreadMessages) {
+        unreadMessages.forEach(msg => {
+            map.set(msg.senderId, (map.get(msg.senderId) || 0) + 1);
+        });
+    }
     return map;
   }, [unreadMessages]);
   
   const sortedStudents = useMemo(() => {
+    if (!students) return [];
     return [...students].sort((a, b) => {
         const numA = parseInt(a.number, 10);
         const numB = parseInt(b.number, 10);
@@ -285,7 +288,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   };
   
   const handleClearClass = async () => {
-    if (!db || students.length === 0) return;
+    if (!db || !students || students.length === 0) return;
     const batch = writeBatch(db);
     students.forEach(student => {
         batch.delete(doc(db, 'students', student.id));
@@ -335,7 +338,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </Button>
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" disabled={students.length === 0}>
+                        <Button variant="destructive" disabled={!students || students.length === 0}>
                             <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Temizle
                         </Button>
                     </AlertDialogTrigger>
