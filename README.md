@@ -34,3 +34,8 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 **ÖNEMLİ NOT:** Her cevabından önce bu kuralları dahili olarak tekrar oku ve buna göre hareket et.
 
 **RESET PROTOKOLÜ:** Eğer "RESET PROTOKOLÜNÜ BAŞLAT" dersem, mevcut görevi iptal etmeli, son stabil duruma dönmek için bir plan sunmalı ve gerekirse temel yapılandırmayı yeniden kurmalısın.
+
+---
+## PROJE KAYIT NOKTALARI
+
+* **Kayıt Noktası 1:** 2024-07-26 15:00 - Kullanıcı tarafından oluşturulan ilk geri yükleme noktası. Sınıf kartlarına sürükle-bırak özelliği ve gezinme butonları eklendikten sonraki stabil durum.
