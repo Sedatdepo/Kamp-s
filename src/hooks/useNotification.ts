@@ -5,10 +5,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useFirestore } from './useFirestore';
-import { Class, Survey, SurveyResponse } from '@/lib/types'; // YENİ
-import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore'; // YENİ
+import { Class, Survey, SurveyResponse } from '@/lib/types';
+import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore';
 
-type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'surveys'; // YENİ
+type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'surveys';
 
 interface NotificationState {
   announcements: boolean;
@@ -16,7 +16,7 @@ interface NotificationState {
   infoForm: boolean;
   homeworks: boolean;
   election: boolean;
-  surveys: boolean; // YENİ
+  surveys: boolean;
 }
 
 export const useNotification = () => {
@@ -27,7 +27,7 @@ export const useNotification = () => {
     infoForm: false,
     homeworks: false,
     election: false,
-    surveys: false, // YENİ
+    surveys: false,
   });
   
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
@@ -36,7 +36,6 @@ export const useNotification = () => {
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
 
-  // YENİ: Anketleri ve cevapları getirmek için sorgular
   const surveysQuery = useMemo(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
@@ -48,6 +47,9 @@ export const useNotification = () => {
     return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
   }, [db, studentId]);
   const { data: userResponses } = useFirestore<SurveyResponse[]>(`user-responses-notif-${studentId}`, responsesQuery);
+
+  const respondedSurveyIds = useMemo(() => new Set((userResponses || []).map(r => r.surveyId)), [userResponses]);
+  const hasUnansweredSurvey = useMemo(() => (activeSurveys || []).some(s => !respondedSurveyIds.has(s.id)), [activeSurveys, respondedSurveyIds]);
   
 
   const checkNotifications = useCallback(async () => {
@@ -85,20 +87,16 @@ export const useNotification = () => {
     // 5. Seçim Kontrolü
     const hasNewElection = currentClass.isElectionActive === true && currentClass.election?.votedStudentIds && !currentClass.election.votedStudentIds.includes(studentId);
 
-    // 6. Anket Kontrolü (YENİ)
-    const respondedSurveyIds = new Set((userResponses || []).map(r => r.surveyId));
-    const hasUnansweredSurvey = (activeSurveys || []).some(s => !respondedSurveyIds.has(s.id));
-
     setNotifications({
       announcements: hasNewAnnouncement,
       riskForm: hasNewRiskForm,
       infoForm: hasNewInfoForm,
       homeworks: hasNewHomework,
       election: hasNewElection,
-      surveys: hasUnansweredSurvey // YENİ
+      surveys: hasUnansweredSurvey
     });
 
-  }, [currentClass, studentId, appUser, db, activeSurveys, userResponses]); // YENİ
+  }, [currentClass, studentId, appUser, db, hasUnansweredSurvey]);
 
   useEffect(() => {
     checkNotifications();
@@ -136,5 +134,5 @@ export const useNotification = () => {
     checkNotifications();
   }, [studentId, classId, currentClass, checkNotifications, db]);
 
-  return { notifications, markAsSeen };
+  return { notifications, markAsSeen, hasUnansweredSurvey };
 };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -9,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Loader2, Send, FileText, CheckSquare, Circle, ChevronDown, Star, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {Check} from 'lucide-react';
+
 
 export function StudentSurveyTab() {
   const { appUser, db } = useAuth();

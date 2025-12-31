@@ -12,10 +12,10 @@ import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
 import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
 import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
-import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab'; // YENİ
+import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck } from 'lucide-react'; // YENİ
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -56,7 +56,7 @@ export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
   const authContext = useContext(AuthContext);
   const { appUser, db } = authContext || {};
-  const { notifications, markAsSeen } = useNotification();
+  const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
@@ -69,7 +69,7 @@ export function StudentDashboard() {
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
-    else if (activeTab === 'surveys') markAsSeen('surveys'); // YENİ
+    else if (activeTab === 'surveys') markAsSeen('surveys');
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -83,7 +83,7 @@ export function StudentDashboard() {
           case 'election': return <ElectionVoteTab />;
           case 'dutyRoster': return <DutyRosterTab />;
           case 'seatingPlan': return <SeatingPlanTab />;
-          case 'surveys': return <StudentSurveyTab />; // YENİ
+          case 'surveys': return <StudentSurveyTab />;
           default: return null;
       }
   }
@@ -153,7 +153,8 @@ export function StudentDashboard() {
                         title="Anketlerim" 
                         description="Aktif anketleri cevapla." 
                         onClick={() => setActiveTab('surveys')} 
-                        hasNotification={notifications.surveys} 
+                        hasNotification={notifications.surveys}
+                        isDisabled={!hasUnansweredSurvey}
                     />
 
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
