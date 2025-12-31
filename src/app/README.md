@@ -56,3 +56,24 @@ Bu güvenlik ve işlevsellik açığını gidermek amacıyla `firestore.rules` d
 4.  **Güvenlik:** Varsayılan olarak tüm erişimler kısıtlandı ve sadece bu kurallarla açıkça izin verilen işlemlere müsaade edildi.
 
 Bu güncelleme ile uygulamanın Firestore veritabanı ile güvenli ve doğru bir şekilde etkileşime girmesi sağlanmıştır.
+
+---
+## DERLEME SİMÜLASYONU TALİMATI
+
+Sen şu anda katı kurallara sahip bir "TypeScript Derleyicisi" (Strict Compiler) ve "Firebase Build Log" analizcisisin.
+
+Senden aşağıdaki kod parçalarını sanki "npm run build" komutu çalıştırılmış gibi taramanı ve statik kod analizi yapmanı istiyorum. Kodun çalışıp çalışmayacağını değil, DERLENİP DERLENMEYECEĞİNİ (Compilation Success) simüle et.
+
+Lütfen şu adımları izle:
+1. Syntax (Sözdizimi) Hataları: Kapanmamış parantezler, noktalı virgüller, JSX yapısı.
+2. Type (Tip) Uyuşmazlıkları: Interface'lerde tanımlı olup kodda olmayan veya yanlış kullanılan değişkenler.
+3. Import/Export Hataları: Tanımlanmadan kullanılan bileşenler veya yanlış dosya yolları.
+4. Firebase/Next.js Spesifik Hataları: 'SaveAs' gibi kütüphanelerin yanlış kullanımı veya 'use client' direktifi eksiklikleri.
+
+Bana sadece "Kod güzel" deme. Eğer derlemeyi %1 bile riske atacak bir durum varsa, şu formatta rapor ver:
+- [Dosya/Bölüm Adı]
+- [Hata Tipi]
+- [Hata Satırı/Kodu]
+- [Çözüm Önerisi]
+
+Eğer hata yoksa "Build Başarılı (Exit Code 0)" onayı ver.

@@ -44,10 +44,37 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 
 ---
 
-Remember, the XML structure you generate is the only mechanism for applying changes to the user's code. Therefore, when making changes to a file the <changes> block must always be fully present and correctly formatted as follows.
+## DERLEME PROTOKOLÜ (2024-07-27 18:00)
 
-<changes>
-  <description>[Provide a concise summary of the overall changes being made]</description>
-  <change>
-    <file>[Provide the ABSOLUTE, FULL path to the file being modified]</file>
-    <content><![CDATA[Provide the ENTIRE, FINAL, intended content of the file here. Do NOT provide diffs or partial snippets. Ensure all code is properly escaped within the CDATA section.
+**Tespit Edilen Sorun:**
+Firebase derleme simülasyonu sırasında, uygulama mantığı ile `firestore.rules` güvenlik kuralları arasında kritik bir uyumsuzluk tespit edildi. Mevcut kurallar, uygulamanın temel işlevleri olan öğrenci ekleme, not girme, proje atama ve hatta öğrenci girişi gibi işlemler için gerekli Firestore okuma/yazma izinlerini sağlamıyordu. Bu durum, canlı ortamda "Eksik veya yetersiz izinler" hatasına yol açacaktı.
+
+**Uygulanan Çözüm:**
+Bu güvenlik ve işlevsellik açığını gidermek amacıyla `firestore.rules` dosyası tamamen yeniden yazılarak aşağıdaki mantıkla güncellendi:
+1.  **Öğretmen Yetkileri (`isTeacher()`):** Öğretmen rolündeki kullanıcılara, kendi oluşturdukları sınıflar ve bu sınıflara bağlı öğrenciler, dersler, risk faktörleri gibi koleksiyonlar üzerinde tam kontrol (okuma, yazma, silme) yetkisi verildi.
+2.  **Öğrenci Yetkileri (`isOwner()`):** Öğrencilerin, yalnızca kendi kişisel verilerini (kendi profili, bilgi formu, mesajları vb.) okuyabilmesi ve güncelleyebilmesi sağlandı. Diğer öğrencilerin verilerine erişimleri tamamen engellendi.
+3.  **Koleksiyon Bazlı Kurallar:** `/classes`, `/students`, `/lessons`, `/riskFactors`, `/infoForms`, `/messages` ve `/teachers` gibi tüm ana koleksiyonlar için ayrı ayrı ve detaylı `allow` kuralları tanımlandı.
+4.  **Güvenlik:** Varsayılan olarak tüm erişimler kısıtlandı ve sadece bu kurallarla açıkça izin verilen işlemlere müsaade edildi.
+
+Bu güncelleme ile uygulamanın Firestore veritabanı ile güvenli ve doğru bir şekilde etkileşime girmesi sağlanmıştır.
+
+---
+## DERLEME SİMÜLASYONU TALİMATI
+
+Sen şu anda katı kurallara sahip bir "TypeScript Derleyicisi" (Strict Compiler) ve "Firebase Build Log" analizcisisin.
+
+Senden aşağıdaki kod parçalarını sanki "npm run build" komutu çalıştırılmış gibi taramanı ve statik kod analizi yapmanı istiyorum. Kodun çalışıp çalışmayacağını değil, DERLENİP DERLENMEYECEĞİNİ (Compilation Success) simüle et.
+
+Lütfen şu adımları izle:
+1. Syntax (Sözdizimi) Hataları: Kapanmamış parantezler, noktalı virgüller, JSX yapısı.
+2. Type (Tip) Uyuşmazlıkları: Interface'lerde tanımlı olup kodda olmayan veya yanlış kullanılan değişkenler.
+3. Import/Export Hataları: Tanımlanmadan kullanılan bileşenler veya yanlış dosya yolları.
+4. Firebase/Next.js Spesifik Hataları: 'SaveAs' gibi kütüphanelerin yanlış kullanımı veya 'use client' direktifi eksiklikleri.
+
+Bana sadece "Kod güzel" deme. Eğer derlemeyi %1 bile riske atacak bir durum varsa, şu formatta rapor ver:
+- [Dosya/Bölüm Adı]
+- [Hata Tipi]
+- [Hata Satırı/Kodu]
+- [Çözüm Önerisi]
+
+Eğer hata yoksa "Build Başarılı (Exit Code 0)" onayı ver.
