@@ -409,7 +409,7 @@ export function TeacherDashboard() {
                         studentList={<StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />}
                         attendance={<AttendanceTab students={students || []} currentClass={currentClass} />}
                         dutyRoster={<DutyRosterTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} db={db!} />}
-                        seatingPlan={<SeatingPlanTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />}
+                        seatingPlan={<SeatingPlanTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} db={db!} />}
                     />
                 );
                 break;

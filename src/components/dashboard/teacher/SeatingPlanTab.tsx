@@ -13,25 +13,44 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
+import { doc, updateDoc, Firestore } from 'firebase/firestore';
 
 
 interface SeatingPlanTabProps {
     students: Student[];
     currentClass: Class | null;
     teacherProfile: TeacherProfile | null;
+    db: Firestore;
 }
 
-export function SeatingPlanTab({ students, currentClass, teacherProfile }: SeatingPlanTabProps) {
+export function SeatingPlanTab({ students, currentClass, teacherProfile, db }: SeatingPlanTabProps) {
   const { toast } = useToast();
-  const { db, setDb, loading } = useDatabase();
-  const { seatingPlanDocuments = [] } = db;
+  const { db: localDb, setDb: setLocalDb, loading } = useDatabase();
+  const { seatingPlanDocuments = [] } = localDb;
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [rowCount, setRowCount] = useState(5);
-  const [colCount, setColCount] = useState(3);
+  const [rowCount, setRowCount] = useState(currentClass?.seatingPlanRows || 5);
+  const [colCount, setColCount] = useState(currentClass?.seatingPlanCols || 3);
   const [seatingPlan, setSeatingPlan] = useState<{ [key: string]: Student }>({});
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
   const [dragSource, setDragSource] = useState<string | null>(null);
+
+  useEffect(() => {
+    const plan: { [key: string]: Student } = {};
+    if (currentClass?.seatingPlan) {
+        for (const key in currentClass.seatingPlan) {
+            const studentId = currentClass.seatingPlan[key];
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                plan[key] = student;
+            }
+        }
+    }
+    setSeatingPlan(plan);
+    setRowCount(currentClass?.seatingPlanRows || 5);
+    setColCount(currentClass?.seatingPlanCols || 3);
+  }, [currentClass, students]);
+
 
   useEffect(() => {
     const classRecords = seatingPlanDocuments.filter(d => d.classId === currentClass?.id);
@@ -50,13 +69,13 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
             setRowCount(record.data.rows || 5);
             setColCount(record.data.cols || 3);
         } else {
-            setSeatingPlan({});
+            // If the selected record is not found (e.g. deleted), revert to live view
+            handleNewRecord();
         }
-    } else if (classRecords.length > 0) {
-        setSelectedRecordId(classRecords[0].id);
     } else {
-        setSeatingPlan({});
+        handleNewRecord(); // Revert to live data if no record is selected
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRecordId, seatingPlanDocuments, students, currentClass]);
 
   const handleRandomize = useCallback(() => {
@@ -79,10 +98,18 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     toast({ title: "Öğrenciler rastgele yerleştirildi." });
   }, [students, rowCount, colCount, toast]);
 
-  const handleClearSeating = useCallback(() => {
+  const handleClearSeating = useCallback(async () => {
     setSeatingPlan({});
+    if (currentClass) {
+        const classRef = doc(db, 'classes', currentClass.id);
+        await updateDoc(classRef, {
+            seatingPlan: {},
+            seatingPlanRows: 5,
+            seatingPlanCols: 3,
+        });
+    }
     toast({ title: "Oturma planı temizlendi." });
-  }, [toast]);
+  }, [toast, currentClass, db]);
 
   const handleSavePlan = async () => {
     if (!currentClass) return;
@@ -91,32 +118,47 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     for (const key in seatingPlan) {
       planToSave[key] = seatingPlan[key].id;
     }
-    
-    const newRecord: SeatingPlanDocument = {
-        id: selectedRecordId || `seat_${Date.now()}`,
-        name: `Oturma Planı - ${new Date().toLocaleDateString('tr-TR')}`,
-        date: new Date().toISOString(),
-        classId: currentClass.id,
-        data: {
-            plan: planToSave,
-            rows: rowCount,
-            cols: colCount,
-        }
-    };
-    
-    setDb(prevDb => {
-        const existingIndex = prevDb.seatingPlanDocuments.findIndex(d => d.id === newRecord.id);
-        const updatedDocs = [...prevDb.seatingPlanDocuments];
-        if (existingIndex > -1) {
-            updatedDocs[existingIndex] = newRecord;
-        } else {
-            updatedDocs.push(newRecord);
-        }
-        return { ...prevDb, seatingPlanDocuments: updatedDocs };
-    });
-    
-    setSelectedRecordId(newRecord.id);
-    toast({ title: "Oturma planı başarıyla kaydedildi!" });
+
+    // Save to Firestore for live student view
+    const classRef = doc(db, 'classes', currentClass.id);
+    try {
+        await updateDoc(classRef, {
+            seatingPlan: planToSave,
+            seatingPlanRows: rowCount,
+            seatingPlanCols: colCount,
+        });
+        toast({ title: "Canlı Oturma Planı Güncellendi", description: "Plan öğrencilerle paylaşıldı." });
+
+        // Also save to local archive
+        const newRecord: SeatingPlanDocument = {
+            id: selectedRecordId || `seat_${Date.now()}`,
+            name: `Oturma Planı - ${new Date().toLocaleDateString('tr-TR')}`,
+            date: new Date().toISOString(),
+            classId: currentClass.id,
+            data: {
+                plan: planToSave,
+                rows: rowCount,
+                cols: colCount,
+            }
+        };
+        
+        setLocalDb(prevDb => {
+            const existingIndex = (prevDb.seatingPlanDocuments || []).findIndex(d => d.id === newRecord.id);
+            const updatedDocs = [...(prevDb.seatingPlanDocuments || [])];
+            if (existingIndex > -1) {
+                updatedDocs[existingIndex] = newRecord;
+            } else {
+                updatedDocs.push(newRecord);
+            }
+            return { ...prevDb, seatingPlanDocuments: updatedDocs };
+        });
+        
+        setSelectedRecordId(newRecord.id);
+        toast({ title: "Arşive Kaydedildi", description: "Oturma planı ayrıca arşive de kaydedildi." });
+
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Canlı Güncelleme Hatası", description: "Oturma planı kaydedilemedi." });
+    }
   };
 
   const handleExportWord = useCallback(() => {
@@ -181,20 +223,36 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
   
   const handleNewRecord = useCallback(() => {
     setSelectedRecordId(null);
-    setSeatingPlan({});
-    setRowCount(5);
-    setColCount(3);
-  }, []);
+    const plan: { [key: string]: Student } = {};
+    if (currentClass?.seatingPlan) {
+        for (const key in currentClass.seatingPlan) {
+            const studentId = currentClass.seatingPlan[key];
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                plan[key] = student;
+            }
+        }
+    }
+    setSeatingPlan(plan);
+    setRowCount(currentClass?.seatingPlanRows || 5);
+    setColCount(currentClass?.seatingPlanCols || 3);
+  }, [currentClass, students]);
 
-  const handleDeleteRecord = useCallback(() => {
+  const handleDeleteRecord = useCallback(async () => {
     if (!selectedRecordId) return;
-    setDb(prevDb => ({
+    setLocalDb(prevDb => ({
       ...prevDb,
-      seatingPlanDocuments: prevDb.seatingPlanDocuments.filter(d => d.id !== selectedRecordId)
+      seatingPlanDocuments: (prevDb.seatingPlanDocuments || []).filter(d => d.id !== selectedRecordId)
     }));
+    
+    // Check if the deleted record was the live one, if so clear live
+    if (currentClass && currentClass.seatingPlan && seatingPlanDocuments.find(d => d.id === selectedRecordId)?.data.plan === currentClass.seatingPlan){
+        await handleClearSeating();
+    }
+
     handleNewRecord();
     toast({ title: "Silindi", description: "Oturma planı arşivden silindi.", variant: "destructive" });
-  }, [selectedRecordId, setDb, handleNewRecord, toast]);
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast, currentClass, seatingPlanDocuments, handleClearSeating]);
 
   if (loading) return <div>Yükleniyor...</div>
 
@@ -202,11 +260,10 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-3 space-y-6">
          <RecordManager
-            records={seatingPlanDocuments.filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
+            records={(seatingPlanDocuments || []).filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
             selectedRecordId={selectedRecordId}
             onSelectRecord={setSelectedRecordId}
             onNewRecord={handleNewRecord}
-            onDeleteRecord={handleDeleteRecord}
             noun="Oturma Planı"
         />
         <Card>
@@ -228,7 +285,7 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
             </div>
             <div className="space-y-2 pt-4 border-t">
               <Button onClick={handleRandomize} disabled={students.length === 0} className="w-full"><Shuffle size={18} className="mr-2" /> Dağıt</Button>
-              <Button onClick={handleSavePlan} disabled={Object.keys(seatingPlan).length === 0} className="w-full bg-green-600 hover:bg-green-700"><Save size={18} className="mr-2" /> Planı Kaydet</Button>
+              <Button onClick={handleSavePlan} disabled={Object.keys(seatingPlan).length === 0} className="w-full bg-green-600 hover:bg-green-700"><Save size={18} className="mr-2" /> Planı Kaydet & Yayınla</Button>
               <Button onClick={handleClearSeating} variant="destructive" className="w-full"><Trash2 size={18} className="mr-2" /> Planı Temizle</Button>
               <Button onClick={handleExportWord} disabled={Object.keys(seatingPlan).length === 0} className="w-full"><Download size={18} className="mr-2" /> Word Olarak İndir</Button>
             </div>
