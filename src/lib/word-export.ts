@@ -432,7 +432,6 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
     const title = `${currentClass.name} - ${reportTitle}`;
     const config = teacherProfile?.reportConfig;
     const school = config?.schoolName || "..........................................";
-    const year = config?.academicYear || "20....-20....";
 
     const generateDilekce = (student: Student) => {
         const preferences = student.projectPreferences?.slice(0, 5).map((prefId, i) => {
@@ -441,7 +440,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
 
         return `
-            <div style="border: 1px solid #ccc; padding: 15px; height: 14cm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid;">
+            <div style="border: 1px solid #ccc; padding: 15px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div class="center bold">
                         <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
@@ -473,22 +472,11 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
                     <p style="margin-bottom: 5px;">İmza:</p>
                 </div>
             </div>
+            <div style="page-break-after: always;"></div>
         `;
     };
 
-    let dilekcelerContent = students.map((student, index) => {
-        const dilekce = generateDilekce(student);
-        // Add a horizontal rule between petitions unless it's the last one
-        if ((index + 1) % 2 !== 0 && index < students.length - 1) {
-            return dilekce + '<hr style="border: none; border-top: 1px dashed #ccc; margin: 10px 0;">';
-        }
-        // Add a page break after every 2 petitions, except for the last one
-        if ((index + 1) % 2 === 0 && index < students.length - 1) {
-             return dilekce + '<div style="page-break-after: always;"></div>';
-        }
-        return dilekce;
-    }).join('');
-
+    let dilekcelerContent = students.map(generateDilekce).join('');
 
     const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
@@ -515,7 +503,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
     const summaryFooter = generateReportFooter(teacherProfile);
 
     const summaryContent = `
-        <div style="page-break-before: always;">
+        <div>
             ${summaryHeader}
             <table>
                 <thead>${summaryTableHeader}</thead>
