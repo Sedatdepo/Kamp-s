@@ -16,7 +16,7 @@ const generateHtmlShell = (content: string, title: string) => {
       <title>${title}</title>
       <style>
         @page {
-          size: A4 landscape;
+          size: A4 portrait;
           margin: 0.5in;
         }
         body {
@@ -428,37 +428,79 @@ interface ExportProjectDistributionArgs {
     teacherProfile?: TeacherProfile | null;
 }
 export function exportProjectDistributionToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectDistributionArgs) {
-    const reportTitle = "Proje Tercih ve Atama Listesi";
-    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
-    const footer = generateReportFooter(teacherProfile);
+    const reportTitle = "Proje Ödevi İstek Dilekçeleri";
     const title = `${currentClass.name} - ${reportTitle}`;
+    const config = teacherProfile?.reportConfig;
+    const school = config?.schoolName || "..........................................";
+    const year = config?.academicYear || "20....-20....";
 
-    const tableHeader = `
-        <tr>
-            <th class="horizontal" style="width:5%;">S.No</th>
-            <th class="horizontal" style="width:15%;">Adı Soyadı</th>
-            <th class="horizontal" style="width:40%;">Tercihler</th>
-            <th class="horizontal" style="width:20%;">Atanan Proje</th>
-        </tr>
-    `;
-    const dataRows = students.map((s, index) => {
-        const preferences = s.projectPreferences?.map((prefId, i) => {
+    const generateDilekce = (student: Student) => {
+        const preferences = student.projectPreferences?.slice(0, 5).map((prefId, i) => {
             const lesson = lessons.find(l => l.id === prefId);
-            return lesson ? `${i+1}. ${lesson.name}` : '';
-        }).filter(Boolean).join('<br>') || 'Tercih yok';
-        const assigned = lessons.find(l => l.id === s.assignedLesson)?.name || 'Atanmadı';
+            return lesson ? `<tr><td class="center">${i + 1}</td><td>${lesson.name}</td></tr>` : '';
+        }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
 
         return `
-            <tr>
-                <td class="center">${index + 1}</td>
-                <td>${s.name}</td>
-                <td>${preferences}</td>
-                <td class="center bold">${assigned}</td>
-            </tr>
+            <div style="border: 1px solid #ccc; padding: 15px; page-break-inside: avoid; height: 45%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="center bold">
+                        <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
+                    </div>
+                    <br>
+                    <p style="text-indent: 2em; line-height: 1.5;">
+                        ${year} Eğitim-Öğretim yılında ${teacherProfile?.branch || 'ilgili'} dersinden almam gereken proje ödevi için, aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.
+                    </p>
+                    <p>Gereğini bilgilerinize arz ederim.</p>
+                    <br>
+                    <table style="width: 80%; margin: 0 auto;">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">Sıra</th>
+                                <th>İstenilen Dersin Adı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                           ${preferences}
+                           ${Array.from({ length: 5 - (student.projectPreferences?.length || 0) }).map((_, i) => `<tr><td class="center">${(student.projectPreferences?.length || 0) + i + 1}</td><td></td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin-bottom: 5px;">.../.../.....</p>
+                    <p style="margin-bottom: 5px;" class="bold">${student.name}</p>
+                    <p style="margin-bottom: 5px;">Sınıfı: ${currentClass.name}</p>
+                    <p style="margin-bottom: 5px;">No: ${student.number}</p>
+                    <p style="margin-bottom: 5px;">İmza:</p>
+                </div>
+            </div>
         `;
-    }).join('');
+    };
 
-    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    let content = '';
+    for (let i = 0; i < students.length; i += 4) {
+        const pageStudents = students.slice(i, i + 4);
+        content += `
+            <table class="no-border" style="width: 100%; height: 100%; page-break-after: always;">
+                <tr>
+                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
+                        ${pageStudents[0] ? generateDilekce(pageStudents[0]) : ''}
+                    </td>
+                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
+                        ${pageStudents[1] ? generateDilekce(pageStudents[1]) : ''}
+                    </td>
+                </tr>
+                 <tr>
+                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
+                        ${pageStudents[2] ? generateDilekce(pageStudents[2]) : ''}
+                    </td>
+                    <td class="no-border" style="width: 50%; vertical-align: top; padding: 5px;">
+                        ${pageStudents[3] ? generateDilekce(pageStudents[3]) : ''}
+                    </td>
+                </tr>
+            </table>
+        `;
+    }
+
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
