@@ -12,15 +12,16 @@ import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
 import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
 import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
+import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
-import { useDoc, useMemoFirebase } from '@/firebase';
-import { Class } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { Class, Survey, SurveyResponse } from '@/lib/types';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -57,9 +58,31 @@ export function StudentDashboard() {
   const { appUser, db } = authContext || {};
   const { notifications, markAsSeen } = useNotification();
   
+  const studentId = appUser?.type === 'student' ? appUser.data.id : null;
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
+  
+  // --- Survey Logic moved here ---
+  const surveysQuery = useMemoFirebase(() => {
+    if (!db || !classId) return null;
+    return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
+  }, [db, classId]);
+  const { data: activeSurveys } = useCollection<Survey>(surveysQuery);
+
+  const responsesQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
+  }, [db, studentId]);
+  const { data: userResponses } = useCollection<SurveyResponse>(responsesQuery);
+  
+  const hasUnansweredSurvey = useMemo(() => {
+    if (!activeSurveys || !userResponses) return false;
+    const respondedSurveyIds = new Set(userResponses.map(r => r.surveyId));
+    return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
+  }, [activeSurveys, userResponses]);
+  // --- End of Survey Logic ---
 
 
   useEffect(() => {
@@ -68,6 +91,7 @@ export function StudentDashboard() {
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
+    else if (activeTab === 'surveys') markAsSeen('surveys');
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -81,6 +105,7 @@ export function StudentDashboard() {
           case 'election': return <ElectionVoteTab />;
           case 'dutyRoster': return <DutyRosterTab />;
           case 'seatingPlan': return <SeatingPlanTab />;
+          case 'surveys': return <StudentSurveyTab />;
           default: return null;
       }
   }
@@ -143,6 +168,16 @@ export function StudentDashboard() {
                         hasNotification={notifications.election} 
                         isDisabled={!currentClass?.isElectionActive}
                     />
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<ClipboardCheck />} 
+                        title="Anketlerim" 
+                        description="Aktif anketleri cevapla." 
+                        onClick={() => setActiveTab('surveys')} 
+                        hasNotification={notifications.surveys}
+                        isDisabled={!hasUnansweredSurvey}
+                    />
 
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
 
@@ -171,3 +206,4 @@ export function StudentDashboard() {
     </div>
   );
 }
+

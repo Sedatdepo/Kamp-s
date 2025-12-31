@@ -134,5 +134,6 @@ export const useNotification = () => {
     checkNotifications();
   }, [studentId, classId, currentClass, checkNotifications, db]);
 
-  return { notifications, markAsSeen, hasUnansweredSurvey };
+  return { notifications, markAsSeen };
 };
+
