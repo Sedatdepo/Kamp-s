@@ -18,7 +18,7 @@ import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
@@ -59,8 +59,7 @@ export function StudentDashboard() {
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData, isLoading: classLoading } = useCollection<Class>(classQuery);
-  const currentClass = useMemo(() => (classData && classData.length > 0 ? classData[0] : null), [classData]);
+  const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
 
   useEffect(() => {
