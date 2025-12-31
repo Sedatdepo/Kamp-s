@@ -441,7 +441,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         }).join('') || '<tr><td colspan="2" class="center">Tercih yapılmadı</td></tr>';
 
         return `
-            <div style="border: 1px solid #ccc; padding: 15px; height: 49%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid;">
+            <div style="border: 1px solid #ccc; padding: 15px; height: 14cm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid;">
                 <div>
                     <div class="center bold">
                         <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
@@ -478,11 +478,11 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
 
     let dilekcelerContent = students.map((student, index) => {
         const dilekce = generateDilekce(student);
-        // Add a horizontal rule between petitions unless it's the last one on a page or overall
+        // Add a horizontal rule between petitions unless it's the last one
         if ((index + 1) % 2 !== 0 && index < students.length - 1) {
-            return dilekce + '<hr style="border: none; border-top: 1px dashed #ccc; margin: 1% 0;">';
+            return dilekce + '<hr style="border: none; border-top: 1px dashed #ccc; margin: 10px 0;">';
         }
-        // Add a page break after every 2 petitions
+        // Add a page break after every 2 petitions, except for the last one
         if ((index + 1) % 2 === 0 && index < students.length - 1) {
              return dilekce + '<div style="page-break-after: always;"></div>';
         }
