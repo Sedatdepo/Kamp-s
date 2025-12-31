@@ -20,7 +20,7 @@ export type WithId<T> = T & { id: string };
  * @template T Type of the document data.
  */
 export interface UseCollectionResult<T> {
-  data: WithId<T>[] | null; // Document data with ID, or null.
+  data: WithId<T>[]; // Data is now always an array.
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
@@ -55,15 +55,15 @@ export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
-  type StateDataType = ResultItemType[] | null;
+  type StateDataType = ResultItemType[]; // Data is always an array.
 
-  const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [data, setData] = useState<StateDataType>([]); // Initialize with an empty array.
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
-      setData(null);
+      setData([]); // Set to empty array if no ref
       setIsLoading(false);
       setError(null);
       return;
@@ -97,7 +97,7 @@ export function useCollection<T = any>(
         })
 
         setError(contextualError)
-        setData(null)
+        setData([]) // Set to empty array on error
         setIsLoading(false)
 
         // trigger global error propagation
@@ -107,8 +107,10 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    console.warn(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase. This may cause infinite loops.');
   }
+
   return { data, isLoading, error };
 }

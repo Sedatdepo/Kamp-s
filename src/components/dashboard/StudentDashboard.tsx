@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { HomeTab } from '@/components/dashboard/student/HomeTab';
 import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
@@ -17,8 +17,8 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { AuthContext } from '@/context/AuthContext';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
@@ -53,12 +53,15 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoadin
 
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const { appUser, db } = useAuth();
+  const authContext = useContext(AuthContext);
+  const { appUser, db } = authContext || {};
   const { notifications, markAsSeen } = useNotification();
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-for-dashboard-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: classData, isLoading: classLoading } = useCollection<Class>(classQuery);
+  const currentClass = useMemo(() => (classData && classData.length > 0 ? classData[0] : null), [classData]);
+
 
   useEffect(() => {
     if (activeTab === 'announcements') markAsSeen('announcements');
