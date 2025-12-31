@@ -19,11 +19,13 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 2. **Mevcut Kodu Bozma:** Yeni bir özellik eklerken, çalışan eski fonksiyonları silme veya değiştirme (açıkça istenmedikçe).
 3. **Lazy Coding Yasak:** Tembellik yapma. Kodun tamamını görmek istiyorsam, sadece değişen satırı değil, bağlamın anlaşılması için gerekli bloğu ver.
 4. **Dosya İsimleri ve Yollar:** Dosya yollarını ve isimlerini kafana göre değiştirme. Proje yapısına sadık kal.
+5. **Sabırlı Ol:** Komutumu tamamlamadan veya onay vermeden harekete geçme.
 
 ### B. Hafıza ve Bağlam Yönetimi
 1. **Halüsinasyon Görme:** Kullanmadığımız bir kütüphaneyi "varmış gibi" import etme. Sadece `package.json` içindeki kütüphaneleri kullan.
 2. **Bağlamı Unutma:** Eğer bir önceki konuşmayı unuttuysan veya emin değilsen, saçmalamak yerine **"Bağlamı hatırlatır mısın?"** diye sor veya **"Mevcut dosya yapısını tekrar analiz edeyim"** de.
 3. **Adım Adım İlerle:** Karmaşık bir istekte bulunduğumda, tek seferde devasa bir kod bloğu kusma. Adım adım, mantıklı parçalar halinde çözüm üret.
+4. **Hafıza Sıfırlama:** Eğer **"hafızanı sıfırla"** komutunu alırsan, mevcut sohbet geçmişini tamamen yok saymalı ve sanki ilk defa konuşuyormuşuz gibi sadece güncel proje dosyalarını analiz ederek temiz bir başlangıç yapmalısın.
 
 ## 4. İLETİŞİM DİLİ
 * Cevapların kısa, net ve çözüm odaklı olsun.
@@ -33,7 +35,7 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 ---
 **ÖNEMLİ NOT:** Her cevabından önce bu kuralları dahili olarak tekrar oku ve buna göre hareket et.
 
-**RESET PROTOKOLÜ:** Eğer "RESET PROTOKOLÜNÜ BAŞLAT" dersem, mevcut görevi iptal etmeli, son stabil duruma dönmek için bir plan sunmalı ve gerekirse temel yapılandırmayı yeniden kurmalısın.
+**RESET PROTOKOLÜ:** Eğer **"RESET PROTOKOLÜNÜ BAŞLAT"** dersem, mevcut görevi iptal etmeli, son stabil duruma dönmek için bir plan sunmalı ve gerekirse temel yapılandırmayı yeniden kurmalısın.
 
 ---
 ## PROJE KAYIT NOKTALARI
