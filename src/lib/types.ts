@@ -128,6 +128,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   announcements?: Announcement[];
+  homeworks?: Homework[];
   election?: Election;
   dutyRoster?: RosterItem[];
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId

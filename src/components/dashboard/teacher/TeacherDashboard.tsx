@@ -405,7 +405,7 @@ export function TeacherDashboard() {
         'forms': <InfoFormsTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />,
         'communication': <CommunicationTab classId={selectedClassId} currentClass={currentClass} />,
         'dilekce': <DilekceTab teacherProfile={teacherProfile} />,
-        'surveys': <SurveyTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} />,
+        'surveys': <SurveyTab students={(allStudents || []).filter((s: Student) => s.classId === selectedClassId)} currentClass={currentClass} teacherProfile={teacherProfile}/>,
       }[activeTab];
 
       return (

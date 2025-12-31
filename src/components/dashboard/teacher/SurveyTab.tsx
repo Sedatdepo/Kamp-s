@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -15,6 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+
 
 interface SurveyTabProps {
   students: Student[];
@@ -69,6 +70,7 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   const [formTitle, setFormTitle] = useState('Yeni Anket');
   const [formDesc, setFormDesc] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [responses, setResponses] = useState<any[]>([]);
 
   const surveysQuery = useMemo(() => {
     if (!db || !currentClass?.id) return null;
@@ -173,12 +175,46 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     }));
   };
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const data: { [key: string]: any } = {};
+    
+    questions.forEach(q => {
+      if (q.type === 'checkbox') {
+        data[q.id] = formData.getAll(`q_${q.id}`);
+      } else {
+        data[q.id] = formData.get(`q_${q.id}`);
+      }
+    });
+
+    setResponses([...responses, { id: Date.now(), answers: data }]);
+    const btn = document.getElementById('submit-btn');
+    if(btn) {
+       btn.innerText = "Gönderildi!";
+       btn.classList.add('bg-green-600');
+       setTimeout(() => {
+         setView('results');
+       }, 800);
+    }
+  };
+
+  const handleToggleActive = async (survey: Survey, checked: boolean) => {
+    if (!db) return;
+    const surveyRef = doc(db, 'surveys', survey.id);
+    await updateDoc(surveyRef, { isActive: checked });
+    toast({
+      title: 'Anket Durumu Güncellendi',
+      description: `"${survey.title}" anketi ${checked ? 'aktif' : 'pasif'} hale getirildi.`,
+    });
+  };
+
 
   if (view === 'builder') {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center">
-                <Button onClick={() => setView('list')} variant="outline"><Plus className="mr-2 h-4 w-4" /> Anket Listesine Dön</Button>
+                <Button onClick={() => setView('list')} variant="outline"><List className="mr-2 h-4 w-4" /> Anket Listesine Dön</Button>
                 <Button onClick={handleSaveSurvey}><Save className="mr-2 h-4 w-4" /> Anketi Kaydet</Button>
             </div>
           {/* Başlık */}
@@ -342,9 +378,19 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
                             <p className="font-semibold">{survey.title}</p>
                             <p className="text-sm text-muted-foreground">{survey.description}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id={`survey-toggle-${survey.id}`}
+                                    checked={survey.isActive}
+                                    onCheckedChange={(checked) => handleToggleActive(survey, checked)}
+                                />
+                                <Label htmlFor={`survey-toggle-${survey.id}`} className={survey.isActive ? 'text-green-600 font-semibold' : 'text-muted-foreground'}>
+                                    {survey.isActive ? 'Aktif' : 'Pasif'}
+                                </Label>
+                            </div>
                             <Button variant="outline" size="sm">Sonuçları Gör</Button>
+                            <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
                         </div>
                     </div>
                 ))}
@@ -364,5 +410,3 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     </Card>
   );
 }
-
-    

@@ -12,24 +12,29 @@ import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
 import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
 import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
+import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab'; // YENİ
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck } from 'lucide-react'; // YENİ
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
+import { cn } from '@/lib/utils';
 
-const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean }) => {
+const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
     return <Skeleton className="h-28 w-full" />;
   }
   
   return (
-    <Card onClick={onClick} className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative">
+    <Card 
+      onClick={!isDisabled ? onClick : undefined} 
+      className={cn("cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative", isDisabled && "opacity-50 cursor-not-allowed")}
+    >
       <CardHeader className="flex flex-row items-center gap-4">
         <div className="bg-primary/10 text-primary p-3 rounded-lg">
           {icon}
@@ -55,8 +60,8 @@ export function StudentDashboard() {
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData, isLoading: classLoading } = useCollection<Class>(classQuery);
-  const currentClass = useMemo(() => (classData.length > 0 ? classData[0] : null), [classData]);
+  const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
+
 
   useEffect(() => {
     if (activeTab === 'announcements') markAsSeen('announcements');
@@ -64,6 +69,7 @@ export function StudentDashboard() {
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
+    else if (activeTab === 'surveys') markAsSeen('surveys'); // YENİ
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -77,6 +83,7 @@ export function StudentDashboard() {
           case 'election': return <ElectionVoteTab />;
           case 'dutyRoster': return <DutyRosterTab />;
           case 'seatingPlan': return <SeatingPlanTab />;
+          case 'surveys': return <StudentSurveyTab />; // YENİ
           default: return null;
       }
   }
@@ -117,7 +124,8 @@ export function StudentDashboard() {
                         icon={<Grid />} 
                         title="Oturma Planım" 
                         description="Sınıftaki yerini gör." 
-                        onClick={() => currentClass?.seatingPlan && setActiveTab('seatingPlan')} 
+                        onClick={() => setActiveTab('seatingPlan')} 
+                        isDisabled={!currentClass?.seatingPlan}
                     />
                     
                     <MenuCard 
@@ -125,7 +133,8 @@ export function StudentDashboard() {
                         icon={<Users />} 
                         title="Nöbetçi Listesi" 
                         description="Sınıf nöbetçi listesini gör." 
-                        onClick={() => currentClass?.dutyRoster && currentClass.dutyRoster.length > 0 && setActiveTab('dutyRoster')} 
+                        onClick={() => setActiveTab('dutyRoster')} 
+                        isDisabled={!currentClass?.dutyRoster || currentClass.dutyRoster.length === 0}
                     />
                     
                     <MenuCard 
@@ -133,8 +142,18 @@ export function StudentDashboard() {
                         icon={<Vote />} 
                         title="Seçim" 
                         description="Sınıf seçimleri için oy kullan." 
-                        onClick={() => currentClass?.isElectionActive && setActiveTab('election')} 
+                        onClick={() => setActiveTab('election')} 
                         hasNotification={notifications.election} 
+                        isDisabled={!currentClass?.isElectionActive}
+                    />
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<ClipboardCheck />} 
+                        title="Anketlerim" 
+                        description="Aktif anketleri cevapla." 
+                        onClick={() => setActiveTab('surveys')} 
+                        hasNotification={notifications.surveys} 
                     />
 
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
@@ -144,8 +163,9 @@ export function StudentDashboard() {
                         icon={<ShieldAlert />} 
                         title="Risk Formu" 
                         description="Kişisel risk faktörlerini işaretle." 
-                        onClick={() => currentClass?.isRiskFormActive && setActiveTab('risks')} 
+                        onClick={() => setActiveTab('risks')} 
                         hasNotification={notifications.riskForm} 
+                        isDisabled={!currentClass?.isRiskFormActive}
                     />
 
                     <MenuCard 
@@ -153,8 +173,9 @@ export function StudentDashboard() {
                         icon={<FileText />} 
                         title="Bilgi Formu" 
                         description="Kişisel ve ailevi bilgilerini doldur." 
-                        onClick={() => currentClass?.isInfoFormActive && setActiveTab('info')} 
+                        onClick={() => setActiveTab('info')} 
                         hasNotification={notifications.infoForm} 
+                        isDisabled={!currentClass?.isInfoFormActive}
                     />
                 </div>
             </div>
