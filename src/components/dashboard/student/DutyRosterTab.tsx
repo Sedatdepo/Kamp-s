@@ -17,8 +17,7 @@ export function DutyRosterTab() {
   const classId = appUser.data.classId;
 
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`class-duty-roster-${classId}`, classQuery);
-  const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
+  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-duty-roster-${classId}`, classQuery);
   const dutyRoster = useMemo(() => currentClass?.dutyRoster || [], [currentClass]);
 
   if (classLoading) {

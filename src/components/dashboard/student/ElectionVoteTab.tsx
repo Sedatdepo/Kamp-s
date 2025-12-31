@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Candidate } from '@/lib/types';
+import { Class, Candidate, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Vote, CheckCircle, Crown, UserCheck, Building, ShieldCheck as HonorIcon } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -24,8 +24,9 @@ export function ElectionVoteTab() {
   const classId = appUser.data.classId;
 
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
-  const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
+  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
+  const studentsQuery = useMemo(() => (classId && db ? doc(db, 'students', classId) : null), [classId, db]);
+  const { data: students } = useFirestore<Student[]>(`class-election-students-${classId}`, classQuery);
 
   const hasVoted = useMemo(() => {
     return currentClass?.election?.votedStudentIds.includes(studentId) ?? false;
@@ -154,7 +155,7 @@ export function ElectionVoteTab() {
                         <CardTitle>Tüm Adaylar ve Oy Dağılımı</CardTitle>
                     </CardHeader>
                     <CardContent>
-                         <p className="text-sm text-muted-foreground mb-4">Toplam kullanılan oy: {electionData.votedStudentIds.length} / {currentClass.students?.length || electionData.votedStudentIds.length}</p>
+                         <p className="text-sm text-muted-foreground mb-4">Toplam kullanılan oy: {electionData.votedStudentIds.length} / {students?.length || electionData.votedStudentIds.length}</p>
                         <Table>
                             <TableHeader>
                                 <TableRow>

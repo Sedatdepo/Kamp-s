@@ -10,17 +10,36 @@ import { AuthContext } from '@/context/AuthContext';
 const cache = new Map<string, any>();
 
 interface UseFirestoreResult<T> {
-  data: T | null;
+  data: T; // Artık null değil, başlangıçta boş dizi veya nesne olacak
   loading: boolean;
   error: Error | null;
 }
 
+// Overload for collections
+export function useFirestore<T extends any[]>(
+  key: string,
+  ref: CollectionReference | Query | null,
+  options?: { subscribe?: boolean, dependencies?: any[] }
+): UseFirestoreResult<T>;
+
+// Overload for documents
+export function useFirestore<T extends object>(
+  key: string,
+  ref: DocumentReference | null,
+  options?: { subscribe?: boolean, dependencies?: any[] }
+): UseFirestoreResult<T | null>;
+
+
 export function useFirestore<T>(
   key: string,
   ref: DocumentReference | CollectionReference | Query | null,
-  options: { subscribe: boolean, dependencies?: any[] } = { subscribe: true, dependencies: [] }
+  options: { subscribe?: boolean, dependencies?: any[] } = { subscribe: true, dependencies: [] }
 ): UseFirestoreResult<T> {
-  const [data, setData] = useState<T | null>(cache.get(key) || null);
+    
+  const isDoc = ref && (ref as DocumentReference).type === "document";
+  const initialValue = isDoc ? null : [];
+    
+  const [data, setData] = useState<T>((cache.get(key) || initialValue));
   const [loading, setLoading] = useState<boolean>(!cache.has(key));
   const [error, setError] = useState<Error | null>(null);
 
@@ -28,7 +47,7 @@ export function useFirestore<T>(
 
   useEffect(() => {
     if (!ref) {
-      setData(null);
+      setData(initialValue as T);
       setLoading(false);
       return;
     }
@@ -42,15 +61,14 @@ export function useFirestore<T>(
     
     if (options.subscribe) {
       const unsubscribe = onSnapshot(ref as any, (snapshot: DocumentSnapshot<DocumentData> | QuerySnapshot<DocumentData>) => {
+        let result: any;
         if ('docs' in snapshot) { // QuerySnapshot
-          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          cache.set(key, items);
-          setData(items as T);
+          result = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         } else { // DocumentSnapshot
-          const item = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
-          cache.set(key, item);
-          setData(item as T);
+          result = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
         }
+        cache.set(key, result);
+        setData(result as T);
         setLoading(false);
       }, (err: FirestoreError) => {
         console.error(`Firestore subscription error for key "${key}":`, err);
@@ -61,17 +79,16 @@ export function useFirestore<T>(
     } else {
       const getAsync = async () => {
         try {
-          if ((ref as DocumentReference).type === "document") {
+          let result: any;
+          if (isDoc) {
               const snapshot = await getDoc(ref as DocumentReference);
-              const item = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
-              cache.set(key, item);
-              setData(item as T);
+              result = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
           } else {
               const snapshot = await getDocs(ref as Query);
-              const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              cache.set(key, items);
-              setData(items as T);
+              result = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           }
+          cache.set(key, result);
+          setData(result as T);
         } catch (err: any) {
           console.error(`Firestore fetch error for key "${key}":`, err);
           setError(err);
@@ -86,5 +103,3 @@ export function useFirestore<T>(
 
   return { data, loading, error };
 }
-
-

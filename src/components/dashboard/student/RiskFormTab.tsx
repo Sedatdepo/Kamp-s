@@ -17,14 +17,15 @@ export function RiskFormTab() {
   
   if (appUser?.type !== 'student') return null;
 
-  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+  const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
 
   const riskFactorsQuery = useMemo(() => {
     if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'riskFactors'));
   }, [studentClass?.teacherId, db]);
-  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor[]>('riskFactors', riskFactorsQuery);
 
   const studentRisks = appUser.data.risks || [];
 

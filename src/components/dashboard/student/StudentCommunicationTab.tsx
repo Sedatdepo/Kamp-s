@@ -13,9 +13,10 @@ export function StudentCommunicationTab() {
   
   if (appUser?.type !== 'student') return null;
   const studentId = appUser.data.id;
+  const classId = appUser.data.classId;
 
-  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, loading: classLoading } = useFirestore<Class>(`class-for-comm-${classId}`, classQuery);
 
   useEffect(() => {
     if (db && studentClass && studentClass.announcements && studentId) {

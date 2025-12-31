@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -31,14 +32,8 @@ export const useNotification = () => {
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
 
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
+  const { data: currentClass } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
   
-  const currentClass = useMemo(() => {
-    if (!classData) return null;
-    // useFirestore for a doc returns the doc object, not an array
-    return classData as Class;
-  }, [classData]);
-
 
   const checkNotifications = useCallback(async () => {
     if (!currentClass || !studentId || !db) return;

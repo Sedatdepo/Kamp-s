@@ -16,14 +16,13 @@ export function SeatingPlanTab() {
   const classId = appUser.data.classId;
 
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: classData, loading: classLoading } = useFirestore<Class>(`class-seating-plan-${classId}`, classQuery);
-  const currentClass = useMemo(() => classData.length > 0 ? classData[0] : null, [classData]);
+  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-seating-plan-${classId}`, classQuery);
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-for-plan-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-for-plan-${classId}`, studentsQuery);
 
   const { seatingPlan, rowCount, colCount } = useMemo(() => {
-    if (!currentClass?.seatingPlan) {
+    if (!currentClass?.seatingPlan || !students) {
       return { seatingPlan: {}, rowCount: 0, colCount: 0 };
     }
     const plan: { [key: string]: Student } = {};

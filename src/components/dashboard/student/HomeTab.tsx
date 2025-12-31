@@ -162,19 +162,21 @@ export function HomeTab() {
 
   if (appUser?.type !== 'student') return null;
 
-  const { data: classes, loading: classLoading } = useFirestore<Class>('classes');
-  const studentClass = useMemo(() => classes.find(c => c.id === appUser.data.classId), [classes, appUser.data.classId]);
+  const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+  const { data: studentClass, loading: classLoading } = useFirestore<Class>(
+    `class-${classId}`,
+    useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db])
+  );
 
   const teacherQuery = useMemo(() => (studentClass?.teacherId && db ? doc(db, 'teachers', studentClass.teacherId) : null), [studentClass?.teacherId, db]);
-  const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-student-${studentClass?.teacherId}`, teacherQuery);
-  const teacherProfile = useMemo(() => (teacherData.length > 0 ? teacherData[0] : null), [teacherData]);
+  const { data: teacherProfile, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-student-${studentClass?.teacherId}`, teacherQuery);
   
   const lessonsQuery = useMemo(() => {
     if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
   }, [studentClass?.teacherId, db]);
 
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
+  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>('lessons', lessonsQuery);
 
   const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;
