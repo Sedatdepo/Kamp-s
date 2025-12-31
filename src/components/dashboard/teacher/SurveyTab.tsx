@@ -4,12 +4,15 @@ import React, { useState } from 'react';
 import { Student, Class, TeacherProfile, Survey } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck, Plus, List, ArrowLeft } from 'lucide-react';
+import { ClipboardCheck, Plus, List, ArrowLeft, Save } from 'lucide-react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where } from 'firebase/firestore';
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface SurveyTabProps {
   students: Student[];
@@ -22,16 +25,30 @@ const SurveyCreationForm = ({ onBack }: { onBack: () => void }) => (
   <Card>
     <CardHeader>
       <CardTitle>Yeni Anket Oluştur</CardTitle>
-      <CardDescription>Bu özellik yakında eklenecektir.</CardDescription>
+      <CardDescription>Anketinizin temel bilgilerini girin ve soruları eklemeye başlayın.</CardDescription>
     </CardHeader>
-    <CardContent>
-        <div className="text-center p-10 bg-muted/50 rounded-lg">
-          <p className="text-muted-foreground">Anket oluşturma formu yapım aşamasındadır.</p>
+    <CardContent className="space-y-6">
+        <div className="space-y-2">
+            <Label htmlFor="survey-title">Anket Başlığı</Label>
+            <Input id="survey-title" placeholder="Örn: 1. Dönem Veli Memnuniyet Anketi" />
         </div>
-         <Button onClick={onBack} variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4"/>
-            Geri
-        </Button>
+         <div className="space-y-2">
+            <Label htmlFor="survey-description">Açıklama</Label>
+            <Textarea id="survey-description" placeholder="Anketin amacı hakkında kısa bir bilgi verin." />
+        </div>
+        <div className="text-center p-6 bg-muted/50 rounded-lg">
+          <p className="text-muted-foreground text-sm">Soru ekleme özelliği yakında aktif olacaktır.</p>
+        </div>
+         <div className="flex justify-between items-center">
+            <Button onClick={onBack} variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4"/>
+                Geri Dön
+            </Button>
+            <Button disabled>
+                <Save className="mr-2 h-4 w-4" />
+                Kaydet ve Devam Et
+            </Button>
+        </div>
     </CardContent>
   </Card>
 );
