@@ -23,20 +23,6 @@ service cloud.firestore {
     match /classes/{classId} {
       allow read: if true;
       allow write: if isTeacher();
-
-      // Sub-collections inside classes
-      match /homeworks/{homeworkId} {
-        allow read, write: if isTeacher();
-        
-        match /submissions/{submissionId} {
-            // Students can create their own submission.
-            // Teachers can read/update (e.g., for grading).
-            allow create: if isSignedIn() && request.resource.data.studentAuthUid == request.auth.uid;
-            allow read, update: if isTeacher();
-            // A student can read their own submission.
-            allow get: if isSignedIn() && resource.data.studentAuthUid == request.auth.uid;
-        }
-      }
     }
 
     // Teachers can manage their own students.
