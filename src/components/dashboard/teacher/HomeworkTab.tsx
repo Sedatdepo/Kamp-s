@@ -522,26 +522,25 @@ const CreateAssignmentModal = ({ isOpen, onClose, onSave }: any) => {
     );
 };
 
-const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm }: any) => {
+const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes }: any) => {
     const [selectedClass, setSelectedClass] = useState('');
     const [dueDate, setDueDate] = useState('');
   
     useEffect(() => {
       if (assignment) {
-        setSelectedClass(`${(assignment as any).grade}-A`);
+        if (classes && classes.length > 0) {
+            setSelectedClass(classes[0].id);
+        }
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
         setDueDate(nextWeek.toISOString().split('T')[0]);
       }
-    }, [assignment]);
+    }, [assignment, classes]);
   
     if (!isOpen || !assignment) return null;
   
-    const sections = ['A', 'B', 'C', 'D', 'E'];
-    const classOptions = sections.map(section => `${(assignment as any).grade}-${section}`);
-  
     const handleConfirm = () => {
-      onConfirm({ class: selectedClass, date: dueDate });
+      onConfirm({ classId: selectedClass, date: dueDate });
       onClose();
     };
   
@@ -570,8 +569,8 @@ const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm }: any) =>
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
               >
-                {classOptions.map(cls => (
-                  <option key={cls} value={cls}>{cls} Sınıfı</option>
+                {(classes || []).map((cls: Class) => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
             </div>
@@ -1318,7 +1317,7 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
 
 
 // --- HOMEWORK LIBRARY COMPONENT ---
-const HomeworkLibrary = ({ classId, teacherProfile }: { classId: string; teacherProfile: TeacherProfile | null }) => {
+const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[] }) => {
     const [gradeFilter, setGradeFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -1373,17 +1372,19 @@ const HomeworkLibrary = ({ classId, teacherProfile }: { classId: string; teacher
     };
 
     const handleAssignConfirm = async (details: any) => {
-        if(!db || !classId) return;
+        if(!db || !details.classId) return;
 
+        const targetClass = classes.find(c => c.id === details.classId);
+        
         const newHistoryItem = {
             title: selectedAssignment.title,
-            class: details.class,
+            class: targetClass?.name || 'Bilinmeyen Sınıf',
             date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
         };
         
         try {
-            await addDoc(collection(db, 'classes', classId, 'homeworks'), {
-                classId,
+            await addDoc(collection(db, 'classes', details.classId, 'homeworks'), {
+                classId: details.classId,
                 text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
                 assignedDate: new Date().toISOString(),
                 dueDate: details.date ? new Date(details.date).toISOString() : null,
@@ -1392,7 +1393,7 @@ const HomeworkLibrary = ({ classId, teacherProfile }: { classId: string; teacher
                 seenBy: [],
             });
             setHistory(prev => [newHistoryItem, ...prev]);
-            setAssignDetails(details);
+            setAssignDetails({class: targetClass?.name, date: details.date});
             setSuccessModalOpen(true);
 
         } catch (error) {
@@ -1525,6 +1526,7 @@ const HomeworkLibrary = ({ classId, teacherProfile }: { classId: string; teacher
             onClose={() => setAssignSettingsModalOpen(false)}
             assignment={selectedAssignment}
             onConfirm={handleAssignConfirm}
+            classes={classes}
         />
 
         <SuccessModal 
@@ -1571,7 +1573,7 @@ const HomeworkLibrary = ({ classId, teacherProfile }: { classId: string; teacher
 };
 
 // --- MAIN EXPORTED COMPONENT ---
-export function HomeworkTab({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) {
+export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
     return (
         <Tabs defaultValue="live">
             <TabsList className="grid w-full grid-cols-2">
@@ -1590,6 +1592,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students }:
                 <HomeworkLibrary 
                     classId={classId}
                     teacherProfile={teacherProfile}
+                    classes={classes}
                 />
             </TabsContent>
         </Tabs>
