@@ -32,7 +32,13 @@ export const useNotification = () => {
 
   const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: classData } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
-  const currentClass = classData.length > 0 ? classData[0] : null;
+  
+  const currentClass = useMemo(() => {
+    if (!classData) return null;
+    // useFirestore for a doc returns the doc object, not an array
+    return classData as Class;
+  }, [classData]);
+
 
   const checkNotifications = useCallback(async () => {
     if (!currentClass || !studentId || !db) return;
@@ -117,5 +123,3 @@ export const useNotification = () => {
 
   return { notifications, markAsSeen };
 };
-
-    
