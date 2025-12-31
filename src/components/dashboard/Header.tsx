@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Settings } from 'lucide-react';
 import { ProfileDialog } from './teacher/ProfileDialog';
 import { useState } from 'react';
 
@@ -28,10 +28,18 @@ function getInitials(name: string = '') {
 export function Header() {
   const { appUser, signOut } = useAuth();
   const [isProfileOpen, setProfileOpen] = useState(false);
+  const [isStudentSettingsOpen, setStudentSettingsOpen] = useState(false);
+
 
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
   const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
 
+  const handleStudentSettingsClick = () => {
+    // This is a placeholder. The actual implementation will be handled by StudentDashboard
+    // by passing a function to open the correct tab.
+    const event = new CustomEvent('open-student-settings');
+    window.dispatchEvent(event);
+  };
 
   return (
     <>
@@ -56,6 +64,12 @@ export function Header() {
                 <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profil</span>
+                </DropdownMenuItem>
+              )}
+               {appUser?.type === 'student' && (
+                <DropdownMenuItem onClick={handleStudentSettingsClick}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Hesap Ayarları</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={signOut}>

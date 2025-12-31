@@ -13,9 +13,10 @@ import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab'
 import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
 import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
 import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab';
+import { AccountSettingsTab } from '@/components/dashboard/student/AccountSettingsTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -62,6 +63,11 @@ export function StudentDashboard() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
+  useEffect(() => {
+    const handleOpenSettings = () => setActiveTab('account');
+    window.addEventListener('open-student-settings', handleOpenSettings);
+    return () => window.removeEventListener('open-student-settings', handleOpenSettings);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'announcements') markAsSeen('announcements');
@@ -84,6 +90,7 @@ export function StudentDashboard() {
           case 'dutyRoster': return <DutyRosterTab />;
           case 'seatingPlan': return <SeatingPlanTab />;
           case 'surveys': return <StudentSurveyTab />;
+          case 'account': return <AccountSettingsTab />;
           default: return null;
       }
   }
@@ -158,6 +165,8 @@ export function StudentDashboard() {
                     />
 
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
+                    
+                    <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
 
                     <MenuCard 
                         isLoading={classLoading}
