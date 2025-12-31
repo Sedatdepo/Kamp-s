@@ -37,27 +37,25 @@ export function useFirestore<T>(
 ): UseFirestoreResult<T> {
     
   const isDoc = ref && (ref as DocumentReference).type === "document";
-  const initialValue = isDoc ? null : [];
+  const initialData = isDoc ? null : [];
     
-  const [data, setData] = useState<T>((cache.get(key) || initialValue));
-  const [loading, setLoading] = useState<boolean>(!cache.has(key));
+  const [data, setData] = useState<T>(initialData as T);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const depsString = JSON.stringify([key, options.subscribe, ...(options.dependencies || [])]);
+  const depsString = useMemo(() => {
+    return [key, options.subscribe, ...(options.dependencies || [])].join(',');
+  }, [key, options.subscribe, options.dependencies]);
+
 
   useEffect(() => {
     if (!ref) {
-      setData(initialValue as T);
+      setData(initialData as T);
       setLoading(false);
       return;
     }
 
-    if (cache.has(key)) {
-        setData(cache.get(key));
-        setLoading(false);
-    } else {
-        setLoading(true);
-    }
+    setLoading(true);
     
     if (options.subscribe) {
       const unsubscribe = onSnapshot(ref as any, (snapshot: DocumentSnapshot<DocumentData> | QuerySnapshot<DocumentData>) => {
@@ -67,7 +65,6 @@ export function useFirestore<T>(
         } else { // DocumentSnapshot
           result = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
         }
-        cache.set(key, result);
         setData(result as T);
         setLoading(false);
       }, (err: FirestoreError) => {
@@ -87,7 +84,6 @@ export function useFirestore<T>(
               const snapshot = await getDocs(ref as Query);
               result = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           }
-          cache.set(key, result);
           setData(result as T);
         } catch (err: any) {
           console.error(`Firestore fetch error for key "${key}":`, err);
@@ -99,7 +95,7 @@ export function useFirestore<T>(
       getAsync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [depsString, ref]);
+  }, [ref, depsString]); // `ref` ve `depsString` bağımlılık olarak eklendi
 
   return { data, loading, error };
 }
