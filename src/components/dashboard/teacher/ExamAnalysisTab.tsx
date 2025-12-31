@@ -39,6 +39,7 @@ interface ExamAnalysisTabProps {
 }
 
 type ExamKey = 'exam1' | 'exam2';
+type TermKey = 'term1' | 'term2';
 
 const StatCard = ({
   title,
@@ -76,7 +77,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     teacherProfile: TeacherProfile | null, 
     currentClass: Class | null,
     examData: { student: Student; grade: number }[],
-    selectedTerm: 'term1' | 'term2',
+    selectedTerm: TermKey,
     selectedExam: ExamKey
 }) {
   const [formData, setFormData] = useState({
@@ -416,8 +417,12 @@ export function ExamAnalysisTab({
   currentClass,
   teacherProfile,
 }: ExamAnalysisTabProps) {
-  const [selectedTerm, setSelectedTerm] = useState<'term1' | 'term2'>('term1');
-  const [selectedExam, setSelectedExam] = useState<ExamKey>('exam1');
+  const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
+
+  const { selectedTerm, selectedExam } = useMemo(() => {
+    const [term, exam] = selectedExamKey.split('-');
+    return { selectedTerm: term as TermKey, selectedExam: exam as ExamKey };
+  }, [selectedExamKey]);
 
   const examData = useMemo(() => {
     return students
@@ -468,27 +473,17 @@ export function ExamAnalysisTab({
         </CardHeader>
         <CardContent className="flex gap-4">
           <Select
-            value={selectedTerm}
-            onValueChange={(v) => setSelectedTerm(v as 'term1' | 'term2')}
+            value={selectedExamKey}
+            onValueChange={(v) => setSelectedExamKey(v)}
           >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Dönem Seçin" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="term1">1. Dönem</SelectItem>
-              <SelectItem value="term2">2. Dönem</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedExam}
-            onValueChange={(v) => setSelectedExam(v as ExamKey)}
-          >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Sınav Seçin" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="exam1">1. Yazılı</SelectItem>
-              <SelectItem value="exam2">2. Yazılı</SelectItem>
+              <SelectItem value="term1-exam1">1. Dönem 1. Yazılı</SelectItem>
+              <SelectItem value="term1-exam2">1. Dönem 2. Yazılı</SelectItem>
+              <SelectItem value="term2-exam1">2. Dönem 1. Yazılı</SelectItem>
+              <SelectItem value="term2-exam2">2. Dönem 2. Yazılı</SelectItem>
             </SelectContent>
           </Select>
         </CardContent>
