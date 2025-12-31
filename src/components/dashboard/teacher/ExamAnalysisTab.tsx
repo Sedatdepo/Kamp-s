@@ -5,6 +5,7 @@ import {
   Student,
   Class,
   TeacherProfile,
+  AnnualPlan,
 } from '@/lib/types';
 import {
   Card,
@@ -28,9 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, FileText, CheckSquare, Square } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquare, Square, BookOpen, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { saveAs } from 'file-saver';
+import { useDatabase } from '@/hooks/use-database';
+
 
 interface ExamAnalysisTabProps {
   students: Student[];
@@ -73,6 +78,66 @@ const TELAFI_SECENEKLERI = [
   { key: 'dyk', label: 'DYK Çalışmaları' }
 ];
 
+function KazanımSelector({ annualPlans, onSelect }: { annualPlans: AnnualPlan[], onSelect: (kazanim: string) => void }) {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredPlans = useMemo(() => {
+        if (!searchTerm) return annualPlans;
+        const lowercasedFilter = searchTerm.toLowerCase();
+        return annualPlans.map(plan => ({
+            ...plan,
+            rows: plan.rows.filter(row =>
+                row.unite.toLowerCase().includes(lowercasedFilter) ||
+                row.konu.toLowerCase().includes(lowercasedFilter) ||
+                row.cikti.toLowerCase().includes(lowercasedFilter)
+            )
+        })).filter(plan => plan.rows.length > 0);
+    }, [searchTerm, annualPlans]);
+    
+    return (
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Kazanım Seç</DialogTitle>
+                <DialogDescription>Yıllık planlarınızdan telafisi yapılacak kazanımı seçin.</DialogDescription>
+            </DialogHeader>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Ünite, konu veya kazanım ara..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <ScrollArea className="flex-1 mt-4">
+                {filteredPlans.map(plan => (
+                    <div key={plan.id} className="mb-4">
+                        <h4 className="font-bold text-lg mb-2 p-2 bg-muted rounded-md">{plan.title}</h4>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ünite</TableHead>
+                                    <TableHead>Konu</TableHead>
+                                    <TableHead>Kazanım</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {plan.rows.map(row => (
+                                    <TableRow key={row.id} onClick={() => onSelect(`${row.unite} - ${row.konu}: ${row.cikti}`)} className="cursor-pointer hover:bg-accent">
+                                        <TableCell>{row.unite}</TableCell>
+                                        <TableCell>{row.konu}</TableCell>
+                                        <TableCell>{row.cikti}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ))}
+            </ScrollArea>
+        </DialogContent>
+    )
+}
+
 function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, selectedExam }: { 
     teacherProfile: TeacherProfile | null, 
     currentClass: Class | null,
@@ -80,6 +145,9 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     selectedTerm: TermKey,
     selectedExam: ExamKey
 }) {
+  const { db: localDb, loading: dbLoading } = useDatabase();
+  const { annualPlans = [] } = localDb;
+    
   const [formData, setFormData] = useState({
     il: "İstanbul",
     ilce: "Şişli",
@@ -140,6 +208,11 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
 
     setFormData(prev => ({
         ...prev,
+        ders: teacherProfile?.branch || prev.ders,
+        sinif: currentClass?.name || prev.sinif,
+        ogretmen: teacherProfile?.name || prev.ogretmen,
+        okulMuduru: teacherProfile?.principalName || prev.okulMuduru,
+        okul: teacherProfile?.schoolName || prev.okul,
         sinavAdi: `${termName} ${examName}`,
         ogrenciSayisi: totalStudents.toString(),
         puan0_49: bracket1.toString(),
@@ -147,7 +220,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
         puan70_100: bracket3.toString(),
     }));
 
-  }, [examData, selectedTerm, selectedExam]);
+  }, [examData, selectedTerm, selectedExam, teacherProfile, currentClass]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -160,6 +233,13 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     (newKazanimlar[index] as any)[field] = value;
     setFormData(prev => ({ ...prev, eksikKazanimlar: newKazanimlar }));
   };
+  
+   const handleSelectKazanım = (index: number, kazanim: string) => {
+        const newKazanimlar = [...formData.eksikKazanimlar];
+        (newKazanimlar[index] as any)['konu'] = kazanim;
+        setFormData(prev => ({ ...prev, eksikKazanimlar: newKazanimlar }));
+   };
+
 
   const handleCalismaToggle = (index: number, key: string) => {
     const newKazanimlar = [...formData.eksikKazanimlar];
@@ -325,11 +405,11 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
               <input type="text" name="il" value={formData.il} onChange={handleInputChange} placeholder="İl" className="p-2 border rounded" />
               <input type="text" name="ilce" value={formData.ilce} onChange={handleInputChange} placeholder="İlçe" className="p-2 border rounded" />
             </div>
-            <input type="text" name="okul" value={formData.okul} onChange={handleInputChange} placeholder="Okul" className="w-full p-2 border rounded" />
+            <input type="text" name="okul" value={formData.okul} onChange={handleInputChange} placeholder="Okul" className="w-full p-2 border rounded" readOnly/>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <input type="text" name="ders" value={formData.ders} onChange={handleInputChange} placeholder="Ders" className="p-2 border rounded" />
+              <input type="text" name="ders" value={formData.ders} onChange={handleInputChange} placeholder="Ders" className="p-2 border rounded" readOnly/>
               <input type="date" name="sinavTarihi" value={formData.sinavTarihi} onChange={handleInputChange} className="p-2 border rounded" />
-              <input type="text" name="sinif" value={formData.sinif} onChange={handleInputChange} placeholder="Sınıf" className="p-2 border rounded" />
+              <input type="text" name="sinif" value={formData.sinif} onChange={handleInputChange} placeholder="Sınıf" className="p-2 border rounded" readOnly/>
               <input type="text" name="sinavAdi" value={formData.sinavAdi} onChange={handleInputChange} placeholder="Sınav Adı" className="p-2 border rounded" readOnly/>
             </div>
           </div>
@@ -362,7 +442,14 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
                   <div key={item.id} className="grid grid-cols-12 gap-2 p-2 border-b">
                       <div className="col-span-4 flex items-center">
                           <span className="mr-2 font-bold">{item.id}.</span>
-                          <textarea value={item.konu} onChange={(e) => handleKazanimChange(index, 'konu', e.target.value)} placeholder="Eksik kazanım..." className="w-full p-1 border rounded h-24"/>
+                          <Dialog>
+                                <DialogTrigger asChild>
+                                    <div className="w-full p-1 border rounded h-24 cursor-pointer hover:bg-muted">
+                                        {item.konu || <span className="text-muted-foreground">Kazanım seçmek için tıklayın...</span>}
+                                    </div>
+                                </DialogTrigger>
+                                <KazanımSelector annualPlans={annualPlans} onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} />
+                          </Dialog>
                       </div>
                       <div className="col-span-6 space-y-1">
                           {TELAFI_SECENEKLERI.map(opt => (
@@ -392,7 +479,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
               <h3 className="font-semibold text-lg">İmza Bölümü</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                      <input type="text" name="ogretmen" placeholder="Öğretmen Adı" value={formData.ogretmen} onChange={handleInputChange} className="w-full p-2 border rounded text-center"/>
+                      <input type="text" name="ogretmen" placeholder="Öğretmen Adı" value={formData.ogretmen} onChange={handleInputChange} className="w-full p-2 border rounded text-center" readOnly/>
                       <label className="text-xs">Öğretmen</label>
                   </div>
                   <div>
@@ -400,7 +487,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
                       <label className="text-xs">Zümre Başkanı</label>
                   </div>
                   <div>
-                      <input type="text" name="okulMuduru" placeholder="Okul Müdürü Adı" value={formData.okulMuduru} onChange={handleInputChange} className="w-full p-2 border rounded text-center"/>
+                      <input type="text" name="okulMuduru" placeholder="Okul Müdürü Adı" value={formData.okulMuduru} onChange={handleInputChange} className="w-full p-2 border rounded text-center" readOnly/>
                       <label className="text-xs">Okul Müdürü</label>
                   </div>
               </div>
@@ -472,7 +559,7 @@ export function ExamAnalysisTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-4">
-          <Select
+           <Select
             value={selectedExamKey}
             onValueChange={(v) => setSelectedExamKey(v)}
           >
@@ -502,6 +589,7 @@ export function ExamAnalysisTab({
                 <CardTitle>Öğrenci Performans Sıralaması</CardTitle>
             </CardHeader>
             <CardContent>
+                <ScrollArea className="h-96">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -518,6 +606,7 @@ export function ExamAnalysisTab({
                         ))}
                     </TableBody>
                 </Table>
+                </ScrollArea>
             </CardContent>
         </Card>
         <div className="lg:col-span-2">
