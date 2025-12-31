@@ -16,10 +16,8 @@ import { GradingTable } from './GradingTable';
 import {
   INITIAL_BEHAVIOR_CRITERIA,
   INITIAL_PERF_CRITERIA,
-  INITIAL_PROJ_CRITERIA,
 } from '@/lib/grading-defaults';
 import { useToast } from '@/hooks/use-toast';
-import { exportGradingToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
@@ -47,7 +45,12 @@ const PerformanceRanking = ({ students, termGradesKey, scoreKey }: { students: S
             const termGrades = student[termGradesKey];
             const scores = termGrades ? termGrades[scoreKey] : undefined;
             const total = scores ? Object.values(scores).reduce((sum, val) => sum + (Number(val) || 0), 0) : 0;
-            return { ...student, totalScore: total };
+            return { 
+                ...student, 
+                totalScore: total,
+                exam1: termGrades?.exam1,
+                exam2: termGrades?.exam2,
+            };
         }).sort((a, b) => b.totalScore - a.totalScore);
     }, [students, termGradesKey, scoreKey]);
     
@@ -61,13 +64,17 @@ const PerformanceRanking = ({ students, termGradesKey, scoreKey }: { students: S
                     <TableHeader>
                         <TableRow>
                             <TableHead>Öğrenci</TableHead>
-                            <TableHead className="text-right">Not</TableHead>
+                            <TableHead className="text-right">1. Yazılı</TableHead>
+                            <TableHead className="text-right">2. Yazılı</TableHead>
+                            <TableHead className="text-right">Performans</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {rankedStudents.map(student => (
                             <TableRow key={student.id}>
                                 <TableCell>{student.name}</TableCell>
+                                <TableCell className="text-right font-medium">{student.exam1 ?? '-'}</TableCell>
+                                <TableCell className="text-right font-medium">{student.exam2 ?? '-'}</TableCell>
                                 <TableCell className="text-right font-bold">{student.totalScore}</TableCell>
                             </TableRow>
                         ))}
