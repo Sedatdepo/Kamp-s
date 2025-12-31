@@ -365,7 +365,7 @@ export function TeacherDashboard() {
                   </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Panel
+                <Home className="mr-2 h-4 w-4" /> Panele Dön
               </Button>
             </div>
           </div>
