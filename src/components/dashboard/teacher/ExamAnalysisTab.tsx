@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Student,
   Class,
@@ -63,7 +63,6 @@ const StatCard = ({
 
 // --- KAZANIM ANALİZ FORMU ---
 
-// Seçenekleri buradan yönetebilirsiniz. Buraya eklenen her şey hem forma hem çıktıya yansır.
 const TELAFI_SECENEKLERI = [
   { key: 'dersIciTekrar', label: 'Ders İçi Konu Tekrarı' },
   { key: 'bakanlikMateryal', label: 'Bakanlık Destek Materyalleri' },
@@ -73,9 +72,15 @@ const TELAFI_SECENEKLERI = [
   { key: 'dyk', label: 'DYK Çalışmaları' }
 ];
 
-function ExamReportForm({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
+function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, selectedExam }: { 
+    teacherProfile: TeacherProfile | null, 
+    currentClass: Class | null,
+    examData: { student: Student; grade: number }[],
+    selectedTerm: 'term1' | 'term2',
+    selectedExam: ExamKey
+}) {
   const [formData, setFormData] = useState({
-    il: "İstanbul", // Yeni alan
+    il: "İstanbul",
     ilce: "Şişli",
     okul: teacherProfile?.schoolName || "Okul Adı Girilmemiş",
     ders: teacherProfile?.branch || "Ders Adı Girilmemiş",
@@ -122,6 +127,27 @@ function ExamReportForm({ teacherProfile, currentClass }: { teacherProfile: Teac
     zumreBaskani: "",
     okulMuduru: teacherProfile?.principalName || ""
   });
+  
+  useEffect(() => {
+    const termName = selectedTerm === 'term1' ? '1. Dönem' : '2. Dönem';
+    const examName = selectedExam === 'exam1' ? '1. Yazılı' : '2. Yazılı';
+    
+    const totalStudents = examData.length;
+    const bracket1 = examData.filter(d => d.grade < 50).length;
+    const bracket2 = examData.filter(d => d.grade >= 50 && d.grade < 70).length;
+    const bracket3 = examData.filter(d => d.grade >= 70).length;
+
+    setFormData(prev => ({
+        ...prev,
+        sinavAdi: `${termName} ${examName}`,
+        ogrenciSayisi: totalStudents.toString(),
+        puan0_49: bracket1.toString(),
+        puan50_69: bracket2.toString(),
+        puan70_100: bracket3.toString(),
+    }));
+
+  }, [examData, selectedTerm, selectedExam]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -303,7 +329,7 @@ function ExamReportForm({ teacherProfile, currentClass }: { teacherProfile: Teac
               <input type="text" name="ders" value={formData.ders} onChange={handleInputChange} placeholder="Ders" className="p-2 border rounded" />
               <input type="date" name="sinavTarihi" value={formData.sinavTarihi} onChange={handleInputChange} className="p-2 border rounded" />
               <input type="text" name="sinif" value={formData.sinif} onChange={handleInputChange} placeholder="Sınıf" className="p-2 border rounded" />
-              <input type="text" name="sinavAdi" value={formData.sinavAdi} onChange={handleInputChange} placeholder="Sınav Adı" className="p-2 border rounded" />
+              <input type="text" name="sinavAdi" value={formData.sinavAdi} onChange={handleInputChange} placeholder="Sınav Adı" className="p-2 border rounded" readOnly/>
             </div>
           </div>
           {/* Puan Dağılımı */}
@@ -312,19 +338,19 @@ function ExamReportForm({ teacherProfile, currentClass }: { teacherProfile: Teac
               <div className="grid grid-cols-4 gap-4 text-center">
                   <div>
                       <label className="text-sm font-medium">Sınava Giren Öğrenci</label>
-                      <input type="number" name="ogrenciSayisi" value={formData.ogrenciSayisi} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center"/>
+                      <input type="number" name="ogrenciSayisi" value={formData.ogrenciSayisi} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center" readOnly/>
                   </div>
                   <div>
                       <label className="text-sm font-medium">0-49 Alan</label>
-                      <input type="number" name="puan0_49" value={formData.puan0_49} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center"/>
+                      <input type="number" name="puan0_49" value={formData.puan0_49} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center" readOnly/>
                   </div>
                   <div>
                       <label className="text-sm font-medium">50-69 Alan</label>
-                      <input type="number" name="puan50_69" value={formData.puan50_69} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center"/>
+                      <input type="number" name="puan50_69" value={formData.puan50_69} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center" readOnly/>
                   </div>
                   <div>
                       <label className="text-sm font-medium">70-100 Alan</label>
-                      <input type="number" name="puan70_100" value={formData.puan70_100} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center"/>
+                      <input type="number" name="puan70_100" value={formData.puan70_100} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 text-center" readOnly/>
                   </div>
               </div>
           </div>
@@ -499,7 +525,13 @@ export function ExamAnalysisTab({
                 </Table>
             </CardContent>
         </Card>
-        <ExamReportForm teacherProfile={teacherProfile} currentClass={currentClass} />
+        <ExamReportForm 
+            teacherProfile={teacherProfile} 
+            currentClass={currentClass} 
+            examData={examData} 
+            selectedTerm={selectedTerm}
+            selectedExam={selectedExam}
+        />
       </div>
     </div>
   );
