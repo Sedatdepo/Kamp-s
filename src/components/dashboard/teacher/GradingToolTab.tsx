@@ -23,10 +23,12 @@ import { exportGradingToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { Save } from 'lucide-react';
+import { Save, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface GradingToolTabProps {
   classId: string;
@@ -35,8 +37,47 @@ interface GradingToolTabProps {
   currentClass?: Class | null;
 }
 
-export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1: Perf1, 2: Perf2, 3: Proje, 4: Davranış
+export type ActiveGradingTab = 1 | 2 | 4; // 1: Perf1, 2: Perf2, 4: Davranış
 export type ActiveTerm = 1 | 2;
+
+const PerformanceRanking = ({ students, termGradesKey, scoreKey }: { students: Student[], termGradesKey: 'term1Grades' | 'term2Grades', scoreKey: 'scores1' | 'scores2' | 'behaviorScores' }) => {
+    
+    const rankedStudents = useMemo(() => {
+        return students.map(student => {
+            const termGrades = student[termGradesKey];
+            const scores = termGrades ? termGrades[scoreKey] : undefined;
+            const total = scores ? Object.values(scores).reduce((sum, val) => sum + (Number(val) || 0), 0) : 0;
+            return { ...student, totalScore: total };
+        }).sort((a, b) => b.totalScore - a.totalScore);
+    }, [students, termGradesKey, scoreKey]);
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base"><Target/> Performans Sıralaması</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Öğrenci</TableHead>
+                            <TableHead className="text-right">Not</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {rankedStudents.map(student => (
+                            <TableRow key={student.id}>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell className="text-right font-bold">{student.totalScore}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function GradingToolTab({
   classId,
@@ -91,7 +132,6 @@ export function GradingToolTab({
 
   const teacherId = teacherProfile?.id;
   const perfCriteria = teacherProfile?.perfCriteria ?? INITIAL_PERF_CRITERIA;
-  const projCriteria = teacherProfile?.projCriteria ?? INITIAL_PROJ_CRITERIA;
   const behaviorCriteria =
     teacherProfile?.behaviorCriteria ?? INITIAL_BEHAVIOR_CRITERIA;
 
@@ -99,29 +139,9 @@ export function GradingToolTab({
     activeTerm === 1 ? 'term1Grades' : 'term2Grades';
 
   const currentCriteria = useMemo(() => {
-    if (activeTab === 3) return projCriteria;
     if (activeTab === 4) return behaviorCriteria;
     return perfCriteria;
-  }, [activeTab, perfCriteria, projCriteria, behaviorCriteria]);
-
-  const handleExport = () => {
-    if (currentClass) {
-      exportGradingToRtf({
-        activeTab,
-        students,
-        currentCriteria,
-        currentClass,
-        teacherProfile,
-        activeTerm,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Hata',
-        description: 'Dışa aktarmak için sınıf verisi bulunamadı.',
-      });
-    }
-  };
+  }, [activeTab, perfCriteria, behaviorCriteria]);
 
   const getScoreTargetKey = (tab: ActiveGradingTab) => {
     switch (tab) {
@@ -129,16 +149,14 @@ export function GradingToolTab({
         return 'scores1';
       case 2:
         return 'scores2';
-      case 3:
-        return 'projectScores';
       case 4:
         return 'behaviorScores';
     }
   };
+  const scoreKey = getScoreTargetKey(activeTab);
 
   const handleClearScores = async () => {
     if (!db) return;
-    const scoreKey = getScoreTargetKey(activeTab);
     const batch = writeBatch(db);
 
     students.forEach((student) => {
@@ -304,13 +322,24 @@ export function GradingToolTab({
                     </div>
                 </div>
 
-                <GradingTable
-                    activeTab={activeTab}
-                    students={students}
-                    currentCriteria={currentCriteria}
-                    updateStudents={updateStudents}
-                    termGradesKey={termGradesKey}
-                />
+                <div className="grid lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <GradingTable
+                        activeTab={activeTab}
+                        students={students}
+                        currentCriteria={currentCriteria}
+                        updateStudents={updateStudents}
+                        termGradesKey={termGradesKey}
+                    />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <PerformanceRanking 
+                      students={students} 
+                      termGradesKey={termGradesKey} 
+                      scoreKey={scoreKey}
+                    />
+                  </div>
+                </div>
             </div>
         </TabsContent>
         <TabsContent value="analysis" className="mt-4">

@@ -53,7 +53,6 @@ export function GradingHeader({
         <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1">
           <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
           <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
-          <button onClick={() => setActiveTab(3)} className={getTabStyle(3)}>Proje Ödevi</button>
           <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
