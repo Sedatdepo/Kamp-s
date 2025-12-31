@@ -12,17 +12,21 @@ import { Calendar as CalendarIcon, Download, Users, RotateCcw, Save } from 'luci
 import { exportDutyRosterToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
+import { doc, updateDoc } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
+
 
 interface DutyRosterTabProps {
   students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
+  db: Firestore;
 }
 
-export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRosterTabProps) {
+export function DutyRosterTab({ students, currentClass, teacherProfile, db }: DutyRosterTabProps) {
   const { toast } = useToast();
-  const { db, setDb, loading } = useDatabase();
-  const { dutyRosterDocuments = [] } = db;
+  const { db: localDb, setDb: setLocalDb, loading } = useDatabase();
+  const { dutyRosterDocuments = [] } = localDb;
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -33,18 +37,18 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   
-  useEffect(() => {
-      const classRecords = dutyRosterDocuments.filter(d => d.classId === currentClass?.id);
-      if (selectedRecordId) {
-          const record = classRecords.find(d => d.id === selectedRecordId);
-          setRoster(record ? record.data : []);
-      } else if (classRecords.length > 0) {
-          setSelectedRecordId(classRecords[0].id);
-          setRoster(classRecords[0].data);
-      } else {
-          setRoster([]);
-      }
-  }, [selectedRecordId, dutyRosterDocuments, currentClass]);
+    useEffect(() => {
+        const classRecords = dutyRosterDocuments.filter(d => d.classId === currentClass?.id);
+        if (selectedRecordId) {
+            const record = classRecords.find(d => d.id === selectedRecordId);
+            setRoster(record ? record.data : []);
+        } else if (currentClass?.dutyRoster && currentClass.dutyRoster.length > 0) {
+            setRoster(currentClass.dutyRoster);
+        }
+         else {
+            setRoster([]);
+        }
+    }, [selectedRecordId, dutyRosterDocuments, currentClass]);
 
   const generateRosterPreview = () => {
     if (!currentClass) {
@@ -112,53 +116,74 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
     toast({ title: "Liste Oluşturuldu", description: "Önizlemeyi kontrol edip kaydedebilirsiniz." });
   };
   
-  const saveRoster = () => {
-    if (!currentClass || roster.length === 0) {
-      toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor." });
-      return;
-    }
-    
-    const newRecord: DutyRosterDocument = {
-        id: selectedRecordId || `duty_${Date.now()}`,
-        name: `Nöbet Listesi - ${new Date(startDate).toLocaleDateString('tr-TR')}`,
-        date: new Date().toISOString(),
-        classId: currentClass.id,
-        data: roster,
-    };
-    
-    setDb(prevDb => {
-        const existingIndex = prevDb.dutyRosterDocuments.findIndex(d => d.id === newRecord.id);
-        const updatedDocs = [...prevDb.dutyRosterDocuments];
-        if (existingIndex > -1) {
-            updatedDocs[existingIndex] = newRecord;
-        } else {
-            updatedDocs.push(newRecord);
+    const saveRoster = async () => {
+        if (!currentClass || roster.length === 0) {
+            toast({ variant: 'destructive', title: "Kayıt Hatası", description: "Kaydedilecek bir liste bulunmuyor." });
+            return;
         }
-        return { ...prevDb, dutyRosterDocuments: updatedDocs };
-    });
-    
-    setSelectedRecordId(newRecord.id);
-    toast({ title: "Başarılı", description: "Nöbet listesi arşive kaydedildi." });
+
+        // Save to Firestore for live student view
+        const classRef = doc(db, 'classes', currentClass.id);
+        try {
+            await updateDoc(classRef, { dutyRoster: roster });
+            toast({ title: "Canlı Liste Güncellendi", description: "Nöbet listesi öğrencilerle paylaşıldı." });
+
+            // Also save to local archive
+            const newRecord: DutyRosterDocument = {
+                id: selectedRecordId || `duty_${Date.now()}`,
+                name: `Nöbet Listesi - ${new Date(startDate).toLocaleDateString('tr-TR')}`,
+                date: new Date().toISOString(),
+                classId: currentClass.id,
+                data: roster,
+            };
+            
+            setLocalDb(prevDb => {
+                const existingIndex = prevDb.dutyRosterDocuments.findIndex(d => d.id === newRecord.id);
+                const updatedDocs = [...prevDb.dutyRosterDocuments];
+                if (existingIndex > -1) {
+                    updatedDocs[existingIndex] = newRecord;
+                } else {
+                    updatedDocs.push(newRecord);
+                }
+                return { ...prevDb, dutyRosterDocuments: updatedDocs };
+            });
+            
+            setSelectedRecordId(newRecord.id);
+            toast({ title: "Arşive Kaydedildi", description: "Nöbet listesi ayrıca arşive de kaydedildi." });
+
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Canlı Güncelleme Hatası", description: "Nöbet listesi kaydedilemedi." });
+        }
   };
   
-  const handleNewRecord = useCallback(() => {
+  const handleNewRecord = useCallback(async () => {
+    if (!currentClass) return;
+
     setSelectedRecordId(null);
     setRoster([]);
     setStartDate(new Date().toISOString().split('T')[0]);
     setEndDate("");
     setStartIndex(1);
     setNextStartInfo(null);
-  }, []);
+    
+    // Clear the live roster as well
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { dutyRoster: [] });
+    toast({ title: 'Yeni Liste Oluşturma Modu', description: 'Canlı nöbet listesi temizlendi.'})
+  }, [currentClass, db, toast]);
 
-  const handleDeleteRecord = useCallback(() => {
-    if (!selectedRecordId) return;
-    setDb(prevDb => ({
+  const handleDeleteRecord = useCallback(async () => {
+    if (!selectedRecordId || !currentClass) return;
+    
+    setLocalDb(prevDb => ({
       ...prevDb,
       dutyRosterDocuments: prevDb.dutyRosterDocuments.filter(d => d.id !== selectedRecordId)
     }));
+    
     handleNewRecord();
+
     toast({ title: "Silindi", description: "Nöbet listesi arşivden silindi.", variant: "destructive" });
-  }, [selectedRecordId, setDb, handleNewRecord, toast]);
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast, currentClass]);
 
 
   const handleExport = () => {
@@ -183,7 +208,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 space-y-6">
         <RecordManager
-          records={dutyRosterDocuments.filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
+          records={(dutyRosterDocuments || []).filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
           selectedRecordId={selectedRecordId}
           onSelectRecord={setSelectedRecordId}
           onNewRecord={handleNewRecord}
@@ -254,7 +279,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                     </Button>
                      <Button onClick={saveRoster} disabled={roster.length === 0}>
                         <Save size={18} className="mr-2"/>
-                        Arşive Kaydet
+                        Kaydet ve Yayınla
                     </Button>
                  </div>
              </div>
@@ -286,7 +311,7 @@ export function DutyRosterTab({ students, currentClass, teacherProfile }: DutyRo
                     ) : (
                         <TableRow>
                             <TableCell colSpan={3} className="text-center h-48 text-muted-foreground">
-                                Arşivden bir liste seçin veya yeni bir liste oluşturun.
+                                Canlı bir nöbet listesi bulunmuyor veya arşivden bir kayıt seçmediniz.
                             </TableCell>
                         </TableRow>
                     )}

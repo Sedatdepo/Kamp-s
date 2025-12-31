@@ -408,7 +408,7 @@ export function TeacherDashboard() {
                     <StudentManagementTab
                         studentList={<StudentListTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />}
                         attendance={<AttendanceTab students={students || []} currentClass={currentClass} />}
-                        dutyRoster={<DutyRosterTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />}
+                        dutyRoster={<DutyRosterTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} db={db!} />}
                         seatingPlan={<SeatingPlanTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />}
                     />
                 );
