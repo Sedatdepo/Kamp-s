@@ -9,8 +9,9 @@ import { StudentLoginForm } from '@/components/auth/StudentLoginForm';
 import { Logo } from '@/components/icons/Logo';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import React, { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginPage() {
   const { appUser, loading } = useAuth();
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'teacher';
@@ -63,4 +64,12 @@ export default function LoginPage() {
       </Tabs>
     </div>
   );
+}
+
+export default function HomePage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <LoginPage />
+        </Suspense>
+    );
 }
