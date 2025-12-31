@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -49,7 +51,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const { db } = useAuth();
   const lessonsQuery = useMemo(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
+  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherId}`, lessonsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -114,7 +116,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
         <CardDescription>Proje olarak sunulacak dersleri ve öğrenci kotalarını yönetin.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {lessons.map(lesson => (
+        {lessons && lessons.map(lesson => (
             isEditing === lesson.id ? (
                 <div key={lesson.id} className="flex gap-2 items-center p-2 bg-slate-100 rounded-lg">
                     <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-9"/>
@@ -211,11 +213,11 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   const { toast } = useToast();
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const lessonsQuery = useMemo(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson>('lessons', lessonsQuery);
+  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherId}`, lessonsQuery);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -236,7 +238,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   };
   
   const handleExport = () => {
-    if (currentClass) {
+    if (currentClass && students && lessons) {
         exportProjectDistributionToRtf({
             students,
             lessons,
@@ -299,14 +301,14 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {students.length > 0 ? students.map(student => {
-                        const assignedLesson = lessons.find(l => l.id === student.assignedLesson);
+                    {students && students.length > 0 ? students.map(student => {
+                        const assignedLesson = lessons && lessons.find(l => l.id === student.assignedLesson);
                         return (
                         <TableRow key={student.id}>
                             <TableCell className="font-medium">{student.name}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                    {student.projectPreferences && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
+                                    {student.projectPreferences && lessons && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
                                         const lesson = lessons.find(l => l.id === prefId);
                                         return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
                                     }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
@@ -322,7 +324,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => handleAssignLesson(student.id, null)}>Atamayı Kaldır</DropdownMenuItem>
-                                        {lessons.map(lesson => (
+                                        {lessons && lessons.map(lesson => (
                                             <DropdownMenuItem key={lesson.id} onClick={() => handleAssignLesson(student.id, lesson.id)}>{lesson.name}</DropdownMenuItem>
                                         ))}
                                     </DropdownMenuContent>
@@ -349,3 +351,5 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
     </div>
   );
 }
+
+

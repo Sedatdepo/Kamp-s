@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
@@ -28,11 +30,11 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
   const [formsLoading, setFormsLoading] = useState(true);
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
 
   useEffect(() => {
     const fetchForms = async () => {
-        if (!db || students.length === 0) {
+        if (!db || !students || students.length === 0) {
             setInfoForms([]);
             setFormsLoading(false);
             return;
@@ -87,7 +89,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
   };
 
   const handleExportList = () => {
-    if (currentClass) {
+    if (currentClass && students) {
         exportInfoFormsStatusToRtf({
             students,
             infoForms,
@@ -154,7 +156,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.length > 0 ? students.map(student => {
+              {students && students.length > 0 ? students.map(student => {
                 const form = infoForms.find(f => f.studentId === student.id);
                 const submitted = form?.submitted || false;
 
@@ -193,3 +195,5 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
     </Card>
   );
 }
+
+

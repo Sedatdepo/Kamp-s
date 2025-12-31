@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile, RiskMapDocument } from '@/lib/types';
@@ -62,7 +63,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const { db } = useAuth();
   const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
-  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor[]>(`risk-factors`, riskFactorsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
@@ -123,7 +124,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
         <CardDescription>Öğrenci risklerini belirlemek için kullanılacak faktörleri ve ağırlıklarını yönetin.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {riskFactors.map(factor => (
+        {riskFactors && riskFactors.map(factor => (
             isEditing === factor.id ? (
                 <div key={factor.id} className="flex gap-2 items-center p-2 bg-slate-100 rounded-lg">
                     <Input value={editingLabel} onChange={e => setEditingLabel(e.target.value)} className="h-9"/>
@@ -223,12 +224,13 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: liveStudents, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: liveStudents, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
 
   const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
-  const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+  const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor[]>(`risk-factors`, riskFactorsQuery);
 
   const displayedStudents = useMemo(() => {
+    if (!liveStudents) return [];
     if (selectedRecordId) {
       const record = riskMapDocuments.find(d => d.id === selectedRecordId);
       if (record) {
@@ -263,7 +265,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   };
 
   const handleExport = () => {
-    if(currentClass) {
+    if(currentClass && riskFactors) {
         exportRiskMapToRtf({
             students: displayedStudents,
             riskFactors,
@@ -276,6 +278,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   };
 
   const getRiskScore = (studentRisks: string[]) => {
+    if (!riskFactors) return 0;
     return studentRisks.reduce((total, riskId) => {
       const factor = riskFactors.find(f => f.id === riskId);
       return total + (factor?.weight || 0);
@@ -289,7 +292,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   };
   
   const handleSaveToArchive = () => {
-    if (!currentClass) return;
+    if (!currentClass || !liveStudents) return;
 
     const studentRisks = liveStudents.map(student => ({
       studentId: student.id,
@@ -377,15 +380,15 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayedStudents.length > 0 ? displayedStudents.map(student => {
+                  {displayedStudents && displayedStudents.length > 0 ? displayedStudents.map(student => {
                     const riskScore = getRiskScore(student.risks);
                     return (
                       <TableRow key={student.id} className={getRiskColor(riskScore)}>
                         <TableCell className="font-medium">{student.name}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {student.risks.length > 0 ? student.risks.map(riskId => {
-                              const factor = riskFactors.find(f => f.id === riskId);
+                            {student.risks && student.risks.length > 0 ? student.risks.map(riskId => {
+                              const factor = riskFactors?.find(f => f.id === riskId);
                               return factor ? (
                                 <Tooltip key={riskId}>
                                     <TooltipTrigger asChild>
@@ -442,3 +445,5 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     </div>
   );
 }
+
+    

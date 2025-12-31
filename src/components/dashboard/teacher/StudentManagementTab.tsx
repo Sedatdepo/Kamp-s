@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo } from 'react';
@@ -23,7 +24,7 @@ export function StudentManagementTab({ classId, teacherProfile, currentClass }: 
   const { db } = useAuth();
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
 
   return (
     <Tabs defaultValue="student-list">
@@ -49,14 +50,16 @@ export function StudentManagementTab({ classId, teacherProfile, currentClass }: 
         <StudentListTab classId={classId} teacherProfile={teacherProfile} currentClass={currentClass} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
-        <AttendanceTab students={students} currentClass={currentClass} />
+        <AttendanceTab students={students || []} currentClass={currentClass} />
       </TabsContent>
       <TabsContent value="duty-roster" className="mt-4">
-        <DutyRosterTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
+        <DutyRosterTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
       <TabsContent value="seating-plan" className="mt-4">
-        <SeatingPlanTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
+        <SeatingPlanTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
     </Tabs>
   );
 }
+
+    

@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -945,8 +947,8 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                   <p className="text-sm text-gray-600">Eğitim - Öğretim Yılı: 2025-2026</p>
                 </div>
                 <div className="text-right">
-                  <span className="block text-sm font-bold text-black uppercase">{assignment.subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
-                  <span className="block text-sm text-gray-600">{assignment.grade}. Sınıf</span>
+                  <span className="block text-sm font-bold text-black uppercase">${assignment.subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
+                  <span className="block text-sm text-gray-600">${assignment.grade}. Sınıf</span>
                 </div>
               </div>
   
@@ -971,9 +973,9 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">1</span>
                     Ödev Konusu
                   </h3>
-                  <div className="p-4 border-l-4 border-gray-300 bg-gray-50 print:bg-white print:border-black text-gray-800">
-                    <h4 className="font-bold mb-1">{assignment.title}</h4>
-                    <p className="text-sm">{assignment.description}</p>
+                  <div className="p-4 border-l-4 border-gray-300 bg-gray-50 print:bg-white text-gray-800">
+                    <h4 className="font-bold mb-1">${assignment.title}</h4>
+                    <p className="text-sm">${assignment.description}</p>
                   </div>
                 </div>
   
@@ -983,7 +985,7 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     Yönerge
                   </h3>
                   <div className="text-sm text-gray-700 leading-relaxed text-justify">
-                    {assignment.instructions}
+                    ${assignment.instructions}
                   </div>
                 </div>
   
@@ -993,8 +995,8 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     Teslim Formatı
                   </h3>
                   <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                    <li>Bu ödev <strong>{assignment.formats}</strong> formatında hazırlanmalıdır.</li>
-                    <li>Dijital dosya boyutu <strong>{assignment.size}</strong>'ı geçmemelidir.</li>
+                    <li>Bu ödev <strong>${assignment.formats}</strong> formatında hazırlanmalıdır.</li>
+                    <li>Dijital dosya boyutu <strong>${assignment.size}</strong>'ı geçmemelidir.</li>
                   </ul>
                 </div>
               </div>
@@ -1028,14 +1030,14 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
         return query(collection(db, 'classes', classId, 'homeworks'));
     }, [db, classId]);
 
-    const { data: liveHomeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${classId}`, liveHomeworksQuery);
+    const { data: liveHomeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`homeworks-${classId}`, liveHomeworksQuery);
 
     const displayedHomeworks = useMemo(() => {
         if (selectedRecordId) {
             const record = homeworkDocuments.find(d => d.id === selectedRecordId);
             return record ? record.data.homeworks : [];
         }
-        return liveHomeworks;
+        return liveHomeworks ?? [];
     }, [selectedRecordId, homeworkDocuments, liveHomeworks]);
 
     const displayedSubmissions = useMemo(() => {
@@ -1085,7 +1087,7 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
             date: new Date().toISOString(),
             classId: currentClass.id,
             data: {
-                homeworks: liveHomeworks,
+                homeworks: liveHomeworks ?? [],
                 submissions: allSubmissions
             },
         };
@@ -1169,7 +1171,7 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
         if (currentClass) {
             exportHomeworkStatusToRtf({
                 students,
-                homeworks: liveHomeworks,
+                homeworks: liveHomeworks ?? [],
                 submissions: Object.values(submissions).flat(),
                 currentClass,
                 teacherProfile

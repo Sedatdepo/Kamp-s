@@ -1,92 +1,90 @@
+
+
 "use client";
 
-import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, Query, DocumentData, DocumentReference } from 'firebase/firestore';
-import { useAuth } from './useAuth';
+import { useState, useEffect, useMemo, useContext } from 'react';
+import { onSnapshot, doc, collection, query, getDoc, getDocs, Firestore, DocumentData, DocumentReference, CollectionReference, Query, DocumentSnapshot, QuerySnapshot, FirestoreError } from 'firebase/firestore';
+import { AuthContext } from '@/context/AuthContext';
 
-interface FirestoreData<T> {
-  data: T[];
+// Cache to store Firestore data
+const cache = new Map<string, any>();
+
+interface UseFirestoreResult<T> {
+  data: T | null;
   loading: boolean;
   error: Error | null;
 }
 
-// Helper function to create a stable key from a query
-const getQueryKey = (q: Query<DocumentData> | DocumentReference<DocumentData> | null | undefined): string => {
-    if (!q) return 'null';
-
-    if ('type' in q && q.type === 'document') { // It's a DocumentReference
-        return q.path;
-    }
-    
-    if ('type' in q && q.type === 'query') { // It's a Query
-         // @ts-ignore: _query is a private property but a pragmatic way to get a representation
-        const path = q._query.path.canonical;
-         // @ts-ignore
-        const filters = JSON.stringify(q._query.filters.map(f => ({p: f.field.canonical, op: f.op, v: f.value})));
-         // @ts-ignore
-        const limit = q._query.limit;
-
-        return `${path}|${filters}|${limit}`;
-    }
-
-    return 'unknown';
-}
-
-
 export function useFirestore<T>(
-  collectionKey: string, 
-  firestoreQuery?: Query<DocumentData> | DocumentReference<DocumentData> | null
-): FirestoreData<T> {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  key: string,
+  ref: DocumentReference | CollectionReference | Query | null,
+  options: { subscribe: boolean, dependencies?: any[] } = { subscribe: true, dependencies: [] }
+): UseFirestoreResult<T> {
+  const [data, setData] = useState<T | null>(cache.get(key) || null);
+  const [loading, setLoading] = useState<boolean>(!cache.has(key));
   const [error, setError] = useState<Error | null>(null);
-  const { db } = useAuth();
 
-  const queryKey = getQueryKey(firestoreQuery);
+  const deps = [key, options.subscribe, ...(options.dependencies || [])];
 
   useEffect(() => {
-    if (!db) {
-        // Don't run the effect if db is not available yet
-        setLoading(true);
-        return;
-    }
-
-    if (firestoreQuery === null) {
-      setData([]);
+    if (!ref) {
+      setData(null);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-
-    const q = firestoreQuery || query(collection(db, collectionKey));
-
-    const unsubscribe = onSnapshot(q as any, // Cast to any to handle both signatures
-      (snapshot) => {
-        const items: T[] = [];
-        if ('docs' in snapshot) { // This is a QuerySnapshot
-          snapshot.forEach((doc) => {
-            items.push({ id: doc.id, ...doc.data() } as T);
-          });
-        } else if (snapshot.exists()) { // This is a DocumentSnapshot
-          items.push({ id: snapshot.id, ...snapshot.data() } as T);
-        } else if ('id' in snapshot && !snapshot.exists()) {
-           // This handles the case of a document that doesn't exist.
-           // We can return an empty array or handle as needed.
-        }
-        setData(items);
+    if (cache.has(key)) {
+        setData(cache.get(key));
         setLoading(false);
-      },
-      (err) => {
+    } else {
+        setLoading(true);
+    }
+    
+    if (options.subscribe) {
+      const unsubscribe = onSnapshot(ref as any, (snapshot: DocumentSnapshot<DocumentData> | QuerySnapshot<DocumentData>) => {
+        if ('docs' in snapshot) { // QuerySnapshot
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          cache.set(key, items);
+          setData(items as T);
+        } else { // DocumentSnapshot
+          const item = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+          cache.set(key, item);
+          setData(item as T);
+        }
+        setLoading(false);
+      }, (err: FirestoreError) => {
+        console.error(`Firestore subscription error for key "${key}":`, err);
         setError(err);
         setLoading(false);
-        console.error(`Error fetching collection ${collectionKey}:`, err);
-      }
-    );
-
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionKey, queryKey, db]);
+      });
+      return () => unsubscribe();
+    } else {
+      const getAsync = async () => {
+        try {
+          if ((ref as DocumentReference).type === "document") {
+              const snapshot = await getDoc(ref as DocumentReference);
+              const item = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+              cache.set(key, item);
+              setData(item as T);
+          } else {
+              const snapshot = await getDocs(ref as Query);
+              const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              cache.set(key, items);
+              setData(items as T);
+          }
+        } catch (err: any) {
+          console.error(`Firestore fetch error for key "${key}":`, err);
+          setError(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      getAsync();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
   return { data, loading, error };
 }
+
+
