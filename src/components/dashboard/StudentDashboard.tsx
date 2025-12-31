@@ -22,6 +22,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
