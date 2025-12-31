@@ -325,7 +325,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
               <input type="text" name="ilce" value={formData.ilce} onChange={handleInputChange} placeholder="İlçe" className="p-2 border rounded" />
             </div>
             <input type="text" name="okul" value={formData.okul} onChange={handleInputChange} placeholder="Okul" className="w-full p-2 border rounded" />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <input type="text" name="ders" value={formData.ders} onChange={handleInputChange} placeholder="Ders" className="p-2 border rounded" />
               <input type="date" name="sinavTarihi" value={formData.sinavTarihi} onChange={handleInputChange} className="p-2 border rounded" />
               <input type="text" name="sinif" value={formData.sinif} onChange={handleInputChange} placeholder="Sınıf" className="p-2 border rounded" />
