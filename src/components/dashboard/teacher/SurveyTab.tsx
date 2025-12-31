@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Student, Class, TeacherProfile, Survey, Question } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save } from 'lucide-react';
+import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck } from 'lucide-react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where, addDoc, updateDoc, doc } from 'firebase/firestore';
@@ -364,3 +364,5 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     </Card>
   );
 }
+
+    
