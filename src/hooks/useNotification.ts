@@ -48,8 +48,11 @@ export const useNotification = () => {
   }, [db, studentId]);
   const { data: userResponses } = useFirestore<SurveyResponse[]>(`user-responses-notif-${studentId}`, responsesQuery);
 
-  const respondedSurveyIds = useMemo(() => new Set((userResponses || []).map(r => r.surveyId)), [userResponses]);
-  const hasUnansweredSurvey = useMemo(() => (activeSurveys || []).some(s => !respondedSurveyIds.has(s.id)), [activeSurveys, respondedSurveyIds]);
+  const hasUnansweredSurvey = useMemo(() => {
+    if (!activeSurveys || !userResponses) return false;
+    const respondedSurveyIds = new Set(userResponses.map(r => r.surveyId));
+    return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
+  }, [activeSurveys, userResponses]);
   
 
   const checkNotifications = useCallback(async () => {
@@ -134,6 +137,7 @@ export const useNotification = () => {
     checkNotifications();
   }, [studentId, classId, currentClass, checkNotifications, db]);
 
-  return { notifications, markAsSeen };
+  return { notifications, markAsSeen, hasUnansweredSurvey };
 };
+
 

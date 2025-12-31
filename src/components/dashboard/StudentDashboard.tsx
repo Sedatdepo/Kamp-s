@@ -19,9 +19,9 @@ import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { Class, Survey, SurveyResponse } from '@/lib/types';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
+import { Class } from '@/lib/types';
+import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -56,33 +56,11 @@ export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
   const authContext = useContext(AuthContext);
   const { appUser, db } = authContext || {};
-  const { notifications, markAsSeen } = useNotification();
+  const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
   
-  const studentId = appUser?.type === 'student' ? appUser.data.id : null;
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
-  
-  // --- Survey Logic moved here ---
-  const surveysQuery = useMemoFirebase(() => {
-    if (!db || !classId) return null;
-    return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
-  }, [db, classId]);
-  const { data: activeSurveys } = useCollection<Survey>(surveysQuery);
-
-  const responsesQuery = useMemoFirebase(() => {
-    if (!db || !studentId) return null;
-    return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
-  }, [db, studentId]);
-  const { data: userResponses } = useCollection<SurveyResponse>(responsesQuery);
-  
-  const hasUnansweredSurvey = useMemo(() => {
-    if (!activeSurveys || !userResponses) return false;
-    const respondedSurveyIds = new Set(userResponses.map(r => r.surveyId));
-    return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
-  }, [activeSurveys, userResponses]);
-  // --- End of Survey Logic ---
 
 
   useEffect(() => {
@@ -206,4 +184,3 @@ export function StudentDashboard() {
     </div>
   );
 }
-
