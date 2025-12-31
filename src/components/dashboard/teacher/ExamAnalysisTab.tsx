@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -83,24 +82,29 @@ const TELAFI_SECENEKLERI = [
 function KazanımSelector({ annualPlans, onSelect }: { annualPlans: AnnualPlan[], onSelect: (kazanim: string) => void }) {
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredPlans = useMemo(() => {
-        if (!searchTerm) return annualPlans;
+    const allKazanims = useMemo(() => {
+        return annualPlans.flatMap(plan =>
+            plan.rows
+                .filter(row => !row.isSpecial && row.cikti)
+                .map(row => ({
+                    id: row.id,
+                    kazanim: row.cikti,
+                    fullText: `${row.unite} ${row.konu} ${row.cikti}`.toLowerCase()
+                }))
+        );
+    }, [annualPlans]);
+
+    const filteredKazanims = useMemo(() => {
+        if (!searchTerm) return allKazanims;
         const lowercasedFilter = searchTerm.toLowerCase();
-        return annualPlans.map(plan => ({
-            ...plan,
-            rows: plan.rows.filter(row =>
-                row.unite.toLowerCase().includes(lowercasedFilter) ||
-                row.konu.toLowerCase().includes(lowercasedFilter) ||
-                row.cikti.toLowerCase().includes(lowercasedFilter)
-            )
-        })).filter(plan => plan.rows.length > 0);
-    }, [searchTerm, annualPlans]);
-    
+        return allKazanims.filter(item => item.fullText.includes(lowercasedFilter));
+    }, [searchTerm, allKazanims]);
+
     return (
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Kazanım Seç</DialogTitle>
-                <DialogDescription>Yıllık planlarınızdan telafisi yapılacak kazanımı seçin.</DialogDescription>
+                <DialogDescription>Yıllık planlarınızdan telafisi yapılacak kazanımı seçin veya arayın.</DialogDescription>
             </DialogHeader>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -111,33 +115,27 @@ function KazanımSelector({ annualPlans, onSelect }: { annualPlans: AnnualPlan[]
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <ScrollArea className="flex-1 mt-4">
-                {filteredPlans.map(plan => (
-                    <div key={plan.id} className="mb-4">
-                        <h4 className="font-bold text-lg mb-2 p-2 bg-muted rounded-md">{plan.title}</h4>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Ünite</TableHead>
-                                    <TableHead>Konu</TableHead>
-                                    <TableHead>Kazanım</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {plan.rows.map(row => (
-                                    <TableRow key={row.id} onClick={() => onSelect(`${row.unite} - ${row.konu}: ${row.cikti}`)} className="cursor-pointer hover:bg-accent">
-                                        <TableCell>{row.unite}</TableCell>
-                                        <TableCell>{row.konu}</TableCell>
-                                        <TableCell>{row.cikti}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ))}
+            <ScrollArea className="flex-1 mt-4 border rounded-md">
+                <div className="p-2 space-y-1">
+                    {filteredKazanims.length > 0 ? (
+                        filteredKazanims.map(item => (
+                            <div
+                                key={item.id}
+                                onClick={() => onSelect(item.kazanim)}
+                                className="p-3 text-sm rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                            >
+                                {item.kazanim}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                            Aramanızla eşleşen kazanım bulunamadı.
+                        </div>
+                    )}
+                </div>
             </ScrollArea>
         </DialogContent>
-    )
+    );
 }
 
 function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, selectedExam }: { 
@@ -517,7 +515,9 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     const termGradesKey = term === 'term1' ? 'term1Grades' : 'term2Grades';
     return students
       .map(student => {
-        const grade = student[termGradesKey]?.[exam] ?? -1;
+        // Ensure grades object and specific exam grade exist, default to -1 if not
+        const grades = student[termGradesKey] as any;
+        const grade = grades?.[exam] ?? -1;
         return { student, grade };
       })
       .filter(item => item.grade !== -1);
@@ -544,7 +544,7 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
 
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
       <div className="xl:col-span-1 space-y-6">
         <Card>
           <CardHeader>
@@ -601,7 +601,7 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
         </Card>
 
       </div>
-      <div className="xl:col-span-2">
+      <div className="xl:col-span-3">
          <ExamReportForm 
             teacherProfile={teacherProfile} 
             currentClass={currentClass} 
