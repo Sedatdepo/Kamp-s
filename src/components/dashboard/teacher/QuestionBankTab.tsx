@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
@@ -198,6 +199,20 @@ const QuestionCanvas = ({ onContentChange }: { onContentChange: (content: string
             reader.readAsDataURL(file);
         }
     };
+    
+    const handleAddText = () => {
+        if (!fabricCanvasRef.current) return;
+        const text = new fabric.IText('Metin eklemek için çift tıkla', {
+            left: 100,
+            top: 100,
+            fontFamily: 'sans-serif',
+            fontSize: 20,
+            fill: '#333'
+        });
+        fabricCanvasRef.current.add(text);
+        fabricCanvasRef.current.setActiveObject(text);
+        fabricCanvasRef.current.renderAll();
+    };
 
     return (
         <div className="space-y-4">
@@ -211,6 +226,9 @@ const QuestionCanvas = ({ onContentChange }: { onContentChange: (content: string
                 />
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                     <ImageIcon className="mr-2 h-4 w-4"/> Resim Ekle
+                </Button>
+                <Button variant="outline" onClick={handleAddText}>
+                    <Type className="mr-2 h-4 w-4"/> Metin Ekle
                 </Button>
             </div>
             <div className="border rounded-md overflow-hidden">
@@ -330,7 +348,7 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
+       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileQuestion /> {editingQuestion ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'}</CardTitle>
@@ -444,3 +462,4 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
     </div>
   );
 }
+
