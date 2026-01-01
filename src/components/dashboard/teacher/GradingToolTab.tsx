@@ -225,6 +225,21 @@ export function GradingToolTab({
       console.error(e);
     }
   };
+  
+  const updateSingleStudent = async (studentId: string, updates: Partial<Student>) => {
+    if (!db) return;
+    const studentRef = doc(db, 'students', studentId);
+    try {
+      await updateDoc(studentRef, updates);
+      // No toast here to avoid spamming on every small update
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Kaydederken hata oluştu!',
+        description: (e as Error).message,
+      });
+    }
+  }
 
   const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
     if (!teacherId || !db) return;
@@ -336,6 +351,7 @@ export function GradingToolTab({
                         students={students}
                         currentCriteria={currentCriteria}
                         updateStudents={updateStudents}
+                        updateSingleStudent={updateSingleStudent}
                         termGradesKey={termGradesKey}
                     />
                   </div>

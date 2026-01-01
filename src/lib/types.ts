@@ -180,6 +180,8 @@ export interface Student {
   // Grading data separated by term
   term1Grades: GradingScores;
   term2Grades: GradingScores;
+  
+  behaviorScore: number;
 
   hasProject?: boolean;
   

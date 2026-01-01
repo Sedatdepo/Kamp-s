@@ -8,12 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Users, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
 
 interface GradingTableProps {
   activeTab: ActiveGradingTab;
   students: Student[];
   currentCriteria: Criterion[];
   updateStudents: (updatedStudents: Student[]) => Promise<void>;
+  updateSingleStudent: (studentId: string, updates: Partial<Student>) => Promise<void>;
   termGradesKey: 'term1Grades' | 'term2Grades';
 }
 
@@ -22,6 +24,7 @@ export function GradingTable({
   students,
   currentCriteria,
   updateStudents,
+  updateSingleStudent,
   termGradesKey
 }: GradingTableProps) {
     const getScoreTargetKey = (tab: ActiveGradingTab) => {
@@ -47,21 +50,23 @@ export function GradingTable({
     if (numValue < 0) numValue = 0;
     if (numValue > limit) numValue = limit;
     
-    const updatedStudents = students.map(s => {
-        if (s.id === studentId) {
-            const currentTermGrades = s[termGradesKey] || {};
-            const currentScores = currentTermGrades[scoreKey] || {};
-            return {
-                 ...s, 
-                 [termGradesKey]: {
-                    ...currentTermGrades,
-                    [scoreKey]: { ...currentScores, [criteriaId]: numValue }
-                 }
-            };
-        }
-        return s;
-    });
-    updateStudents(updatedStudents);
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const currentTermGrades = student[termGradesKey] || {};
+    const currentScores = currentTermGrades[scoreKey] || {};
+    const updatedScores = { ...currentScores, [criteriaId]: numValue };
+    const updatedTermGrades = { ...currentTermGrades, [scoreKey]: updatedScores };
+
+    const updates: Partial<Student> = { [termGradesKey]: updatedTermGrades };
+
+    if (activeTab === 4) {
+      const totalScore = Object.values(updatedScores).reduce((sum, val) => sum + (Number(val) || 0), 0);
+      const totalMax = INITIAL_BEHAVIOR_CRITERIA.reduce((sum, c) => sum + c.max, 0);
+      updates.behaviorScore = Math.round((totalScore / totalMax) * 100);
+    }
+    
+    updateSingleStudent(studentId, updates);
   };
 
   const distributeTotalScore = (studentId: string, totalStr: string) => {
@@ -91,20 +96,20 @@ export function GradingTable({
         i++;
     }
 
-    const updatedStudents = students.map(s => {
-        if (s.id === studentId) {
-            const currentTermGrades = s[termGradesKey] || {};
-            return { 
-                ...s,
-                [termGradesKey]: {
-                    ...currentTermGrades,
-                    [scoreKey]: newScores
-                }
-            };
-        }
-        return s;
-    });
-    updateStudents(updatedStudents);
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const currentTermGrades = student[termGradesKey] || {};
+    const updatedTermGrades = { ...currentTermGrades, [scoreKey]: newScores };
+
+    const updates: Partial<Student> = { [termGradesKey]: updatedTermGrades };
+    
+    if (activeTab === 4) {
+      const totalMax = INITIAL_BEHAVIOR_CRITERIA.reduce((sum, c) => sum + c.max, 0);
+      updates.behaviorScore = Math.round((newTotal / totalMax) * 100);
+    }
+
+    updateSingleStudent(studentId, updates);
   };
   
     const getScoreColor = (score: number) => {

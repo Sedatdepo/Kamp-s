@@ -234,6 +234,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         assignedLesson: null,
         term1Grades: {},
         term2Grades: {},
+        behaviorScore: 100,
         hasProject: false,
     });
   };
