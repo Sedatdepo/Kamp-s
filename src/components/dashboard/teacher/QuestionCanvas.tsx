@@ -22,6 +22,14 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
             height: 600,
         });
         fabricCanvasRef.current = canvas;
+        
+        // Add grid
+        const grid = 20;
+        for (let i = 0; i < (800 / grid); i++) {
+            canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false }));
+            canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false }))
+        }
+
 
         const updateContent = () => {
             onContentChange(JSON.stringify(canvas.toJSON()));
@@ -45,14 +53,36 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                         canvas.renderAll();
                     });
                 } else {
-                   throw new Error("Not a JSON");
+                   // If it's not JSON or empty, clear the canvas
+                   canvas.clear();
+                   // Re-add grid since clear removes it
+                    const grid = 20;
+                    for (let i = 0; i < (800 / grid); i++) {
+                        canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false, evented: false }));
+                        canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false, evented: false }))
+                    }
+                    if(initialContent) { // If it's plain text, add it
+                         const text = new fabric.IText(initialContent, {
+                           left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
+                        });
+                        canvas.add(text);
+                    }
+                    canvas.renderAll();
                 }
             } catch (e) {
+                // Not a JSON, treat as plain text or empty
                 canvas.clear();
-                const text = new fabric.IText(initialContent || 'Metin eklemek için çift tıkla', {
-                   left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
-                });
-                canvas.add(text);
+                 const grid = 20;
+                 for (let i = 0; i < (800 / grid); i++) {
+                    canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false, evented: false }));
+                    canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false, evented: false }))
+                 }
+                if(initialContent){
+                    const text = new fabric.IText(initialContent, {
+                       left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
+                    });
+                    canvas.add(text);
+                }
                 canvas.renderAll();
             }
         }
@@ -109,7 +139,7 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                     <Type className="mr-2 h-4 w-4"/> Metin Ekle
                 </Button>
             </div>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden shadow-inner bg-slate-50">
                 <canvas ref={canvasRef} />
             </div>
         </div>
