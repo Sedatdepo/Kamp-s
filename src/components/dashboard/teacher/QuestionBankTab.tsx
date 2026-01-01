@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Question, Kazanım } from '@/lib/types';
-import { collection, query, where, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, addDoc, deleteDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { KAZANIMLAR } from '@/lib/kazanimlar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface QuestionBankTabProps {
   teacherId: string;
@@ -23,16 +25,45 @@ interface QuestionBankTabProps {
 const KazanımManager = ({ teacherId }: { teacherId: string }) => {
   const { db } = useAuth();
   const { toast } = useToast();
-  const [newKazanımText, setNewKazanımText] = useState('');
   
   const kazanimsQuery = useMemo(() => (db ? query(collection(db, 'kazanims'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: kazanims, loading } = useFirestore<Kazanım[]>(`kazanims-for-teacher-${teacherId}`, kazanimsQuery);
 
-  const handleAddKazanım = async () => {
-    if (!db || !newKazanımText.trim()) return;
-    await addDoc(collection(db, 'kazanims'), { text: newKazanımText, teacherId });
-    setNewKazanımText('');
+  const [selectedDers, setSelectedDers] = useState(Object.keys(KAZANIMLAR)[0]);
+
+  const handleAddKazanım = async (kazanimText: string) => {
+    if (!db) return;
+    // Check if the kazanım already exists
+    if (kazanims.some(k => k.text === kazanimText)) {
+        toast({ title: 'Bu kazanım zaten ekli.', variant: 'default' });
+        return;
+    }
+    await addDoc(collection(db, 'kazanims'), { text: kazanimText, teacherId });
     toast({ title: 'Kazanım eklendi.' });
+  };
+  
+  const handleBulkAddKazanım = async (kazanimList: { unite: string, konular: { konu: string, kazanimlar: string[] }[] }) => {
+    if (!db) return;
+    const batch = writeBatch(db);
+    let addedCount = 0;
+    
+    kazanimList.konular.forEach(konu => {
+      konu.kazanimlar.forEach(kazanimText => {
+        // Check if kazanım already exists before adding to batch
+        if (!kazanims.some(k => k.text === kazanimText)) {
+          const docRef = doc(collection(db, 'kazanims'));
+          batch.set(docRef, { text: kazanimText, teacherId });
+          addedCount++;
+        }
+      });
+    });
+    
+    if (addedCount > 0) {
+      await batch.commit();
+      toast({ title: `${addedCount} yeni kazanım eklendi.` });
+    } else {
+      toast({ title: 'Tüm kazanımlar zaten mevcut.' });
+    }
   };
 
   const handleDeleteKazanım = async (id: string) => {
@@ -47,23 +78,78 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><BookOpen /> Kazanım Yönetimi</CardTitle>
-        <CardDescription>Soru eklemek için önce kazanımlarınızı belirleyin.</CardDescription>
+        <CardDescription>Soru eklemek için önce kazanımlarınızı belirleyin veya ders kitabından ekleyin.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2 mb-4">
-          <Input value={newKazanımText} onChange={e => setNewKazanımText(e.target.value)} placeholder="Yeni kazanım ekle..." />
-          <Button onClick={handleAddKazanım}>Ekle</Button>
-        </div>
-        <div className="max-h-48 overflow-y-auto space-y-2">
-          {kazanims.map(k => (
-            <div key={k.id} className="flex justify-between items-center bg-muted/50 p-2 rounded-md">
-              <span className="text-sm">{k.text}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => handleDeleteKazanım(k.id)}>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="w-full mb-4">
+              <Library className="mr-2" /> Ders Kitabından Kazanım Ekle
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Kazanım Kütüphanesi</DialogTitle>
+              <DialogDescription>Ders ve sınıf seçerek ilgili kazanımları kendi listenize ekleyebilirsiniz.</DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-4">
+              <div className="w-1/4">
+                <Select value={selectedDers} onValueChange={setSelectedDers}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(KAZANIMLAR).map(ders => (
+                      <SelectItem key={ders} value={ders}>{ders}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <ScrollArea className="h-[60vh] border rounded-md p-4">
+                  {(KAZANIMLAR[selectedDers] || []).map(unite => (
+                    <div key={unite.unite} className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-primary">{unite.unite}</h3>
+                        <Button size="sm" variant="outline" onClick={() => handleBulkAddKazanım(unite)}>Tümünü Ekle</Button>
+                      </div>
+                      {unite.konular.map((konu: any) => (
+                        <div key={konu.konu} className="pl-4 border-l-2 ml-2 mb-2">
+                          <h4 className="font-semibold text-sm">{konu.konu}</h4>
+                           <ul className="list-none pl-4 text-sm">
+                            {konu.kazanimlar.map((kazanim: string) => {
+                                const isAdded = kazanims.some(k => k.text === kazanim);
+                                return (
+                                <li key={kazanim} className="flex items-center gap-2 py-1">
+                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleAddKazanım(kazanim)} disabled={isAdded}>
+                                        {isAdded ? <Check className="text-green-500"/> : <Plus className="text-blue-500" />}
+                                    </Button>
+                                    <span>{kazanim}</span>
+                                </li>
+                                )
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </ScrollArea>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        <h4 className="font-semibold text-sm mb-2">Eklenen Kazanımlar</h4>
+        <ScrollArea className="h-48 border rounded-md p-2">
+          {kazanims.length > 0 ? kazanims.map(k => (
+            <div key={k.id} className="flex justify-between items-center bg-muted/50 p-2 rounded-md mb-1">
+              <span className="text-sm flex-1">{k.text}</span>
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 shrink-0" onClick={() => handleDeleteKazanım(k.id)}>
                 <Trash2 size={16} />
               </Button>
             </div>
-          ))}
-        </div>
+          )) : (
+            <p className="text-center text-xs text-muted-foreground p-4">Henüz kazanım eklenmedi.</p>
+          )}
+        </ScrollArea>
       </CardContent>
     </Card>
   );
