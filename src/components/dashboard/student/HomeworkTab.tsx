@@ -95,22 +95,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
-            ) : (
-                <div className='space-y-2'>
-                    <Textarea 
-                        placeholder="Ödev cevabını buraya yaz..."
-                        value={submissionText}
-                        onChange={(e) => setSubmissionText(e.target.value)}
-                        disabled={isSubmitting}
-                    />
-                    <div className='flex items-center justify-end gap-2'>
-                        <Button onClick={handleSubmit} disabled={isSubmitting} className="ml-auto">
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                            Gönder
-                        </Button>
-                    </div>
-                </div>
-            )}
+            ) : null}
         </div>
     )
 }
