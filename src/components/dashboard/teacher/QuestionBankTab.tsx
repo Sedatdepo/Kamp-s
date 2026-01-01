@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -13,12 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { fabric } from 'fabric';
+import { exportQuestionToRtf } from '@/lib/word-export';
+
 
 // --- KAZANIM YÖNETİCİSİ ---
 const KazanımManager = ({ teacherId }: { teacherId: string }) => {
@@ -185,13 +188,12 @@ const QuestionCanvas = ({ initialContent, onContentChange }: { initialContent?: 
         if (canvas) {
             if (initialContent) {
                 try {
-                    canvas.loadFromJSON(JSON.parse(initialContent), () => {
+                    JSON.parse(initialContent); // Check if it's valid JSON
+                    canvas.loadFromJSON(initialContent, () => {
                         canvas.renderAll();
                     });
                 } catch (e) {
-                    console.error("Could not parse canvas content", e);
                     canvas.clear();
-                    // Optional: Add the plain text to canvas if it's not JSON
                     const text = new fabric.IText(initialContent || 'Metin eklemek için çift tıkla', {
                        left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
                     });
@@ -370,6 +372,22 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
     }
   };
 
+  const handleExportQuestion = (question: Question) => {
+    const tempCanvas = new fabric.Canvas(null, { width: 800, height: 600 });
+    try {
+        JSON.parse(question.text); // Check if it's JSON
+        tempCanvas.loadFromJSON(question.text, () => {
+            const dataUrl = tempCanvas.toDataURL({ format: 'png' });
+            exportQuestionToRtf(question, dataUrl);
+            tempCanvas.dispose();
+        });
+    } catch(e) {
+        // Not a canvas JSON, treat as plain text
+        exportQuestionToRtf(question, null);
+        tempCanvas.dispose();
+    }
+  }
+
 
   const isLoading = questionsLoading || kazanimsLoading;
 
@@ -473,11 +491,9 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
                             <p className="font-medium">{
                               (() => {
                                 try {
-                                  // Check if q.text is a JSON string from fabric.js
                                   JSON.parse(q.text);
                                   return "[Görsel Soru]";
                                 } catch (e) {
-                                  // It's just plain text
                                   return q.text;
                                 }
                               })()
@@ -486,6 +502,7 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit size={16} /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleExportQuestion(q)}><Download size={16}/></Button>
                           <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(q.id)}><Trash2 size={16} /></Button>
                         </TableCell>
                       </TableRow>

@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -1041,4 +1041,45 @@ export function exportHomeworkStatusToRtf({ students, homeworks, submissions, cu
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
+// --- QUESTION EXPORT ---
+export function exportQuestionToRtf(question: Question, imageDataUrl: string | null) {
+    const title = `Soru - ${question.id}`;
+
+    const studentInfo = `
+        <table class="no-border" style="width: 100%; margin-bottom: 20px;">
+            <tr>
+                <td class="no-border" style="width: 50%;"><b>Adı Soyadı:</b> ....................................</td>
+                <td class="no-border" style="width: 25%;"><b>Sınıfı:</b> ...........</td>
+                <td class="no-border" style="width: 25%;"><b>No:</b> ...........</td>
+            </tr>
+        </table>
+        <hr>
+        <br>
+    `;
+    
+    let questionContent = '';
+    if (imageDataUrl) {
+        questionContent = `<p><img src="${imageDataUrl}" alt="Soru Resmi" style="max-width: 100%; height: auto;" /></p>`;
+    } else {
+        questionContent = `<p style="white-space: pre-wrap;">${question.text}</p>`;
+    }
+    
+    const optionsContent = question.options.map((opt, i) => `
+        <p><b>${String.fromCharCode(65 + i)})</b> ${opt}</p>
+    `).join('');
+
+    const content = `
+        ${studentInfo}
+        <div style="font-size: 12pt;">
+            ${questionContent}
+            <br>
+            ${optionsContent}
+        </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `Soru_${question.id}.rtf`);
 }
