@@ -1341,6 +1341,9 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
 
 // --- HOMEWORK LIBRARY COMPONENT ---
 const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    
     const [gradeFilter, setGradeFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -1361,8 +1364,6 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
     const [assignments, setAssignments] = useState(assignmentsData);
     const [rubrics, setRubrics] = useState(initialRubricDefinitions);
 
-    const { db } = useAuth();
-    const { toast } = useToast();
 
     const toggleFavorite = (id: number) => {
         setFavorites(prev => 
@@ -1624,7 +1625,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     
     const { data: allStudents } = useFirestore<Student[]>(
         `all-students-for-homework`,
-        currentClass ? query(collection(db), 'students', where('classId', '==', currentClass.id)) : null
+        currentClass ? query(collection(db, 'students'), where('classId', '==', currentClass.id)) : null
     );
 
     return (
