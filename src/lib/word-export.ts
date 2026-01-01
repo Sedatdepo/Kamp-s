@@ -1115,8 +1115,10 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
     const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
 \\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
     
-    const tr = (text: string) => text.replace(/ı/g, '\\\'fd').replace(/İ/g, '\\\'dd').replace(/ş/g, '\\\'fe').replace(/Ş/g, '\\\'de').replace(/ğ/g, '\\\'f0').replace(/Ğ/g, '\\\'d0').replace(/ü/g, '\\\'fc').replace(/Ü/g, '\\\'dc').replace(/ö/g, '\\\'f6').replace(/Ö/g, '\\\'d6').replace(/ç/g, '\\\'e7').replace(/Ç/g, '\\\'c7');
-
+    const tr = (text: string) => {
+      if(!text) return '';
+      return text.replace(/ı/g, '\\\'fd').replace(/İ/g, '\\\'dd').replace(/ş/g, '\\\'fe').replace(/Ş/g, '\\\'de').replace(/ğ/g, '\\\'f0').replace(/Ğ/g, '\\\'d0').replace(/ü/g, '\\\'fc').replace(/Ü/g, '\\\'dc').replace(/ö/g, '\\\'f6').replace(/Ö/g, '\\\'d6').replace(/ç/g, '\\\'e7').replace(/Ç/g, '\\\'c7');
+    }
     const examHeader = `
 {\\pard\\qc\\b\\fs32 ${tr(examTitle.toLocaleUpperCase('tr-TR'))}\\par}
 {\\pard\\qc\\b\\fs24 ${tr(settings.schoolName)} \\line ${tr(settings.academicYear)} E\\\'f0itim \\\'d6\\\'f0retim Y\\'fdl\\'fd ${tr(settings.lessonName)} Dersi ${tr(settings.className)} S\\'fdn\\'fd f\\'fd\\par}
@@ -1155,21 +1157,22 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         } else if (q.type === 'matching' && q.matchingPairs && q.matchingPairs.length > 0) {
             const shuffledAnswers = [...q.matchingPairs].sort(() => Math.random() - 0.5);
 
-            let questionsList = q.matchingPairs.map((pair, index) => 
-                `{\\pard \\tab (___) ${index + 1}. ${tr(pair.question)}\\par}`
+            let questionsList = q.matchingPairs.map((pair, i) => 
+                `{\\pard \\tab (___) ${i + 1}. ${tr(pair.question)}\\par}`
             ).join('');
             
-            let answersList = shuffledAnswers.map((pair, index) =>
-                 `{\\pard \\tab \\b ${String.fromCharCode(65 + index)}) \\b0 ${tr(pair.answer)}\\par}`
+            let answersList = shuffledAnswers.map((pair, i) =>
+                 `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${tr(pair.answer)}\\par}`
             ).join('');
             
             answerContent = `${questionsList}{\\pard \\line \\par}${answersList}`;
+
         } else if (q.type === 'true-false') {
             answerContent = '{\\pard \\tab ( ) Do\\\'f0ru \\tab ( ) Yanl\\\'fd\\\'fe \\par}';
         } else if (q.type === 'short-answer' || q.type === 'open-ended') {
             answerContent = '{\\pard \\line \\line \\line \\par}';
         }
-        
+
         const questionHeader = `{\\pard\\fs22 \\b ${index + 1}) (Puan: ${q.points || 0}) \\b0 `;
         
         questionsContent += `${questionHeader}${questionBody} ${answerContent} \\par}`;
