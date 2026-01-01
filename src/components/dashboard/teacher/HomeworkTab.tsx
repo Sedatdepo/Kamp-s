@@ -1503,14 +1503,19 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
             const student = students.find(s => s.id === studentId);
             if(student) {
                 const classRef = doc(db, 'classes', student.classId, 'homeworks', `hw_${Date.now()}_${studentCount}`);
+                let personalizedText = `${selectedAssignment.title}: ${selectedAssignment.instructions}`;
+                if (details.studentIds.length === 1) { // Only personalize if it's a single student
+                    personalizedText = `Sevgili ${student.name}, senin için özel olarak atanan ödev: ${selectedAssignment.title}. Yönerge: ${selectedAssignment.instructions}`;
+                }
+
                 batch.set(classRef, {
                     classId: student.classId,
-                    text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
+                    text: personalizedText,
                     assignedDate: new Date().toISOString(),
                     dueDate: details.date ? new Date(details.date).toISOString() : null,
                     teacherName: teacherProfile?.name,
                     lessonName: teacherProfile?.branch,
-                    seenBy: [], // Can be customized further if needed
+                    seenBy: [], 
                 });
                 studentCount++;
             }
@@ -1748,7 +1753,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                 <HomeworkEvaluationTab
                     classId={classId}
                     currentClass={currentClass}
-                    teacherProfile={teacherProfile}
                     students={students}
                 />
             </TabsContent>
@@ -1780,7 +1784,10 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass }: { classId: s
 
     useEffect(() => {
         const fetchSubmissions = async () => {
-            if (!db || !classId || homeworksLoading) return;
+            if (!db || !classId || homeworksLoading || !homeworks || homeworks.length === 0) {
+                setSubmissionsLoading(false);
+                return;
+            };
             setSubmissionsLoading(true);
             const submissionPromises = homeworks.map(hw => getDocs(query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'))));
             
@@ -1825,7 +1832,7 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass }: { classId: s
             </CardHeader>
             <CardContent>
                 <Accordion type="multiple" className="w-full space-y-4">
-                    {homeworks.map(hw => {
+                    {homeworks && homeworks.length > 0 ? homeworks.map(hw => {
                         const subsForThisHw = allSubmissions.filter(s => s.homeworkId === hw.id);
                         return (
                             <AccordionItem key={hw.id} value={hw.id} className="border-b-0">
@@ -1850,10 +1857,10 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass }: { classId: s
                                             <div key={student.id} className="p-3 border rounded-md">
                                                 <p className="font-semibold mb-2">{student.name}</p>
                                                 <div className='bg-muted p-2 rounded-md mb-2'>
-                                                     <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi</p>
+                                                     <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi ({format(new Date(submission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                                                      {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
                                                 </div>
-                                                <div className="grid grid-cols-4 gap-2 items-center">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
                                                     <div className="col-span-3">
                                                         <Textarea 
                                                             placeholder="Geri bildirim..."
@@ -1880,9 +1887,13 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass }: { classId: s
                                 </AccordionContent>
                             </AccordionItem>
                         )
-                    })}
+                    }) : (
+                        <div className="text-center p-10 bg-muted/50 rounded-lg">
+                            <h3 className="text-lg font-semibold">Bu sınıfa henüz ödev atanmamış.</h3>
+                            <p className="text-muted-foreground mt-2">Ödev atamak için "Canlı Ödev Yönetimi" veya "Hazır Ödev Kütüphanesi" sekmelerini kullanabilirsiniz.</p>
+                        </div>
+                    )}
                 </Accordion>
-                {homeworks.length === 0 && <p className="text-center text-muted-foreground py-4">Bu sınıfa henüz ödev atanmamış.</p>}
             </CardContent>
         </Card>
     )
