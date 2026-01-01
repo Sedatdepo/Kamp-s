@@ -1494,54 +1494,39 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
     };
 
     const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
-        if(!db) return;
+        if(!db || !classId) return;
 
-        const batch = writeBatch(db);
-        let studentCount = 0;
-        
         const rubricType = getRubricType(selectedAssignment.formats);
         const rubric = rubrics[rubricType];
-        
-        details.studentIds.forEach(studentId => {
-            const student = students.find(s => s.id === studentId);
-            if(student) {
-                const homeworkRef = doc(collection(db, 'classes', student.classId, 'homeworks'));
-                
-                let personalizedText = `${selectedAssignment.title}: ${selectedAssignment.instructions}`;
-                if (details.studentIds.length === 1) { // Only personalize if it's a single student
-                    personalizedText = `Sevgili ${student.name}, senin için özel olarak atanan ödev: ${selectedAssignment.title}. Yönerge: ${selectedAssignment.instructions}`;
-                }
 
-                batch.set(homeworkRef, {
-                    classId: student.classId,
-                    text: personalizedText,
-                    assignedDate: new Date().toISOString(),
-                    dueDate: details.date ? new Date(details.date).toISOString() : null,
-                    teacherName: teacherProfile?.name,
-                    lessonName: teacherProfile?.branch,
-                    rubric: rubric.items, // Rubric'i ödevle birlikte kaydet
-                    assignedStudents: details.studentIds, // Atanan öğrencileri kaydet
-                    seenBy: [], 
-                });
-                studentCount++;
-            }
-        });
-        
+        // This is the new centralized homework document
+        const newHomeworkDoc = {
+            classId: classId,
+            text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
+            assignedDate: new Date().toISOString(),
+            dueDate: details.date ? new Date(details.date).toISOString() : null,
+            teacherName: teacherProfile?.name,
+            lessonName: teacherProfile?.branch,
+            rubric: rubric.items,
+            assignedStudents: details.studentIds,
+            seenBy: [],
+        };
+
         try {
-            await batch.commit();
+            await addDoc(collection(db, 'classes', classId, 'homeworks'), newHomeworkDoc);
             
             const newHistoryItem = {
                 title: selectedAssignment.title,
-                class: `${studentCount} öğrenci`,
+                class: `${details.studentIds.length} öğrenci`,
                 date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
             };
 
             setHistory(prev => [newHistoryItem, ...prev]);
-            setAssignDetails({assignedTo: `${studentCount} öğrenci`, date: details.date});
+            setAssignDetails({assignedTo: `${details.studentIds.length} öğrenci`, date: details.date});
             setSuccessModalOpen(true);
 
         } catch (error) {
-            toast({variant: 'destructive', title: 'Hata', description: 'Ödevler atanamadı.'});
+            toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
         }
     };
 
