@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { fabric } from 'fabric';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, Type, Trash2 } from 'lucide-react';
+import { ImageIcon, Type, Trash2, Pen, RectangleHorizontal, Circle, Minus } from 'lucide-react';
 
 interface QuestionCanvasProps {
     initialContent?: string;
@@ -15,12 +15,14 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDrawingMode, setIsDrawingMode] = useState(false);
 
     useEffect(() => {
         const canvas = new fabric.Canvas(canvasRef.current, {
             backgroundColor: '#f8fafc', // slate-50
             width: 800,
             height: 600,
+            isDrawingMode: false,
         });
         fabricCanvasRef.current = canvas;
         
@@ -44,7 +46,6 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const activeObject = canvas.getActiveObject();
                 if (activeObject) {
-                    // Prevent deleting text while editing an IText object
                     if (activeObject.isEditing) return;
                     
                     if (activeObject.type === 'activeSelection') {
@@ -74,15 +75,13 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                         canvas.renderAll();
                     });
                 } else {
-                   // If it's not JSON or empty, clear the canvas
                    canvas.clear();
-                   // Re-add grid since clear removes it
                     const grid = 20;
                     for (let i = 0; i < (800 / grid); i++) {
                         canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false, evented: false }));
                         canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false, evented: false }))
                     }
-                    if(initialContent) { // If it's plain text, add it
+                    if(initialContent) {
                          const text = new fabric.IText(initialContent, {
                            left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18, objectCaching: false
                         });
@@ -91,7 +90,6 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                     canvas.renderAll();
                 }
             } catch (e) {
-                // Not a JSON, treat as plain text or empty
                 canvas.clear();
                  const grid = 20;
                  for (let i = 0; i < (800 / grid); i++) {
@@ -109,6 +107,33 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
         }
     }, [initialContent]);
 
+    const toggleDrawingMode = () => {
+        if (fabricCanvasRef.current) {
+            const currentMode = !fabricCanvasRef.current.isDrawingMode;
+            fabricCanvasRef.current.isDrawingMode = currentMode;
+            setIsDrawingMode(currentMode);
+        }
+    };
+
+    const addShape = (shape: 'rect' | 'circle' | 'line') => {
+        if (!fabricCanvasRef.current) return;
+        fabricCanvasRef.current.isDrawingMode = false;
+        setIsDrawingMode(false);
+        let object;
+        switch (shape) {
+            case 'rect':
+                object = new fabric.Rect({ left: 100, top: 100, fill: 'transparent', stroke: 'black', strokeWidth: 2, width: 100, height: 60 });
+                break;
+            case 'circle':
+                object = new fabric.Circle({ left: 100, top: 100, fill: 'transparent', stroke: 'black', strokeWidth: 2, radius: 40 });
+                break;
+            case 'line':
+                object = new fabric.Line([50, 100, 200, 100], { stroke: 'black', strokeWidth: 2 });
+                break;
+        }
+        fabricCanvasRef.current.add(object);
+        fabricCanvasRef.current.setActiveObject(object);
+    };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -126,11 +151,15 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                 };
             };
             reader.readAsDataURL(file);
+             // Reset file input to allow uploading the same file again
+            if(e.target) e.target.value = '';
         }
     };
     
     const handleAddText = () => {
         if (!fabricCanvasRef.current) return;
+        fabricCanvasRef.current.isDrawingMode = false;
+        setIsDrawingMode(false);
         const text = new fabric.IText('Metin eklemek için çift tıkla', {
             left: 100,
             top: 100,
@@ -161,7 +190,7 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
 
     return (
         <div className="space-y-4">
-             <div className="flex gap-2">
+             <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-slate-100">
                  <input
                     type="file"
                     ref={fileInputRef}
@@ -169,13 +198,25 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                     accept="image/*"
                     className="hidden"
                 />
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <ImageIcon className="mr-2 h-4 w-4"/> Resim Ekle
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4"/> Resim
                 </Button>
-                <Button variant="outline" onClick={handleAddText}>
-                    <Type className="mr-2 h-4 w-4"/> Metin Ekle
+                <Button variant="outline" size="sm" onClick={handleAddText}>
+                    <Type className="mr-2 h-4 w-4"/> Metin
                 </Button>
-                 <Button variant="destructive" onClick={handleDeleteSelected}>
+                <Button variant={isDrawingMode ? "secondary" : "outline"} size="sm" onClick={toggleDrawingMode}>
+                    <Pen className="mr-2 h-4 w-4"/> Kalem
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => addShape('line')}>
+                    <Minus className="mr-2 h-4 w-4"/> Çizgi
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => addShape('rect')}>
+                    <RectangleHorizontal className="mr-2 h-4 w-4"/> Dikdörtgen
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => addShape('circle')}>
+                    <Circle className="mr-2 h-4 w-4"/> Elips
+                </Button>
+                 <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
                     <Trash2 className="mr-2 h-4 w-4"/> Seçileni Sil
                 </Button>
             </div>
