@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Question, Kazanım } from '@/lib/types';
+import { Question, Kazanım, MatchingPair } from '@/lib/types';
 import { collection, query, where, addDoc, deleteDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
@@ -162,11 +162,12 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
 
   const [text, setText] = useState('');
-  const [type, setType] = useState<'multiple-choice' | 'true-false' | 'open-ended'>('multiple-choice');
+  const [type, setType] = useState<Question['type']>('multiple-choice');
   const [options, setOptions] = useState(['', '', '', '']);
+  const [matchingPairs, setMatchingPairs] = useState<MatchingPair[]>([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [kazanimId, setKazanımId] = useState('');
-  const [difficulty, setDifficulty] = useState<'kolay' | 'orta' | 'zor'>('orta');
+  const [difficulty, setDifficulty] = useState<Question['difficulty']>('orta');
   const [points, setPoints] = useState(10);
   
   const kazanimsQuery = useMemo(() => (db ? query(collection(db, 'kazanims'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
@@ -180,6 +181,7 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
     setText('');
     setType('multiple-choice');
     setOptions(['', '', '', '']);
+    setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
     setCorrectAnswer('');
     setKazanımId('');
     setDifficulty('orta');
@@ -187,21 +189,32 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
   };
 
   const handleAddOrUpdateQuestion = async () => {
-    if (!db || !text.trim() || !kazanimId || !correctAnswer) {
-      toast({ title: 'Eksik Bilgi', description: 'Lütfen tüm zorunlu alanları doldurun.', variant: 'destructive' });
+    if (!db || !text.trim() || !kazanimId) {
+      toast({ title: 'Eksik Bilgi', description: 'Soru metni ve kazanım alanları zorunludur.', variant: 'destructive' });
       return;
     }
     
-    const questionData = {
-      text, type, options: type === 'multiple-choice' ? options.filter(o => o.trim() !== '') : [],
-      correctAnswer, kazanimId, difficulty, points, teacherId
+    let finalCorrectAnswer = correctAnswer;
+    if (type === 'matching') {
+        finalCorrectAnswer = JSON.stringify(matchingPairs);
+    } else if (type === 'multiple-choice' && !correctAnswer) {
+        toast({ title: 'Eksik Bilgi', description: 'Çoktan seçmeli sorularda doğru cevap belirtilmelidir.', variant: 'destructive' });
+        return;
+    }
+
+    const questionData: Omit<Question, 'id'> = {
+      text, type, 
+      options: type === 'multiple-choice' ? options.filter(o => o.trim() !== '') : [],
+      matchingPairs: type === 'matching' ? matchingPairs.filter(p => p.question.trim() !== '' && p.answer.trim() !== '') : [],
+      correctAnswer: finalCorrectAnswer, 
+      kazanimId, difficulty, points, teacherId
     };
 
     if (editingQuestion) {
       await updateDoc(doc(db, 'questions', editingQuestion.id), questionData);
       toast({ title: 'Soru güncellendi.' });
     } else {
-      await addDoc(collection(db, 'questions'), questionData);
+      await addDoc(collection(db, 'questions'), { ...questionData, id: `q_${Date.now()}`});
       toast({ title: 'Soru eklendi.' });
     }
     resetForm();
@@ -211,11 +224,12 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
     setEditingQuestion(q);
     setText(q.text);
     setType(q.type);
-    setOptions(q.options.length > 0 ? [...q.options, ...Array(4 - q.options.length).fill('')] : ['', '', '', '']);
-    setCorrectAnswer(q.correctAnswer);
+    setOptions(q.options?.length > 0 ? [...q.options, ...Array(4 - q.options.length).fill('')] : ['', '', '', '']);
+    setCorrectAnswer(q.type !== 'matching' ? q.correctAnswer : '');
     setKazanımId(q.kazanimId);
     setDifficulty(q.difficulty);
     setPoints(q.points);
+    setMatchingPairs(q.matchingPairs?.length ? q.matchingPairs : [{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
   };
 
   const handleDelete = async (id: string) => {
@@ -229,6 +243,23 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
       newOptions[index] = value;
       setOptions(newOptions);
   }
+  
+  const handleMatchingPairChange = (index: number, field: 'question' | 'answer', value: string) => {
+    const newPairs = [...matchingPairs];
+    newPairs[index][field] = value;
+    setMatchingPairs(newPairs);
+  };
+  
+  const addMatchingPair = () => {
+    setMatchingPairs([...matchingPairs, { id: `pair_${Date.now()}`, question: '', answer: '' }]);
+  };
+  
+  const removeMatchingPair = (index: number) => {
+    if (matchingPairs.length > 1) {
+        setMatchingPairs(matchingPairs.filter((_, i) => i !== index));
+    }
+  };
+
 
   const isLoading = questionsLoading || kazanimsLoading;
 
@@ -241,34 +272,43 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
             <CardTitle className="flex items-center gap-2"><FileQuestion /> {editingQuestion ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Textarea placeholder="Soru metni..." value={text} onChange={e => setText(e.target.value)} />
+            <Textarea placeholder="Soru metni..." value={text} onChange={e => setText(e.target.value)} rows={5} />
             <Select value={type} onValueChange={(v: any) => setType(v)}>
               <SelectTrigger><SelectValue placeholder="Soru Tipi" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="multiple-choice">Çoktan Seçmeli</SelectItem>
                 <SelectItem value="true-false">Doğru / Yanlış</SelectItem>
                 <SelectItem value="open-ended">Açık Uçlu</SelectItem>
+                <SelectItem value="short-answer">Kısa Cevaplı</SelectItem>
+                <SelectItem value="matching">Eşleştirme</SelectItem>
               </SelectContent>
             </Select>
 
             {type === 'multiple-choice' && (
               <div className="space-y-2">
                 {options.map((opt, i) => (
-                    <Input key={i} placeholder={`Seçenek ${i + 1}`} value={opt} onChange={e => handleOptionChange(i, e.target.value)} />
+                    <Input key={i} placeholder={`Seçenek ${String.fromCharCode(65 + i)}`} value={opt} onChange={e => handleOptionChange(i, e.target.value)} />
                 ))}
+                 <Input placeholder="Doğru Cevap (Örn: A)" value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} />
+              </div>
+            )}
+            
+            {type === 'matching' && (
+              <div className="space-y-2">
+                {matchingPairs.map((pair, i) => (
+                    <div key={pair.id} className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Eşleştirilecek" value={pair.question} onChange={e => handleMatchingPairChange(i, 'question', e.target.value)} />
+                        <Input placeholder="Cevabı" value={pair.answer} onChange={e => handleMatchingPairChange(i, 'answer', e.target.value)} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => removeMatchingPair(i)}><Trash2 size={16} /></Button>
+                    </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={addMatchingPair}><Plus className="mr-2 h-4 w-4" /> Eşleştirme Ekle</Button>
               </div>
             )}
              
-            {type === 'true-false' ? (
-                <Select value={correctAnswer} onValueChange={setCorrectAnswer}>
-                     <SelectTrigger><SelectValue placeholder="Doğru Cevap" /></SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="Doğru">Doğru</SelectItem>
-                        <SelectItem value="Yanlış">Yanlış</SelectItem>
-                     </SelectContent>
-                </Select>
-            ) : (
-                <Input placeholder="Doğru Cevap" value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} />
+            {(type === 'true-false' || type === 'open-ended' || type === 'short-answer') && (
+                 <Input placeholder="Doğru Cevap" value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} />
             )}
 
             <Select value={kazanimId} onValueChange={setKazanımId}>
@@ -279,15 +319,17 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={difficulty} onValueChange={(v: any) => setDifficulty(v)}>
-              <SelectTrigger><SelectValue placeholder="Zorluk Derecesi" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="kolay">Kolay</SelectItem>
-                <SelectItem value="orta">Orta</SelectItem>
-                <SelectItem value="zor">Zor</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input type="number" placeholder="Puan" value={points} onChange={e => setPoints(Number(e.target.value))} />
+            <div className="grid grid-cols-2 gap-4">
+              <Select value={difficulty} onValueChange={(v: any) => setDifficulty(v)}>
+                <SelectTrigger><SelectValue placeholder="Zorluk Derecesi" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="kolay">Kolay</SelectItem>
+                  <SelectItem value="orta">Orta</SelectItem>
+                  <SelectItem value="zor">Zor</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="number" placeholder="Puan" value={points} onChange={e => setPoints(Number(e.target.value))} />
+            </div>
 
             <div className="flex gap-2">
                 {editingQuestion && <Button variant="ghost" onClick={resetForm}>İptal</Button>}

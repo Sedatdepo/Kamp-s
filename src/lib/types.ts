@@ -86,17 +86,25 @@ export interface RosterItem {
   studentIds: string[];
 }
 
+export interface MatchingPair {
+  id: string;
+  question: string;
+  answer: string;
+}
+
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'true-false' | 'open-ended';
-  options: string[];
+  type: 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching';
+  options: string[]; // For multiple-choice
+  matchingPairs?: MatchingPair[]; // For matching questions
   correctAnswer: string;
   kazanimId: string;
   difficulty: 'kolay' | 'orta' | 'zor';
   points: number;
   teacherId: string;
 }
+
 
 export interface Kazanım {
   id: string;
@@ -355,4 +363,11 @@ export interface DisciplineRecord {
     currentPhase: number;
     formData: any;
     classId: string;
+}
+
+export interface BepStudent {
+    id: string;
+    name: string;
+    class: string;
+    diagnosis: string;
 }
