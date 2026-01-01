@@ -89,10 +89,21 @@ export interface RosterItem {
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple' | 'checkbox' | 'text' | 'paragraph' | 'dropdown' | 'linear' | 'date';
-  options?: string[]; // for multiple-choice, checkbox, dropdown
-  required: boolean;
+  type: 'multiple-choice' | 'true-false' | 'open-ended';
+  options: string[];
+  correctAnswer: string;
+  kazanimId: string;
+  difficulty: 'kolay' | 'orta' | 'zor';
+  points: number;
+  teacherId: string;
 }
+
+export interface Kazanım {
+  id: string;
+  text: string;
+  teacherId: string;
+}
+
 
 export interface Survey {
   id: string;

@@ -89,5 +89,16 @@ service cloud.firestore {
         allow read, list: if isTeacher();
         allow update, delete: if isTeacher();
     }
+
+    // New Rules for Question Bank
+    match /kazanims/{kazanimId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if request.auth.uid == request.resource.data.teacherId;
+    }
+
+    match /questions/{questionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if request.auth.uid == request.resource.data.teacherId;
+    }
   }
 }

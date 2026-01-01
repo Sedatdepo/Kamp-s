@@ -238,6 +238,34 @@
         "schoolName",
         "principalName"
       ]
+    },
+     "Kazanım": {
+      "title": "Kazanım",
+      "type": "object",
+      "description": "Represents a learning objective.",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "teacherId": { "type": "string" }
+      },
+      "required": ["id", "text", "teacherId"]
+    },
+    "Question": {
+      "title": "Question",
+      "type": "object",
+      "description": "Represents a single question in the question bank.",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["multiple-choice", "true-false", "open-ended"] },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "string" },
+        "kazanimId": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["kolay", "orta", "zor"] },
+        "points": { "type": "number" },
+        "teacherId": { "type": "string" }
+      },
+      "required": ["id", "text", "type", "correctAnswer", "kazanimId", "difficulty", "points", "teacherId"]
     }
   },
   "auth": {
@@ -391,10 +419,24 @@
             }
           ]
         }
+      },
+       {
+        "path": "/kazanims/{kazanimId}",
+        "definition": {
+          "entityName": "Kazanım",
+          "schema": { "$ref": "#/backend/entities/Kazanım" },
+          "description": "Stores learning objectives defined by teachers."
+        }
+      },
+      {
+        "path": "/questions/{questionId}",
+        "definition": {
+          "entityName": "Question",
+          "schema": { "$ref": "#/backend/entities/Question" },
+          "description": "Stores questions for the question bank."
+        }
       }
     ],
     "reasoning": "This Firestore structure prioritizes authorization independence and simplifies security rules by denormalizing authorization data. It uses path-based ownership and membership maps where appropriate.\n\n*   **/classes:** Stores class information. Publicly readable, but only teachers can create/modify.\n*   **/classes/{classId}/students:** Stores student data.  Authorization independence is achieved by denormalizing class membership for students. Teachers are granted write access based on their role.\n*   **/classes/{classId}/lessons:** Stores lessons and their quota. Teachers are granted write access based on their role.\n*   **/riskFactors:** Stores risk factors. Teachers can add/edit/delete.\n*   **/students/{studentId}/infoForms:** Stores info forms. Students and teachers can read/write student's own data.\n*   **/students/{studentId}/messages:** Stores messages between students and teachers. Secure read/write based on sender/receiver IDs. To support secure listing, messages are stored in subcollections owned by each student.\n*   **/teachers/{teacherId}:** Stores teacher profile data. Only the teacher can modify their own profile. Enables storing the teacher profile information (name, branch, schoolName, principalName) needed for Word document generation.\n*   **/roles_teacher/{teacherId}:**  Indicates teacher role using document existence. Simplifies teacher role checks in security rules without needing document content.\n\n**Authorization Independence:**  The structure avoids `get()` calls in security rules by denormalizing authorization data.  For example, student documents under `/classes/{classId}/students` do not need to fetch the class document to determine if a teacher has write access.\n\n**QAPs (Rules are not Filters):**\n\n*   Secure `list` operations are achieved by:\n    *   Segregating data with different access needs into separate collections or subcollections.\n    *   Using path-based ownership for private data (e.g., `/students/{studentId}/infoForms`).\n    *   Leveraging the membership map pattern where appropriate.\n\n**Invariants:**\n\n*   Ownership is enforced through path-based ownership (e.g., `/students/{studentId}/infoForms`).\n*   Timestamps are supported in messages.  Consider using server timestamps for increased reliability.\n*   Denormalized data is managed through atomic operations (transactions/batches) to maintain consistency."
   }
 }
-
-    
