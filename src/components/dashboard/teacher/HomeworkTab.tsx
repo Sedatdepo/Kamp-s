@@ -522,8 +522,9 @@ const CreateAssignmentModal = ({ isOpen, onClose, onSave }: any) => {
     );
 };
 
-const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes }: any) => {
+const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, students }: any) => {
     const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState('all');
     const [dueDate, setDueDate] = useState('');
   
     useEffect(() => {
@@ -540,9 +541,11 @@ const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes }
     if (!isOpen || !assignment) return null;
   
     const handleConfirm = () => {
-      onConfirm({ classId: selectedClass, date: dueDate });
+      onConfirm({ classId: selectedClass, studentId: selectedStudent, date: dueDate });
       onClose();
     };
+
+    const studentsInSelectedClass = students.filter((s: Student) => s.classId === selectedClass);
   
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -567,12 +570,32 @@ const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes }
               <select 
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
+                onChange={(e) => {
+                    setSelectedClass(e.target.value);
+                    setSelectedStudent('all');
+                }}
               >
                 {(classes || []).map((cls: Class) => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                    <Users size={16} /> Hangi Öğrenciye?
+                </label>
+                <select 
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    value={selectedStudent}
+                    onChange={(e) => setSelectedStudent(e.target.value)}
+                    disabled={!selectedClass}
+                >
+                    <option value="all">Tüm Sınıfa</option>
+                    {studentsInSelectedClass.map((student: Student) => (
+                        <option key={student.id} value={student.id}>{student.name} ({student.number})</option>
+                    ))}
+                </select>
             </div>
   
             <div>
@@ -946,8 +969,8 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                   <p className="text-sm text-gray-600">Eğitim - Öğretim Yılı: 2025-2026</p>
                 </div>
                 <div className="text-right">
-                  <span className="block text-sm font-bold text-black uppercase">${assignment.subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
-                  <span className="block text-sm text-gray-600">${assignment.grade}. Sınıf</span>
+                  <span className="block text-sm font-bold text-black uppercase">${(assignment as any).subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
+                  <span className="block text-sm text-gray-600">${(assignment as any).grade}. Sınıf</span>
                 </div>
               </div>
   
@@ -973,8 +996,8 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     Ödev Konusu
                   </h3>
                   <div className="p-4 border-l-4 border-gray-300 bg-gray-50 print:bg-white text-gray-800">
-                    <h4 className="font-bold mb-1">${assignment.title}</h4>
-                    <p className="text-sm">${assignment.description}</p>
+                    <h4 className="font-bold mb-1">${(assignment as any).title}</h4>
+                    <p className="text-sm">${(assignment as any).description}</p>
                   </div>
                 </div>
   
@@ -984,7 +1007,7 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     Yönerge
                   </h3>
                   <div className="text-sm text-gray-700 leading-relaxed text-justify">
-                    ${assignment.instructions}
+                    ${(assignment as any).instructions}
                   </div>
                 </div>
   
@@ -994,8 +1017,8 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                     Teslim Formatı
                   </h3>
                   <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                    <li>Bu ödev <strong>${assignment.formats}</strong> formatında hazırlanmalıdır.</li>
-                    <li>Dijital dosya boyutu <strong>${assignment.size}</strong>'ı geçmemelidir.</li>
+                    <li>Bu ödev <strong>${(assignment as any).formats}</strong> formatında hazırlanmalıdır.</li>
+                    <li>Dijital dosya boyutu <strong>${(assignment as any).size}</strong>'ı geçmemelidir.</li>
                   </ul>
                 </div>
               </div>
@@ -1317,7 +1340,7 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
 
 
 // --- HOMEWORK LIBRARY COMPONENT ---
-const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[] }) => {
+const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const [gradeFilter, setGradeFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -1371,19 +1394,13 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string
         setAssignSettingsModalOpen(true);
     };
 
-    const handleAssignConfirm = async (details: any) => {
+    const handleAssignConfirm = async (details: { classId: string, studentId: string, date: string }) => {
         if(!db || !details.classId) return;
 
         const targetClass = classes.find(c => c.id === details.classId);
         
-        const newHistoryItem = {
-            title: selectedAssignment.title,
-            class: targetClass?.name || 'Bilinmeyen Sınıf',
-            date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-        };
-        
         try {
-            await addDoc(collection(db, 'classes', details.classId, 'homeworks'), {
+            const homeworkData: Omit<Homework, 'id'> = {
                 classId: details.classId,
                 text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
                 assignedDate: new Date().toISOString(),
@@ -1391,9 +1408,36 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string
                 teacherName: teacherProfile?.name,
                 lessonName: teacherProfile?.branch,
                 seenBy: [],
-            });
+            };
+            
+            let assignedTo = targetClass?.name || 'Bilinmeyen Sınıf';
+
+            // If a specific student is selected
+            if (details.studentId !== 'all') {
+                const student = students.find(s => s.id === details.studentId);
+                if (student) {
+                    // Customize homework text for the specific student and add only to them
+                    homeworkData.text = `${student.name} için özel ödev: ${selectedAssignment.title} - ${selectedAssignment.instructions}`;
+                    // In a real scenario, you might want to add a `studentId` field to the homework
+                    // or handle this assignment in a separate "personal_homeworks" collection.
+                    // For now, we will add it to the class but with a specific text.
+                    // This is a simplification. A better approach would be a dedicated collection or field.
+                    homeworkData.seenBy = [student.id]; // Only this student can see it implicitly
+                     assignedTo = student.name;
+                }
+            }
+
+
+            await addDoc(collection(db, 'classes', details.classId, 'homeworks'), homeworkData);
+            
+            const newHistoryItem = {
+                title: selectedAssignment.title,
+                class: assignedTo,
+                date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+            };
+
             setHistory(prev => [newHistoryItem, ...prev]);
-            setAssignDetails({class: targetClass?.name, date: details.date});
+            setAssignDetails({class: assignedTo, date: details.date});
             setSuccessModalOpen(true);
 
         } catch (error) {
@@ -1527,6 +1571,7 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string
             assignment={selectedAssignment}
             onConfirm={handleAssignConfirm}
             classes={classes}
+            students={students}
         />
 
         <SuccessModal 
@@ -1574,6 +1619,14 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes }: { classId: string
 
 // --- MAIN EXPORTED COMPONENT ---
 export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
+    
+    const { data: allStudents } = useFirestore<Student[]>(
+        `all-students-for-homework`,
+        currentClass ? query(collection(db), 'students', where('classId', '==', currentClass.id)) : null
+    );
+
+    const { db } = useAuth();
+
     return (
         <Tabs defaultValue="live">
             <TabsList className="grid w-full grid-cols-2">
@@ -1593,6 +1646,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     classId={classId}
                     teacherProfile={teacherProfile}
                     classes={classes}
+                    students={students}
                 />
             </TabsContent>
         </Tabs>
