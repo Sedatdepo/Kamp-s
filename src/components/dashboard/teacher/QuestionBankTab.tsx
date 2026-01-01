@@ -14,12 +14,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type, Download, Eye } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type, Download, Eye, Move } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { exportQuestionToRtf, exportExamToRtf } from '@/lib/word-export';
+import { exportExamToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
 
   const handleAddKazanım = async (kazanimText: string) => {
     if (!db) return;
-    if (kazanims.some(k => k.text === kazanimText)) {
+    if ((kazanims || []).some(k => k.text === kazanimText)) {
         toast({ title: 'Bu kazanım zaten ekli.', variant: 'default' });
         return;
     }
@@ -102,8 +102,8 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
                         <div key={konu.konu} className="pl-4 border-l-2 ml-2 mb-2">
                           <h4 className="font-semibold text-sm">{konu.konu}</h4>
                            <ul className="list-none pl-4 text-sm">
-                            {konu.kazanimlar.map((kazanim: string) => {
-                                const isAdded = kazanims.some(k => k.text === kazanim);
+                            {(konu.kazanimlar || []).map((kazanim: string) => {
+                                const isAdded = (kazanims || []).some(k => k.text === kazanim);
                                 return (
                                 <li key={kazanim} className="flex items-center gap-2 py-1">
                                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleAddKazanım(kazanim)} disabled={isAdded}>
@@ -126,7 +126,7 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
         
         <h4 className="font-semibold text-sm mb-2">Eklenen Kazanımlar</h4>
         <ScrollArea className="h-48 border rounded-md p-2">
-          {kazanims.length > 0 ? kazanims.map(k => (
+          {kazanims && kazanims.length > 0 ? kazanims.map(k => (
             <div key={k.id} className="flex justify-between items-center bg-muted/50 p-2 rounded-md mb-1">
               <span className="text-sm flex-1">{k.text}</span>
               <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 shrink-0" onClick={() => handleDeleteKazanım(k.id)}>
@@ -163,8 +163,9 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   const questionsQuery = useMemo(() => (db ? query(collection(db, 'questions'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: questions, loading: questionsLoading } = useFirestore<Question[]>(`questions-for-teacher-${teacherId}`, questionsQuery);
 
-  const handleTypeChange = (newType: Question['type']) => {
+ const handleTypeChange = (newType: Question['type']) => {
     setType(newType);
+    // Reset irrelevant fields when type changes to prevent data pollution
     setCorrectAnswer('');
     setOptions(['', '', '', '']);
     setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
@@ -184,7 +185,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   };
 
   const handleAddOrUpdateQuestion = async () => {
-    if (!db || !text.trim() || !kazanimId) {
+    if (!db || (!text.trim() && !text.includes(' fabric.Canvas')) || !kazanimId) {
       toast({ title: 'Eksik Bilgi', description: 'Soru metni ve kazanım alanları zorunludur.', variant: 'destructive' });
       return;
     }
@@ -263,11 +264,11 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
         JSON.parse(question.text); 
         fabricCanvas.loadFromJSON(question.text, () => {
             const dataUrl = fabricCanvas.toDataURL({ format: 'png' });
-            exportQuestionToRtf(question, dataUrl);
+            // exportQuestionToRtf(question, dataUrl);
             fabricCanvas.dispose();
         });
     } catch(e) {
-        exportQuestionToRtf(question, null);
+        // exportQuestionToRtf(question, null);
         fabricCanvas.dispose();
     }
   }
@@ -326,7 +327,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
             <Select value={kazanimId} onValueChange={setKazanımId}>
               <SelectTrigger><SelectValue placeholder="Kazanım Seç" /></SelectTrigger>
               <SelectContent>
-                {kazanimsLoading ? <SelectItem value="loading" disabled>Yükleniyor...</SelectItem> : kazanims.map(k => (
+                {kazanimsLoading ? <SelectItem value="loading" disabled>Yükleniyor...</SelectItem> : (kazanims || []).map(k => (
                   <SelectItem key={k.id} value={k.id}>{k.text}</SelectItem>
                 ))}
               </SelectContent>
@@ -368,7 +369,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {questions.map(q => (
+                    {(questions || []).map(q => (
                       <TableRow key={q.id}>
                         <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleEdit(q)}>
                             <p className="font-medium">
@@ -381,7 +382,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
                                 }
                               })()}
                             </p>
-                            <p className="text-xs text-muted-foreground">{kazanims.find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">{(kazanims || []).find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit size={16} /></Button>
@@ -435,8 +436,14 @@ const QuestionPreview = ({ content }: { content: string }) => {
                     }, null as fabric.Rect | null);
 
                     if (boundingBox) {
-                        staticCanvas.setWidth(boundingBox.width);
-                        staticCanvas.setHeight(boundingBox.height);
+                        staticCanvas.setWidth(boundingBox.width + boundingBox.left);
+                        staticCanvas.setHeight(boundingBox.height + boundingBox.top);
+                        staticCanvas.getObjects().forEach(obj => {
+                            obj.set({
+                                left: obj.left ? obj.left - boundingBox.left : 0,
+                                top: obj.top ? obj.top - boundingBox.top : 0
+                            });
+                        });
                     }
                 }
                 staticCanvas.renderAll();
@@ -580,8 +587,6 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
             academicYear: teacherProfile.reportConfig?.academicYear || '2024-2025',
             lessonName: teacherProfile.branch,
             className: teacherProfile.reportConfig?.className || '',
-            teacherName: teacherProfile.name,
-            principalName: teacherProfile.principalName,
             ...examSettings,
         });
 
@@ -599,7 +604,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[60vh] border rounded-md p-2">
-                             {questionsLoading ? <Loader2 className="animate-spin m-auto"/> : questions.map(q => (
+                             {questionsLoading ? <Loader2 className="animate-spin m-auto"/> : (questions || []).map(q => (
                                 <div key={q.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted">
                                     <Checkbox 
                                         id={`q-creator-${q.id}`} 
@@ -679,7 +684,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                   bounds="parent"
                                   className="border border-dashed border-blue-400 bg-white/50 p-2"
                                 >
-                                  <div className="w-full h-full relative group/item overflow-hidden">
+                                  <div className="w-full h-full relative group/item overflow-hidden cursor-move">
                                      <QuestionPreview content={item.text} />
                                     <Button variant="destructive" size="icon" className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover/item:opacity-100" onClick={() => handleRemoveItem(item.id)}><Trash2 size={12}/></Button>
                                   </div>
@@ -687,8 +692,9 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                               ))}
                             </div>
 
-                            <div className="flex gap-2">
-                                <Button onClick={handleDownloadExam} className="w-full" disabled={isDownloading}>
+                            <div className="flex justify-between items-center pt-4">
+                                <span className="font-bold text-lg">Toplam Puan: {totalPoints}</span>
+                                <Button onClick={handleDownloadExam} className="w-fit" disabled={isDownloading || examItems.length === 0}>
                                     {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
                                     Sınavı İndir (Word)
                                 </Button>
@@ -719,3 +725,4 @@ export function QuestionBankTab({ teacherId, teacherProfile }: { teacherId: stri
     </Tabs>
   );
 }
+
