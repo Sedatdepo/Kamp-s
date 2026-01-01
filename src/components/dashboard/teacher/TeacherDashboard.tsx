@@ -384,8 +384,12 @@ export function TeacherDashboard() {
 
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
-    return query(collection(db, 'students'));
-  }, [teacherId, db]);
+    // This query is inefficient but necessary for the student count on the class selection screen.
+    // In a real-world app, student counts would be denormalized on the class document.
+    const classIds = (classes || []).map(c => c.id);
+    if (classIds.length === 0) return null;
+    return query(collection(db, 'students'), where('classId', 'in', classIds));
+  }, [teacherId, db, classes]);
   const { data: allStudents } = useFirestore<Student[]>('all-students-for-count', allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && classesLoading);
@@ -429,7 +433,7 @@ export function TeacherDashboard() {
                 tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
                 break;
             case 'homework':
-                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={students || []} classes={classes || []}/>;
+                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={allStudents || []} classes={classes || []}/>;
                 break;
             case 'risks':
                 tabContent = <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
