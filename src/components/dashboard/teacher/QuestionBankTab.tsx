@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -105,7 +105,7 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
               </div>
               <div className="flex-1">
                 <ScrollArea className="h-[60vh] border rounded-md p-4">
-                  {(KAZANIMLAR[selectedDers] || []).map(unite => (
+                  {(KAZANIMLAR[selectedDers] || []).map((unite:any) => (
                     <div key={unite.unite} className="mb-4">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="font-bold text-primary">{unite.unite}</h3>
