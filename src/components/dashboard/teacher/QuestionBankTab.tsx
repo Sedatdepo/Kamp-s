@@ -393,53 +393,7 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1 space-y-6">
-        <KazanımManager teacherId={teacherId} />
-        <Card>
-          <CardHeader>
-            <CardTitle>Soru Bankası</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Loader2 className="animate-spin"/> : (
-            <ScrollArea className="h-96">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Soru</TableHead>
-                      <TableHead className="text-right">İşlemler</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {questions.map(q => (
-                      <TableRow key={q.id}>
-                        <TableCell className="max-w-xs truncate">
-                            <p className="font-medium">{
-                              (() => {
-                                try {
-                                  JSON.parse(q.text);
-                                  return "[Görsel Soru]";
-                                } catch (e) {
-                                  return q.text;
-                                }
-                              })()
-                            }</p>
-                            <p className="text-xs text-muted-foreground">{kazanims.find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit size={16} /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleExportQuestion(q)}><Download size={16}/></Button>
-                          <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(q.id)}><Trash2 size={16} /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-            </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-       <div className="lg:col-span-2">
+      <div className="lg:col-span-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileQuestion /> {editingQuestion ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'}</CardTitle>
@@ -511,6 +465,52 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
                 <Button onClick={handleAddOrUpdateQuestion} className="w-full">{editingQuestion ? 'Güncelle' : 'Ekle'}</Button>
             </div>
 
+          </CardContent>
+        </Card>
+      </div>
+      <div className="lg:col-span-1 space-y-6">
+        <KazanımManager teacherId={teacherId} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Soru Bankası</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Loader2 className="animate-spin"/> : (
+            <ScrollArea className="h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Soru</TableHead>
+                      <TableHead className="text-right">İşlemler</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {questions.map(q => (
+                      <TableRow key={q.id}>
+                        <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleEdit(q)}>
+                            <p className="font-medium">{
+                              (() => {
+                                try {
+                                  JSON.parse(q.text);
+                                  return "[Görsel Soru]";
+                                } catch (e) {
+                                  return q.text;
+                                }
+                              })()
+                            }</p>
+                            <p className="text-xs text-muted-foreground">{kazanims.find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit size={16} /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleExportQuestion(q)}><Download size={16}/></Button>
+                          <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(q.id)}><Trash2 size={16} /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+            </ScrollArea>
+            )}
           </CardContent>
         </Card>
       </div>
