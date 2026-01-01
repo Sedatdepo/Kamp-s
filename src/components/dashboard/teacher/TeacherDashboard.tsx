@@ -17,7 +17,6 @@ import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
 import { SurveyTab } from '@/components/dashboard/teacher/SurveyTab';
 import { DisciplineTab } from './DisciplineTab';
-import { QuestionBankTab } from './QuestionBankTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -451,7 +450,8 @@ export function TeacherDashboard() {
                 tabContent = <DisciplineTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
             case 'questionbank':
-                tabContent = <QuestionBankTab teacherId={teacherId} teacherProfile={teacherProfile} />;
+                // Removed
+                tabContent = <div>Bu modül yeniden tasarlanacaktır.</div>;
                 break;
             default:
                 tabContent = null;
@@ -538,7 +538,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
-                <MenuCard icon={<FileQuestion />} title="Sınav Hazırlama Modülü" description="Soru bankası ve sınav oluşturucu." onClick={() => setActiveTab('questionbank')} isDisabled={false} />
+                <MenuCard icon={<FileQuestion />} title="Sınav Hazırlama Modülü" description="Soru bankası ve sınav oluşturucu." onClick={() => {}} isDisabled={true} />
                 <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
                 <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => {}} isDisabled={true} />
             </div>
