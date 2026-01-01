@@ -436,6 +436,14 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
             setSelectedQuestions(prev => prev.filter(q => q.id !== question.id));
         }
     }
+
+    const handleQuestionPointChange = (questionId: string, newPoints: number) => {
+        setSelectedQuestions(prev => prev.map(q => q.id === questionId ? { ...q, points: newPoints } : q));
+    };
+
+    const totalPoints = useMemo(() => {
+        return selectedQuestions.reduce((sum, q) => sum + (q.points || 0), 0);
+    }, [selectedQuestions]);
     
     const getShortText = (text: string) => {
         try {
@@ -553,17 +561,32 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                     </div>
                                 </CardContent>
                              </Card>
-                            <ScrollArea className="h-[30vh] border rounded-md p-2 space-y-2">
-                               {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
-                                   <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
-                                        <span className="font-bold mr-2">{i+1}.</span>
-                                        <p className="flex-1 truncate">{getShortText(q.text)}</p>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectQuestion(q, false)}><Trash2 className="h-4 w-4"/></Button>
-                                   </div>
-                               )) : (
-                                   <p className="text-center text-muted-foreground p-8">Sınava eklemek için soldaki listeden soru seçin.</p>
-                               )}
-                            </ScrollArea>
+                            <Card>
+                                <CardHeader className="flex-row items-center justify-between">
+                                    <CardTitle className="text-base">Seçilen Sorular</CardTitle>
+                                    <Badge variant={totalPoints === 100 ? "default" : "destructive"}>Toplam Puan: {totalPoints}</Badge>
+                                </CardHeader>
+                                <CardContent>
+                                    <ScrollArea className="h-[30vh] border rounded-md p-2 space-y-2">
+                                    {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
+                                        <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
+                                                <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab" />
+                                                <span className="font-bold mr-2">{i+1}.</span>
+                                                <p className="flex-1 truncate">{getShortText(q.text)}</p>
+                                                <Input 
+                                                    type="number"
+                                                    value={q.points}
+                                                    onChange={(e) => handleQuestionPointChange(q.id, parseInt(e.target.value) || 0)}
+                                                    className="w-16 h-8 text-center mx-2"
+                                                />
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectQuestion(q, false)}><Trash2 className="h-4 w-4"/></Button>
+                                        </div>
+                                    )) : (
+                                        <p className="text-center text-muted-foreground p-8">Sınava eklemek için soldaki listeden soru seçin.</p>
+                                    )}
+                                    </ScrollArea>
+                                </CardContent>
+                            </Card>
                             <Button onClick={handleDownloadExam} className="w-full" disabled={isDownloading}>
                                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
                                 Sınavı İndir (Word)
