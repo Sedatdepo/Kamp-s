@@ -53,7 +53,7 @@ const SPECIAL_NEED_TYPES = [
 // --- YARDIMCI FONKSİYONLAR ---
 
 // RTF Çıktısı oluşturma fonksiyonu
-const downloadAsRTF = (content, filename) => {
+const downloadAsRTF = (content: any, filename: any) => {
   const header = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' 
             xmlns:w='urn:schemas-microsoft-com:office:word' 
@@ -75,33 +75,33 @@ const downloadAsRTF = (content, filename) => {
   document.body.removeChild(link);
 };
 
-export default function RehberlikModulu() {
+export function BepTab() {
   // --- STATE YÖNETİMİ ---
   
   // Navigasyon - Başlangıçta 'students' aktif
   const [activeTab, setActiveTab] = useState('students');
   
   // Veri
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({
     branchTeacher: '',
     guidanceTeacher: '',
     schoolPrincipal: '',
     schoolName: ''
   });
-  const [toasts, setToasts] = useState([]);
+  const [toasts, setToasts] = useState<any[]>([]);
 
   // Form & Seçim Stateleri
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingStudent, setEditingStudent] = useState(null); // null ise yeni kayıt, doluysa düzenleme
+  const [editingStudent, setEditingStudent] = useState<any>(null); // null ise yeni kayıt, doluysa düzenleme
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // BEP Modülü Stateleri
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [bepDates, setBepDates] = useState({ start: '', end: '' });
   const [selectedKazanims, setSelectedKazanims] = useState(new Set());
-  const [selectedPerformance, setSelectedPerformance] = useState({});
-  const [selectedKaba, setSelectedKaba] = useState({});
+  const [selectedPerformance, setSelectedPerformance] = useState<any>({});
+  const [selectedKaba, setSelectedKaba] = useState<any>({});
 
   // --- INITIALIZATION (Client-Side) ---
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function RehberlikModulu() {
 
   // --- ACTIONS ---
 
-  const addToast = (msg, type = 'info') => {
+  const addToast = (msg: any, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, msg, type }]);
     setTimeout(() => {
@@ -154,7 +154,7 @@ export default function RehberlikModulu() {
     addToast('Öğretmen bilgileri kaydedildi', 'success');
   };
 
-  const handleSaveStudent = (e) => {
+  const handleSaveStudent = (e: any) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     
@@ -184,7 +184,7 @@ export default function RehberlikModulu() {
     setEditingStudent(null);
   };
 
-  const handleDeleteStudent = (id) => {
+  const handleDeleteStudent = (id: any) => {
     if (confirm('Silmek istediğinize emin misiniz?')) {
       const updated = students.filter(s => s.id !== id);
       setStudents(updated);
@@ -193,7 +193,7 @@ export default function RehberlikModulu() {
     }
   };
 
-  const toggleSpecialNeed = (need) => {
+  const toggleSpecialNeed = (need: any) => {
     // Modal içindeki öğrenci state'ini güncellemek için
     if (!editingStudent) {
         // Yeni öğrenci eklenirken
@@ -203,7 +203,7 @@ export default function RehberlikModulu() {
     
     const currentNeeds = editingStudent.specialNeeds || [];
     const newNeeds = currentNeeds.includes(need)
-      ? currentNeeds.filter(n => n !== need)
+      ? currentNeeds.filter((n: any) => n !== need)
       : [...currentNeeds, need];
     
     setEditingStudent({ ...editingStudent, specialNeeds: newNeeds });
@@ -230,27 +230,27 @@ export default function RehberlikModulu() {
     return KABA_ITEMS.filter(k => k.grade === grade);
   };
 
-  const toggleKazanim = (id) => {
+  const toggleKazanim = (id: any) => {
     const next = new Set(selectedKazanims);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedKazanims(next);
   };
 
-  const handleKabaEvaluation = (key, value, skillText) => {
+  const handleKabaEvaluation = (key: any, value: any, skillText: any) => {
     let text = "";
     if (value === 'yapar') text = `"${skillText}" kazanımını bağımsız olarak gerçekleştirmektedir.`;
     else if (value === 'yapamaz') text = `"${skillText}" kazanımını henüz kazanamamıştır.`;
     else if (value === 'kısmen') text = `"${skillText}" kazanımını yardım ile gerçekleştirmektedir.`;
 
-    setSelectedKaba(prev => ({
+    setSelectedKaba((prev: any) => ({
       ...prev,
       [key]: { evaluation: value, text: text }
     }));
   };
 
-  const handleKabaTextChange = (key, text) => {
-    setSelectedKaba(prev => ({
+  const handleKabaTextChange = (key: any, text: any) => {
+    setSelectedKaba((prev: any) => ({
         ...prev,
         [key]: { ...prev[key], text: text }
     }));
@@ -258,7 +258,7 @@ export default function RehberlikModulu() {
 
   // --- EXPORT MANTIĞI (React-ified) ---
   
-  const generateRTF = (type) => {
+  const generateRTF = (type: any) => {
     const student = students.find(s => s.id === selectedStudentId);
     if (!student) return addToast('Öğrenci seçilmedi', 'error');
 
@@ -272,7 +272,7 @@ export default function RehberlikModulu() {
         let rows = '';
         let currentDate = new Date(bepDates.start);
         const endD = new Date(bepDates.end);
-        const diffTime = Math.abs(endD - currentDate);
+        const diffTime = Math.abs(endD.getTime() - currentDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const interval = Math.max(1, Math.floor(diffDays / kazanims.length));
 
@@ -382,7 +382,7 @@ export default function RehberlikModulu() {
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       {/* Toast */}
       <div className="fixed top-5 right-5 z-50 flex flex-col gap-2">
-        {toasts.map(t => (
+        {toasts.map((t: any) => (
           <div key={t.id} className={`bg-white p-4 rounded shadow-lg border-l-4 ${t.type === 'success' ? 'border-green-500' : t.type === 'error' ? 'border-red-500' : 'border-blue-500'} flex items-center gap-3 animate-slideIn`}>
             {t.type === 'success' ? <CheckSquare size={20} className="text-green-500"/> : <Square size={20} className="text-blue-500"/>}
             <span>{t.msg}</span>
@@ -497,7 +497,7 @@ export default function RehberlikModulu() {
                                         <span>Dal: {student.branch}</span>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                        {student.specialNeeds && student.specialNeeds.map(need => (
+                                        {student.specialNeeds && student.specialNeeds.map((need: any) => (
                                             <span key={need} className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">
                                                 {need.replace('-', ' ').toUpperCase()}
                                             </span>
