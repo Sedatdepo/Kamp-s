@@ -1620,12 +1620,12 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
 // --- MAIN EXPORTED COMPONENT ---
 export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
     
+    const { db } = useAuth();
+    
     const { data: allStudents } = useFirestore<Student[]>(
         `all-students-for-homework`,
         currentClass ? query(collection(db), 'students', where('classId', '==', currentClass.id)) : null
     );
-
-    const { db } = useAuth();
 
     return (
         <Tabs defaultValue="live">
