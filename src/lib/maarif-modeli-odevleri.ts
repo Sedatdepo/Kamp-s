@@ -136,4 +136,3 @@ export const getRubricType = (formats: string) => {
   if (formats.includes("Canva") || formats.includes("JPG") || formats.includes("Poster") || formats.includes("Fotoğraf") || formats.includes("Görsel")) return 'visual';
   return 'research';
 };
-

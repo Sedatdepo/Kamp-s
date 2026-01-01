@@ -451,7 +451,7 @@ export function TeacherDashboard() {
                 tabContent = <DisciplineTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
             case 'questionbank':
-                tabContent = <QuestionBankTab teacherId={teacherId} />;
+                tabContent = <QuestionBankTab teacherId={teacherId} teacherProfile={teacherProfile} />;
                 break;
             default:
                 tabContent = null;
