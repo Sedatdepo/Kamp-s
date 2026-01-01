@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type, Download } from 'lucide-react';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon, Type, Download, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { QuestionCanvas } from './QuestionCanvas';
+import { fabric } from 'fabric';
 
 
 // --- KAZANIM YÖNETİCİSİ ---
@@ -163,7 +164,6 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
 
   const handleTypeChange = (newType: Question['type']) => {
     setType(newType);
-    // Reset irrelevant fields to prevent data pollution
     setCorrectAnswer('');
     setOptions(['', '', '', '']);
     setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
@@ -256,18 +256,16 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   };
 
   const handleExportQuestion = (question: Question) => {
-    // This part is complex due to canvas usage. Assuming it's handled correctly.
     const canvas = document.createElement('canvas');
     const fabricCanvas = new (fabric as any).Canvas(canvas, { width: 800, height: 600 });
     try {
-        JSON.parse(question.text); // Check if it's JSON
+        JSON.parse(question.text); 
         fabricCanvas.loadFromJSON(question.text, () => {
             const dataUrl = fabricCanvas.toDataURL({ format: 'png' });
             exportQuestionToRtf(question, dataUrl);
             fabricCanvas.dispose();
         });
     } catch(e) {
-        // Not a canvas JSON, treat as plain text
         exportQuestionToRtf(question, null);
         fabricCanvas.dispose();
     }
@@ -411,6 +409,8 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
     const [examTitle, setExamTitle] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
+    const draggedItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
     
     const [examSettings, setExamSettings] = useState({
         academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
@@ -445,6 +445,16 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
             setSelectedQuestions(prev => prev.filter(q => q.id !== question.id));
         }
     }
+    
+    const handleSort = () => {
+        if (draggedItem.current === null || dragOverItem.current === null) return;
+        const newSelectedQuestions = [...selectedQuestions];
+        const draggedItemContent = newSelectedQuestions.splice(draggedItem.current, 1)[0];
+        newSelectedQuestions.splice(dragOverItem.current, 0, draggedItemContent);
+        draggedItem.current = null;
+        dragOverItem.current = null;
+        setSelectedQuestions(newSelectedQuestions);
+    };
 
     const handleQuestionPointChange = (questionId: string, newPoints: number) => {
         setSelectedQuestions(prev => prev.map(q => q.id === questionId ? { ...q, points: newPoints } : q));
@@ -544,7 +554,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                  <Card>
                     <CardHeader>
                         <CardTitle>Sınav Taslağı</CardTitle>
-                        <CardDescription>Seçilen sorular burada listelenir. Sıralamayı değiştirebilir ve sınav ayarlarını yapabilirsiniz.</CardDescription>
+                        <CardDescription>Seçilen soruları sıralayın ve sınav ayarlarını yapın.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -578,17 +588,25 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                 <CardContent>
                                     <ScrollArea className="h-[30vh] border rounded-md p-2 space-y-2">
                                     {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
-                                        <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
-                                                <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab" />
-                                                <span className="font-bold mr-2">{i+1}.</span>
-                                                <p className="flex-1 truncate">{getShortText(q.text)}</p>
-                                                <Input 
-                                                    type="number"
-                                                    value={q.points}
-                                                    onChange={(e) => handleQuestionPointChange(q.id, parseInt(e.target.value) || 0)}
-                                                    className="w-16 h-8 text-center mx-2"
-                                                />
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectQuestion(q, false)}><Trash2 className="h-4 w-4"/></Button>
+                                        <div 
+                                            key={q.id}
+                                            className="flex items-center bg-muted/50 p-2 rounded-md"
+                                            draggable
+                                            onDragStart={() => (draggedItem.current = i)}
+                                            onDragEnter={() => (dragOverItem.current = i)}
+                                            onDragEnd={handleSort}
+                                            onDragOver={(e) => e.preventDefault()}
+                                        >
+                                            <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab" />
+                                            <span className="font-bold mr-2">{i+1}.</span>
+                                            <p className="flex-1 truncate">{getShortText(q.text)}</p>
+                                            <Input 
+                                                type="number"
+                                                value={q.points}
+                                                onChange={(e) => handleQuestionPointChange(q.id, parseInt(e.target.value) || 0)}
+                                                className="w-16 h-8 text-center mx-2"
+                                            />
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectQuestion(q, false)}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                     )) : (
                                         <p className="text-center text-muted-foreground p-8">Sınava eklemek için soldaki listeden soru seçin.</p>
@@ -596,10 +614,16 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                     </ScrollArea>
                                 </CardContent>
                             </Card>
-                            <Button onClick={handleDownloadExam} className="w-full" disabled={isDownloading}>
-                                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
-                                Sınavı İndir (Word)
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" className="w-full">
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Önizleme
+                                </Button>
+                                <Button onClick={handleDownloadExam} className="w-full" disabled={isDownloading}>
+                                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
+                                    Sınavı İndir (Word)
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                  </Card>
