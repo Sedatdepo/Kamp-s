@@ -249,7 +249,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   const handleExportQuestion = (question: Question) => {
     // This part is complex due to canvas usage. Assuming it's handled correctly.
     const canvas = document.createElement('canvas');
-    const fabricCanvas = new fabric.Canvas(canvas, { width: 800, height: 600 });
+    const fabricCanvas = new (fabric as any).Canvas(canvas, { width: 800, height: 600 });
     try {
         JSON.parse(question.text); // Check if it's JSON
         fabricCanvas.loadFromJSON(question.text, () => {
@@ -472,7 +472,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
 
         const imageDataUrls: { [questionId: string]: string | null } = {};
         const canvas = document.createElement('canvas');
-        const fabricCanvas = new fabric.Canvas(canvas, { width: 800, height: 600 });
+        const fabricCanvas = new (fabric as any).Canvas(canvas, { width: 800, height: 600 });
         
         for (const q of selectedQuestions) {
             try {

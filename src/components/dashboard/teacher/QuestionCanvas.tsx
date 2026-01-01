@@ -26,8 +26,8 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
         // Add grid
         const grid = 20;
         for (let i = 0; i < (800 / grid); i++) {
-            canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false }));
-            canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false }))
+            canvas.add(new fabric.Line([ i * grid, 0, i * grid, 600], { stroke: '#e2e8f0', selectable: false, evented: false }));
+            canvas.add(new fabric.Line([ 0, i * grid, 800, i * grid], { stroke: '#e2e8f0', selectable: false, evented: false }))
         }
 
 

@@ -1111,14 +1111,29 @@ interface ExportExamArgs {
 
 export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settings }: ExportExamArgs) {
     const title = examTitle || "Sınav";
+    
+    const tr = (text: string) => {
+        if (!text) return '';
+        // Escaping backslashes first is crucial
+        let escapedText = text.replace(/\\/g, '\\\\');
+        
+        const replacements: { [key: string]: string } = {
+            'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
+            'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
+            'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
+            '{': '\\{', '}': '\\}',
+        };
+
+        for (const char in replacements) {
+            escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
+        }
+        
+        return escapedText;
+    };
 
     const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
 \\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
     
-    const tr = (text: string) => {
-      if(!text) return '';
-      return text.replace(/ı/g, '\\\'fd').replace(/İ/g, '\\\'dd').replace(/ş/g, '\\\'fe').replace(/Ş/g, '\\\'de').replace(/ğ/g, '\\\'f0').replace(/Ğ/g, '\\\'d0').replace(/ü/g, '\\\'fc').replace(/Ü/g, '\\\'dc').replace(/ö/g, '\\\'f6').replace(/Ö/g, '\\\'d6').replace(/ç/g, '\\\'e7').replace(/Ç/g, '\\\'c7');
-    }
     const examHeader = `
 {\\pard\\qc\\b\\fs32 ${tr(examTitle.toLocaleUpperCase('tr-TR'))}\\par}
 {\\pard\\qc\\b\\fs24 ${tr(settings.schoolName)} \\line ${tr(settings.academicYear)} E\\\'f0itim \\\'d6\\\'f0retim Y\\'fdl\\'fd ${tr(settings.lessonName)} Dersi ${tr(settings.className)} S\\'fdn\\'fd f\\'fd\\par}
@@ -1141,11 +1156,7 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
             const base64String = imageDataUrl.split(',')[1];
             questionBody = `{\\pard ${getRtfImageString(base64String, 800, 600)}\\par}`;
         } else {
-             const escapedText = q.text
-                .replace(/\\/g, '\\\\')
-                .replace(/{/g, '\\{')
-                .replace(/}/g, '\\}')
-                .replace(/\n/g, '\\line ');
+             const escapedText = q.text.replace(/\n/g, '\\line ');
             questionBody = `{\\pard ${tr(escapedText)}\\par}`;
         }
         
@@ -1166,7 +1177,6 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
             ).join('');
             
             answerContent = `${questionsList}{\\pard \\line \\par}${answersList}`;
-
         } else if (q.type === 'true-false') {
             answerContent = '{\\pard \\tab ( ) Do\\\'f0ru \\tab ( ) Yanl\\\'fd\\\'fe \\par}';
         } else if (q.type === 'short-answer' || q.type === 'open-ended') {
