@@ -1045,6 +1045,67 @@ export function exportHomeworkStatusToRtf({ students, homeworks, submissions, cu
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
+// --- HOMEWORK EVALUATION EXPORT ---
+interface ExportHomeworkEvaluationArgs {
+    students: Student[];
+    selectedHomework: any; // Using any because it's a dynamic object from Firestore
+    scores: { [studentId: string]: { [criteriaId: string]: number } };
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+
+export function exportHomeworkEvaluationToRtf({
+    students,
+    selectedHomework,
+    scores,
+    currentClass,
+    teacherProfile
+}: ExportHomeworkEvaluationArgs) {
+    const reportTitle = `${selectedHomework.text.substring(0, 30)}... Performans Ödevi Değerlendirme Çizelgesi`;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - Performans Değerlendirme`;
+
+    const rubric = selectedHomework.rubric;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:5%;">S.No</th>
+            <th class="horizontal" style="width:10%;">Okul No</th>
+            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
+            ${rubric.map((c: any) => `<th>${c.label}<br/><span class="small-text">(${c.score} P)</span></th>`).join('')}
+            <th class="horizontal" style="width:10%;">TOPLAM</th>
+        </tr>
+    `;
+
+    const dataRows = students.map((s, index) => {
+        const studentScores = scores[s.id] || {};
+        const total = rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
+                <td>${s.name}</td>
+                ${rubric.map((c: any) => `<td class="center">${studentScores[c.label] || 0}</td>`).join('')}
+                <td class="center bold">${total}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const content = `
+        ${header}
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
 
 // --- QUESTION EXPORT ---
 function getRtfImageString(base64Data: string, width: number, height: number): string {

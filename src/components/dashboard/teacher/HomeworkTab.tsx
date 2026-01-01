@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
-import { exportHomeworkStatusToRtf } from '@/lib/word-export';
+import { exportHomeworkStatusToRtf, exportHomeworkEvaluationToRtf } from '@/lib/word-export';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -298,7 +298,7 @@ const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onTo
             } shadow-sm hover:shadow-md text-xs`}
           >
             <Send size={14} />
-            Ata
+            Sınıfa Ata
           </button>
         </div>
       </div>
@@ -1744,6 +1744,8 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                 <HomeworkEvaluationTab
                     classId={classId}
                     students={students}
+                    currentClass={currentClass}
+                    teacherProfile={teacherProfile}
                 />
             </TabsContent>
             <TabsContent value="library" className="mt-4">
@@ -1758,7 +1760,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     );
 }
 
-const HomeworkEvaluationTab = ({ classId, students }: { classId: string, students: Student[] }) => {
+const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     
@@ -1829,6 +1831,18 @@ const HomeworkEvaluationTab = ({ classId, students }: { classId: string, student
         }
     };
 
+    const handleExport = () => {
+        if (currentClass && selectedHomework) {
+            exportHomeworkEvaluationToRtf({
+                students: assignedStudents,
+                selectedHomework,
+                scores,
+                currentClass,
+                teacherProfile,
+            });
+        }
+    }
+
 
     if (homeworksLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
 
@@ -1851,6 +1865,10 @@ const HomeworkEvaluationTab = ({ classId, students }: { classId: string, student
                             <option key={hw.id} value={hw.id}>{hw.text}</option>
                         ))}
                     </select>
+                    <Button onClick={handleExport} disabled={!selectedHomework} variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        RTF Olarak İndir
+                    </Button>
                 </div>
 
                 {selectedHomework && (
