@@ -1,4 +1,5 @@
 
+
 import { saveAs } from 'file-saver';
 import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question } from './types';
 import { format, parseISO } from 'date-fns';
@@ -1100,24 +1101,26 @@ interface ExportExamArgs {
     questions: Question[];
     imageDataUrls: { [questionId: string]: string | null };
     examTitle: string;
-    academicYear: string;
     schoolName: string;
+    academicYear: string;
     lessonName: string;
     className: string;
-    teacherName: string;
-    departmentHeadName: string;
-    principalName: string;
+    teacherName?: string;
+    departmentHeadName?: string;
+    principalName?: string;
     columns: '1' | '2';
+    showTeacher?: boolean;
+    showDepartmentHead?: boolean;
+    showPrincipal?: boolean;
 }
+
 
 export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settings }: ExportExamArgs) {
     const title = examTitle || "Sınav";
     
     const tr = (text: string) => {
         if (!text) return '';
-        // Escape RTF special characters first
         let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
-        // Then handle Turkish characters
         const replacements: { [key: string]: string } = {
             'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
             'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
@@ -1130,8 +1133,7 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         return escapedText;
     };
 
-    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
-\\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
+    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
     
     const examHeader = `
 {\\pard\\qc\\b\\fs32 ${tr(examTitle.toLocaleUpperCase('tr-TR'))}\\par}
@@ -1191,23 +1193,31 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         questionsContent += `\\colbreak}`;
     }
 
-    const signatureSection = `
+    const signatureSection = () => {
+        const teacherSig = settings.showTeacher ? `\\pard\\intbl\\qc ${tr(settings.teacherName || '')}\\line ${tr(settings.lessonName)} \\'d6\\'f0retmeni\\cell` : `\\pard\\intbl\\qc \\cell`;
+        const deptHeadSig = settings.showDepartmentHead ? `\\pard\\intbl\\qc ${tr(settings.departmentHeadName || '')}\\line Z\\'fcmre Ba\\\'fe kan\\'fd\\cell` : `\\pard\\intbl\\qc \\cell`;
+        const principalSig = settings.showPrincipal ? `\\pard\\intbl\\qc ${tr(settings.principalName || '')}\\line Okul M\\'fcd\\'fcr\\'fc\\cell` : `\\pard\\intbl\\qc \\cell`;
+        
+        if (!settings.showTeacher && !settings.showDepartmentHead && !settings.showPrincipal) return '';
+
+        return `
 \\line\\line\\line
 {\\pard\\qc
 {\\trowd \\trgaph108 \\trleft-108
 \\clbrdrb\\brdrs\\brdrw10 \\cellx3166
 \\clbrdrb\\brdrs\\brdrw10 \\cellx6332
 \\clbrdrb\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl\\qc ${tr(settings.teacherName)}\\line ${tr(settings.lessonName)} \\'d6\\'f0retmeni\\cell
-\\pard\\intbl\\qc ${tr(settings.departmentHeadName)}\\line Z\\'fcmre Ba\\\'fe kan\\'fd\\cell
-\\pard\\intbl\\qc ${tr(settings.principalName)}\\line Okul M\\'fcd\\'fcr\\'fc\\cell
+${teacherSig}
+${deptHeadSig}
+${principalSig}
 \\row}
 \\par}`;
+    };
 
 
     const footer = `}`;
 
-    const rtfContent = `${header}${examHeader}${questionsContent}${signatureSection}${footer}`;
+    const rtfContent = `${header}${examHeader}${questionsContent}${signatureSection()}${footer}`;
     
     const blob = new Blob([rtfContent], { type: 'application/rtf' });
     saveAs(blob, `${title.replace(/ /g, '_')}.rtf`);

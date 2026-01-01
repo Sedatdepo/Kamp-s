@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -414,28 +415,31 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     const dragOverItem = useRef<number | null>(null);
     
     const [examSettings, setExamSettings] = useState({
-        academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
         schoolName: teacherProfile?.schoolName || '',
+        academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
         lessonName: teacherProfile?.branch || '',
         className: '',
         teacherName: teacherProfile?.name || '',
         departmentHeadName: '',
         principalName: teacherProfile?.principalName || '',
         columns: '2' as '1' | '2',
+        showTeacher: true,
+        showDepartmentHead: false,
+        showPrincipal: false
     });
     
     useEffect(() => {
         setExamSettings(prev => ({
             ...prev,
-            academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
             schoolName: teacherProfile?.schoolName || '',
+            academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
             lessonName: teacherProfile?.branch || '',
             teacherName: teacherProfile?.name || '',
             principalName: teacherProfile?.principalName || '',
         }));
     }, [teacherProfile]);
     
-    const handleSettingsChange = (field: keyof typeof examSettings, value: string) => {
+    const handleSettingsChange = (field: keyof typeof examSettings, value: string | boolean) => {
         setExamSettings(prev => ({...prev, [field]: value}));
     };
 
@@ -565,20 +569,22 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                 <CardHeader><CardTitle className="text-base">Sınav Kağıdı Ayarları</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                      <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1"><Label>Okul Adı</Label><Input value={examSettings.schoolName} onChange={e => handleSettingsChange('schoolName', e.target.value)} /></div>
                                         <div className="space-y-1"><Label>Sınıf/Şube</Label><Input value={examSettings.className} onChange={e => handleSettingsChange('className', e.target.value)} placeholder="11/A" /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1"><Label>Akademik Yıl</Label><Input value={examSettings.academicYear} onChange={e => handleSettingsChange('academicYear', e.target.value)} /></div>
-                                        <div className="space-y-1"><Label>Ders Adı</Label><Input value={examSettings.lessonName} onChange={e => handleSettingsChange('lessonName', e.target.value)} /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1"><Label>Öğretmen Adı</Label><Input value={examSettings.teacherName} onChange={e => handleSettingsChange('teacherName', e.target.value)} /></div>
-                                        <div className="space-y-1"><Label>Zümre Başkanı</Label><Input value={examSettings.departmentHeadName} onChange={e => handleSettingsChange('departmentHeadName', e.target.value)} /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                         <div className="space-y-1"><Label>Okul Müdürü</Label><Input value={examSettings.principalName} onChange={e => handleSettingsChange('principalName', e.target.value)} /></div>
                                         <div className="space-y-1"><Label>Sütun Sayısı</Label><Select value={examSettings.columns} onValueChange={(val: "1" | "2") => handleSettingsChange('columns', val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Tek Sütun</SelectItem><SelectItem value="2">İki Sütun</SelectItem></SelectContent></Select></div>
+                                    </div>
+                                    <div className="border-t pt-4 space-y-3">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id="showTeacher" checked={examSettings.showTeacher} onCheckedChange={(checked) => handleSettingsChange('showTeacher', !!checked)} />
+                                            <Label htmlFor="showTeacher">Öğretmen İmzası</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id="showDeptHead" checked={examSettings.showDepartmentHead} onCheckedChange={(checked) => handleSettingsChange('showDepartmentHead', !!checked)} />
+                                            <div className='flex-1'><Label htmlFor="showDeptHead">Zümre Başkanı İmzası</Label><Input className='h-7 mt-1 text-xs' placeholder="Zümre Başkanı Adı" value={examSettings.departmentHeadName} onChange={e => handleSettingsChange('departmentHeadName', e.target.value)} disabled={!examSettings.showDepartmentHead}/></div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id="showPrincipal" checked={examSettings.showPrincipal} onCheckedChange={(checked) => handleSettingsChange('showPrincipal', !!checked)} />
+                                            <Label htmlFor="showPrincipal">Okul Müdürü İmzası</Label>
+                                        </div>
                                     </div>
                                 </CardContent>
                              </Card>
