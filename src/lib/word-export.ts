@@ -1069,15 +1069,12 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
 
     let questionContent = '';
     if (imageDataUrl) {
-        // Extract base64 data
         const base64String = imageDataUrl.split(',')[1];
-        // Create a temporary image to get dimensions
         const img = new Image();
         img.src = imageDataUrl;
         const rtfImage = getRtfImageString(base64String, img.width, img.height);
         questionContent = `{\\pard ${rtfImage}\\par}`;
     } else {
-        // Simple text, needs escaping for RTF
         const escapedText = question.text
             .replace(/\\/g, '\\\\')
             .replace(/{/g, '\\{')
@@ -1086,7 +1083,7 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
         questionContent = `{\\pard ${escapedText}\\par}`;
     }
 
-    const optionsContent = question.options.map((opt, i) =>
+    const optionsContent = (question.options || []).map((opt, i) =>
         `{\\pard \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
     ).join('');
 
@@ -1096,4 +1093,60 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
 
     const blob = new Blob([rtfContent], { type: 'application/rtf' });
     saveAs(blob, `Soru_${question.id}.rtf`);
+}
+
+// --- EXAM EXPORT ---
+interface ExportExamArgs {
+    questions: Question[];
+    imageDataUrls: { [questionId: string]: string | null };
+    examTitle: string;
+}
+
+export function exportExamToRtf({ questions, imageDataUrls, examTitle }: ExportExamArgs) {
+    const title = examTitle || "Sınav";
+
+    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
+{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
+\\pard\\sa200\\sl276\\slmult1\\f0\\fs24`;
+
+    const examHeader = `
+{\\pard\\qc\\b\\fs32 ${examTitle.toLocaleUpperCase('tr-TR')}\\par}
+\\line
+{\\pard\\b Ad\\'fd Soyad\\'fd: \\b0 .................................... \\tab \\b S\\'fdn\\'fd f\\'fd: \\b0 ........... \\tab \\b No: \\b0 ...........\\par}
+\\line
+\\line`;
+
+    let questionsContent = '';
+    questions.forEach((q, index) => {
+        let questionBody = '';
+        const imageDataUrl = imageDataUrls[q.id];
+
+        if (imageDataUrl) {
+            const base64String = imageDataUrl.split(',')[1];
+            const img = new Image();
+            img.src = imageDataUrl;
+            const rtfImage = getRtfImageString(base64String, img.width, img.height);
+            questionBody = `{\\pard ${rtfImage}\\par}`;
+        } else {
+             const escapedText = q.text
+                .replace(/\\/g, '\\\\')
+                .replace(/{/g, '\\{')
+                .replace(/}/g, '\\}')
+                .replace(/\n/g, '\\line ');
+            questionBody = `{\\pard ${escapedText}\\par}`;
+        }
+        
+        const options = (q.options || []).map((opt, i) =>
+            `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
+        ).join('');
+
+        questionsContent += `{\\pard \\b ${index + 1}) \\b0 ${questionBody} ${options} \\line \\par}`;
+    });
+
+    const footer = `}`;
+
+    const rtfContent = `${header}${examHeader}${questionsContent}${footer}`;
+    
+    const blob = new Blob([rtfContent], { type: 'application/rtf' });
+    saveAs(blob, `${title.replace(/ /g, '_')}.rtf`);
 }

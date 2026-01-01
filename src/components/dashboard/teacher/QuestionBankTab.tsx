@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -20,7 +18,7 @@ import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { fabric } from 'fabric';
-import { exportQuestionToRtf } from '@/lib/word-export';
+import { exportQuestionToRtf, exportExamToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -500,10 +498,13 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
 
 const ExamCreator = ({ teacherId }: { teacherId: string }) => {
     const { db } = useAuth();
+    const { toast } = useToast();
     const questionsQuery = useMemo(() => (db ? query(collection(db, 'questions'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
     const { data: questions, loading: questionsLoading } = useFirestore<Question[]>(`questions-for-creator-${teacherId}`, questionsQuery);
 
     const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
+    const [examTitle, setExamTitle] = useState('');
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const handleSelectQuestion = (question: Question, isSelected: boolean) => {
         if (isSelected) {
@@ -530,6 +531,41 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
             default: return 'outline';
         }
     }
+
+    const handleDownloadExam = async () => {
+        if (selectedQuestions.length === 0) {
+            toast({ title: 'Soru Seçilmedi', description: 'Lütfen sınava eklemek için en az bir soru seçin.', variant: 'destructive' });
+            return;
+        }
+        setIsDownloading(true);
+
+        const imageDataUrls: { [questionId: string]: string | null } = {};
+        const tempCanvas = new fabric.Canvas(null, { width: 800, height: 600 });
+        
+        for (const q of selectedQuestions) {
+            try {
+                JSON.parse(q.text);
+                await new Promise<void>((resolve) => {
+                    tempCanvas.loadFromJSON(q.text, () => {
+                        imageDataUrls[q.id] = tempCanvas.toDataURL({ format: 'png' });
+                        resolve();
+                    });
+                });
+            } catch (e) {
+                imageDataUrls[q.id] = null;
+            }
+        }
+        
+        tempCanvas.dispose();
+
+        exportExamToRtf({
+            questions: selectedQuestions,
+            imageDataUrls,
+            examTitle,
+        });
+        
+        setIsDownloading(false);
+    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -570,19 +606,22 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <Input placeholder="Sınav Başlığı (örn: 1. Dönem 2. Yazılı)" />
+                            <Input placeholder="Sınav Başlığı (örn: 1. Dönem 2. Yazılı)" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} />
                             <ScrollArea className="h-[50vh] border rounded-md p-2 space-y-2">
                                {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
                                    <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
                                         <span className="font-bold mr-2">{i+1}.</span>
                                         <p className="flex-1 truncate">{getShortText(q.text)}</p>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectQuestion(q, false)}><Trash2 className="h-4 w-4"/></Button>
                                    </div>
                                )) : (
                                    <p className="text-center text-muted-foreground p-8">Sınava eklemek için soldaki listeden soru seçin.</p>
                                )}
                             </ScrollArea>
-                            <Button className="w-full">Sınavı İndir (Word)</Button>
+                            <Button onClick={handleDownloadExam} className="w-full" disabled={isDownloading}>
+                                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
+                                Sınavı İndir (Word)
+                            </Button>
                         </div>
                     </CardContent>
                  </Card>
@@ -596,7 +635,7 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
   return (
     <Tabs defaultValue="bank">
         <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="bank">Soru Bankası ve Kazanımlar</TabsTrigger>
+            <TabsTrigger value="bank">Soru Bankası</TabsTrigger>
             <TabsTrigger value="creator">Sınav Oluşturucu</TabsTrigger>
         </TabsList>
         <TabsContent value="bank" className="mt-4">
