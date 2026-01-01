@@ -165,7 +165,6 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
 
   const handleTypeChange = (newType: Question['type']) => {
     setType(newType);
-    // Reset fields that are not relevant for the new type
     setCorrectAnswer('');
     setOptions(['', '', '', '']);
     setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
@@ -415,7 +414,6 @@ const QuestionPreview = ({ content }: { content: string }) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        // Set a transparent static canvas to render the content
         const staticCanvas = new fabric.StaticCanvas(canvas, {
              backgroundColor: 'transparent'
         });
@@ -423,11 +421,10 @@ const QuestionPreview = ({ content }: { content: string }) => {
         try {
             const json = JSON.parse(content);
             staticCanvas.loadFromJSON(json, () => {
-                // Adjust canvas size to fit content
                 const objects = staticCanvas.getObjects();
                 if (objects.length > 0) {
-                    const- boudingBox = staticCanvas.getObjects().reduce((acc, obj) => {
-                      const- objBounds = obj.getBoundingRect();
+                    const boundingBox = staticCanvas.getObjects().reduce((acc, obj) => {
+                      const objBounds = obj.getBoundingRect();
                       if (!acc) return objBounds;
                       return {
                         left: Math.min(acc.left, objBounds.left),
@@ -437,15 +434,14 @@ const QuestionPreview = ({ content }: { content: string }) => {
                       };
                     }, null as fabric.Rect | null);
 
-                    if (boudingBox) {
-                        staticCanvas.setWidth(boudingBox.width);
-                        staticCanvas.setHeight(boudingBox.height);
+                    if (boundingBox) {
+                        staticCanvas.setWidth(boundingBox.width);
+                        staticCanvas.setHeight(boundingBox.height);
                     }
                 }
                 staticCanvas.renderAll();
             });
         } catch (e) {
-            // It's plain text, not a fabric JSON
             staticCanvas.clear();
             const text = new fabric.Text(content, {
                 fontSize: 12,
@@ -479,11 +475,11 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     const [isDownloading, setIsDownloading] = useState(false);
     
     const [examSettings, setExamSettings] = useState({
-        className: '',
         showTeacher: true,
         showDepartmentHead: false,
         showPrincipal: false,
         departmentHeadName: '',
+        columns: '1',
     });
     
     useEffect(() => {
@@ -554,7 +550,6 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
 
         for (const item of examItems) {
             try {
-                // Check if it's a Fabric.js JSON
                 JSON.parse(item.text);
                 const tempCanvas = document.createElement('canvas');
                 const fabricCanvas = new fabric.StaticCanvas(tempCanvas, {
@@ -562,7 +557,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                     height: item.height,
                 });
                 
-                await new Promise<void>((resolve, reject) => {
+                await new Promise<void>((resolve) => {
                     fabricCanvas.loadFromJSON(item.text, () => {
                         fabricCanvas.renderAll();
                         const dataUrl = fabricCanvas.toDataURL({ format: 'png' });
@@ -573,7 +568,6 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                 });
 
             } catch (e) {
-                // It's plain text, no image data needed.
                 imageDataUrls[item.id] = null;
             }
         }
@@ -585,7 +579,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
             schoolName: teacherProfile.schoolName,
             academicYear: teacherProfile.reportConfig?.academicYear || '2024-2025',
             lessonName: teacherProfile.branch,
-            className: examSettings.className,
+            className: teacherProfile.reportConfig?.className || '',
             teacherName: teacherProfile.name,
             principalName: teacherProfile.principalName,
             ...examSettings,
@@ -639,7 +633,18 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                 <CardHeader><CardTitle className="text-base">Sınav Kağıdı Ayarları</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                      <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1"><Label>Sınıf/Şube</Label><Input value={examSettings.className} onChange={e => handleSettingsChange('className', e.target.value)} placeholder="11/A" /></div>
+                                        <div>
+                                             <Label>Sütun Sayısı</Label>
+                                             <Select value={examSettings.columns} onValueChange={(v) => handleSettingsChange('columns', v)}>
+                                                 <SelectTrigger>
+                                                     <SelectValue />
+                                                 </SelectTrigger>
+                                                 <SelectContent>
+                                                     <SelectItem value="1">Tek Sütun</SelectItem>
+                                                     <SelectItem value="2">İki Sütun</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                        </div>
                                     </div>
                                     <div className="border-t pt-4 space-y-3">
                                         <div className="flex items-center space-x-2">
