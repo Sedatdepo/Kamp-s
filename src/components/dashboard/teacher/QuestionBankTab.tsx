@@ -23,6 +23,7 @@ import { fabric } from 'fabric';
 import { exportQuestionToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 
 // --- KAZANIM YÖNETİCİSİ ---
@@ -467,16 +468,16 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
                     {questions.map(q => (
                       <TableRow key={q.id}>
                         <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleEdit(q)}>
-                            <p className="font-medium">{
-                              (() => {
+                            <p className="font-medium">
+                                 {(() => {
                                 try {
                                   JSON.parse(q.text);
                                   return "[Görsel Soru]";
                                 } catch (e) {
                                   return q.text;
                                 }
-                              })()
-                            }</p>
+                              })()}
+                            </p>
                             <p className="text-xs text-muted-foreground">{kazanims.find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
                         </TableCell>
                         <TableCell className="text-right">
@@ -511,6 +512,24 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
             setSelectedQuestions(prev => prev.filter(q => q.id !== question.id));
         }
     }
+    
+    const getShortText = (text: string) => {
+        try {
+            JSON.parse(text);
+            return "[Görsel Soru]";
+        } catch (e) {
+            return text.substring(0, 50) + (text.length > 50 ? "..." : "");
+        }
+    }
+
+    const difficultyBadgeVariant = (difficulty: 'kolay' | 'orta' | 'zor') => {
+        switch(difficulty) {
+            case 'kolay': return 'default';
+            case 'orta': return 'secondary';
+            case 'zor': return 'destructive';
+            default: return 'outline';
+        }
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -523,14 +542,19 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
                     <CardContent>
                         <ScrollArea className="h-[60vh] border rounded-md p-2">
                              {questionsLoading ? <Loader2 className="animate-spin m-auto"/> : questions.map(q => (
-                                <div key={q.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
+                                <div key={q.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted">
                                     <Checkbox 
                                         id={`q-${q.id}`} 
                                         onCheckedChange={(checked) => handleSelectQuestion(q, !!checked)}
                                         checked={selectedQuestions.some(sq => sq.id === q.id)}
+                                        className="mt-1"
                                     />
                                     <label htmlFor={`q-${q.id}`} className="text-sm font-medium leading-none flex-1 cursor-pointer">
-                                        <p className="truncate">{ q.text.startsWith('{') ? '[Görsel Soru]' : q.text}</p>
+                                        <p>{getShortText(q.text)}</p>
+                                        <div className="flex gap-2 mt-1">
+                                            <Badge variant="outline">{q.type}</Badge>
+                                            <Badge variant={difficultyBadgeVariant(q.difficulty)}>{q.difficulty}</Badge>
+                                        </div>
                                     </label>
                                 </div>
                             ))}
@@ -551,7 +575,7 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
                                {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
                                    <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
                                         <span className="font-bold mr-2">{i+1}.</span>
-                                        <p className="flex-1 truncate">{ q.text.startsWith('{') ? '[Görsel Soru]' : q.text}</p>
+                                        <p className="flex-1 truncate">{getShortText(q.text)}</p>
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4"/></Button>
                                    </div>
                                )) : (
