@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef } from 'react';
@@ -83,7 +84,7 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                     }
                     if(initialContent) { // If it's plain text, add it
                          const text = new fabric.IText(initialContent, {
-                           left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
+                           left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18, objectCaching: false
                         });
                         canvas.add(text);
                     }
@@ -99,7 +100,7 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                  }
                 if(initialContent){
                     const text = new fabric.IText(initialContent, {
-                       left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
+                       left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18, objectCaching: false
                     });
                     canvas.add(text);
                 }
@@ -135,7 +136,8 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
             top: 100,
             fontFamily: 'sans-serif',
             fontSize: 20,
-            fill: '#333'
+            fill: '#333',
+            objectCaching: false
         });
         fabricCanvasRef.current.add(text);
         fabricCanvasRef.current.setActiveObject(text);

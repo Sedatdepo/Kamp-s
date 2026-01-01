@@ -409,6 +409,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
     const [examTitle, setExamTitle] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const draggedItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
     
@@ -520,6 +521,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     };
 
     return (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
                 <Card>
@@ -615,7 +617,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                 </CardContent>
                             </Card>
                             <div className="flex gap-2">
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" onClick={() => setIsPreviewOpen(true)}>
                                     <Eye className="mr-2 h-4 w-4" />
                                     Önizleme
                                 </Button>
@@ -629,6 +631,47 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                  </Card>
             </div>
         </div>
+        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Sınav Önizlemesi</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1 bg-gray-200 p-8">
+                    <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg mx-auto p-16 font-[serif] text-black text-sm">
+                        <div className="text-center">
+                            <h1 className="text-xl font-bold">{examSettings.schoolName}</h1>
+                            <h2 className="text-lg">{examSettings.academicYear} EĞİTİM ÖĞRETİM YILI {examSettings.lessonName.toUpperCase()} DERSİ {examSettings.className} SINIFI</h2>
+                            <h2 className="text-lg font-bold">{examTitle}</h2>
+                        </div>
+                        <div className="flex justify-between mt-4">
+                            <span>Adı Soyadı: ..........................</span>
+                            <span>No: .............</span>
+                        </div>
+                        <hr className="my-4 border-black" />
+                        <div className={`
+                            ${examSettings.columns === '2' ? 'columns-2 gap-8' : 'columns-1'}
+                        `}>
+                            {selectedQuestions.map((q, i) => (
+                                <div key={q.id} className="mb-4 break-inside-avoid">
+                                    <p className="font-bold">{i+1}) (Puan: {q.points})</p>
+                                    <div className="pl-4">
+                                        <p>{q.text}</p>
+                                        {q.type === 'multiple-choice' && (
+                                            <div className="flex flex-col">
+                                                {q.options.map((opt, optIndex) => (
+                                                    <span key={optIndex}>{String.fromCharCode(65 + optIndex)}) {opt}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 };
 

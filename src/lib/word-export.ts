@@ -1,3 +1,4 @@
+
 import { saveAs } from 'file-saver';
 import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question } from './types';
 import { format, parseISO } from 'date-fns';
@@ -1114,20 +1115,18 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
     
     const tr = (text: string) => {
         if (!text) return '';
-        // Escaping backslashes first is crucial
-        let escapedText = text.replace(/\\/g, '\\\\');
-        
+        // Escape RTF special characters first
+        let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+        // Then handle Turkish characters
         const replacements: { [key: string]: string } = {
             'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
             'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
             'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
-            '{': '\\{', '}': '\\}',
         };
 
         for (const char in replacements) {
             escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
         }
-        
         return escapedText;
     };
 
@@ -1168,14 +1167,14 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         } else if (q.type === 'matching' && q.matchingPairs && q.matchingPairs.length > 0) {
             const shuffledAnswers = [...q.matchingPairs].sort(() => Math.random() - 0.5);
 
-            let questionsList = q.matchingPairs.map((pair, i) => 
-                `{\\pard \\tab (___) ${i + 1}. ${tr(pair.question)}\\par}`
+            let questionsList = q.matchingPairs.map((pair, index) => 
+                `{\\pard \\tab (___) ${index + 1}. ${tr(pair.question)}\\par}`
             ).join('');
             
-            let answersList = shuffledAnswers.map((pair, i) =>
-                 `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${tr(pair.answer)}\\par}`
+            let answersList = shuffledAnswers.map((pair, index) =>
+                 `{\\pard \\tab \\b ${String.fromCharCode(65 + index)}) \\b0 ${tr(pair.answer)}\\par}`
             ).join('');
-            
+
             answerContent = `${questionsList}{\\pard \\line \\par}${answersList}`;
         } else if (q.type === 'true-false') {
             answerContent = '{\\pard \\tab ( ) Do\\\'f0ru \\tab ( ) Yanl\\\'fd\\\'fe \\par}';
