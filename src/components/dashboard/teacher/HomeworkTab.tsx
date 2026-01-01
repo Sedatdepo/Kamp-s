@@ -40,7 +40,7 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
-import { Checkbox } from '../ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 // --- HELPER COMPONENTS from User's Code ---
