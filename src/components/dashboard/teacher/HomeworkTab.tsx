@@ -760,108 +760,144 @@ const AddRubricModal = ({ isOpen, onClose, onSave }: any) => {
     );
 };
 
-const RubricModal = ({ isOpen, onClose, assignment, rubrics, onAddRubricClick }: any) => {
+const RubricModal = ({ isOpen, onClose, assignment, rubrics, onAddRubricClick, onSaveRubric }: any) => {
     const [selectedRubricKey, setSelectedRubricKey] = React.useState('');
-  
+    const [editableRubric, setEditableRubric] = React.useState<any>(null);
+
     React.useEffect(() => {
-      if (isOpen && assignment) {
-        const defaultKey = getRubricType((assignment as any).formats);
-        setSelectedRubricKey(defaultKey);
-      }
-    }, [isOpen, assignment]);
-  
-    if (!isOpen || !assignment) return null;
-  
-    const currentRubric = rubrics[selectedRubricKey] || rubrics['research'];
-  
+        if (isOpen && assignment) {
+            const defaultKey = getRubricType((assignment as any).formats);
+            setSelectedRubricKey(defaultKey);
+            setEditableRubric(JSON.parse(JSON.stringify(rubrics[defaultKey] || rubrics['research'])));
+        }
+    }, [isOpen, assignment, rubrics]);
+
+    const handleItemChange = (index: number, field: string, value: any) => {
+        const newItems = [...editableRubric.items];
+        newItems[index] = { ...newItems[index], [field]: value };
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+
+    const handleAddItem = () => {
+        const newItems = [...editableRubric.items, { label: 'Yeni Kriter', score: 10, desc: '' }];
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+
+    const handleRemoveItem = (index: number) => {
+        const newItems = editableRubric.items.filter((_:any, i:number) => i !== index);
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+
+    const handleSave = () => {
+        onSaveRubric(selectedRubricKey, editableRubric);
+        onClose();
+    };
+
+    if (!isOpen || !assignment || !editableRubric) return null;
+
+    const totalScore = editableRubric.items.reduce((acc: any, curr: any) => acc + (parseInt(curr.score) || 0), 0);
+
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">Değerlendirme Kriterleri</h2>
-              <p className="text-sm text-gray-500 mt-1">{(assignment as any).title}</p>
-            </div>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-              <X size={20} className="text-gray-500" />
-            </button>
-          </div>
-  
-          <div className="p-6 overflow-y-auto">
-            
-            <div className="mb-6 flex gap-2 items-end">
-              <div className="flex-grow">
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kullanılacak Kriter Seti</label>
-                <select 
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={selectedRubricKey}
-                  onChange={(e) => setSelectedRubricKey(e.target.value)}
-                >
-                  <optgroup label="Standart Kriterler">
-                    <option value="research">Araştırma ve Yazma Rubriği</option>
-                    <option value="multimedia">Multimedya ve Sunum Rubriği</option>
-                    <option value="visual">Görsel Tasarım Rubriği</option>
-                  </optgroup>
-                  <optgroup label="Özel Kriterler">
-                    {Object.keys(rubrics).filter(k => k.startsWith('custom')).map(key => (
-                      <option key={key} value={key}>{(rubrics as any)[key].title}</option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-              <button 
-                onClick={() => { onClose(); onAddRubricClick(); }}
-                className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 border border-blue-200" 
-                title="Yeni Kriter Seti Ekle"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-  
-            <div className="mb-4 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
-               <span className="font-semibold">Açıklama:</span> {currentRubric.description}
-            </div>
-  
-            <div className="space-y-4">
-              {currentRubric.items.map((item: any, index: number) => (
-                <div key={index} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-300 transition-colors shadow-sm">
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">{index + 1}</span>
-                      <h4 className="font-bold text-gray-800">{item.label}</h4>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800">Değerlendirme Kriterleri</h2>
+                        <p className="text-sm text-gray-500 mt-1">{(assignment as any).title}</p>
                     </div>
-                    <p className="text-sm text-gray-600 ml-8">{item.desc}</p>
-                  </div>
-                  <div className="flex items-center justify-center min-w-[80px]">
-                    <div className="text-center">
-                      <span className="block text-2xl font-bold text-blue-600">{item.score}</span>
-                      <span className="text-xs text-gray-400 uppercase font-semibold">Puan</span>
-                    </div>
-                  </div>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                        <X size={20} className="text-gray-500" />
+                    </button>
                 </div>
-              ))}
+                <div className="p-6 overflow-y-auto">
+                    <div className="mb-6 flex gap-2 items-end">
+                        <div className="flex-grow">
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kullanılacak Kriter Seti</label>
+                            <select
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={selectedRubricKey}
+                                onChange={(e) => {
+                                    const newKey = e.target.value;
+                                    setSelectedRubricKey(newKey);
+                                    setEditableRubric(JSON.parse(JSON.stringify(rubrics[newKey])));
+                                }}
+                            >
+                                <optgroup label="Standart Kriterler">
+                                    <option value="research">Araştırma ve Yazma Rubriği</option>
+                                    <option value="multimedia">Multimedya ve Sunum Rubriği</option>
+                                    <option value="visual">Görsel Tasarım Rubriği</option>
+                                </optgroup>
+                                <optgroup label="Özel Kriterler">
+                                    {Object.keys(rubrics).filter(k => k.startsWith('custom')).map(key => (
+                                        <option key={key} value={key}>{(rubrics as any)[key].title}</option>
+                                    ))}
+                                </optgroup>
+                            </select>
+                        </div>
+                        <button
+                            onClick={() => { onClose(); onAddRubricClick(); }}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 border border-blue-200"
+                            title="Yeni Kriter Seti Ekle"
+                        >
+                            <Plus size={20} />
+                        </button>
+                    </div>
+
+                    <div className="mb-4 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <span className="font-semibold">Açıklama:</span> {editableRubric.description}
+                    </div>
+
+                    <div className="space-y-3">
+                        {editableRubric.items.map((item: any, index: number) => (
+                            <div key={index} className="flex gap-2 p-3 rounded-xl border bg-gray-50/50">
+                                <div className="flex-grow space-y-2">
+                                     <Input 
+                                        value={item.label}
+                                        onChange={(e) => handleItemChange(index, 'label', e.target.value)}
+                                        className="font-bold text-gray-800 text-base"
+                                        placeholder="Kriter Adı"
+                                    />
+                                    <Textarea 
+                                        value={item.desc}
+                                        onChange={(e) => handleItemChange(index, 'desc', e.target.value)}
+                                        className="text-sm text-gray-600"
+                                        placeholder="Kriter Açıklaması"
+                                        rows={1}
+                                    />
+                                </div>
+                                <div className="flex flex-col items-center justify-center gap-1 w-24">
+                                     <Input 
+                                        type="number"
+                                        value={item.score}
+                                        onChange={(e) => handleItemChange(index, 'score', e.target.value)}
+                                        className="w-20 h-10 text-center text-xl font-bold text-blue-600"
+                                    />
+                                    <span className="text-xs text-gray-400 uppercase font-semibold">Puan</span>
+                                </div>
+                                 <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)} className="text-red-400 hover:text-red-500">
+                                    <Trash2 size={16} />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                     <Button onClick={handleAddItem} variant="outline" className="mt-4 w-full border-dashed">
+                        <Plus size={16} className="mr-2" /> Kriter Ekle
+                    </Button>
+                </div>
+
+                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                    <div className="text-right">
+                        <span className="text-sm text-gray-500 mr-2">Toplam Puan:</span>
+                        <span className={`text-2xl font-bold ${totalScore === 100 ? 'text-green-600' : 'text-orange-500'}`}>
+                            {totalScore}
+                        </span>
+                    </div>
+                     <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Save size={16} className="mr-2" /> Değişiklikleri Kaydet
+                    </Button>
+                </div>
             </div>
-  
-            <div className="mt-6 flex justify-end items-center border-t border-gray-100 pt-4">
-               <div className="text-right">
-                  <span className="text-sm text-gray-500 mr-2">Toplam Puan:</span>
-                  <span className="text-2xl font-bold text-gray-900">
-                    {currentRubric.items.reduce((acc: any, curr: any) => acc + (parseInt(curr.score) || 0), 0)}
-                  </span>
-               </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-            <button 
-              onClick={onClose}
-              className="px-6 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-medium transition-colors"
-            >
-              Tamam
-            </button>
-          </div>
         </div>
-      </div>
     );
 };
 
@@ -1484,6 +1520,11 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
         }));
     };
 
+    const handleSaveRubric = (key: string, rubric: any) => {
+        setRubrics(prev => ({ ...prev, [key]: rubric }));
+        toast({title: 'Kriterler Güncellendi', description: 'Değişiklikler bu oturum için kaydedildi.'})
+    };
+
     const hasSelection = (gradeFilter !== '' && subjectFilter !== '') || showFavoritesOnly;
 
     return (
@@ -1588,6 +1629,7 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
             assignment={selectedAssignment}
             rubrics={rubrics}
             onAddRubricClick={() => setAddRubricModalOpen(true)}
+            onSaveRubric={handleSaveRubric}
         />
 
         <AddRubricModal 
@@ -1623,9 +1665,21 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     
     const { db } = useAuth();
     
+    const allStudentsForTeacherQuery = useMemo(() => {
+        if (!teacherProfile?.id || !db) return null;
+        // This is not a scalable query for a large number of classes.
+        // It's used here because the class list for a teacher is not directly available without fetching all classes.
+        // A better data model would have a 'teacherId' on the class document.
+        // Assuming the current setup, we fetch all students and filter client-side, which is inefficient.
+        // The logic is corrected to fetch students for ALL of the teacher's classes.
+        const classIds = classes.map(c => c.id);
+        if (classIds.length === 0) return null;
+        return query(collection(db, 'students'), where('classId', 'in', classIds));
+    }, [teacherProfile?.id, db, classes]);
+
     const { data: allStudents } = useFirestore<Student[]>(
-        `all-students-for-homework`,
-        currentClass ? query(collection(db, 'students'), where('classId', '==', currentClass.id)) : null
+        `all-students-for-teacher-${teacherProfile?.id}`,
+        allStudentsForTeacherQuery
     );
 
     return (
@@ -1647,7 +1701,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     classId={classId}
                     teacherProfile={teacherProfile}
                     classes={classes}
-                    students={students}
+                    students={allStudents || []}
                 />
             </TabsContent>
         </Tabs>
