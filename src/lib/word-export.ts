@@ -1053,7 +1053,7 @@ function getRtfImageString(base64Data: string, width: number, height: number): s
     const picwgoal = Math.round(width * 15);
     const pichgoal = Math.round(height * 15);
     
-    //{\pict\pngblip\picw[width]\pich[height]\picwgoal[width in twips]\pichgoal[height in twips] HEX_DATA}
+    //{\\pict\\pngblip\\picw[width]\\pich[height]\\picwgoal[width in twips]\\pichgoal[height in twips] HEX_DATA}
     return `{\\pict\\pngblip\\picw${picw}\\pich${pich}\\picwgoal${picwgoal}\\pichgoal${pichgoal} ${hexData}}`;
 }
 
@@ -1115,7 +1115,7 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
     const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
 \\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
     
-    const tr = (text: string) => text.replace(/ı/g, '\\'fd').replace(/İ/g, '\\'dd').replace(/ş/g, '\\'fe').replace(/Ş/g, '\\'de').replace(/ğ/g, '\\'f0').replace(/Ğ/g, '\\'d0').replace(/ü/g, '\\'fc').replace(/Ü/g, '\\'dc').replace(/ö/g, '\\'f6').replace(/Ö/g, '\\'d6').replace(/ç/g, '\\'e7').replace(/Ç/g, '\\'c7');
+    const tr = (text: string) => text.replace(/ı/g, '\\\'fd').replace(/İ/g, '\\\'dd').replace(/ş/g, '\\\'fe').replace(/Ş/g, '\\\'de').replace(/ğ/g, '\\\'f0').replace(/Ğ/g, '\\\'d0').replace(/ü/g, '\\\'fc').replace(/Ü/g, '\\\'dc').replace(/ö/g, '\\\'f6').replace(/Ö/g, '\\\'d6').replace(/ç/g, '\\\'e7').replace(/Ç/g, '\\\'c7');
 
     const examHeader = `
 {\\pard\\qc\\b\\fs32 ${tr(examTitle.toLocaleUpperCase('tr-TR'))}\\par}
@@ -1155,16 +1155,15 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         } else if (q.type === 'matching' && q.matchingPairs && q.matchingPairs.length > 0) {
             const shuffledAnswers = [...q.matchingPairs].sort(() => Math.random() - 0.5);
 
-            let questionsList = q.matchingPairs.map((pair, i) => 
-                `{\\pard \\tab (___) ${i + 1}. ${tr(pair.question)}\\par}`
+            let questionsList = q.matchingPairs.map((pair, index) => 
+                `{\\pard \\tab (___) ${index + 1}. ${tr(pair.question)}\\par}`
             ).join('');
             
-            let answersList = shuffledAnswers.map((pair, i) =>
-                 `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${tr(pair.answer)}\\par}`
+            let answersList = shuffledAnswers.map((pair, index) =>
+                 `{\\pard \\tab \\b ${String.fromCharCode(65 + index)}) \\b0 ${tr(pair.answer)}\\par}`
             ).join('');
             
             answerContent = `${questionsList}{\\pard \\line \\par}${answersList}`;
-
         } else if (q.type === 'true-false') {
             answerContent = '{\\pard \\tab ( ) Do\\\'f0ru \\tab ( ) Yanl\\\'fd\\\'fe \\par}';
         } else if (q.type === 'short-answer' || q.type === 'open-ended') {
