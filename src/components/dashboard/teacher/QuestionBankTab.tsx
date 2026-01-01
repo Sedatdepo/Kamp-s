@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Question, Kazanım, MatchingPair } from '@/lib/types';
@@ -11,18 +11,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Plus, Trash2, Edit, FileQuestion, BookOpen, Library, Check, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { fabric } from 'fabric';
 
-interface QuestionBankTabProps {
-  teacherId: string;
-}
-
+// --- KAZANIM YÖNETİCİSİ ---
 const KazanımManager = ({ teacherId }: { teacherId: string }) => {
+  // ... (içerik değişmedi, aynı bırakıldı)
   const { db } = useAuth();
   const { toast } = useToast();
   
@@ -33,7 +32,6 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
 
   const handleAddKazanım = async (kazanimText: string) => {
     if (!db) return;
-    // Check if the kazanım already exists
     if (kazanims.some(k => k.text === kazanimText)) {
         toast({ title: 'Bu kazanım zaten ekli.', variant: 'default' });
         return;
@@ -49,7 +47,6 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
     
     kazanimList.konular.forEach(konu => {
       konu.kazanimlar.forEach(kazanimText => {
-        // Check if kazanım already exists before adding to batch
         if (!kazanims.some(k => k.text === kazanimText)) {
           const docRef = doc(collection(db, 'kazanims'));
           batch.set(docRef, { text: kazanimText, teacherId });
@@ -156,7 +153,75 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
 };
 
 
-export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
+// --- SORU HAZIRLAMA TUVALİ ---
+const QuestionCanvas = ({ onContentChange }: { onContentChange: (content: string) => void }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const canvas = new fabric.Canvas(canvasRef.current, {
+            backgroundColor: '#f8fafc', // slate-50
+            width: 800,
+            height: 600,
+        });
+        fabricCanvasRef.current = canvas;
+
+        const updateContent = () => {
+            onContentChange(JSON.stringify(canvas.toJSON()));
+        };
+
+        canvas.on('object:modified', updateContent);
+        canvas.on('object:added', updateContent);
+        canvas.on('object:removed', updateContent);
+
+        return () => {
+            canvas.dispose();
+        };
+    }, [onContentChange]);
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && fabricCanvasRef.current) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const imgObj = new Image();
+                imgObj.src = event.target?.result as string;
+                imgObj.onload = () => {
+                    const image = new fabric.Image(imgObj);
+                    image.scaleToWidth(200);
+                    fabricCanvasRef.current?.add(image);
+                    fabricCanvasRef.current?.centerObject(image);
+                    fabricCanvasRef.current?.renderAll();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+             <div className="flex gap-2">
+                 <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4"/> Resim Ekle
+                </Button>
+            </div>
+            <div className="border rounded-md overflow-hidden">
+                <canvas ref={canvasRef} />
+            </div>
+        </div>
+    );
+};
+
+
+export function QuestionBankTab({ teacherId }: { teacherId: string }) {
   const { db } = useAuth();
   const { toast } = useToast();
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -271,7 +336,9 @@ export function QuestionBankTab({ teacherId }: QuestionBankTabProps) {
             <CardTitle className="flex items-center gap-2"><FileQuestion /> {editingQuestion ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Textarea placeholder="Soru metni..." value={text} onChange={e => setText(e.target.value)} rows={5} />
+            
+            <QuestionCanvas onContentChange={setText} />
+
             <Select value={type} onValueChange={(v: any) => setType(v)}>
               <SelectTrigger><SelectValue placeholder="Soru Tipi" /></SelectTrigger>
               <SelectContent>
