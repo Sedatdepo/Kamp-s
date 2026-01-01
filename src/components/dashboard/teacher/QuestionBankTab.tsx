@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -246,18 +247,20 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   };
 
   const handleExportQuestion = (question: Question) => {
-    const tempCanvas = new fabric.Canvas(null, { width: 800, height: 600 });
+    // This part is complex due to canvas usage. Assuming it's handled correctly.
+    const canvas = document.createElement('canvas');
+    const fabricCanvas = new fabric.Canvas(canvas, { width: 800, height: 600 });
     try {
         JSON.parse(question.text); // Check if it's JSON
-        tempCanvas.loadFromJSON(question.text, () => {
-            const dataUrl = tempCanvas.toDataURL({ format: 'png' });
+        fabricCanvas.loadFromJSON(question.text, () => {
+            const dataUrl = fabricCanvas.toDataURL({ format: 'png' });
             exportQuestionToRtf(question, dataUrl);
-            tempCanvas.dispose();
+            fabricCanvas.dispose();
         });
     } catch(e) {
         // Not a canvas JSON, treat as plain text
         exportQuestionToRtf(question, null);
-        tempCanvas.dispose();
+        fabricCanvas.dispose();
     }
   }
 
@@ -460,14 +463,15 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
         setIsDownloading(true);
 
         const imageDataUrls: { [questionId: string]: string | null } = {};
-        const tempCanvas = new fabric.Canvas(null, { width: 800, height: 600 });
+        const canvas = document.createElement('canvas');
+        const fabricCanvas = new fabric.Canvas(canvas, { width: 800, height: 600 });
         
         for (const q of selectedQuestions) {
             try {
                 JSON.parse(q.text);
                 await new Promise<void>((resolve) => {
-                    tempCanvas.loadFromJSON(q.text, () => {
-                        imageDataUrls[q.id] = tempCanvas.toDataURL({ format: 'png' });
+                    fabricCanvas.loadFromJSON(q.text, () => {
+                        imageDataUrls[q.id] = fabricCanvas.toDataURL({ format: 'png' });
                         resolve();
                     });
                 });
@@ -476,7 +480,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
             }
         }
         
-        tempCanvas.dispose();
+        fabricCanvas.dispose();
 
         exportExamToRtf({
             questions: selectedQuestions,
