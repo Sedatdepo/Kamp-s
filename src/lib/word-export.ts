@@ -1045,41 +1045,55 @@ export function exportHomeworkStatusToRtf({ students, homeworks, submissions, cu
 
 
 // --- QUESTION EXPORT ---
+function getRtfImageString(base64Data: string, width: number, height: number): string {
+    const hexData = Array.from(atob(base64Data), c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+    // Twips = pixel * 15
+    const picw = Math.round(width * 15);
+    const pich = Math.round(height * 15);
+    const picwgoal = Math.round(width * 15 * 0.75); // Scale to 75% for better fit
+    const pichgoal = Math.round(height * 15 * 0.75);
+    
+    return `{\\pict\\pngblip\\picw${picw}\\pich${pich}\\picwgoal${picwgoal}\\pichgoal${pichgoal} ${hexData}}`;
+}
+
 export function exportQuestionToRtf(question: Question, imageDataUrl: string | null) {
     const title = `Soru - ${question.id}`;
 
+    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
+{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
+\\pard\\sa200\\sl276\\slmult1\\f0\\fs24`;
+
     const studentInfo = `
-        <table class="no-border" style="width: 100%; margin-bottom: 20px;">
-            <tr>
-                <td class="no-border" style="width: 50%;"><b>Adı Soyadı:</b> ....................................</td>
-                <td class="no-border" style="width: 25%;"><b>Sınıfı:</b> ...........</td>
-                <td class="no-border" style="width: 25%;"><b>No:</b> ...........</td>
-            </tr>
-        </table>
-        <hr>
-        <br>
-    `;
-    
+\\b Ad\\'fd Soyad\\'fd: \\b0 .................................... \\tab \\b S\\'fdn\\'fd f\\'fd: \\b0 ........... \\tab \\b No: \\b0 ...........\\par
+\\line`;
+
     let questionContent = '';
     if (imageDataUrl) {
-        questionContent = `<p><img src="${imageDataUrl}" alt="Soru Resmi" style="max-width: 100%; height: auto;" /></p>`;
+        // Extract base64 data
+        const base64String = imageDataUrl.split(',')[1];
+        // Create a temporary image to get dimensions
+        const img = new Image();
+        img.src = imageDataUrl;
+        const rtfImage = getRtfImageString(base64String, img.width, img.height);
+        questionContent = `{\\pard ${rtfImage}\\par}`;
     } else {
-        questionContent = `<p style="white-space: pre-wrap;">${question.text}</p>`;
+        // Simple text, needs escaping for RTF
+        const escapedText = question.text
+            .replace(/\\/g, '\\\\')
+            .replace(/{/g, '\\{')
+            .replace(/}/g, '\\}')
+            .replace(/\n/g, '\\line ');
+        questionContent = `{\\pard ${escapedText}\\par}`;
     }
-    
-    const optionsContent = question.options.map((opt, i) => `
-        <p><b>${String.fromCharCode(65 + i)})</b> ${opt}</p>
-    `).join('');
 
-    const content = `
-        ${studentInfo}
-        <div style="font-size: 12pt;">
-            ${questionContent}
-            <br>
-            ${optionsContent}
-        </div>
-    `;
+    const optionsContent = question.options.map((opt, i) =>
+        `{\\pard \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
+    ).join('');
 
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, `Soru_${question.id}.rtf`);
+    const footer = `}`;
+
+    const rtfContent = `${header}${studentInfo}${questionContent}${optionsContent}${footer}`;
+
+    const blob = new Blob([rtfContent], { type: 'application/rtf' });
+    saveAs(blob, `Soru_${question.id}.rtf`);
 }
