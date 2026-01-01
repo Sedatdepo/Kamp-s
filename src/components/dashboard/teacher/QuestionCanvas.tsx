@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, Type } from 'lucide-react';
+import { ImageIcon, Type, Trash2 } from 'lucide-react';
 
 interface QuestionCanvasProps {
     initialContent?: string;
@@ -39,7 +39,27 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
         canvas.on('object:added', updateContent);
         canvas.on('object:removed', updateContent);
 
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject) {
+                    // Prevent deleting text while editing an IText object
+                    if (activeObject.isEditing) return;
+                    
+                    if (activeObject.type === 'activeSelection') {
+                         (activeObject as fabric.ActiveSelection).forEachObject(obj => canvas.remove(obj));
+                    }
+                    canvas.remove(activeObject);
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
+            window.removeEventListener('keydown', handleKeyDown);
             canvas.dispose();
         };
     }, [onContentChange]);
@@ -122,6 +142,21 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
         fabricCanvasRef.current.renderAll();
     };
 
+    const handleDeleteSelected = () => {
+        const canvas = fabricCanvasRef.current;
+        if (canvas) {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                 if (activeObject.type === 'activeSelection') {
+                    (activeObject as fabric.ActiveSelection).forEachObject(obj => canvas.remove(obj));
+                }
+                canvas.remove(activeObject);
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
+        }
+    };
+
     return (
         <div className="space-y-4">
              <div className="flex gap-2">
@@ -137,6 +172,9 @@ export const QuestionCanvas = ({ initialContent, onContentChange }: QuestionCanv
                 </Button>
                 <Button variant="outline" onClick={handleAddText}>
                     <Type className="mr-2 h-4 w-4"/> Metin Ekle
+                </Button>
+                 <Button variant="destructive" onClick={handleDeleteSelected}>
+                    <Trash2 className="mr-2 h-4 w-4"/> Seçileni Sil
                 </Button>
             </div>
             <div className="border rounded-md overflow-hidden shadow-inner bg-slate-50">
