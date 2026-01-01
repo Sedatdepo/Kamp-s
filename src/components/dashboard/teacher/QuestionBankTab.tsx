@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
-import { Question, Kazanım, MatchingPair } from '@/lib/types';
+import { Question, Kazanım, MatchingPair, TeacherProfile } from '@/lib/types';
 import { collection, query, where, addDoc, deleteDoc, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { exportQuestionToRtf, exportExamToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 
 
 // --- KAZANIM YÖNETİCİSİ ---
@@ -496,7 +497,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   );
 }
 
-const ExamCreator = ({ teacherId }: { teacherId: string }) => {
+const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const questionsQuery = useMemo(() => (db ? query(collection(db, 'questions'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
@@ -505,6 +506,32 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
     const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
     const [examTitle, setExamTitle] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
+    
+    const [examSettings, setExamSettings] = useState({
+        academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
+        schoolName: teacherProfile?.schoolName || '',
+        lessonName: teacherProfile?.branch || '',
+        className: '',
+        teacherName: teacherProfile?.name || '',
+        departmentHeadName: '',
+        principalName: teacherProfile?.principalName || '',
+        columns: '2',
+    });
+    
+    useEffect(() => {
+        setExamSettings(prev => ({
+            ...prev,
+            academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
+            schoolName: teacherProfile?.schoolName || '',
+            lessonName: teacherProfile?.branch || '',
+            teacherName: teacherProfile?.name || '',
+            principalName: teacherProfile?.principalName || '',
+        }));
+    }, [teacherProfile]);
+    
+    const handleSettingsChange = (field: keyof typeof examSettings, value: string) => {
+        setExamSettings(prev => ({...prev, [field]: value}));
+    };
 
     const handleSelectQuestion = (question: Question, isSelected: boolean) => {
         if (isSelected) {
@@ -562,6 +589,7 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
             questions: selectedQuestions,
             imageDataUrls,
             examTitle,
+            ...examSettings,
         });
         
         setIsDownloading(false);
@@ -607,7 +635,28 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
                     <CardContent>
                         <div className="space-y-4">
                             <Input placeholder="Sınav Başlığı (örn: 1. Dönem 2. Yazılı)" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} />
-                            <ScrollArea className="h-[50vh] border rounded-md p-2 space-y-2">
+                             <Card>
+                                <CardHeader><CardTitle className="text-base">Sınav Kağıdı Ayarları</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                     <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1"><Label>Okul Adı</Label><Input value={examSettings.schoolName} onChange={e => handleSettingsChange('schoolName', e.target.value)} /></div>
+                                        <div className="space-y-1"><Label>Sınıf/Şube</Label><Input value={examSettings.className} onChange={e => handleSettingsChange('className', e.target.value)} placeholder="11/A" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1"><Label>Akademik Yıl</Label><Input value={examSettings.academicYear} onChange={e => handleSettingsChange('academicYear', e.target.value)} /></div>
+                                        <div className="space-y-1"><Label>Ders Adı</Label><Input value={examSettings.lessonName} onChange={e => handleSettingsChange('lessonName', e.target.value)} /></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1"><Label>Öğretmen Adı</Label><Input value={examSettings.teacherName} onChange={e => handleSettingsChange('teacherName', e.target.value)} /></div>
+                                        <div className="space-y-1"><Label>Zümre Başkanı</Label><Input value={examSettings.departmentHeadName} onChange={e => handleSettingsChange('departmentHeadName', e.target.value)} /></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-1"><Label>Okul Müdürü</Label><Input value={examSettings.principalName} onChange={e => handleSettingsChange('principalName', e.target.value)} /></div>
+                                        <div className="space-y-1"><Label>Sütun Sayısı</Label><Select value={examSettings.columns} onValueChange={(val) => handleSettingsChange('columns', val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Tek Sütun</SelectItem><SelectItem value="2">İki Sütun</SelectItem></SelectContent></Select></div>
+                                    </div>
+                                </CardContent>
+                             </Card>
+                            <ScrollArea className="h-[30vh] border rounded-md p-2 space-y-2">
                                {selectedQuestions.length > 0 ? selectedQuestions.map((q, i) => (
                                    <div key={q.id} className="flex items-center bg-muted/50 p-2 rounded-md">
                                         <span className="font-bold mr-2">{i+1}.</span>
@@ -631,7 +680,7 @@ const ExamCreator = ({ teacherId }: { teacherId: string }) => {
 };
 
 
-export function QuestionBankTab({ teacherId }: { teacherId: string }) {
+export function QuestionBankTab({ teacherId, teacherProfile }: { teacherId: string, teacherProfile: TeacherProfile | null }) {
   return (
     <Tabs defaultValue="bank">
         <TabsList className="grid w-full grid-cols-2">
@@ -642,9 +691,8 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
             <QuestionBank teacherId={teacherId} />
         </TabsContent>
         <TabsContent value="creator" className="mt-4">
-            <ExamCreator teacherId={teacherId} />
+            <ExamCreator teacherId={teacherId} teacherProfile={teacherProfile}/>
         </TabsContent>
     </Tabs>
   );
 }
-

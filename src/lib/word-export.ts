@@ -1047,32 +1047,31 @@ export function exportHomeworkStatusToRtf({ students, homeworks, submissions, cu
 // --- QUESTION EXPORT ---
 function getRtfImageString(base64Data: string, width: number, height: number): string {
     const hexData = Array.from(atob(base64Data), c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-    // Twips = pixel * 15
-    const picw = Math.round(width * 15);
-    const pich = Math.round(height * 15);
-    const picwgoal = Math.round(width * 15 * 0.75); // Scale to 75% for better fit
-    const pichgoal = Math.round(height * 15 * 0.75);
+    const picw = Math.round(width);
+    const pich = Math.round(height);
+    // RTF uses twips. 1 inch = 1440 twips. Assume 96 DPI. 1 pixel = 1440/96 = 15 twips.
+    const picwgoal = Math.round(width * 15);
+    const pichgoal = Math.round(height * 15);
     
+    //{\pict\pngblip\picw[width]\pich[height]\picwgoal[width in twips]\pichgoal[height in twips] HEX_DATA}
     return `{\\pict\\pngblip\\picw${picw}\\pich${pich}\\picwgoal${picwgoal}\\pichgoal${pichgoal} ${hexData}}`;
 }
 
 export function exportQuestionToRtf(question: Question, imageDataUrl: string | null) {
     const title = `Soru - ${question.id}`;
 
-    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
-{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
-\\pard\\sa200\\sl276\\slmult1\\f0\\fs24`;
+    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
 
     const studentInfo = `
-\\b Ad\\'fd Soyad\\'fd: \\b0 .................................... \\tab \\b S\\'fdn\\'fd f\\'fd: \\b0 ........... \\tab \\b No: \\b0 ...........\\par
+\\b Adı Soyadı: \\b0 .................................... \\tab \\b Sınıfı: \\b0 ........... \\tab \\b No: \\b0 ...........\\par
 \\line`;
 
     let questionContent = '';
     if (imageDataUrl) {
         const base64String = imageDataUrl.split(',')[1];
-        const img = new Image();
-        img.src = imageDataUrl;
-        const rtfImage = getRtfImageString(base64String, img.width, img.height);
+        // Cannot get image dimensions synchronously here, so we might need a fixed size or pass them in.
+        // Assuming a default display size for now. A better solution would involve loading the image to get its dimensions.
+        const rtfImage = getRtfImageString(base64String, 500, 300); // Placeholder dimensions
         questionContent = `{\\pard ${rtfImage}\\par}`;
     } else {
         const escapedText = question.text
@@ -1084,7 +1083,7 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
     }
 
     const optionsContent = (question.options || []).map((opt, i) =>
-        `{\\pard \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
+        `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
     ).join('');
 
     const footer = `}`;
@@ -1100,52 +1099,82 @@ interface ExportExamArgs {
     questions: Question[];
     imageDataUrls: { [questionId: string]: string | null };
     examTitle: string;
+    academicYear: string;
+    schoolName: string;
+    lessonName: string;
+    className: string;
+    teacherName: string;
+    departmentHeadName: string;
+    principalName: string;
+    columns: '1' | '2';
 }
 
-export function exportExamToRtf({ questions, imageDataUrls, examTitle }: ExportExamArgs) {
+export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settings }: ExportExamArgs) {
     const title = examTitle || "Sınav";
 
-    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
-{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
-\\pard\\sa200\\sl276\\slmult1\\f0\\fs24`;
+    const header = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
+\\pard\\sa200\\sl276\\slmult1\\f0\\fs22`;
+    
+    const tr = (text: string) => text.replace(/ı/g, '\\\'fd').replace(/İ/g, '\\\'dd').replace(/ş/g, '\\\'fe').replace(/Ş/g, '\\\'de').replace(/ğ/g, '\\\'f0').replace(/Ğ/g, '\\\'d0').replace(/ü/g, '\\\'fc').replace(/Ü/g, '\\\'dc').replace(/ö/g, '\\\'f6').replace(/Ö/g, '\\\'d6').replace(/ç/g, '\\\'e7').replace(/Ç/g, '\\\'c7');
 
     const examHeader = `
-{\\pard\\qc\\b\\fs32 ${examTitle.toLocaleUpperCase('tr-TR')}\\par}
+{\\pard\\qc\\b\\fs32 ${tr(examTitle.toLocaleUpperCase('tr-TR'))}\\par}
+{\\pard\\qc\\b\\fs24 ${tr(settings.schoolName)} \\line ${tr(settings.academicYear)} E\\\'f0itim \\\'d6\\\'f0retim Y\\'fdl\\'fd ${tr(settings.lessonName)} Dersi ${tr(settings.className)} S\\'fdn\\'fd f\\'fd\\par}
 \\line
 {\\pard\\b Ad\\'fd Soyad\\'fd: \\b0 .................................... \\tab \\b S\\'fdn\\'fd f\\'fd: \\b0 ........... \\tab \\b No: \\b0 ...........\\par}
 \\line
 \\line`;
 
     let questionsContent = '';
+
+    if (settings.columns === '2') {
+        questionsContent += `{\\pard\\cols2\\par `;
+    }
+
     questions.forEach((q, index) => {
         let questionBody = '';
         const imageDataUrl = imageDataUrls[q.id];
 
         if (imageDataUrl) {
             const base64String = imageDataUrl.split(',')[1];
-            const img = new Image();
-            img.src = imageDataUrl;
-            const rtfImage = getRtfImageString(base64String, img.width, img.height);
-            questionBody = `{\\pard ${rtfImage}\\par}`;
+            questionBody = `{\\pard ${getRtfImageString(base64String, 800, 600)}\\par}`;
         } else {
              const escapedText = q.text
                 .replace(/\\/g, '\\\\')
                 .replace(/{/g, '\\{')
                 .replace(/}/g, '\\}')
                 .replace(/\n/g, '\\line ');
-            questionBody = `{\\pard ${escapedText}\\par}`;
+            questionBody = `{\\pard ${tr(escapedText)}\\par}`;
         }
         
         const options = (q.options || []).map((opt, i) =>
-            `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${opt} \\par}`
+            `{\\pard \\tab \\b ${String.fromCharCode(65 + i)}) \\b0 ${tr(opt)} \\par}`
         ).join('');
 
-        questionsContent += `{\\pard \\b ${index + 1}) \\b0 ${questionBody} ${options} \\line \\par}`;
+        questionsContent += `{\\pard\\fs22 \\b ${index + 1}) \\b0 ${questionBody} ${options} \\par}`;
     });
+    
+    if (settings.columns === '2') {
+        questionsContent += `\\colbreak}`;
+    }
+
+    const signatureSection = `
+\\line\\line\\line
+{\\pard\\qc
+{\\trowd \\trgaph108 \\trleft-108
+\\clbrdrb\\brdrs\\brdrw10 \\cellx3166
+\\clbrdrb\\brdrs\\brdrw10 \\cellx6332
+\\clbrdrb\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl\\qc ${tr(settings.teacherName)}\\line ${tr(settings.lessonName)} \\'d6\\'f0retmeni\\cell
+\\pard\\intbl\\qc ${tr(settings.departmentHeadName)}\\line Z\\'fcmre Ba\\\'fe kan\\'fd\\cell
+\\pard\\intbl\\qc ${tr(settings.principalName)}\\line Okul M\\'fcd\\'fcr\\'fc\\cell
+\\row}
+\\par}`;
+
 
     const footer = `}`;
 
-    const rtfContent = `${header}${examHeader}${questionsContent}${footer}`;
+    const rtfContent = `${header}${examHeader}${questionsContent}${signatureSection}${footer}`;
     
     const blob = new Blob([rtfContent], { type: 'application/rtf' });
     saveAs(blob, `${title.replace(/ /g, '_')}.rtf`);
