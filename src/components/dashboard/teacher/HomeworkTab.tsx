@@ -1136,7 +1136,7 @@ const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
 const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
     const { db } = useAuth();
-    const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
+    const { db: localDb, setDb: setLocalDb } = useDatabase();
     const { homeworkDocuments = [] } = localDb;
   
     const [text, setText] = useState('');
@@ -1253,6 +1253,8 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
                     dueDate: dueDate ? dueDate.toISOString() : null,
                     teacherName: teacherProfile?.name,
                     lessonName: teacherProfile?.branch,
+                    // Assign to all students in the class by default for this simple form
+                    assignedStudents: students.map(s => s.id),
                     seenBy: [],
                 });
                 toast({ title: "Ödev eklendi!" });
@@ -1369,8 +1371,11 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
                         {homeworksLoading ? <Loader2 className="mx-auto h-8 w-8 animate-spin" /> : (
                             <div className="space-y-4">
                                 {displayedHomeworks.length > 0 ? displayedHomeworks.map(hw => {
+                                    const assignedStudentIds = (hw as any).assignedStudents || [];
                                     const submittedCount = (displayedSubmissions[hw.id] || []).length;
-                                    const studentCount = students.length;
+                                    const studentCount = assignedStudentIds.length;
+                                    const relevantStudents = students.filter(s => assignedStudentIds.includes(s.id));
+                                    
                                     return (
                                         <Accordion key={hw.id} type="single" collapsible>
                                             <AccordionItem value={hw.id} className="border rounded-lg p-4">
@@ -1407,7 +1412,7 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
                                                     <Table>
                                                         <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Teslim Durumu</TableHead><TableHead>Not</TableHead></TableRow></TableHeader>
                                                         <TableBody>
-                                                            {students.map(student => {
+                                                            {relevantStudents.map(student => {
                                                                 const submission = (displayedSubmissions[hw.id] || []).find(s => s.studentId === student.id);
                                                                 return (
                                                                     <TableRow key={student.id}>
@@ -1499,7 +1504,6 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
         const rubricType = getRubricType(selectedAssignment.formats);
         const rubric = rubrics[rubricType];
 
-        // This is the new centralized homework document
         const newHomeworkDoc = {
             classId: classId,
             text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
