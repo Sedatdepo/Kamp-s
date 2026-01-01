@@ -161,6 +161,15 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
   const questionsQuery = useMemo(() => (db ? query(collection(db, 'questions'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: questions, loading: questionsLoading } = useFirestore<Question[]>(`questions-for-teacher-${teacherId}`, questionsQuery);
 
+  const handleTypeChange = (newType: Question['type']) => {
+    setType(newType);
+    // Reset irrelevant fields to prevent data pollution
+    setCorrectAnswer('');
+    setOptions(['', '', '', '']);
+    setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
+  };
+
+
   const resetForm = () => {
     setEditingQuestion(null);
     setText('');
@@ -277,7 +286,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
             
             <QuestionCanvas initialContent={text} onContentChange={setText} />
 
-            <Select value={type} onValueChange={(v: any) => setType(v)}>
+            <Select value={type} onValueChange={(v: any) => handleTypeChange(v)}>
               <SelectTrigger><SelectValue placeholder="Soru Tipi" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="multiple-choice">Çoktan Seçmeli</SelectItem>
@@ -411,7 +420,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
         teacherName: teacherProfile?.name || '',
         departmentHeadName: '',
         principalName: teacherProfile?.principalName || '',
-        columns: '2',
+        columns: '2' as '1' | '2',
     });
     
     useEffect(() => {
@@ -557,7 +566,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                          <div className="space-y-1"><Label>Okul Müdürü</Label><Input value={examSettings.principalName} onChange={e => handleSettingsChange('principalName', e.target.value)} /></div>
-                                        <div className="space-y-1"><Label>Sütun Sayısı</Label><Select value={examSettings.columns} onValueChange={(val) => handleSettingsChange('columns', val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Tek Sütun</SelectItem><SelectItem value="2">İki Sütun</SelectItem></SelectContent></Select></div>
+                                        <div className="space-y-1"><Label>Sütun Sayısı</Label><Select value={examSettings.columns} onValueChange={(val: "1" | "2") => handleSettingsChange('columns', val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Tek Sütun</SelectItem><SelectItem value="2">İki Sütun</SelectItem></SelectContent></Select></div>
                                     </div>
                                 </CardContent>
                              </Card>
