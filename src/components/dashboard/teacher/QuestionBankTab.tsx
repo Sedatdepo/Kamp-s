@@ -22,7 +22,6 @@ import { fabric } from 'fabric';
 
 // --- KAZANIM YÖNETİCİSİ ---
 const KazanımManager = ({ teacherId }: { teacherId: string }) => {
-  // ... (içerik değişmedi, aynı bırakıldı)
   const { db } = useAuth();
   const { toast } = useToast();
   
@@ -155,7 +154,7 @@ const KazanımManager = ({ teacherId }: { teacherId: string }) => {
 
 
 // --- SORU HAZIRLAMA TUVALİ ---
-const QuestionCanvas = ({ onContentChange }: { onContentChange: (content: string) => void }) => {
+const QuestionCanvas = ({ initialContent, onContentChange }: { initialContent?: string; onContentChange: (content: string) => void }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -180,6 +179,33 @@ const QuestionCanvas = ({ onContentChange }: { onContentChange: (content: string
             canvas.dispose();
         };
     }, [onContentChange]);
+    
+    useEffect(() => {
+        const canvas = fabricCanvasRef.current;
+        if (canvas) {
+            if (initialContent) {
+                try {
+                    canvas.loadFromJSON(JSON.parse(initialContent), () => {
+                        canvas.renderAll();
+                    });
+                } catch (e) {
+                    console.error("Could not parse canvas content", e);
+                    canvas.clear();
+                    // Optional: Add the plain text to canvas if it's not JSON
+                    const text = new fabric.IText(initialContent || 'Metin eklemek için çift tıkla', {
+                       left: 50, top: 50, fontFamily: 'sans-serif', fontSize: 18
+                    });
+                    canvas.add(text);
+                    canvas.renderAll();
+                }
+            } else {
+                canvas.clear();
+                canvas.backgroundColor = '#f8fafc';
+                canvas.renderAll();
+            }
+        }
+    }, [initialContent]);
+
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -297,7 +323,8 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
       await updateDoc(doc(db, 'questions', editingQuestion.id), questionData);
       toast({ title: 'Soru güncellendi.' });
     } else {
-      await addDoc(collection(db, 'questions'), { ...questionData, id: `q_${Date.now()}`});
+      const newDocRef = doc(collection(db, "questions"));
+      await setDoc(newDocRef, { ...questionData, id: newDocRef.id});
       toast({ title: 'Soru eklendi.' });
     }
     resetForm();
@@ -355,7 +382,7 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
           </CardHeader>
           <CardContent className="space-y-4">
             
-            <QuestionCanvas onContentChange={setText} />
+            <QuestionCanvas initialContent={text} onContentChange={setText} />
 
             <Select value={type} onValueChange={(v: any) => setType(v)}>
               <SelectTrigger><SelectValue placeholder="Soru Tipi" /></SelectTrigger>
@@ -443,7 +470,18 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
                     {questions.map(q => (
                       <TableRow key={q.id}>
                         <TableCell className="max-w-xs truncate">
-                            <p className="font-medium">{q.text}</p>
+                            <p className="font-medium">{
+                              (() => {
+                                try {
+                                  // Check if q.text is a JSON string from fabric.js
+                                  JSON.parse(q.text);
+                                  return "[Görsel Soru]";
+                                } catch (e) {
+                                  // It's just plain text
+                                  return q.text;
+                                }
+                              })()
+                            }</p>
                             <p className="text-xs text-muted-foreground">{kazanims.find(k => k.id === q.kazanimId)?.text || 'N/A'}</p>
                         </TableCell>
                         <TableCell className="text-right">
@@ -462,4 +500,3 @@ export function QuestionBankTab({ teacherId }: { teacherId: string }) {
     </div>
   );
 }
-
