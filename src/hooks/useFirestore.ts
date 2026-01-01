@@ -43,9 +43,16 @@ export function useFirestore<T>(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const memoizedRefPath = useMemo(() => {
+    if (!ref) return null;
+    // @ts-ignore
+    return ref.path || ref._query?.path?.toString();
+  }, [ref]);
+  
   const depsString = useMemo(() => {
-    return [key, options.subscribe, ...(options.dependencies || [])].join(',');
-  }, [key, options.subscribe, options.dependencies]);
+    // ref'in kendisini bağımlılık yapmaktan kaçınıp, yolunu kullanıyoruz.
+    return [key, options.subscribe, memoizedRefPath, ...(options.dependencies || [])].join(',');
+  }, [key, options.subscribe, memoizedRefPath, options.dependencies]);
 
 
   useEffect(() => {
@@ -95,7 +102,8 @@ export function useFirestore<T>(
       getAsync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref, depsString]); // `ref` ve `depsString` bağımlılık olarak eklendi
+  }, [depsString]); // Sadece string bağımlılığı dinle
 
   return { data, loading, error };
 }
+
