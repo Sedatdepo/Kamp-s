@@ -1108,7 +1108,7 @@ interface ExportExamArgs {
     teacherName?: string;
     departmentHeadName?: string;
     principalName?: string;
-    columns: '1' | '2';
+    columns?: '1' | '2';
     showTeacher?: boolean;
     showDepartmentHead?: boolean;
     showPrincipal?: boolean;

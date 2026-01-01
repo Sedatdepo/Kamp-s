@@ -165,6 +165,7 @@ const QuestionBank = ({ teacherId }: { teacherId: string }) => {
 
   const handleTypeChange = (newType: Question['type']) => {
     setType(newType);
+    // Reset fields that are not relevant for the new type
     setCorrectAnswer('');
     setOptions(['', '', '', '']);
     setMatchingPairs([{ id: `pair_${Date.now()}`, question: '', answer: '' }]);
@@ -408,6 +409,65 @@ interface ExamItem extends Question {
   height: number;
 }
 
+const QuestionPreview = ({ content }: { content: string }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // Set a transparent static canvas to render the content
+        const staticCanvas = new fabric.StaticCanvas(canvas, {
+             backgroundColor: 'transparent'
+        });
+
+        try {
+            const json = JSON.parse(content);
+            staticCanvas.loadFromJSON(json, () => {
+                // Adjust canvas size to fit content
+                const objects = staticCanvas.getObjects();
+                if (objects.length > 0) {
+                    const- boudingBox = staticCanvas.getObjects().reduce((acc, obj) => {
+                      const- objBounds = obj.getBoundingRect();
+                      if (!acc) return objBounds;
+                      return {
+                        left: Math.min(acc.left, objBounds.left),
+                        top: Math.min(acc.top, objBounds.top),
+                        width: Math.max(acc.left + acc.width, objBounds.left + objBounds.width) - Math.min(acc.left, objBounds.left),
+                        height: Math.max(acc.top + acc.height, objBounds.top + objBounds.height) - Math.min(acc.top, objBounds.top)
+                      };
+                    }, null as fabric.Rect | null);
+
+                    if (boudingBox) {
+                        staticCanvas.setWidth(boudingBox.width);
+                        staticCanvas.setHeight(boudingBox.height);
+                    }
+                }
+                staticCanvas.renderAll();
+            });
+        } catch (e) {
+            // It's plain text, not a fabric JSON
+            staticCanvas.clear();
+            const text = new fabric.Text(content, {
+                fontSize: 12,
+                originX: 'left',
+                originY: 'top',
+                fill: '#333'
+            });
+            staticCanvas.setWidth(text.width || 200);
+            staticCanvas.setHeight(text.height || 50);
+            staticCanvas.add(text);
+            staticCanvas.renderAll();
+        }
+
+        return () => {
+            staticCanvas.dispose();
+        };
+
+    }, [content]);
+
+    return <canvas ref={canvasRef} />;
+}
+
 const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -420,7 +480,6 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     
     const [examSettings, setExamSettings] = useState({
         className: '',
-        columns: '2' as '1' | '2',
         showTeacher: true,
         showDepartmentHead: false,
         showPrincipal: false,
@@ -429,13 +488,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     
     useEffect(() => {
         setExamSettings(prev => ({
-            ...prev,
-            // These are already in teacherProfile, no need to get from reportConfig
-            schoolName: teacherProfile?.schoolName || '',
-            academicYear: teacherProfile?.reportConfig?.academicYear || '2024-2025',
-            lessonName: teacherProfile?.branch || '',
-            teacherName: teacherProfile?.name || '',
-            principalName: teacherProfile?.principalName || '',
+            ...prev
         }));
     }, [teacherProfile]);
     
@@ -449,7 +502,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                 ...question,
                 x: 50,
                 y: 50,
-                width: 300,
+                width: 400,
                 height: 200,
             };
             setExamItems(prev => [...prev, newItem]);
@@ -489,8 +542,56 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
     }
 
     const handleDownloadExam = async () => {
-        // ... (This function is complex and depends on the final state, will leave as is for now)
+        if (!teacherProfile) {
+            toast({ title: 'Hata', description: 'Öğretmen profili yüklenemedi.', variant: 'destructive' });
+            return;
+        }
+
+        setIsDownloading(true);
         toast({ title: 'İndirme Başlatıldı', description: 'Sınav belgeniz hazırlanıyor...' });
+
+        const imageDataUrls: { [questionId: string]: string | null } = {};
+
+        for (const item of examItems) {
+            try {
+                // Check if it's a Fabric.js JSON
+                JSON.parse(item.text);
+                const tempCanvas = document.createElement('canvas');
+                const fabricCanvas = new fabric.StaticCanvas(tempCanvas, {
+                    width: item.width,
+                    height: item.height,
+                });
+                
+                await new Promise<void>((resolve, reject) => {
+                    fabricCanvas.loadFromJSON(item.text, () => {
+                        fabricCanvas.renderAll();
+                        const dataUrl = fabricCanvas.toDataURL({ format: 'png' });
+                        imageDataUrls[item.id] = dataUrl;
+                        fabricCanvas.dispose();
+                        resolve();
+                    });
+                });
+
+            } catch (e) {
+                // It's plain text, no image data needed.
+                imageDataUrls[item.id] = null;
+            }
+        }
+        
+        exportExamToRtf({
+            questions: examItems,
+            imageDataUrls,
+            examTitle,
+            schoolName: teacherProfile.schoolName,
+            academicYear: teacherProfile.reportConfig?.academicYear || '2024-2025',
+            lessonName: teacherProfile.branch,
+            className: examSettings.className,
+            teacherName: teacherProfile.name,
+            principalName: teacherProfile.principalName,
+            ...examSettings,
+        });
+
+        setIsDownloading(false);
     };
 
     return (
@@ -556,7 +657,7 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                     </div>
                                 </CardContent>
                              </Card>
-                            <div className="relative w-full aspect-[1/1.414] bg-white shadow-lg mx-auto border" style={{ width: '210mm', minHeight: '297mm' }}>
+                            <div className="relative w-full aspect-[1/1.414] bg-white shadow-lg mx-auto border overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
                               {examItems.map((item, index) => (
                                 <Rnd
                                   key={item.id}
@@ -571,10 +672,10 @@ const ExamCreator = ({ teacherId, teacherProfile }: { teacherId: string, teacher
                                     });
                                   }}
                                   bounds="parent"
-                                  className="border border-dashed border-blue-400 bg-white/50 p-2 overflow-hidden"
+                                  className="border border-dashed border-blue-400 bg-white/50 p-2"
                                 >
-                                  <div className="w-full h-full relative group/item">
-                                    <p className="text-xs truncate">{index + 1}. {getShortText(item.text)}</p>
+                                  <div className="w-full h-full relative group/item overflow-hidden">
+                                     <QuestionPreview content={item.text} />
                                     <Button variant="destructive" size="icon" className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover/item:opacity-100" onClick={() => handleRemoveItem(item.id)}><Trash2 size={12}/></Button>
                                   </div>
                                 </Rnd>
