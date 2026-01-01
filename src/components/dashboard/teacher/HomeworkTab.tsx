@@ -40,6 +40,7 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
+import { Checkbox } from '../ui/checkbox';
 
 
 // --- HELPER COMPONENTS from User's Code ---
@@ -297,7 +298,7 @@ const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onTo
             } shadow-sm hover:shadow-md text-xs`}
           >
             <Send size={14} />
-            Sınıfa Ata
+            Ata
           </button>
         </div>
       </div>
@@ -523,33 +524,68 @@ const CreateAssignmentModal = ({ isOpen, onClose, onSave }: any) => {
 };
 
 const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, students }: any) => {
-    const [selectedClass, setSelectedClass] = useState('');
-    const [selectedStudent, setSelectedStudent] = useState('all');
+    const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [dueDate, setDueDate] = useState('');
   
     useEffect(() => {
       if (assignment) {
         if (classes && classes.length > 0) {
-            setSelectedClass(classes[0].id);
+            setSelectedClassIds([classes[0].id]);
         }
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
         setDueDate(nextWeek.toISOString().split('T')[0]);
       }
     }, [assignment, classes]);
+
+    const studentsInSelectedClasses = useMemo(() => {
+        return students.filter((s: Student) => selectedClassIds.includes(s.classId));
+    }, [students, selectedClassIds]);
+
+    const handleClassToggle = (classId: string) => {
+        setSelectedClassIds(prev => 
+            prev.includes(classId) 
+                ? prev.filter(id => id !== classId) 
+                : [...prev, classId]
+        );
+        // Clear selected students when classes change to avoid confusion
+        setSelectedStudentIds([]);
+    };
+    
+    const handleStudentToggle = (studentId: string) => {
+        setSelectedStudentIds(prev => 
+            prev.includes(studentId)
+                ? prev.filter(id => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
+    const handleSelectAllInClass = (classId: string) => {
+        const studentIdsInClass = students.filter((s: Student) => s.classId === classId).map((s: Student) => s.id);
+        const areAllSelected = studentIdsInClass.every(id => selectedStudentIds.includes(id));
+        
+        if (areAllSelected) {
+            setSelectedStudentIds(prev => prev.filter(id => !studentIdsInClass.includes(id)));
+        } else {
+            setSelectedStudentIds(prev => [...new Set([...prev, ...studentIdsInClass])]);
+        }
+    };
   
     if (!isOpen || !assignment) return null;
   
     const handleConfirm = () => {
-      onConfirm({ classId: selectedClass, studentId: selectedStudent, date: dueDate });
+      if(selectedStudentIds.length === 0){
+          alert("Lütfen en az bir öğrenci seçin.");
+          return;
+      }
+      onConfirm({ studentIds: selectedStudentIds, date: dueDate });
       onClose();
     };
-
-    const studentsInSelectedClass = students.filter((s: Student) => s.classId === selectedClass);
   
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-2xl">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <Send size={18} className="text-blue-600" />
@@ -558,49 +594,72 @@ const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, 
             <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
           </div>
   
-          <div className="p-6 space-y-5">
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800 mb-2">
+          <div className="p-6 overflow-y-auto space-y-5">
+             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800 mb-2">
               <span className="font-bold">{(assignment as any).title}</span> ödevi için atama yapıyorsunuz.
-            </div>
-  
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                <Users size={16} /> Hangi Şubeye Atanacak?
-              </label>
-              <select 
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                value={selectedClass}
-                onChange={(e) => {
-                    setSelectedClass(e.target.value);
-                    setSelectedStudent('all');
-                }}
-              >
-                {(classes || []).map((cls: Class) => (
-                  <option key={cls.id} value={cls.id}>{cls.name}</option>
-                ))}
-              </select>
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                    <Users size={16} /> Hangi Öğrenciye?
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <Users size={16} /> 1. Sınıf/Sınıfları Seçin
                 </label>
-                <select 
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    value={selectedStudent}
-                    onChange={(e) => setSelectedStudent(e.target.value)}
-                    disabled={!selectedClass}
-                >
-                    <option value="all">Tüm Sınıfa</option>
-                    {studentsInSelectedClass.map((student: Student) => (
-                        <option key={student.id} value={student.id}>{student.name} ({student.number})</option>
+                 <div className="flex flex-wrap gap-2 p-3 bg-gray-100 rounded-lg border">
+                    {(classes || []).map((cls: Class) => (
+                        <div key={cls.id} className="flex items-center gap-2 p-2 bg-white rounded-md">
+                            <Checkbox 
+                                id={`class-${cls.id}`} 
+                                checked={selectedClassIds.includes(cls.id)}
+                                onCheckedChange={() => handleClassToggle(cls.id)}
+                            />
+                            <label htmlFor={`class-${cls.id}`} className="text-sm font-medium cursor-pointer">{cls.name}</label>
+                        </div>
                     ))}
-                </select>
+                 </div>
+            </div>
+
+            <div className="min-h-[200px]">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <Users size={16} /> 2. Öğrencileri Seçin
+                </label>
+                <ScrollArea className="h-64 border rounded-lg p-2 bg-gray-50">
+                {selectedClassIds.length > 0 ? (
+                    (classes || []).filter(c => selectedClassIds.includes(c.id)).map(cls => {
+                         const studentsInThisClass = students.filter((s: Student) => s.classId === cls.id);
+                         const areAllInClassSelected = studentsInThisClass.every(s => selectedStudentIds.includes(s.id));
+                         return (
+                            <div key={cls.id} className="mb-4">
+                                <div className="flex items-center gap-2 p-2 bg-gray-200 rounded-t-md">
+                                    <Checkbox
+                                        id={`select-all-${cls.id}`}
+                                        checked={areAllInClassSelected}
+                                        onCheckedChange={() => handleSelectAllInClass(cls.id)}
+                                    />
+                                    <label htmlFor={`select-all-${cls.id}`} className="font-bold text-sm cursor-pointer">{cls.name} (Tümünü Seç)</label>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 p-2">
+                                {studentsInThisClass.map((student: Student) => (
+                                    <div key={student.id} className="flex items-center gap-2 p-1.5 rounded bg-white">
+                                        <Checkbox
+                                            id={`student-${student.id}`}
+                                            checked={selectedStudentIds.includes(student.id)}
+                                            onCheckedChange={() => handleStudentToggle(student.id)}
+                                        />
+                                        <label htmlFor={`student-${student.id}`} className="text-sm cursor-pointer">{student.name} ({student.number})</label>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                         )
+                    })
+                ) : (
+                    <div className="text-center text-sm text-muted-foreground pt-10">Lütfen önce sınıf seçin.</div>
+                )}
+                </ScrollArea>
             </div>
   
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                <Clock size={16} /> Son Teslim Tarihi
+                <Clock size={16} /> 3. Son Teslim Tarihi
               </label>
               <div className="relative">
                 <input 
@@ -614,14 +673,17 @@ const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, 
             </div>
           </div>
   
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
-            <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
-            <button 
-              onClick={handleConfirm}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
-            >
-              <CheckCircle size={16} /> Atamayı Tamamla
-            </button>
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center rounded-b-2xl">
+            <div className="text-sm font-semibold">{selectedStudentIds.length} öğrenci seçildi.</div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium">İptal</button>
+              <button 
+                onClick={handleConfirm}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium shadow-sm"
+              >
+                <CheckCircle size={16} /> Atamayı Tamamla
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -919,15 +981,15 @@ const SuccessModal = ({ isOpen, onClose, assignment, details }: any) => {
               <p className="text-sm text-gray-500 mb-2">{(assignment as any).grade}. Sınıf • {(assignment as any).subject === 'physics' ? 'Fizik' : 'Edebiyat'}</p>
               
               {details && (
-                <div className="flex justify-between items-center text-xs font-medium text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
-                  <span className="flex items-center gap-1"><Users size={12}/> {details.class}</span>
-                  <span className="flex items-center gap-1"><Calendar size={12}/> {details.date}</span>
+                <div className="text-xs font-medium text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
+                  <p><b>Atanan Kişi/Grup:</b> {details.assignedTo}</p>
+                  <p><b>Teslim Tarihi:</b> {details.date}</p>
                 </div>
               )}
             </div>
             
             <p className="text-gray-500 text-sm mb-6">
-              Ödev başarıyla ilgili sınıfın paneline gönderildi. Öğrencilere bildirim iletildi.
+              Ödev başarıyla ilgili öğrenci(ler)in paneline gönderildi.
             </p>
   
             <button 
@@ -1431,54 +1493,44 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
         setAssignSettingsModalOpen(true);
     };
 
-    const handleAssignConfirm = async (details: { classId: string, studentId: string, date: string }) => {
-        if(!db || !details.classId) return;
+    const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
+        if(!db) return;
 
-        const targetClass = classes.find(c => c.id === details.classId);
+        const batch = writeBatch(db);
+        let studentCount = 0;
+        
+        details.studentIds.forEach(studentId => {
+            const student = students.find(s => s.id === studentId);
+            if(student) {
+                const classRef = doc(db, 'classes', student.classId, 'homeworks', `hw_${Date.now()}_${studentCount}`);
+                batch.set(classRef, {
+                    classId: student.classId,
+                    text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
+                    assignedDate: new Date().toISOString(),
+                    dueDate: details.date ? new Date(details.date).toISOString() : null,
+                    teacherName: teacherProfile?.name,
+                    lessonName: teacherProfile?.branch,
+                    seenBy: [], // Can be customized further if needed
+                });
+                studentCount++;
+            }
+        });
         
         try {
-            const homeworkData: Omit<Homework, 'id'> = {
-                classId: details.classId,
-                text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
-                assignedDate: new Date().toISOString(),
-                dueDate: details.date ? new Date(details.date).toISOString() : null,
-                teacherName: teacherProfile?.name,
-                lessonName: teacherProfile?.branch,
-                seenBy: [],
-            };
-            
-            let assignedTo = targetClass?.name || 'Bilinmeyen Sınıf';
-
-            // If a specific student is selected
-            if (details.studentId !== 'all') {
-                const student = students.find(s => s.id === details.studentId);
-                if (student) {
-                    // Customize homework text for the specific student and add only to them
-                    homeworkData.text = `${student.name} için özel ödev: ${selectedAssignment.title} - ${selectedAssignment.instructions}`;
-                    // In a real scenario, you might want to add a `studentId` field to the homework
-                    // or handle this assignment in a separate "personal_homeworks" collection.
-                    // For now, we will add it to the class but with a specific text.
-                    // This is a simplification. A better approach would be a dedicated collection or field.
-                    homeworkData.seenBy = [student.id]; // Only this student can see it implicitly
-                     assignedTo = student.name;
-                }
-            }
-
-
-            await addDoc(collection(db, 'classes', details.classId, 'homeworks'), homeworkData);
+            await batch.commit();
             
             const newHistoryItem = {
                 title: selectedAssignment.title,
-                class: assignedTo,
+                class: `${studentCount} öğrenci`,
                 date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
             };
 
             setHistory(prev => [newHistoryItem, ...prev]);
-            setAssignDetails({class: assignedTo, date: details.date});
+            setAssignDetails({assignedTo: `${studentCount} öğrenci`, date: details.date});
             setSuccessModalOpen(true);
 
         } catch (error) {
-            toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
+            toast({variant: 'destructive', title: 'Hata', description: 'Ödevler atanamadı.'});
         }
     };
 
@@ -1667,11 +1719,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     
     const allStudentsForTeacherQuery = useMemo(() => {
         if (!teacherProfile?.id || !db) return null;
-        // This is not a scalable query for a large number of classes.
-        // It's used here because the class list for a teacher is not directly available without fetching all classes.
-        // A better data model would have a 'teacherId' on the class document.
-        // Assuming the current setup, we fetch all students and filter client-side, which is inefficient.
-        // The logic is corrected to fetch students for ALL of the teacher's classes.
         const classIds = classes.map(c => c.id);
         if (classIds.length === 0) return null;
         return query(collection(db, 'students'), where('classId', 'in', classIds));
@@ -1684,12 +1731,21 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
 
     return (
         <Tabs defaultValue="live">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
+                <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                 <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
             </TabsList>
             <TabsContent value="live" className="mt-4">
                 <LiveHomeworkManagement
+                    classId={classId}
+                    currentClass={currentClass}
+                    teacherProfile={teacherProfile}
+                    students={students}
+                />
+            </TabsContent>
+            <TabsContent value="evaluation" className="mt-4">
+                <HomeworkEvaluationTab
                     classId={classId}
                     currentClass={currentClass}
                     teacherProfile={teacherProfile}
@@ -1706,4 +1762,128 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
             </TabsContent>
         </Tabs>
     );
+}
+
+const HomeworkEvaluationTab = ({ classId, students, currentClass }: { classId: string, students: Student[], currentClass: Class | null }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    const [submissionsState, setSubmissionsState] = useState<{ [key: string]: Partial<Submission> }>({});
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
+
+    const homeworksQuery = useMemo(() => {
+        if (!db || !classId) return null;
+        return query(collection(db, 'classes', classId, 'homeworks'));
+    }, [db, classId]);
+
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`all-homeworks-for-eval-${classId}`, homeworksQuery);
+
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            if (!db || !classId || homeworksLoading) return;
+            setSubmissionsLoading(true);
+            const submissionPromises = homeworks.map(hw => getDocs(query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'))));
+            
+            const snapshots = await Promise.all(submissionPromises);
+            const fetchedSubmissions: Submission[] = [];
+            snapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    fetchedSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
+                });
+            });
+            setAllSubmissions(fetchedSubmissions);
+            setSubmissionsLoading(false);
+        };
+        fetchSubmissions();
+    }, [db, classId, homeworks, homeworksLoading]);
+
+    const handleFieldChange = (subId: string, field: 'grade' | 'feedback', value: string | number) => {
+        setSubmissionsState(prev => ({ ...prev, [subId]: { ...prev[subId], [field]: value } }));
+    };
+
+    const handleSaveFeedback = async (hwId: string, subId: string) => {
+        if (!classId || !db) return;
+        const subRef = doc(db, 'classes', classId, 'homeworks', hwId, 'submissions', subId);
+        const localChanges = submissionsState[subId];
+        if (!localChanges) return;
+
+        try {
+            await updateDoc(subRef, localChanges);
+            toast({ title: 'Değerlendirme kaydedildi.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
+        }
+    };
+
+    if (homeworksLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ödev Değerlendirme Paneli</CardTitle>
+                <CardDescription>Öğrencilerin teslim ettiği ödevleri inceleyip not ve geri bildirim girin.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Accordion type="multiple" className="w-full space-y-4">
+                    {homeworks.map(hw => {
+                        const subsForThisHw = allSubmissions.filter(s => s.homeworkId === hw.id);
+                        return (
+                            <AccordionItem key={hw.id} value={hw.id} className="border-b-0">
+                                <AccordionTrigger className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200">
+                                    <div className="flex-1 text-left">
+                                        <p className="font-semibold">{hw.text}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Teslim Tarihi: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy') : 'Yok'} | {subsForThisHw.length}/{students.length} Teslim
+                                        </p>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                                    <div className="space-y-4">
+                                    {students.map(student => {
+                                        const submission = subsForThisHw.find(s => s.studentId === student.id);
+                                        if (!submission) return null;
+                                        
+                                        const localGrade = submissionsState[submission.id]?.grade;
+                                        const localFeedback = submissionsState[submission.id]?.feedback;
+
+                                        return (
+                                            <div key={student.id} className="p-3 border rounded-md">
+                                                <p className="font-semibold mb-2">{student.name}</p>
+                                                <div className='bg-muted p-2 rounded-md mb-2'>
+                                                     <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi</p>
+                                                     {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
+                                                </div>
+                                                <div className="grid grid-cols-4 gap-2 items-center">
+                                                    <div className="col-span-3">
+                                                        <Textarea 
+                                                            placeholder="Geri bildirim..."
+                                                            defaultValue={submission.feedback}
+                                                            onChange={(e) => handleFieldChange(submission.id, 'feedback', e.target.value)}
+                                                            rows={1}
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Input 
+                                                            type="number"
+                                                            placeholder="Not"
+                                                            defaultValue={submission.grade}
+                                                            onChange={(e) => handleFieldChange(submission.id, 'grade', Number(e.target.value))}
+                                                        />
+                                                         <Button onClick={() => handleSaveFeedback(hw.id, submission.id)} size="sm" disabled={localGrade === undefined && localFeedback === undefined}>Kaydet</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                     {subsForThisHw.length === 0 && <p className="text-muted-foreground text-center text-sm">Henüz teslim yok.</p>}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
+                </Accordion>
+                {homeworks.length === 0 && <p className="text-center text-muted-foreground py-4">Bu sınıfa henüz ödev atanmamış.</p>}
+            </CardContent>
+        </Card>
+    )
 }
