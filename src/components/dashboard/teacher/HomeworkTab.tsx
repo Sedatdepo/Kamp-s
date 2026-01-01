@@ -1499,36 +1499,55 @@ const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { class
     };
 
     const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
-        if(!db || !classId) return;
-
+        if (!db) return;
+    
         const rubricType = getRubricType(selectedAssignment.formats);
         const rubric = rubrics[rubricType];
-
-        const newHomeworkDoc = {
-            classId: classId,
-            text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
-            assignedDate: new Date().toISOString(),
-            dueDate: details.date ? new Date(details.date).toISOString() : null,
-            teacherName: teacherProfile?.name,
-            lessonName: teacherProfile?.branch,
-            rubric: rubric.items,
-            assignedStudents: details.studentIds,
-            seenBy: [],
-        };
-
+    
+        // Group students by classId
+        const studentsByClass: { [key: string]: string[] } = {};
+        details.studentIds.forEach(studentId => {
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                if (!studentsByClass[student.classId]) {
+                    studentsByClass[student.classId] = [];
+                }
+                studentsByClass[student.classId].push(studentId);
+            }
+        });
+    
         try {
-            await addDoc(collection(db, 'classes', classId, 'homeworks'), newHomeworkDoc);
+            const batch = writeBatch(db);
+    
+            for (const classId in studentsByClass) {
+                const newHomeworkDoc = {
+                    classId: classId,
+                    text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
+                    assignedDate: new Date().toISOString(),
+                    dueDate: details.date ? new Date(details.date).toISOString() : null,
+                    teacherName: teacherProfile?.name,
+                    lessonName: teacherProfile?.branch,
+                    rubric: rubric.items,
+                    assignedStudents: studentsByClass[classId],
+                    seenBy: [],
+                };
+                const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+                const newDocRef = doc(homeworksColRef); // Create a new doc ref to get the ID
+                batch.set(newDocRef, newHomeworkDoc);
+            }
+    
+            await batch.commit();
             
             const newHistoryItem = {
                 title: selectedAssignment.title,
                 class: `${details.studentIds.length} öğrenci`,
                 date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
             };
-
+    
             setHistory(prev => [newHistoryItem, ...prev]);
             setAssignDetails({assignedTo: `${details.studentIds.length} öğrenci`, date: details.date});
             setSuccessModalOpen(true);
-
+    
         } catch (error) {
             toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
         }
@@ -1770,6 +1789,7 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
     
     const [selectedHwId, setSelectedHwId] = useState<string | null>(null);
     const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
+    const [submissions, setSubmissions] = useState<{ [studentId: string]: Submission | null }>({});
 
     const homeworksQuery = useMemo(() => {
         if (!db || !classId) return null;
@@ -1783,21 +1803,75 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
         if (!selectedHwId) return null;
         return homeworks.find(hw => hw.id === selectedHwId);
     }, [selectedHwId, homeworks]);
-
+    
     const assignedStudents = useMemo(() => {
         if (!selectedHomework || !selectedHomework.assignedStudents) return [];
         return students.filter(s => selectedHomework.assignedStudents.includes(s.id));
     }, [selectedHomework, students]);
 
-    const handleScoreChange = (studentId: string, criteriaId: string, value: string) => {
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            if (!selectedHomework) return;
+            const subs: { [studentId: string]: Submission | null } = {};
+            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`));
+            const snapshot = await getDocs(subsQuery);
+            snapshot.forEach(doc => {
+                const sub = { id: doc.id, ...doc.data() } as Submission;
+                subs[sub.studentId] = sub;
+            });
+            setSubmissions(subs);
+
+            // Populate scores from existing submissions
+            const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
+            Object.values(subs).forEach(sub => {
+                if (sub && sub.rubricScores) {
+                    initialScores[sub.studentId] = sub.rubricScores;
+                }
+            });
+            setScores(initialScores);
+        };
+        fetchSubmissions();
+    }, [selectedHomework, db, classId]);
+
+
+    const handleScoreChange = (studentId: string, criteriaLabel: string, value: string) => {
         const newScore = parseInt(value, 10) || 0;
         setScores(prev => ({
             ...prev,
             [studentId]: {
                 ...prev[studentId],
-                [criteriaId]: newScore,
+                [criteriaLabel]: newScore,
             }
         }));
+    };
+    
+    const handleToggleSubmission = async (student: Student, checked: boolean) => {
+        if (!db || !selectedHomework) return;
+        
+        const subColRef = collection(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`);
+
+        if (checked) {
+            // Create a submission
+            const newSub: Omit<Submission, 'id'> = {
+                studentId: student.id,
+                studentName: student.name,
+                studentNumber: student.number,
+                submittedAt: new Date().toISOString(),
+                homeworkId: selectedHomework.id,
+            };
+            const docRef = await addDoc(subColRef, newSub);
+            setSubmissions(prev => ({...prev, [student.id]: { id: docRef.id, ...newSub }}));
+            toast({title: `${student.name} için ödev teslim edildi olarak işaretlendi.`});
+        } else {
+            // Delete the submission
+            const submission = submissions[student.id];
+            if (submission) {
+                const subDocRef = doc(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`, submission.id);
+                await deleteDoc(subDocRef);
+                setSubmissions(prev => ({...prev, [student.id]: null}));
+                toast({title: `${student.name} için teslimat iptal edildi.`, variant: 'destructive'});
+            }
+        }
     };
     
     const handleSaveScores = async () => {
@@ -1805,29 +1879,16 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
         const batch = writeBatch(db);
 
         Object.keys(scores).forEach(studentId => {
-            const submissionQuery = query(
-                collection(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`),
-                where('studentId', '==', studentId)
-            );
-
-            // Bu kısım gerçek bir uygulamada daha verimli yapılabilir,
-            // burada basitlik için her öğrenci için ayrı sorgu yapılıyor.
-            // En iyisi submission'ları en başta çekip state'te tutmak.
-            getDocs(submissionQuery).then(snapshot => {
-                if (!snapshot.empty) {
-                    const submissionDoc = snapshot.docs[0];
-                    const submissionRef = submissionDoc.ref;
-                    const studentScores = scores[studentId];
-                    const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
-                    batch.update(submissionRef, { grade: totalScore, rubricScores: studentScores });
-                }
-            });
+            const submission = submissions[studentId];
+            if (submission) {
+                const submissionRef = doc(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`, submission.id);
+                const studentScores = scores[studentId];
+                const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
+                batch.update(submissionRef, { grade: totalScore, rubricScores: studentScores });
+            }
         });
         
         try {
-            // Firestore batch'i commit etmeden önce, tüm sorguların tamamlandığından emin olmak gerekir.
-            // Bu örnek kodda bu kısım basitleştirilmiştir. Gerçek bir senaryoda Promise.all kullanılmalıdır.
-            await new Promise(resolve => setTimeout(resolve, 500)); // Simulating async queries
             await batch.commit();
             toast({ title: "Notlar başarıyla kaydedildi!" });
         } catch (error) {
@@ -1881,6 +1942,7 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-1/4">Öğrenci</TableHead>
+                                    <TableHead className="w-[120px] text-center">Teslim Durumu</TableHead>
                                     {selectedHomework.rubric.map((item: any) => (
                                         <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
                                     ))}
@@ -1889,17 +1951,25 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
                             </TableHeader>
                             <TableBody>
                                 {assignedStudents.map(student => {
+                                    const submission = submissions[student.id];
                                     const studentScores = scores[student.id] || {};
                                     const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
                                     return (
                                         <TableRow key={student.id}>
                                             <TableCell className="font-medium">{student.name}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Checkbox
+                                                    checked={!!submission}
+                                                    onCheckedChange={(checked) => handleToggleSubmission(student, !!checked)}
+                                                />
+                                            </TableCell>
                                             {selectedHomework.rubric.map((item: any) => (
                                                 <TableCell key={item.label} className="text-center">
                                                     <Input
                                                         type="number"
                                                         max={item.score}
                                                         min={0}
+                                                        disabled={!submission}
                                                         value={studentScores[item.label] || ''}
                                                         onChange={e => handleScoreChange(student.id, item.label, e.target.value)}
                                                         className="w-20 mx-auto text-center h-8"
@@ -1913,11 +1983,11 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
                             </TableBody>
                         </Table>
                          <div className="p-4 bg-muted flex justify-end">
-                            <Button onClick={handleSaveScores}>Değerlendirmeyi Kaydet</Button>
+                            <Button onClick={handleSaveScores} disabled={Object.keys(scores).length === 0}>Değerlendirmeyi Kaydet</Button>
                         </div>
                     </div>
                 )}
-                 {homeworks.length === 0 && (
+                 {homeworks.length === 0 && !homeworksLoading && (
                     <div className="text-center p-10 bg-muted/50 rounded-lg">
                         <p className="text-muted-foreground">Bu sınıfa atanmış performans ödevi bulunmuyor.</p>
                     </div>
