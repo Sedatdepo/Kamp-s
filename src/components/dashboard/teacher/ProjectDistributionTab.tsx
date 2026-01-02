@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, Lesson, TeacherProfile } from '@/lib/types';
@@ -32,6 +31,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProjectGradingTab } from './ProjectGradingTab';
+
 
 const highSchoolLessons = [
     "Matematik", "Fizik", "Kimya", "Biyoloji", "Türk Dili ve Edebiyatı",
@@ -47,7 +49,7 @@ interface ProjectDistributionTabProps {
   currentClass?: Class | null;
 }
 
-function LessonManager({ teacherId }: { teacherId: string }) {
+function LessonManager({ teacherId, students }: { teacherId: string, students: Student[] }) {
   const { toast } = useToast();
   const { db } = useAuth();
   const lessonsQuery = useMemo(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
@@ -116,8 +118,9 @@ function LessonManager({ teacherId }: { teacherId: string }) {
         <CardDescription>Proje olarak sunulacak dersleri ve öğrenci kotalarını yönetin.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {lessons && lessons.map(lesson => (
-            isEditing === lesson.id ? (
+        {lessons && lessons.map(lesson => {
+            const assignedCount = students.filter(s => s.assignedLesson === lesson.id).length;
+            return isEditing === lesson.id ? (
                 <div key={lesson.id} className="flex gap-2 items-center p-2 bg-slate-100 rounded-lg">
                     <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-9"/>
                     <Input type="number" value={editingQuota} onChange={e => setEditingQuota(Number(e.target.value))} className="h-9 w-20"/>
@@ -128,7 +131,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
                 <div key={lesson.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-50">
                     <span className="font-medium">{lesson.name}</span>
                     <div className="flex items-center gap-4">
-                        <Badge variant="secondary">Kontenjan: {lesson.quota}</Badge>
+                        <Badge variant="secondary">Kontenjan: {assignedCount} / {lesson.quota}</Badge>
                         <Button size="icon" variant="ghost" onClick={() => handleStartEdit(lesson)}><Edit className="h-4 w-4"/></Button>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -152,7 +155,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
                     </div>
                 </div>
             )
-        ))}
+        })}
          <div className="flex gap-2 items-center pt-4 border-t">
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
@@ -166,7 +169,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
+              <PopoverContent className="w-[250px] p-0">
                 <Command>
                   <CommandInput 
                     placeholder="Ders ara veya yaz..." 
@@ -207,8 +210,7 @@ function LessonManager({ teacherId }: { teacherId: string }) {
   );
 }
 
-
-export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
+function DistributionAssignmentTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
   const { appUser, db } = useAuth();
   const { toast } = useToast();
 
@@ -260,96 +262,119 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   const isLoading = studentsLoading || lessonsLoading;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-            <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle className="font-headline">Proje Dağılımı ve Atama</CardTitle>
-                        <CardDescription>Öğrenci tercihlerini görüntüleyin ve proje atamalarını yapın.</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleExport}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            RTF Olarak Dışa Aktar
-                        </Button>
-                        <div className="flex items-center space-x-2">
-                            <Switch 
-                                id="project-selection-toggle" 
-                                checked={currentClass?.isProjectSelectionActive || false}
-                                onCheckedChange={handleToggleChange}
-                                disabled={!currentClass}
-                            />
-                            <Label htmlFor="project-selection-toggle">Seçim Aktif</Label>
-                        </div>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-                ) : (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Öğrenci</TableHead>
-                        <TableHead>Tercihler</TableHead>
-                        <TableHead className="text-right">Atanan Proje</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {students && students.length > 0 ? students.map(student => {
-                        const assignedLesson = lessons && lessons.find(l => l.id === student.assignedLesson);
-                        return (
-                        <TableRow key={student.id}>
-                            <TableCell className="font-medium">{student.name}</TableCell>
-                            <TableCell>
-                                <div className="flex flex-wrap gap-1">
-                                    {student.projectPreferences && lessons && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
-                                        const lesson = lessons.find(l => l.id === prefId);
-                                        return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
-                                    }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-full justify-end gap-2">
-                                            <span>{assignedLesson ? assignedLesson.name : 'Ata'}</span>
-                                            <MoreHorizontal className="h-4 w-4"/>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleAssignLesson(student.id, null)}>Atamayı Kaldır</DropdownMenuItem>
-                                        {lessons && lessons.map(lesson => (
-                                            <DropdownMenuItem key={lesson.id} onClick={() => handleAssignLesson(student.id, lesson.id)}>{lesson.name}</DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        );
-                    }) : (
-                        <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground">
-                                Bu sınıfta öğrenci bulunmuyor.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                    </TableBody>
-                </Table>
-                )}
-            </CardContent>
-            </Card>
-        </div>
-        <div>
-            { appUser?.type === 'teacher' && <LessonManager teacherId={appUser.data.uid} /> }
-        </div>
-    </div>
+    <Card>
+      <CardHeader>
+          <div className="flex justify-between items-center">
+              <div>
+                  <CardTitle className="font-headline">Proje Dağılımı ve Atama</CardTitle>
+                  <CardDescription>Öğrenci tercihlerini görüntüleyin ve proje atamalarını yapın.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handleExport}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      RTF Olarak Dışa Aktar
+                  </Button>
+                  <div className="flex items-center space-x-2">
+                      <Switch 
+                          id="project-selection-toggle" 
+                          checked={currentClass?.isProjectSelectionActive || false}
+                          onCheckedChange={handleToggleChange}
+                          disabled={!currentClass}
+                      />
+                      <Label htmlFor="project-selection-toggle">Seçim Aktif</Label>
+                  </div>
+              </div>
+          </div>
+      </CardHeader>
+      <CardContent>
+          {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+          ) : (
+          <Table>
+              <TableHeader>
+              <TableRow>
+                  <TableHead>Öğrenci</TableHead>
+                  <TableHead>Tercihler</TableHead>
+                  <TableHead className="text-right">Atanan Proje</TableHead>
+              </TableRow>
+              </TableHeader>
+              <TableBody>
+              {students && students.length > 0 ? students.map(student => {
+                  const assignedLesson = lessons && lessons.find(l => l.id === student.assignedLesson);
+                  return (
+                  <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                              {student.projectPreferences && lessons && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
+                                  const lesson = lessons.find(l => l.id === prefId);
+                                  return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
+                              }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
+                          </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-full justify-end gap-2">
+                                      <span>{assignedLesson ? assignedLesson.name : 'Ata'}</span>
+                                      <MoreHorizontal className="h-4 w-4"/>
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleAssignLesson(student.id, null)}>Atamayı Kaldır</DropdownMenuItem>
+                                  {lessons && lessons.map(lesson => (
+                                      <DropdownMenuItem key={lesson.id} onClick={() => handleAssignLesson(student.id, lesson.id)}>{lesson.name}</DropdownMenuItem>
+                                  ))}
+                              </DropdownMenuContent>
+                          </DropdownMenu>
+                      </TableCell>
+                  </TableRow>
+                  );
+              }) : (
+                  <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          Bu sınıfta öğrenci bulunmuyor.
+                      </TableCell>
+                  </TableRow>
+              )}
+              </TableBody>
+          </Table>
+          )}
+      </CardContent>
+    </Card>
   );
 }
 
 
+export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
+  const { appUser } = useAuth();
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+
+  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
+
+  if (studentsLoading) {
+      return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+  
+  return (
+    <Tabs defaultValue="distribution">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="lessons">Proje Konuları</TabsTrigger>
+        <TabsTrigger value="distribution">Dağılım &amp; Atama</TabsTrigger>
+        <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
+      </TabsList>
+      <TabsContent value="lessons" className="mt-4">
+        {teacherId && <LessonManager teacherId={teacherId} students={students || []} />}
+      </TabsContent>
+      <TabsContent value="distribution" className="mt-4">
+        <DistributionAssignmentTab classId={classId} teacherProfile={teacherProfile} currentClass={currentClass} />
+      </TabsContent>
+      <TabsContent value="grading" className="mt-4">
+        {teacherProfile && <ProjectGradingTab students={students || []} teacherProfile={teacherProfile} />}
+      </TabsContent>
+    </Tabs>
+  );
+}
