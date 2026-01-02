@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, Lesson, TeacherProfile } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectGradingTab } from './ProjectGradingTab';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const highSchoolLessons = [
@@ -211,79 +212,64 @@ function LessonManager({ teacherId, students }: { teacherId: string, students: S
 }
 
 function DistributionAssignmentTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
-  const { appUser, db } = useAuth();
+  const { db } = useAuth();
   const { toast } = useToast();
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-for-projects-${classId}`, studentsQuery);
 
-  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
-  const lessonsQuery = useMemo(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherId}`, lessonsQuery);
-  
-  const handleToggleChange = async (checked: boolean) => {
-    if (!currentClass || !db) return;
-    const classRef = doc(db, 'classes', classId);
-    try {
-      await updateDoc(classRef, { isProjectSelectionActive: checked });
-      toast({
-        title: 'Başarılı',
-        description: `Proje seçimi ${checked ? 'başlatıldı' : 'durduruldu'}.`,
-      });
-    } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Hata',
-        description: 'Güncelleme sırasında bir sorun oluştu.',
-      });
+  const [localStudents, setLocalStudents] = useState<Student[]>([]);
+
+  useEffect(() => {
+    if (students) {
+      setLocalStudents(students);
     }
+  }, [students]);
+
+  const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean) => {
+    setLocalStudents(prev => 
+      prev.map(s => s.id === studentId ? { ...s, [field]: value } : s)
+    );
   };
   
-  const handleExport = () => {
-    if (currentClass && students && lessons) {
-        exportProjectDistributionToRtf({
-            students,
-            lessons,
-            currentClass,
-            teacherProfile
-        })
-    } else {
-        toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için sınıf bilgisi yüklenemedi.'})
-    }
-  };
-
-  const handleAssignLesson = async (studentId: string, lessonId: string | null) => {
+  const handleSaveChanges = async () => {
     if (!db) return;
-    const studentRef = doc(db, 'students', studentId);
-    await updateDoc(studentRef, { assignedLesson: lessonId });
-    toast({ title: 'Atama yapıldı!' });
+    const batch = writeBatch(db);
+    localStudents.forEach(student => {
+      const originalStudent = students.find(s => s.id === student.id);
+      if (JSON.stringify(student) !== JSON.stringify(originalStudent)) {
+        const studentRef = doc(db, 'students', student.id);
+        batch.update(studentRef, {
+          projectCode: student.projectCode || null,
+          projectDueDate: student.projectDueDate || null,
+          projectSubmitted: student.projectSubmitted || false,
+        });
+      }
+    });
+
+    try {
+      await batch.commit();
+      toast({ title: 'Başarılı', description: 'Tüm proje bilgileri güncellendi.' });
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Hata', description: 'Değişiklikler kaydedilemedi.' });
+    }
   };
 
-  const isLoading = studentsLoading || lessonsLoading;
+
+  const isLoading = studentsLoading;
 
   return (
     <Card>
       <CardHeader>
           <div className="flex justify-between items-center">
               <div>
-                  <CardTitle className="font-headline">Proje Dağılımı ve Atama</CardTitle>
-                  <CardDescription>Öğrenci tercihlerini görüntüleyin ve proje atamalarını yapın.</CardDescription>
+                  <CardTitle className="font-headline">Proje Dağılımı ve Takip</CardTitle>
+                  <CardDescription>Öğrencilere proje atayın ve teslim durumlarını takip edin.</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={handleExport}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      RTF Olarak Dışa Aktar
-                  </Button>
-                  <div className="flex items-center space-x-2">
-                      <Switch 
-                          id="project-selection-toggle" 
-                          checked={currentClass?.isProjectSelectionActive || false}
-                          onCheckedChange={handleToggleChange}
-                          disabled={!currentClass}
-                      />
-                      <Label htmlFor="project-selection-toggle">Seçim Aktif</Label>
-                  </div>
-              </div>
+              <Button onClick={handleSaveChanges}>
+                <Save className="mr-2 h-4 w-4" /> Değişiklikleri Kaydet
+              </Button>
           </div>
       </CardHeader>
       <CardContent>
@@ -294,47 +280,43 @@ function DistributionAssignmentTab({ classId, teacherProfile, currentClass }: Pr
           ) : (
           <Table>
               <TableHeader>
-              <TableRow>
-                  <TableHead>Öğrenci</TableHead>
-                  <TableHead>Tercihler</TableHead>
-                  <TableHead className="text-right">Atanan Proje</TableHead>
-              </TableRow>
+                <TableRow>
+                    <TableHead className="w-[150px]">Öğrenci</TableHead>
+                    <TableHead>Proje Kodu</TableHead>
+                    <TableHead className="w-[200px]">Teslim Tarihi</TableHead>
+                    <TableHead className="text-center w-[120px]">Teslim Durumu</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
-              {students && students.length > 0 ? students.map(student => {
-                  const assignedLesson = lessons && lessons.find(l => l.id === student.assignedLesson);
-                  return (
+              {localStudents && localStudents.length > 0 ? localStudents.map(student => (
                   <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.name}</TableCell>
-                      <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                              {student.projectPreferences && lessons && student.projectPreferences.length > 0 ? student.projectPreferences.map((prefId, index) => {
-                                  const lesson = lessons.find(l => l.id === prefId);
-                                  return lesson ? <Badge key={`${student.id}-${prefId}-${index}`} variant="outline">{index + 1}. {lesson.name}</Badge> : null;
-                              }) : <span className="text-xs text-muted-foreground">Tercih yok</span>}
-                          </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-full justify-end gap-2">
-                                      <span>{assignedLesson ? assignedLesson.name : 'Ata'}</span>
-                                      <MoreHorizontal className="h-4 w-4"/>
-                                  </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleAssignLesson(student.id, null)}>Atamayı Kaldır</DropdownMenuItem>
-                                  {lessons && lessons.map(lesson => (
-                                      <DropdownMenuItem key={lesson.id} onClick={() => handleAssignLesson(student.id, lesson.id)}>{lesson.name}</DropdownMenuItem>
-                                  ))}
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                      </TableCell>
+                      <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
+                       <TableCell>
+                          <Input 
+                            value={student.projectCode || ''}
+                            onChange={(e) => handleFieldChange(student.id, 'projectCode', e.target.value)}
+                            placeholder="Örn: FIZ-01"
+                            className="h-8"
+                          />
+                       </TableCell>
+                       <TableCell>
+                          <Input 
+                            type="date"
+                            value={student.projectDueDate || ''}
+                            onChange={(e) => handleFieldChange(student.id, 'projectDueDate', e.target.value)}
+                            className="h-8"
+                          />
+                       </TableCell>
+                       <TableCell className="text-center">
+                          <Checkbox
+                            checked={student.projectSubmitted || false}
+                            onCheckedChange={(checked) => handleFieldChange(student.id, 'projectSubmitted', !!checked)}
+                          />
+                       </TableCell>
                   </TableRow>
-                  );
-              }) : (
+                  )) : (
                   <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
                           Bu sınıfta öğrenci bulunmuyor.
                       </TableCell>
                   </TableRow>
@@ -363,7 +345,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
     <Tabs defaultValue="distribution">
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="lessons">Proje Konuları</TabsTrigger>
-        <TabsTrigger value="distribution">Dağılım &amp; Atama</TabsTrigger>
+        <TabsTrigger value="distribution">Dağılım & Atama</TabsTrigger>
         <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
       </TabsList>
       <TabsContent value="lessons" className="mt-4">

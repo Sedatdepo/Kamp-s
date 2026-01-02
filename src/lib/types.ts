@@ -192,6 +192,11 @@ export interface Student {
     date: string; // YYYY-MM-DD
     status: 'present' | 'absent' | 'late' | 'excused';
   }[];
+
+  // Project Fields
+  projectCode?: string;
+  projectDueDate?: string; // YYYY-MM-DD
+  projectSubmitted?: boolean;
 }
 
 export interface Lesson {
