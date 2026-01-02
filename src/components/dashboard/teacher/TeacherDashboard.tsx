@@ -82,13 +82,15 @@ function ClassSelectionScreen({
     classes,
     students: allStudents,
     loading,
-    setOrderedClasses
+    setOrderedClasses,
+    setActiveTab,
 }: { 
     onSelectClass: (id: string) => void;
     classes: Class[];
     students: Student[];
     loading: boolean;
     setOrderedClasses: React.Dispatch<React.SetStateAction<Class[]>>;
+    setActiveTab: (tab: ActiveTab) => void;
 }) {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
@@ -198,125 +200,136 @@ function ClassSelectionScreen({
     }
     
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold font-headline">Sınıflarınız</h1>
-                 <Dialog>
-                    <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Yeni Sınıf Ekle</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>Yeni Sınıf Oluştur</DialogTitle></DialogHeader>
-                        <div className="space-y-4">
-                            <Input 
-                                value={newClassName}
-                                onChange={(e) => setNewClassName(e.target.value)}
-                                placeholder="Sınıf Adı (örn. 9/A)"
-                            />
-                            <DialogClose asChild>
-                                <Button onClick={handleAddClass} className="w-full">Oluştur</Button>
-                            </DialogClose>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
-             {classes.length === 0 ? (
-                 <Card className="w-full text-center shadow-lg">
-                    <CardHeader>
-                        <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
-                            <School className="h-10 w-10 text-primary" />
-                        </div>
-                        <CardTitle className="mt-4 font-headline text-2xl">Henüz Sınıfınız Yok</CardTitle>
-                        <CardDescription>
-                           Öğrencilerinizi ve etkinliklerinizi yönetmeye başlamak için "Yeni Sınıf Ekle" butonuna tıklayarak ilk sınıfınızı oluşturun.
-                        </CardDescription>
-                    </CardHeader>
-                </Card>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {classes.map(cls => (
-                        <div
-                            key={cls.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, cls.id)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, cls.id)}
-                            className={cn(
-                                'transition-opacity duration-300',
-                                draggedClassId === cls.id ? 'opacity-50' : 'opacity-100'
-                            )}
-                        >
-                            <Card className="flex flex-col hover:shadow-lg transition-shadow h-full cursor-grab active:cursor-grabbing">
-                                <div className="flex-1 p-6" onClick={() => onSelectClass(cls.id)}>
-                                    <CardTitle>{cls.name}</CardTitle>
-                                    <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
-                                </div>
-                                <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
-                                    <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
-                                    <div className="flex items-center">
-                                        <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
-                                            <DialogTrigger asChild>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8" 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingClass(cls);
-                                                    }}
-                                                >
-                                                    <Edit className="h-4 w-4"/>
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
-                                                <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
-                                                <DialogClose asChild>
-                                                    <Button onClick={handleUpdateClass}>Kaydet</Button>
-                                                </DialogClose>
-                                            </DialogContent>
-                                        </Dialog>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <div onClick={(e) => e.stopPropagation()}>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                        disabled={deletingClassId === cls.id}
-                                                    >
-                                                        {deletingClassId === cls.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin"/> 
-                                                        ) : (
-                                                            <Trash2 className="h-4 w-4"/>
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteClass(cls.id)} className="bg-destructive hover:bg-destructive/90">
-                                                        Sil
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    ))}
+        <Tabs defaultValue="classes">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="classes"><School className="mr-2"/>Sınıflarınız</TabsTrigger>
+                <TabsTrigger value="documents"><FolderKanban className="mr-2"/>Evraklar</TabsTrigger>
+            </TabsList>
+            <TabsContent value="classes" className="mt-4">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold font-headline">Sınıflarınız</h1>
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Button><Plus className="mr-2 h-4 w-4" /> Yeni Sınıf Ekle</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader><DialogTitle>Yeni Sınıf Oluştur</DialogTitle></DialogHeader>
+                            <div className="space-y-4">
+                                <Input 
+                                    value={newClassName}
+                                    onChange={(e) => setNewClassName(e.target.value)}
+                                    placeholder="Sınıf Adı (örn. 9/A)"
+                                />
+                                <DialogClose asChild>
+                                    <Button onClick={handleAddClass} className="w-full">Oluştur</Button>
+                                </DialogClose>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
-             )}
-        </div>
+                 {classes.length === 0 ? (
+                     <Card className="w-full text-center shadow-lg">
+                        <CardHeader>
+                            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
+                                <School className="h-10 w-10 text-primary" />
+                            </div>
+                            <CardTitle className="mt-4 font-headline text-2xl">Henüz Sınıfınız Yok</CardTitle>
+                            <CardDescription>
+                               Öğrencilerinizi ve etkinliklerinizi yönetmeye başlamak için "Yeni Sınıf Ekle" butonuna tıklayarak ilk sınıfınızı oluşturun.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {classes.map(cls => (
+                            <div
+                                key={cls.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, cls.id)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, cls.id)}
+                                className={cn(
+                                    'transition-opacity duration-300',
+                                    draggedClassId === cls.id ? 'opacity-50' : 'opacity-100'
+                                )}
+                            >
+                                <Card className="flex flex-col hover:shadow-lg transition-shadow h-full cursor-grab active:cursor-grabbing">
+                                    <div className="flex-1 p-6" onClick={() => onSelectClass(cls.id)}>
+                                        <CardTitle>{cls.name}</CardTitle>
+                                        <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
+                                    </div>
+                                    <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
+                                        <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
+                                        <div className="flex items-center">
+                                            <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
+                                                <DialogTrigger asChild>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8" 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingClass(cls);
+                                                        }}
+                                                    >
+                                                        <Edit className="h-4 w-4"/>
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent>
+                                                    <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
+                                                    <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
+                                                    <DialogClose asChild>
+                                                        <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                                    </DialogClose>
+                                                </DialogContent>
+                                            </Dialog>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            disabled={deletingClassId === cls.id}
+                                                        >
+                                                            {deletingClassId === cls.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin"/> 
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4"/>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClass(cls.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            Sil
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        ))}
+                    </div>
+                 )}
+            </TabsContent>
+            <TabsContent value="documents" className="mt-4">
+                 <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
+                </div>
+            </TabsContent>
+        </Tabs>
     );
 }
 
@@ -429,23 +442,25 @@ export function TeacherDashboard() {
       );
     }
     
-    if (!selectedClassId) {
+    if (activeTab === 'dilekce' && !selectedClassId) {
         return (
-            <Tabs defaultValue="classes">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="classes"><School className="mr-2"/>Sınıflarınız</TabsTrigger>
-                    <TabsTrigger value="documents"><FolderKanban className="mr-2"/>Evraklar</TabsTrigger>
-                </TabsList>
-                <TabsContent value="classes" className="mt-4">
-                     <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses}/>
-                </TabsContent>
-                <TabsContent value="documents" className="mt-4">
-                     <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
-                    </div>
-                </TabsContent>
-            </Tabs>
-        )
+             <div>
+               <div className="mb-6 flex justify-between items-center">
+                 <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                  <FileSignature className="w-7 h-7 text-primary" />
+                  Dilekçe Sihirbazı
+                </h2>
+                <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+                </Button>
+              </div>
+              <DilekceTab teacherProfile={teacherProfile} />
+            </div>
+        );
+    }
+    
+    if (!selectedClassId) {
+        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
     }
 
     if (activeTab !== "dashboard") {
@@ -553,7 +568,7 @@ export function TeacherDashboard() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline">
                                 {currentClass?.name}
-                                <ChevronDown className="ml-2 h-4 w-4" />
+                                <ChevronDown className="mr-2 h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
