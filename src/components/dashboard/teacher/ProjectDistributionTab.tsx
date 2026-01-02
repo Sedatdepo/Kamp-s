@@ -349,7 +349,7 @@ function DistributionAssignmentTab({ classId, teacherProfile, currentClass }: Pr
 
 
 export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
-  const { appUser } = useAuth();
+  const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
