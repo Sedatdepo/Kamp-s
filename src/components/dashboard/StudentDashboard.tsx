@@ -110,7 +110,7 @@ export function StudentDashboard() {
     )
   }
   
-  const behaviorScore = appUser?.type === 'student' ? appUser.data.behaviorScore : 100;
+  const behaviorScore = appUser?.type === 'student' ? (appUser.data.behaviorScore ?? 100) : 100;
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">

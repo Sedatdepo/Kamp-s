@@ -165,16 +165,16 @@ export function BepTab() {
       number: formData.get('number'),
       branch: formData.get('branch'),
       notes: formData.get('notes'),
-      specialNeeds: editingStudent ? editingStudent.specialNeeds : [], // Basitleştirme için
+      specialNeeds: editingStudent?.specialNeeds || [],
       isSpecialNeeds: true
     };
 
     let updatedStudents;
-    if (editingStudent) {
-      updatedStudents = students.map(s => s.id === newStudent.id ? { ...newStudent, specialNeeds: editingStudent.specialNeeds } : s);
+    if (editingStudent && students.some(s => s.id === editingStudent.id)) {
+      updatedStudents = students.map(s => s.id === newStudent.id ? newStudent : s);
       addToast('Öğrenci güncellendi', 'success');
     } else {
-      updatedStudents = [...students, { ...newStudent, specialNeeds: [] }]; // Varsayılan boş array
+      updatedStudents = [...students, newStudent];
       addToast('Öğrenci eklendi', 'success');
     }
 
@@ -194,19 +194,13 @@ export function BepTab() {
   };
 
   const toggleSpecialNeed = (need: any) => {
-    // Modal içindeki öğrenci state'ini güncellemek için
-    if (!editingStudent) {
-        // Yeni öğrenci eklenirken
-        setEditingStudent({ specialNeeds: [need] });
-        return;
-    }
-    
-    const currentNeeds = editingStudent.specialNeeds || [];
-    const newNeeds = currentNeeds.includes(need)
-      ? currentNeeds.filter((n: any) => n !== need)
-      : [...currentNeeds, need];
-    
-    setEditingStudent({ ...editingStudent, specialNeeds: newNeeds });
+    setEditingStudent((prev: any) => {
+      const currentNeeds = prev?.specialNeeds || [];
+      const newNeeds = currentNeeds.includes(need)
+        ? currentNeeds.filter((n: any) => n !== need)
+        : [...currentNeeds, need];
+      return { ...prev, specialNeeds: newNeeds };
+    });
   };
 
   // --- BEP MANTIĞI ---
