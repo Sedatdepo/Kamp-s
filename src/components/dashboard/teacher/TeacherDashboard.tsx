@@ -20,7 +20,7 @@ import { DisciplineTab } from './DisciplineTab';
 import ExamBuilder from './ExamBuilder';
 import { BepTab } from './BepTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { AttendanceTab } from './AttendanceTab';
 import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep";
@@ -379,6 +380,30 @@ export function TeacherDashboard() {
       localStorage.setItem(`classOrder_${teacherId}`, JSON.stringify(orderIds));
   }, [teacherId]);
 
+  useEffect(() => {
+    // Automatically create a class if the teacher has none
+    if (!classesLoading && teacherId && db && classes && classes.length === 0) {
+      const createInitialClass = async () => {
+        try {
+          await addDoc(collection(db, 'classes'), {
+            name: '10-A',
+            teacherId: teacherId,
+            isProjectSelectionActive: false,
+            isRiskFormActive: false,
+            isInfoFormActive: false,
+            isElectionActive: false,
+            code: generateClassCode(),
+            announcements: [],
+            homeworks: [],
+          });
+        } catch (error) {
+          console.error("Failed to create initial class:", error);
+        }
+      };
+      createInitialClass();
+    }
+  }, [classesLoading, classes, teacherId, db]);
+
 
   const currentClass = useMemo(() => orderedClasses?.find((c: Class) => c.id === selectedClassId), [orderedClasses, selectedClassId]);
 
@@ -387,8 +412,6 @@ export function TeacherDashboard() {
 
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
-    // This query is inefficient but necessary for the student count on the class selection screen.
-    // In a real-world app, student counts would be denormalized on the class document.
     const classIds = (classes || []).map(c => c.id);
     if (classIds.length === 0) return null;
     return query(collection(db, 'students'), where('classId', 'in', classIds));
@@ -407,7 +430,20 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses}/>;
+        return (
+            <Tabs defaultValue="classes">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="classes"><School className="mr-2"/>Sınıflarınız</TabsTrigger>
+                    <TabsTrigger value="documents"><FolderKanban className="mr-2"/>Evraklar</TabsTrigger>
+                </TabsList>
+                <TabsContent value="classes" className="mt-4">
+                     <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses}/>
+                </TabsContent>
+                <TabsContent value="documents" className="mt-4">
+                    <DilekceTab teacherProfile={teacherProfile} />
+                </TabsContent>
+            </Tabs>
+        )
     }
 
     if (activeTab !== "dashboard") {
@@ -484,7 +520,7 @@ export function TeacherDashboard() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Tüm Sınıflar
+                        Ana Sayfa
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {(orderedClasses || []).map((cls: Class) => (
@@ -515,13 +551,13 @@ export function TeacherDashboard() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline">
                                 {currentClass?.name}
-                                <ChevronDown className="ml-2 h-4 w-4" />
+                                <ChevronDown className="mr-2 h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
                                   <ArrowLeft className="mr-2 h-4 w-4" />
-                                  Tüm Sınıflar
+                                  Ana Sayfa
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {(orderedClasses || []).map((cls: Class) => (
@@ -565,3 +601,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    

@@ -23,6 +23,7 @@ export interface Submission {
   };
   grade?: number;
   feedback?: string;
+  rubricScores?: { [criteriaId: string]: number };
 }
 
 export interface Homework {
@@ -95,14 +96,15 @@ export interface MatchingPair {
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching';
-  options: string[]; // For multiple-choice
+  type: 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph';
+  options?: string[]; // For multiple-choice
   matchingPairs?: MatchingPair[]; // For matching questions
-  correctAnswer: string;
-  kazanimId: string;
-  difficulty: 'kolay' | 'orta' | 'zor';
-  points: number;
-  teacherId: string;
+  correctAnswer?: string;
+  kazanimId?: string;
+  difficulty?: 'kolay' | 'orta' | 'zor';
+  points?: number;
+  teacherId?: string;
+  required?: boolean;
 }
 
 
@@ -373,3 +375,5 @@ export interface BepStudent {
     class: string;
     diagnosis: string;
 }
+
+    
