@@ -440,7 +440,9 @@ export function TeacherDashboard() {
                      <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses}/>
                 </TabsContent>
                 <TabsContent value="documents" className="mt-4">
-                    <DilekceTab teacherProfile={teacherProfile} />
+                     <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
+                    </div>
                 </TabsContent>
             </Tabs>
         )
