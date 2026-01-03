@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
-  Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, X, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Users2
+  Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
+  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -172,14 +172,14 @@ export default function SokTab() {
         if (savedAgendas) setCustomAgendas(JSON.parse(savedAgendas));
         const savedTemplates = localStorage.getItem("sok_custom_templates");
         if (savedTemplates) setCustomTemplates(JSON.parse(savedTemplates));
-    }, []);
+    }, [form]);
 
     useEffect(() => {
         const subscription = form.watch((value) => {
             localStorage.setItem("sok_temp_data", JSON.stringify(value));
         });
         return () => subscription.unsubscribe();
-    }, [form.watch]);
+    }, [form]);
 
     // --- BUSINESS LOGIC ---
 
@@ -390,14 +390,6 @@ export default function SokTab() {
         toast({ title: "Arşivlendi", description: "Tutanak saklandı.", variant: "success" });
     };
 
-    const handleLoadFromArchive = (doc: ArchivedDocument) => {
-        if (confirm(`"${doc.name}" adlı kayıt yüklenecek. Mevcut verileriniz değişecek. Onaylıyor musunuz?`)) {
-            form.reset(doc.data);
-            setIsArchiveListOpen(false);
-            toast({ title: "Yüklendi", description: "Arşivden başarıyla yüklendi.", variant: "success" });
-        }
-    };
-
     // VOICE
     const toggleListening = (index: number, fieldType: 'madde' | 'detay') => {
         const currentId = `${fieldType}-${index}`;
@@ -439,7 +431,7 @@ export default function SokTab() {
         const userTemplates = customTemplates[currentAgenda] || [];
         
         return [
-            ...userTemplates.map((c, i) => ({ description: `Özel Şablon ${i+1}`, content: c })),
+            ...userTemplates.map((c, i) => ({ description: `Özel Şablon ${i + 1}`, content: c })),
             ...systemScenarios.map(s => ({ description: s.description, content: formatContent(s.content) }))
         ];
     };
@@ -473,7 +465,7 @@ export default function SokTab() {
                     </div>
                     <div className="flex items-center rounded-md border border-slate-300 bg-white">
                         <Button onClick={() => { setPreviewHtml(generateDocumentHTML(form.getValues())); setIsPreviewOpen(true); }} variant="ghost" className="rounded-r-none border-r"><Eye className="mr-2 h-4 w-4"/> Önizle</Button>
-                        <Button onClick={handleExport} className="rounded-l-none bg-orange-600 hover:bg-orange-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
+                        <Button onClick={() => handleExport(form.getValues())} className="rounded-l-none bg-orange-600 hover:bg-orange-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                     </div>
                 </div>
             </header>
@@ -485,25 +477,27 @@ export default function SokTab() {
                         <Card>
                             <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField control={form.control} name="academicYear" render={({ field }: any) => (<div className="space-y-1"><Label>Eğitim Yılı</Label><Input {...field} /></div>)} />
+                                <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="donem" render={({ field }: any) => (
-                                    <div className="space-y-1">
-                                        <Label>Dönem</Label>
-                                        <select 
-                                            className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                                            {...field}
-                                        >
-                                            <option value="1. Dönem">1. Dönem</option>
-                                            <option value="2. Dönem">2. Dönem</option>
-                                        </select>
-                                    </div>
+                                    <FormItem>
+                                        <FormLabel>Dönem</FormLabel>
+                                        <FormControl>
+                                            <select 
+                                                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                                {...field}
+                                            >
+                                                <option value="1. Dönem">1. Dönem</option>
+                                                <option value="2. Dönem">2. Dönem</option>
+                                            </select>
+                                        </FormControl>
+                                    </FormItem>
                                 )} />
-                                <FormField control={form.control} name="sinif" render={({ field }: any) => (<div className="space-y-1"><Label>Sınıf</Label><Input {...field} placeholder="Örn: 9-A" /></div>)} />
-                                <FormField control={form.control} name="tarih" render={({ field }: any) => (<div className="space-y-1"><Label>Tarih</Label><Input type="date" {...field} /></div>)} />
-                                <FormField control={form.control} name="saat" render={({ field }: any) => (<div className="space-y-1"><Label>Saat</Label><Input type="time" {...field} /></div>)} />
-                                <FormField control={form.control} name="yer" render={({ field }: any) => (<div className="space-y-1"><Label>Yer</Label><Input {...field} /></div>)} />
-                                <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<div className="space-y-1"><Label>Sınıf Rehber Öğretmeni</Label><Input {...field} /></div>)} />
-                                <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<div className="space-y-1"><Label>Müdür Yardımcısı</Label><Input {...field} /></div>)} />
+                                <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} placeholder="Örn: 9-A" /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="tarih" render={({ field }: any) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="saat" render={({ field }: any) => (<FormItem><FormLabel>Saat</FormLabel><FormControl><Input type="time" {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Sınıf Rehber Öğretmeni</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Müdür Yardımcısı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             </CardContent>
                         </Card>
 
@@ -515,8 +509,8 @@ export default function SokTab() {
                                     {katilimciFields.map((item, index) => (
                                         <div key={item.id} className="flex gap-2 items-end border p-3 rounded bg-slate-50">
                                             <div className="w-full grid grid-cols-2 gap-2">
-                                                <FormField control={form.control} name={`katilimcilar.${index}.brans`} render={({ field }: any) => (<div><Label className="text-xs text-muted-foreground">Branş</Label><Input {...field} className="h-8 text-sm" /></div>)} />
-                                                <FormField control={form.control} name={`katilimcilar.${index}.adSoyad`} render={({ field }: any) => (<div><Label className="text-xs text-muted-foreground">Ad Soyad</Label><Input {...field} className="h-8 text-sm" /></div>)} />
+                                                <FormField control={form.control} name={`katilimcilar.${index}.brans`} render={({ field }: any) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Branş</FormLabel><FormControl><Input className="h-8 text-sm" {...field} /></FormControl></FormItem>)} />
+                                                <FormField control={form.control} name={`katilimcilar.${index}.adSoyad`} render={({ field }: any) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Ad Soyad</FormLabel><FormControl><Input className="h-8 text-sm" {...field} /></FormControl></FormItem>)} />
                                             </div>
                                             <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => removeKatilimci(index)}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
@@ -586,7 +580,7 @@ export default function SokTab() {
                                 <div key={doc.id} className="bg-white p-3 mb-2 rounded border flex justify-between items-center">
                                     <div><p className="font-bold">{doc.name}</p><p className="text-xs text-slate-500">{doc.createdAt}</p></div>
                                     <div className="flex gap-2">
-                                        <Button size="sm" onClick={() => handleLoadFromArchive(doc)}>Yükle</Button>
+                                        <Button size="sm" onClick={() => { if(confirm("Yüklensin mi?")) { form.reset(doc.data); setIsArchiveListOpen(false); toast({title:"Yüklendi", variant:"success"}); } }}>Yükle</Button>
                                         <Button size="sm" variant="destructive" onClick={() => { if(confirm("Sil?")) { setArchives(prev => { const n = prev.filter(a => a.id !== doc.id); localStorage.setItem("sok_archives", JSON.stringify(n)); return n; }); } }}>Sil</Button>
                                     </div>
                                 </div>
@@ -625,7 +619,6 @@ export default function SokTab() {
                     </div>
                 </div>
              )}
-
         </div>
     );
 }
