@@ -119,12 +119,12 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <CardTitle className="font-headline">Öğrenci Bilgi Formları</CardTitle>
                 <CardDescription>Öğrencilerin bilgi formu doldurma durumlarını takip edin.</CardDescription>
             </div>
-             <div className="flex items-center space-x-2">
+             <div className="flex items-center flex-wrap justify-end gap-4">
                 <Button variant="outline" onClick={handleExportList}>
                     <FileText className="mr-2 h-4 w-4" />
                     Listeyi Dışa Aktar
@@ -195,5 +195,6 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
     </Card>
   );
 }
+
 
 
