@@ -1,11 +1,12 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Save, FileDown, Users2, PlusCircle, Trash2,
   BookOpen, Zap, ListChecks, ChevronDown, ChevronRight,
   FolderOpen, History, FileText, Mic, MicOff, Loader2,
-  X, Printer, FileClock, BookmarkPlus
+  BookmarkPlus, X, Printer, FileClock, Archive, Wand2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
@@ -16,31 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT, SENARYOLAR } from '@/lib/zumre-senaryolari';
 
+
 // --- TİP TANIMLAMALARI ---
 declare global {
   interface Window {
     webkitSpeechRecognition: any;
   }
 }
-
-// --- UI COMPONENTS ---
-const NavButton = ({ active, onClick, icon: Icon, label, count }: { active: boolean, onClick: () => void, icon: React.ElementType, label: string, count?: number }) => (
-  <button
-    onClick={onClick}
-    className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${active
-      ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 transform scale-105'
-      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-      }`}
-  >
-    <Icon size={18} />
-    <span>{label}</span>
-    {count !== undefined && (
-      <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${active ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-600'}`}>
-        {count}
-      </span>
-    )}
-  </button>
-);
 
 
 // --- MAIN APPLICATION ---
@@ -190,7 +173,7 @@ export default function ZumreTab() {
     setIsArchiveOpen(false);
   };
 
-  const deleteFromArchive = (docId: string) => {
+ const deleteFromArchive = (docId: string) => {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
     setDb(prevDb => {
       const updatedDocs = (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId);
@@ -586,13 +569,13 @@ export default function ZumreTab() {
                               </Button>
                             )}
                             <Button
-                                variant="secondary"
-                                size="sm"
-                                className="h-7 text-xs bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
-                                onClick={() => saveUserScenario(index)}
-                                title="Bu ifadeyi daha sonra kullanmak üzere senaryo havuzuna kaydet"
+                              variant="secondary"
+                              size="sm"
+                              className="h-7 text-xs bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
+                              onClick={() => saveUserScenario(index)}
+                              title="Bu ifadeyi daha sonra kullanmak üzere senaryo havuzuna kaydet"
                             >
-                                <BookmarkPlus className="mr-1 h-3 w-3" /> Senaryo Olarak Kaydet
+                              <BookmarkPlus className="mr-1 h-3 w-3" /> Senaryo Olarak Kaydet
                             </Button>
                             <Button
                               variant="secondary"
@@ -729,15 +712,15 @@ export default function ZumreTab() {
           </div>
         </div>
       )}
-
-      {isScenarioModalOpen && (
+      
+       {isScenarioModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-slate-100 bg-slate-50">
-                    <h3 className="text-lg font-bold text-slate-800">Hazır Senaryo Seç</h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                     <h3 className="text-lg font-bold text-slate-800">Hazır Senaryo Seç</h3>
+                     <p className="text-sm text-slate-500 mt-1">
                         "{activeScenarioIndex !== null && formData.gundemMaddeleri[activeScenarioIndex]?.madde}"
-                    </p>
+                     </p>
                 </div>
                 <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
                     {activeScenarioIndex !== null &&
