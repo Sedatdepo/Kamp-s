@@ -13,20 +13,35 @@ import { DistributionAssignmentTab } from './DistributionAssignmentTab';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Button } from '@/components/ui/button';
+import { HomeworkLibrary } from './homework/HomeworkLibrary';
+
 
 interface ProjectDistributionTabProps {
   classId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
+  classes: Class[];
 }
 
-export function ProjectDistributionTab({ classId, teacherProfile, currentClass }: ProjectDistributionTabProps) {
+export function ProjectDistributionTab({ classId, teacherProfile, currentClass, classes }: ProjectDistributionTabProps) {
   const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
+  
+  const allStudentsForTeacherQuery = useMemo(() => {
+        if (!teacherProfile?.id || !db) return null;
+        const classIds = classes.map(c => c.id);
+        if (classIds.length === 0) return null;
+        return query(collection(db, 'students'), where('classId', 'in', classIds));
+    }, [teacherProfile?.id, db, classes]);
+
+    const { data: allStudents } = useFirestore<Student[]>(
+        `all-students-for-teacher-${teacherProfile?.id}`,
+        allStudentsForTeacherQuery
+    );
 
   const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
     if (!teacherId || !db) return;
@@ -52,6 +67,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
           <TabsList className="w-full justify-start">
             <TabsTrigger value="distribution">1. Tercih & Atama</TabsTrigger>
             <TabsTrigger value="grading">2. Proje Değerlendirme</TabsTrigger>
+            <TabsTrigger value="pool">Proje Havuzu</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -60,6 +76,14 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
         </TabsContent>
         <TabsContent value="grading" className="mt-4">
           {teacherProfile && <ProjectGradingTab students={students || []} teacherProfile={teacherProfile} currentClass={currentClass} />}
+        </TabsContent>
+         <TabsContent value="pool" className="mt-4">
+          <HomeworkLibrary 
+            classId={classId}
+            teacherProfile={teacherProfile}
+            classes={classes}
+            students={allStudents || []}
+          />
         </TabsContent>
       </Tabs>
       {teacherProfile && (

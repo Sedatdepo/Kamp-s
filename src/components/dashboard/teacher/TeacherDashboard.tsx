@@ -564,7 +564,7 @@ export function TeacherDashboard() {
                 tabContent = <ElectionTab students={students || []} currentClass={currentClass} />;
                 break;
             case 'projects':
-                tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />;
                 break;
             case 'homework':
                 tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={allStudents || []} classes={classes || []}/>;
