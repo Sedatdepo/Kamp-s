@@ -42,8 +42,10 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
   }, [students]);
 
   const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
+    // If "unassigned" is selected, treat it as clearing the value.
+    const finalValue = value === 'unassigned' ? null : value;
     setLocalStudents(prev => 
-      prev.map(s => s.id === studentId ? { ...s, [field]: value } : s)
+      prev.map(s => s.id === studentId ? { ...s, [field]: finalValue } : s)
     );
   };
   
@@ -143,7 +145,7 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                                             <SelectValue placeholder="Proje atayın..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Yok</SelectItem>
+                                            <SelectItem value="unassigned">Yok</SelectItem>
                                             {lessons?.map(lesson => (
                                                 <SelectItem key={lesson.id} value={lesson.id}>{lesson.name}</SelectItem>
                                             ))}
