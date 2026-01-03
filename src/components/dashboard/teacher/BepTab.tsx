@@ -756,5 +756,3 @@ export function BepTab() {
     </div>
   );
 }
-
-    

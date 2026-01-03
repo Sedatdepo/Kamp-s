@@ -617,5 +617,3 @@ export function TeacherDashboard() {
       </div>
   );
 }
-
-    
