@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectGradingTab } from './ProjectGradingTab';
 import { LessonManager } from './LessonManager';
 import { DistributionAssignmentTab } from './DistributionAssignmentTab';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 
 interface ProjectDistributionTabProps {
@@ -32,11 +33,14 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
   
   return (
     <Tabs defaultValue="distribution">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="lessons">Proje Konuları</TabsTrigger>
-        <TabsTrigger value="distribution">Dağılım & Atama</TabsTrigger>
-        <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
-      </TabsList>
+      <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="lessons">Proje Konuları</TabsTrigger>
+          <TabsTrigger value="distribution">Dağılım & Atama</TabsTrigger>
+          <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
+        </TabsList>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
       <TabsContent value="lessons" className="mt-4">
         {teacherId && <LessonManager teacherId={teacherId} students={students || []} />}
       </TabsContent>
