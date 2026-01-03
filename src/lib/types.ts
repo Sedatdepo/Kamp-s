@@ -381,4 +381,15 @@ export interface BepStudent {
     diagnosis: string;
 }
 
-    
+export interface SavedDocument<T> {
+  id: string;
+  name: string;
+  date: string;
+  data: T;
+}
+
+export interface Scenario {
+  id: string;
+  title: string;
+  content: string;
+}

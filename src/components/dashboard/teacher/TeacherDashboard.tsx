@@ -43,7 +43,7 @@ import { AttendanceTab } from './AttendanceTab';
 import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ZumreTab } from './ZumreTab';
+import ZumreTab from './ZumreTab';
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep" | "zumre";
@@ -328,7 +328,7 @@ function ClassSelectionScreen({
             <TabsContent value="documents" className="mt-4">
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
-                    <MenuCard icon={<ClipboardList />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu kararları." onClick={() => {}} isDisabled={true}/>
+                    <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => {}} isDisabled={true}/>
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
