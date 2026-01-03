@@ -4,17 +4,17 @@
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { HomeTab } from './student/HomeTab';
-import { RiskFormTab } from './student/RiskFormTab';
-import { InfoFormTab } from './student/InfoFormTab';
-import { StudentCommunicationTab } from './student/StudentCommunicationTab';
-import { TeacherChatsTab } from './student/TeacherChatsTab';
-import { HomeworkTab } from './student/HomeworkTab';
-import { ElectionVoteTab } from './student/ElectionVoteTab';
-import { DutyRosterTab } from './student/DutyRosterTab';
-import { SeatingPlanTab } from './student/SeatingPlanTab';
-import { StudentSurveyTab } from './student/StudentSurveyTab';
-import { AccountSettingsTab } from './student/AccountSettingsTab';
+import { HomeTab } from './HomeTab';
+import { RiskFormTab } from './RiskFormTab';
+import { InfoFormTab } from './InfoFormTab';
+import { StudentCommunicationTab } from './StudentCommunicationTab';
+import { TeacherChatsTab } from './TeacherChatsTab';
+import { HomeworkTab } from './HomeworkTab';
+import { ElectionVoteTab } from './ElectionVoteTab';
+import { DutyRosterTab } from './DutyRosterTab';
+import { SeatingPlanTab } from './SeatingPlanTab';
+import { StudentSurveyTab } from './StudentSurveyTab';
+import { AccountSettingsTab } from './AccountSettingsTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck } from 'lucide-react';
@@ -24,7 +24,7 @@ import { AuthContext } from '@/context/AuthContext';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
-import { Skeleton } from '../ui/skeleton';
+import { Skeleton } from '../../ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
