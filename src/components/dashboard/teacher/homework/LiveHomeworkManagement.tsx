@@ -32,6 +32,7 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '../RecordManager';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
