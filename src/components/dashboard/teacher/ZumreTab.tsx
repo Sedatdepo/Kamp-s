@@ -16,6 +16,17 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 
 // --- TİP TANIMLAMALARI ---
@@ -179,9 +190,9 @@ export default function ZumreTab() {
 
  const deleteFromArchive = (docId: string) => {
     if (!confirm('Bu arşivi silmek istediğinize emin misiniz?')) return;
-    setDb(prevDb => ({
-        ...prevDb,
-        zumreDocuments: (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId),
+    setDb(prev => ({
+        ...prev,
+        zumreDocuments: (prev.zumreDocuments || []).filter((d: any) => d.id !== docId),
     }));
     toast({ title: 'Arşiv Silindi', variant: 'destructive' });
 };
@@ -598,7 +609,7 @@ export default function ZumreTab() {
                                                         variant="secondary" 
                                                         size="sm" 
                                                         className="h-7 text-xs bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100"
-                                                        onClick={() => fetchPreviousDecisions(index)}
+                                                        onClick={() => fetchPreviousDecisions()}
                                                         title="Arşivden bir önceki toplantının kararlarını otomatik getir"
                                                     >
                                                         <FileClock className="mr-1 h-3 w-3" /> Önceki Kararları Getir
@@ -730,12 +741,28 @@ export default function ZumreTab() {
                               {savedDocs.map((doc: any) => (
                                   <div key={doc.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group relative">
                                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <button onClick={(e) => {e.stopPropagation(); deleteFromArchive(doc.id);}} className="text-slate-300 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
+                                          <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                  <button onClick={(e) => e.stopPropagation()} className="text-slate-300 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                  <AlertDialogHeader>
+                                                      <AlertDialogTitle>Arşivi Silmek İstediğinize Emin misiniz?</AlertDialogTitle>
+                                                      <AlertDialogDescription>
+                                                          Bu işlem geri alınamaz. "{doc.name}" adlı kayıt kalıcı olarak silinecektir.
+                                                      </AlertDialogDescription>
+                                                  </AlertDialogHeader>
+                                                  <AlertDialogFooter>
+                                                      <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                      <AlertDialogAction onClick={() => deleteFromArchive(doc.id)} className="bg-destructive hover:bg-destructive/80">Sil</AlertDialogAction>
+                                                  </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                          </AlertDialog>
                                       </div>
                                       <div onClick={() => loadFromArchive(doc)} className="cursor-pointer">
                                           <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 w-fit mb-2"><FileText className="h-5 w-5" /></div>
                                           <h4 className="font-semibold text-slate-800 mb-1 truncate pr-6">{doc.name}</h4>
-                                          <p className="text-xs text-slate-500">{new Date(doc.createdAt?.seconds * 1000).toLocaleDateString('tr-TR')} tarihinde kaydedildi</p>
+                                          <p className="text-xs text-slate-500">{new Date(doc.date).toLocaleDateString('tr-TR')} tarihinde kaydedildi</p>
                                       </div>
                                   </div>
                               ))}
