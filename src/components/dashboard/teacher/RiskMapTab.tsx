@@ -7,6 +7,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile, RiskMapDocument } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { exportRiskMapToRtf } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { exportRiskMapToRtf } from '@/lib/word-export';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -346,10 +346,6 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
                 <CardDescription>Öğrencilerin risk faktörlerini ve toplam risk puanlarını görüntüleyin.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleExport}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    RTF Olarak Dışa Aktar
-                </Button>
                 {selectedRecordId === null && (
                     <div className="flex items-center space-x-2">
                         <Switch
@@ -436,9 +432,14 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
                     onDeleteRecord={handleDeleteRecord}
                     noun="Risk Haritası"
                 />
-                 <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
-                    <Save className="mr-2 h-4 w-4" /> Canlı Veriyi Arşive Kaydet
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
+                        <Save className="mr-2 h-4 w-4" /> Arşive Kaydet
+                    </Button>
+                    <Button variant="outline" onClick={handleExport} className="w-full">
+                        <FileText className="mr-2 h-4 w-4" /> Raporu İndir
+                    </Button>
+                </div>
             </div>
             { teacherId && <div className="mt-4"><RiskFactorManager teacherId={teacherId} /></div> }
         </div>
