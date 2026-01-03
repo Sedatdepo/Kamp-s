@@ -48,3 +48,4 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass }
     </Tabs>
   );
 }
+
