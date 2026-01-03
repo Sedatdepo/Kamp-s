@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -166,7 +165,7 @@ export default function ZumreTab() {
     const dataToSave = { ...formData, imzalar: currentSignatures };
     const newDoc = { id: `zumre_${Date.now()}`, name: docName, date: new Date().toISOString(), data: dataToSave };
 
-    setDb((prevDb: any) => ({
+    setDb(prevDb => ({
       ...prevDb,
       zumreDocuments: [...(prevDb.zumreDocuments || []), newDoc]
     }));
@@ -180,13 +179,10 @@ export default function ZumreTab() {
 
  const deleteFromArchive = (docId: string) => {
     if (!confirm('Bu arşivi silmek istediğinize emin misiniz?')) return;
-    setDb(prevDb => {
-        const updatedDocs = (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId);
-        return {
-            ...prevDb,
-            zumreDocuments: updatedDocs,
-        };
-    });
+    setDb(prevDb => ({
+        ...prevDb,
+        zumreDocuments: (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId),
+    }));
     toast({ title: 'Arşiv Silindi', variant: 'destructive' });
 };
 
@@ -205,12 +201,12 @@ export default function ZumreTab() {
     signatures.forEach((sig, index) => {
         if (index > 0 && index % 3 === 0) signatureHtml += '</tr><tr>';
         signatureHtml += `
-            <td style="width:33%; text-align:center; padding:20px 5px; vertical-align:top;">
-                <strong>${sig.ad}</strong><br/>
-                ${sig.unvan}<br/><br/><br/>
-                (İmza)
-            </td>
-        `;
+              <td style="width:33%; text-align:center; padding:20px 5px; vertical-align:top;">
+                  <strong>${sig.ad}</strong><br/>
+                  ${sig.unvan}<br/><br/><br/>
+                  (İmza)
+              </td>
+          `;
     });
     signatureHtml += '</tr></table>';
 
@@ -255,7 +251,7 @@ export default function ZumreTab() {
           Okul Müdürü
       </div>
     `;
-};
+  };
 
   const handleWordExport = () => {
     const content = `
@@ -317,7 +313,7 @@ export default function ZumreTab() {
     }
     
     if (typeof window !== 'undefined' && !('webkitSpeechRecognition' in window)) {
-      toast({ title: 'Tarayıcı Desteklemiyor', description: 'Sesle yazma özelliği bu tarayıcıda mevcut değil.', variant: 'destructive' });
+      toast({title: "Hata", description: "Tarayıcınız sesle yazmayı desteklemiyor."})
       return;
     }
     
@@ -369,7 +365,7 @@ export default function ZumreTab() {
       toast({ title: "Boş Senaryo", description: "Kaydedilecek senaryo metni boş olamaz.", variant: 'destructive' });
       return;
     }
-    setDb((prev: any) => {
+    setDb(prev => {
       const currentUserScenarios = prev.userScenarios || {};
       const existingScenarios = currentUserScenarios[agendaItem] || [];
       const updatedScenarios = [...existingScenarios, scenarioText];
@@ -386,7 +382,7 @@ export default function ZumreTab() {
 
   const deleteUserScenario = (agendaItem: string, index: number) => {
     if (!confirm('Bu özel senaryoyu silmek istediğinize emin misiniz?')) return;
-    setDb((prev: any) => {
+    setDb(prev => {
       const currentUserScenarios = { ...(prev.userScenarios || {}) };
       const scenariosForAgenda = (currentUserScenarios[agendaItem] || []).filter((_: any, i: number) => i !== index);
       if (scenariosForAgenda.length === 0) {
@@ -732,17 +728,14 @@ export default function ZumreTab() {
                       ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {savedDocs.map((doc: any) => (
-                                  <div key={doc.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group relative" onClick={() => loadFromArchive(doc)}>
-                                      <div className="flex justify-between items-start mb-2">
-                                          <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileText className="h-5 w-5" /></div>
+                                  <div key={doc.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group relative">
+                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button onClick={(e) => {e.stopPropagation(); deleteFromArchive(doc.id);}} className="text-slate-300 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
                                       </div>
-                                      <h4 className="font-semibold text-slate-800 mb-1 truncate pr-6">{doc.name}</h4>
-                                      <p className="text-xs text-slate-500">{doc.createdAt ? new Date(doc.createdAt?.seconds * 1000).toLocaleDateString('tr-TR') : 'Tarih yok'}</p>
-                                      <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end">
-                                          <span className="text-xs font-medium text-indigo-600 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                              Düzenlemek için tıkla <ChevronRight className="h-3 w-3 ml-1" />
-                                          </span>
+                                      <div onClick={() => loadFromArchive(doc)} className="cursor-pointer">
+                                          <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 w-fit mb-2"><FileText className="h-5 w-5" /></div>
+                                          <h4 className="font-semibold text-slate-800 mb-1 truncate pr-6">{doc.name}</h4>
+                                          <p className="text-xs text-slate-500">{new Date(doc.createdAt?.seconds * 1000).toLocaleDateString('tr-TR')} tarihinde kaydedildi</p>
                                       </div>
                                   </div>
                               ))}
@@ -809,5 +802,3 @@ export default function ZumreTab() {
     </div>
   );
 }
-
-    
