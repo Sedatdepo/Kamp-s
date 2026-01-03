@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface GradingToolTabProps {
   classId: string;
@@ -303,13 +304,22 @@ export function GradingToolTab({
   if (!teacherProfile || !currentClass) {
     return <p>Öğretmen profili veya sınıf bilgisi yüklenemedi.</p>;
   }
+  
+    const getTabStyle = (tabId: ActiveGradingTab) => {
+        const isActive = activeTab === tabId;
+        return `flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap 
+        ${isActive ? 'bg-primary/10 text-primary ring-2 ring-primary/20' : 'text-slate-500 hover:bg-slate-50'}`;
+    };
 
   return (
     <Tabs defaultValue="grading">
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="grading">Not Girişi & Ölçekler</TabsTrigger>
-            <TabsTrigger value="analysis">Sınav Analizi & Telafi</TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+            <TabsList className="w-full justify-start">
+                <TabsTrigger value="grading">Not Girişi & Ölçekler</TabsTrigger>
+                <TabsTrigger value="analysis">Sınav Analizi & Telafi</TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
         <TabsContent value="grading" className="mt-4">
             <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -323,6 +333,11 @@ export function GradingToolTab({
                             onClearScores={handleClearScores}
                             updateTeacherProfile={updateTeacherProfile}
                         />
+                         <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1 mt-4">
+                            <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
+                            <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
+                            <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
+                        </div>
                     </div>
                     <div className="lg:col-span-1">
                         <RecordManager

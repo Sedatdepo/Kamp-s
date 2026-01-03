@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import { FileText, Settings, Trash2 } from 'lucide-react';
-import { Student, TeacherProfile, Criterion } from '@/lib/types';
+import { FileText, Settings, Trash2, MoreVertical } from 'lucide-react';
 import { ActiveGradingTab, ActiveTerm } from './GradingToolTab';
 import { Button } from '@/components/ui/button';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 interface GradingHeaderProps {
@@ -31,12 +31,6 @@ export function GradingHeader({
 }: GradingHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const getTabStyle = (tabId: ActiveGradingTab) => {
-    const isActive = activeTab === tabId;
-    return `flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap 
-      ${isActive ? 'bg-primary/10 text-primary ring-2 ring-primary/20' : 'text-slate-500 hover:bg-slate-50'}`;
-  };
-
   const getTermButtonStyle = (term: ActiveTerm) => {
     return activeTerm === term
       ? "bg-slate-800 text-white hover:bg-slate-700"
@@ -50,36 +44,40 @@ export function GradingHeader({
            <Button size="sm" onClick={() => setActiveTerm(1)} className={getTermButtonStyle(1)}>1. Dönem</Button>
            <Button size="sm" onClick={() => setActiveTerm(2)} className={getTermButtonStyle(2)}>2. Dönem</Button>
         </div>
-        <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1">
-          <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
-          <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
-          <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
-        </div>
+        
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
-            <Settings className="mr-2 h-4 w-4" /> Ayarlar
-          </Button>
-          <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                    <Trash2 className="mr-2 h-4 w-4" /> Sayfayı Temizle
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Bu sayfadaki tüm notları temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>İptal</AlertDialogCancel>
-                  <AlertDialogAction onClick={onClearScores} className="bg-destructive hover:bg-destructive/90">
-                    Temizle
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-          </AlertDialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline"><MoreVertical className="mr-2 h-4 w-4" /> İşlemler</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4" /> Ayarlar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:bg-red-50 focus:text-red-700">
+                            <Trash2 className="mr-2 h-4 w-4" /> Sayfayı Temizle
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Bu sayfadaki tüm notları temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={onClearScores} className="bg-destructive hover:bg-destructive/90">
+                                Temizle
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <GradingSettingsDialog
