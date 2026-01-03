@@ -1,25 +1,15 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Lesson, TeacherProfile, GradingScores, Criterion } from '@/lib/types';
-import {
-  collection,
-  query,
-  where,
-  doc,
-  updateDoc,
-} from 'firebase/firestore';
+import { Class, TeacherProfile, GradingScores, Criterion } from '@/lib/types';
+import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2, Gauge, BookOpen, UserCheck, GraduationCap, Edit } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-
 
 const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
     if (!scores || !criteria || criteria.length === 0 || Object.keys(scores).length === 0) return null;
@@ -67,97 +57,7 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     )
 };
 
-
-function ProjectSelection({ studentClass, lessons, student, db }: { studentClass: Class | null, lessons: Lesson[], student: any, db: any }) {
-  const { toast } = useToast();
-  
-  const [selected, setSelected] = useState<string[]>(student.projectPreferences || []);
-
-  const handleCheckboxChange = (lessonId: string) => {
-    setSelected(prev => {
-      if (prev.includes(lessonId)) {
-        return prev.filter(id => id !== lessonId);
-      }
-      if (prev.length < 5) {
-        return [...prev, lessonId];
-      }
-      toast({ variant: 'destructive', title: 'En fazla 5 tercih yapabilirsiniz.' });
-      return prev;
-    });
-  };
-
-  const handleSavePreferences = async () => {
-    if (!db) return;
-    const studentRef = doc(db, 'students', student.id);
-    await updateDoc(studentRef, { projectPreferences: selected });
-    toast({ title: 'Tercihleriniz kaydedildi!' });
-  };
-
-  const assignedLesson = lessons.find(l => l.id === student.assignedLesson);
-
-  if (assignedLesson) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Atanan Projeniz</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-primary/10 p-6 rounded-lg text-center">
-            <p className="text-muted-foreground">Size atanan proje:</p>
-            <p className="text-2xl font-bold text-primary mt-2">{assignedLesson.name}</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!studentClass?.isProjectSelectionActive) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Proje Tercih Seçimi</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="text-center p-6 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground">Proje tercih dönemi henüz başlamadı veya sona erdi. Lütfen öğretmeninizden bilgi alın.</p>
-                </div>
-            </CardContent>
-        </Card>
-    );
-  }
-
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline">Proje Tercih Seçimi</CardTitle>
-        <CardDescription>Tercih sırasına göre en fazla 5 ders seçin. İlk seçtiğiniz ders 1. tercihiniz olacaktır.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className='space-y-2'>
-            {lessons.map(lesson => (
-              <div key={lesson.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={lesson.id}
-                  checked={selected.includes(lesson.id)}
-                  onCheckedChange={() => handleCheckboxChange(lesson.id)}
-                />
-                <label htmlFor={lesson.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  {lesson.name}
-                </label>
-                {selected.includes(lesson.id) && <span className="text-xs font-bold text-primary">({selected.indexOf(lesson.id) + 1})</span>}
-              </div>
-            ))}
-          </div>
-          <Button onClick={handleSavePreferences}>Tercihleri Kaydet</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function HomeTab() {
+export function GradesTab() {
   const { appUser, db } = useAuth();
 
   if (appUser?.type !== 'student') return null;
@@ -171,13 +71,6 @@ export function HomeTab() {
   const teacherQuery = useMemo(() => (studentClass?.teacherId && db ? doc(db, 'teachers', studentClass.teacherId) : null), [studentClass?.teacherId, db]);
   const { data: teacherProfile, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-student-${studentClass?.teacherId}`, teacherQuery);
   
-  const lessonsQuery = useMemo(() => {
-    if (!studentClass?.teacherId || !db) return null;
-    return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
-  }, [studentClass?.teacherId, db]);
-
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>('lessons', lessonsQuery);
-
   const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
@@ -203,21 +96,12 @@ export function HomeTab() {
     const term2Avg = calculateTermAverage(appUser.data.term2Grades);
     const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
 
-  if (classLoading || teacherLoading || lessonsLoading) {
+  if (classLoading || teacherLoading) {
     return <Card><CardContent className="p-6"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></CardContent></Card>
   }
   
   return (
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Proje ve Notlarım</CardTitle>
-          <CardDescription>
-            Hoş geldin, {appUser.data.name}! Buradan proje tercihlerini yapabilir ve ders notlarını görebilirsin.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
        <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
@@ -243,8 +127,6 @@ export function HomeTab() {
                 </Tabs>
             </CardContent>
        </Card>
-
-      <ProjectSelection studentClass={studentClass} lessons={lessons || []} student={appUser.data} db={db} />
     </div>
   );
 }
