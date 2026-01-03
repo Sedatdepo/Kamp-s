@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, Trash2, Save, X, ArrowDown, Download, Upload,
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, ArrowLeft
+  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, ArrowLeft, MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
@@ -15,6 +15,12 @@ import * as XLSX from 'xlsx';
 import { exportDailyPlanToRtf, exportAnnualPlanToRtf } from '@/lib/word-export';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 
 // --- YARDIMCI BİLEŞENLER ---
@@ -625,19 +631,26 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Yıllık Plan: {activePlan?.title}</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Ders planlarınızı düzenleyin ve takip edin.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={() => setIsPanelOpen(true)}>
                         <Settings className="mr-2" />
                         Yönetim Paneli
                     </Button>
-                     <Button variant="outline" onClick={handleExportPlan}>
-                        <Download className="mr-2" />
-                        Planı İndir (RTF)
-                    </Button>
-                    <Button variant="outline" onClick={handleImportClick}>
-                        <Upload className="mr-2" />
-                        İçe Aktar (.xlsx)
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                <MoreVertical className="mr-2" /> İşlemler
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={handleExportPlan}>
+                                <Download className="mr-2" /> Planı İndir (RTF)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleImportClick}>
+                                <Upload className="mr-2" /> İçe Aktar (.xlsx)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
