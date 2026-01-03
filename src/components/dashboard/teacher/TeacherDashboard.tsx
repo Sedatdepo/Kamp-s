@@ -19,6 +19,7 @@ import { SurveyTab } from '@/components/dashboard/teacher/SurveyTab';
 import { DisciplineTab } from './DisciplineTab';
 import ExamBuilder from './ExamBuilder';
 import { BepTab } from './BepTab';
+import VeliToplantisiTab from './VeliToplantisiTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,7 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep" | "zumre";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep" | "zumre" | "veli-toplantisi";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -329,7 +330,7 @@ function ClassSelectionScreen({
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
                     <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
-                    <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => {}} isDisabled={true}/>
+                    <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => setActiveTab('veli-toplantisi')} isDisabled={false}/>
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
                 </div>
@@ -355,6 +356,7 @@ const TABS_CONFIG = {
   "questionbank": { label: "Sınav Hazırlama Modülü", icon: FileQuestion },
   "bep": { label: "BEP Modülü", icon: FileHeart },
   "zumre": { label: "Zümre Tutanağı", icon: Users2 },
+  "veli-toplantisi": { label: "Veli Toplantısı Tutanağı", icon: BookText },
 } as const;
 
 
@@ -423,7 +425,7 @@ export function TeacherDashboard() {
     }
   }, [classesLoading, classes, teacherId, db]);
 
-  const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
+  const currentClass = useMemo(() => (orderedClasses || []).find((c: Class) => c.id === selectedClassId), [orderedClasses, selectedClassId]);
 
   const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
   const { data: students } = useFirestore<Student[]>('students-in-class', studentsQuery);
@@ -497,6 +499,23 @@ export function TeacherDashboard() {
             </div>
         );
     }
+    
+    if (activeTab === 'veli-toplantisi' && !selectedClassId) {
+        return (
+             <div>
+               <div className="mb-6 flex justify-between items-center">
+                 <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                  <BookText className="w-7 h-7 text-primary" />
+                  Veli Toplantısı Tutanağı
+                </h2>
+                <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+                </Button>
+              </div>
+              <VeliToplantisiTab />
+            </div>
+        );
+    }
 
     if (!selectedClassId) {
         return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
@@ -556,6 +575,9 @@ export function TeacherDashboard() {
                 break;
              case 'zumre':
                 tabContent = <ZumreTab />;
+                break;
+            case 'veli-toplantisi':
+                tabContent = <VeliToplantisiTab />;
                 break;
             default:
                 tabContent = null;
