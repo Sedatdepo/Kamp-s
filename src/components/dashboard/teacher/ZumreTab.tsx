@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { SENARYOLAR } from '@/lib/zumre-senaryolari';
+
 
 // --- TİP TANIMLAMALARI ---
 declare global {
@@ -92,21 +94,13 @@ const KARAR_HAVUZU: Record<string, string> = {
   "Kapanış.": "Toplantı tutanağı imza altına alındı."
 };
 
-const SENARYOLAR: Record<string, string[]> = {
-  "Açılış ve yoklama.": [
-    "Zümre başkanı tarafından toplantı başlatıldı. Yapılan yoklamada tüm zümre öğretmenlerinin hazır bulunduğu görüldü.",
-    "Toplantı, iyi dilek ve temennilerle açıldı. Zümre öğretmenlerinden ... mazeretli olduğu için katılmadı."
-  ],
-  "Ölçme ve değerlendirme kriterlerinin belirlenmesi.": [
-    "Yazılı sınavların yönetmelik doğrultusunda ortak yapılmasına, açık uçlu sorulara ağırlık verilmesine karar verildi.",
-    "Proje ve performans görevlerinin öğrencilerin ilgi ve yeteneklerine göre dağıtılması kararlaştırıldı."
-  ]
-};
 
 // --- MAIN APPLICATION ---
 export default function ZumreTab() {
   const { appUser, db } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { db: localDb, setDb } = useDatabase();
+  const { zumreDocuments: savedDocs } = localDb;
+  const [loading, setLoading] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -131,37 +125,9 @@ export default function ZumreTab() {
   const [isListening, setIsListening] = useState<number | null>(null);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false); 
-  const [savedDocs, setSavedDocs] = useState<any[]>([]);
   const [activeScenarioIndex, setActiveScenarioIndex] = useState<number | null>(null);
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
   
-  const appId = 'zumre-app-v1';
-
-  // Data Sync
-  useEffect(() => {
-    if (!appUser || !db) {
-        setLoading(false);
-        return;
-    }
-    setLoading(true);
-    
-    const q = query(
-      collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari'),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSavedDocs(docs);
-      setLoading(false);
-    }, (error) => {
-        console.error("Firestore Error:", error);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [appUser, db]);
-
   // Handlers
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -210,8 +176,8 @@ export default function ZumreTab() {
   };
 
   const fetchPreviousDecisions = async (index: number) => {
-    if (!appUser || !db) {
-        alert("Bağlantı hatası: Veritabanına erişilemiyor.");
+    if (!savedDocs || savedDocs.length === 0) {
+        alert("Arşivde kayıtlı geçmiş bir toplantı bulunamadı.");
         return;
     }
     
@@ -219,40 +185,29 @@ export default function ZumreTab() {
     if (!confirmFetch) return;
 
     try {
-        const q = query(
-            collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari'),
-            orderBy('createdAt', 'desc'),
-            limit(1)
-        );
+        const lastDoc = savedDocs[0]; // Assuming savedDocs is sorted by date descending
+        const lastDecisions = lastDoc.data.kararlar || "";
         
-        const snapshot = await getDocs(q);
+        let formattedText = "Bir önceki toplantı arşivde bulunamadı veya karar girilmemiş.";
         
-        if (!snapshot.empty) {
-            const lastDoc = snapshot.docs[0].data();
-            const lastDecisions = lastDoc.data.kararlar || "";
+        if (lastDecisions) {
+            const decisionsList = lastDecisions.split('\n')
+                .filter((d: string) => d.trim().length > 5)
+                .map((d: string) => d.replace(/^\d+[\.\)\-]\s*/, '').trim());
             
-            let formattedText = "Bir önceki toplantı arşivde bulunamadı veya karar girilmemiş.";
-            
-            if (lastDecisions) {
-                const decisionsList = lastDecisions.split('\n')
-                    .filter((d: string) => d.trim().length > 5)
-                    .map((d: string) => d.replace(/^\d+[\.\)\-]\s*/, '').trim());
-                
-                if (decisionsList.length > 0) {
-                     const summary = decisionsList.slice(0, 3).join('; ') + (decisionsList.length > 3 ? '...' : '');
-                     formattedText = `Bir önceki toplantıda alınan "${summary}" kararları gözden geçirilmiş; alınan kararların büyük oranda uygulandığı, eksik kalan hususların ise telafi edildiği görülmüştür.`;
-                }
+            if (decisionsList.length > 0) {
+                 const summary = decisionsList.slice(0, 3).join('; ') + (decisionsList.length > 3 ? '...' : '');
+                 formattedText = `Bir önceki toplantıda alınan "${summary}" kararları gözden geçirilmiş; alınan kararların büyük oranda uygulandığı, eksik kalan hususların ise telafi edildiği görülmüştür.`;
             }
-            
-            handleGorusmeChange(index, formattedText);
-        } else {
-            alert("Arşivde kayıtlı geçmiş bir toplantı bulunamadı.");
         }
+        
+        handleGorusmeChange(index, formattedText);
     } catch (error) {
         console.error("Hata:", error);
         alert("Geçmiş kararlar getirilirken bir hata oluştu.");
     }
   };
+
 
   const enhanceText = (index: number) => {
       const currentText = formData.gorusmeler[index].detay.toLowerCase();
@@ -276,31 +231,22 @@ export default function ZumreTab() {
       handleGorusmeChange(index, newText);
   };
 
-  const saveToArchive = async () => {
-    if (!appUser || !db) {
-        alert("Kaydetmek için veritabanı bağlantısı gerekli.");
-        return;
-    }
-    try {
-      const docName = `${formData.academicYear} ${formData.ders} - ${formData.donem}`;
-      const currentSignatures: any[] = [];
-      if(formData.baskan) currentSignatures.push({ad: formData.baskan, unvan: "Zümre Başkanı"});
-      if(formData.katilimcilar) formData.katilimcilar.split(',').forEach(t => t.trim() !== formData.baskan && t.trim() !== "" && currentSignatures.push({ad: t.trim(), unvan: "Öğretmen"}));
-      if(formData.mudurYardimcisi) currentSignatures.push({ad: formData.mudurYardimcisi, unvan: "Müdür Yardımcısı"});
-      if(formData.okulMuduru) currentSignatures.push({ad: formData.okulMuduru, unvan: "Okul Müdürü"});
+  const saveToArchive = () => {
+    const docName = `${formData.academicYear} ${formData.ders} - ${formData.donem}`;
+    const currentSignatures: any[] = [];
+    if (formData.baskan) currentSignatures.push({ ad: formData.baskan, unvan: "Zümre Başkanı" });
+    if (formData.katilimcilar) formData.katilimcilar.split(',').forEach(t => t.trim() !== formData.baskan && t.trim() !== "" && currentSignatures.push({ ad: t.trim(), unvan: "Öğretmen" }));
+    if (formData.mudurYardimcisi) currentSignatures.push({ ad: formData.mudurYardimcisi, unvan: "Müdür Yardımcısı" });
+    if (formData.okulMuduru) currentSignatures.push({ ad: formData.okulMuduru, unvan: "Okul Müdürü" });
 
-      const dataToSave = { ...formData, imzalar: currentSignatures };
+    const dataToSave = { ...formData, imzalar: currentSignatures };
+    const newDoc = { id: `zumre_${Date.now()}`, name: docName, date: new Date().toISOString(), data: dataToSave };
 
-      await setDoc(doc(collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari')), {
-        name: docName,
-        data: dataToSave,
-        createdAt: serverTimestamp()
-      });
-      alert('Tutanak başarıyla arşivlendi!');
-    } catch (e) {
-      console.error(e);
-      alert('Kaydedilirken hata oluştu.');
-    }
+    setDb((prevDb: any) => ({
+      ...prevDb,
+      zumreDocuments: [...(prevDb.zumreDocuments || []), newDoc]
+    }));
+    alert('Tutanak başarıyla arşivlendi!');
   };
 
   const loadFromArchive = (docData: any) => {
@@ -308,14 +254,12 @@ export default function ZumreTab() {
     setIsArchiveOpen(false);
   };
 
-  const deleteFromArchive = async (docId: string) => {
+  const deleteFromArchive = (docId: string) => {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
-    if (!appUser || !db) return;
-    try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari', docId));
-    } catch (e) {
-      console.error(e);
-    }
+    setDb((prevDb: any) => ({
+        ...prevDb,
+        zumreDocuments: prevDb.zumreDocuments.filter((d: any) => d.id !== docId)
+    }));
   };
 
   const generateDocContent = () => {
@@ -523,7 +467,7 @@ export default function ZumreTab() {
              <Button variant="secondary" size="sm" onClick={() => setIsPreviewOpen(true)}>
                <Printer className="mr-2 h-4 w-4" /> Önizle & Yazdır
              </Button>
-             <Button variant="primary" size="sm" onClick={handleWordExport}>
+             <Button size="sm" onClick={handleWordExport}>
                <FileDown className="mr-2 h-4 w-4" /> İndir (Word)
              </Button>
           </div>
@@ -540,7 +484,6 @@ export default function ZumreTab() {
                     <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>
                     <h2 className="text-lg font-semibold text-slate-800">Toplantı Künyesi</h2>
                 </div>
-                {/* Şablon Seçimi */}
                 <div className="flex gap-2">
                     {Object.keys(SABLONLAR).map(sablon => (
                         <button 
