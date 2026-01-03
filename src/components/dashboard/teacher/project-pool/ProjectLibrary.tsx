@@ -85,10 +85,10 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             for (const studentId of studentIds) {
                 const studentRef = doc(db, 'students', studentId);
                  batch.update(studentRef, { 
-                    assignedLesson: selectedProject.title,
+                    // We are now assigning the ID of the project, not the title.
+                    // The student panel will resolve this ID to show the title.
+                    assignedLesson: `project_${selectedProject.id}`,
                     hasProject: true,
-                    // projectCode: selectedProject.id, // you can use this if you have a unique code for each project
-                    // projectDueDate: details.date,
                  });
             }
     

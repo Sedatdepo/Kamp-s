@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 
 
 function ProjectSelection({ studentClass, lessons, student, db }: { studentClass: Class | null, lessons: Lesson[], student: any, db: any }) {
@@ -44,9 +45,26 @@ function ProjectSelection({ studentClass, lessons, student, db }: { studentClass
     toast({ title: 'Tercihleriniz kaydedildi!' });
   };
 
-  const assignedLesson = lessons.find(l => l.id === student.assignedLesson);
+  const assignedLessonId = student.assignedLesson;
+  let assignedProjectName = null;
 
-  if (assignedLesson) {
+  if (assignedLessonId) {
+      if (assignedLessonId.startsWith('project_')) {
+          const projectId = parseInt(assignedLessonId.replace('project_', ''), 10);
+          const project = assignmentsData.find(p => p.id === projectId);
+          if (project) {
+              assignedProjectName = project.title;
+          }
+      } else {
+          const lesson = lessons.find(l => l.id === assignedLessonId);
+          if (lesson) {
+              assignedProjectName = lesson.name;
+          }
+      }
+  }
+
+
+  if (assignedProjectName) {
     return (
       <Card>
         <CardHeader>
@@ -55,7 +73,7 @@ function ProjectSelection({ studentClass, lessons, student, db }: { studentClass
         <CardContent>
           <div className="bg-primary/10 p-6 rounded-lg text-center">
             <p className="text-muted-foreground">Size atanan proje:</p>
-            <p className="text-2xl font-bold text-primary mt-2">{assignedLesson.name}</p>
+            <p className="text-2xl font-bold text-primary mt-2">{assignedProjectName}</p>
           </div>
         </CardContent>
       </Card>
@@ -145,4 +163,3 @@ export function ProjectTab() {
     </div>
   );
 }
-
