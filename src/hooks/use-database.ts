@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -19,6 +17,7 @@ interface Database {
   riskMapDocuments: RiskMapDocument[];
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
+  userScenarios: Record<string, string[]>; // Yeni eklendi
 }
 
 // Varsayılan boş veritabanı
@@ -32,6 +31,7 @@ const initialDb: Database = {
   riskMapDocuments: [],
   communicationDocuments: [],
   homeworkDocuments: [],
+  userScenarios: {}, // Yeni eklendi
 };
 
 export const useDatabase = () => {
