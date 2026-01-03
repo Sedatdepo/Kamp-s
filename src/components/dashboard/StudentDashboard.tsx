@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { HomeTab } from './student/HomeTab';
+import { GradesTab } from './student/GradesTab';
 import { RiskFormTab } from './student/RiskFormTab';
 import { InfoFormTab } from './student/InfoFormTab';
 import { StudentCommunicationTab } from './student/StudentCommunicationTab';
@@ -15,9 +15,10 @@ import { DutyRosterTab } from './student/DutyRosterTab';
 import { SeatingPlanTab } from './student/SeatingPlanTab';
 import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
+import { ProjectTab } from './student/ProjectTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -81,7 +82,8 @@ export function StudentDashboard() {
   
   const renderContent = () => {
       switch(activeTab) {
-          case 'home-details': return <HomeTab />;
+          case 'grades': return <GradesTab />;
+          case 'project': return <ProjectTab />;
           case 'announcements': return <StudentCommunicationTab />;
           case 'teacher-chats': return <TeacherChatsTab />;
           case 'homeworks': return <HomeworkTab />;
@@ -131,7 +133,8 @@ export function StudentDashboard() {
                     </CardHeader>
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <MenuCard icon={<Home />} title="Proje ve Notlar" description="Proje seçimi ve ders notlarını gör." onClick={() => setActiveTab('home-details')} />
+                    <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
+                    <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Ödevlerim" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
                     
