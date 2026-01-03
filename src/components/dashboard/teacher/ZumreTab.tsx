@@ -6,7 +6,7 @@ import {
   Save, FileDown, Users2, PlusCircle, Trash2,
   ListChecks, ChevronDown, ChevronRight,
   Archive, FolderOpen, History, FileText, Mic, MicOff, Loader2,
-  BookmarkPlus, X, Printer, FileClock, Wand2, Edit, Check
+  BookmarkPlus, X, Printer, FileClock, Wand2, Edit, Check, Zap
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
@@ -16,7 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT, SENARYOLAR } from '@/lib/zumre-senaryolari';
+import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+
 
 // --- TİP TANIMLAMALARI ---
 declare global {
@@ -180,10 +181,7 @@ export default function ZumreTab() {
  const deleteFromArchive = (docId: string) => {
     if (!confirm('Bu arşivi silmek istediğinize emin misiniz?')) return;
     setDb(prevDb => {
-        // Filter out the document to be deleted from zumreDocuments
         const updatedDocs = (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId);
-        
-        // Return the whole database state with the updated zumreDocuments
         return {
             ...prevDb,
             zumreDocuments: updatedDocs,
@@ -195,69 +193,69 @@ export default function ZumreTab() {
 
   const generateDocContent = () => {
     const signatures: any[] = [];
-    if (formData.baskan) signatures.push({ ad: formData.baskan, unvan: "Zümre Başkanı" });
-    if (formData.katilimcilar) formData.katilimcilar.split(',').forEach(t => {
-      const name = t.trim();
-      if (name && name !== formData.baskan) signatures.push({ ad: name, unvan: "Öğretmen" });
+    if(formData.baskan) signatures.push({ad: formData.baskan, unvan: "Zümre Başkanı"});
+    if(formData.katilimcilar) formData.katilimcilar.split(',').forEach(t => {
+        const name = t.trim();
+        if(name && name !== formData.baskan) signatures.push({ad: name, unvan: "Öğretmen"});
     });
-    if (formData.mudurYardimcisi) signatures.push({ ad: formData.mudurYardimcisi, unvan: "Müdür Yardımcısı" });
-    if (formData.okulMuduru) signatures.push({ ad: formData.okulMuduru, unvan: "Okul Müdürü" });
+    if(formData.mudurYardimcisi) signatures.push({ad: formData.mudurYardimcisi, unvan: "Müdür Yardımcısı"});
+    if(formData.okulMuduru) signatures.push({ad: formData.okulMuduru, unvan: "Okul Müdürü"});
 
     let signatureHtml = '<table style="width:100%; border:none; margin-top:50px; page-break-inside: avoid;"><tr>';
     signatures.forEach((sig, index) => {
-      if (index > 0 && index % 3 === 0) signatureHtml += '</tr><tr>';
-      signatureHtml += `
-              <td style="width:33%; text-align:center; padding:20px 5px; vertical-align:top;">
-                  <strong>${sig.ad}</strong><br/>
-                  ${sig.unvan}<br/><br/><br/>
-                  (İmza)
-              </td>
-          `;
+        if (index > 0 && index % 3 === 0) signatureHtml += '</tr><tr>';
+        signatureHtml += `
+            <td style="width:33%; text-align:center; padding:20px 5px; vertical-align:top;">
+                <strong>${sig.ad}</strong><br/>
+                ${sig.unvan}<br/><br/><br/>
+                (İmza)
+            </td>
+        `;
     });
     signatureHtml += '</tr></table>';
 
     return `
-        <h3 style="text-align:center">T.C.<br/>MİLLİ EĞİTİM BAKANLIĞI<br/>... OKULU MÜDÜRLÜĞÜ</h3>
-        <br/>
-        <h2 style="text-align:center">${formData.academicYear} EĞİTİM-ÖĞRETİM YILI<br/>${formData.ders.toUpperCase()} DERSİ ${formData.donem.toUpperCase()}<br/>ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞIDIR</h2>
-        <br/>
-        
-        <table class="header-table" style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold; width: 30%;">Dersin Adı</td><td style="border: 1px solid #000; padding: 5px;">${formData.ders}</td></tr>
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı Tarihi ve Saati</td><td style="border: 1px solid #000; padding: 5px;">${formData.tarih} / ${formData.saat}</td></tr>
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı Yeri</td><td style="border: 1px solid #000; padding: 5px;">${formData.yer}</td></tr>
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı No</td><td style="border: 1px solid #000; padding: 5px;">1</td></tr>
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Zümre Başkanı</td><td style="border: 1px solid #000; padding: 5px;">${formData.baskan}</td></tr>
-            <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Katılımcılar</td><td style="border: 1px solid #000; padding: 5px;">${formData.katilimcilar}</td></tr>
-        </table>
+      <h3 style="text-align:center">T.C.<br/>MİLLİ EĞİTİM BAKANLIĞI<br/>... OKULU MÜDÜRLÜĞÜ</h3>
+      <br/>
+      <h2 style="text-align:center">${formData.academicYear} EĞİTİM-ÖĞRETİM YILI<br/>${formData.ders.toUpperCase()} DERSİ ${formData.donem.toUpperCase()}<br/>ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞIDIR</h2>
+      <br/>
+      
+      <table class="header-table" style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold; width: 30%;">Dersin Adı</td><td style="border: 1px solid #000; padding: 5px;">${formData.ders}</td></tr>
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı Tarihi ve Saati</td><td style="border: 1px solid #000; padding: 5px;">${formData.tarih} / ${formData.saat}</td></tr>
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı Yeri</td><td style="border: 1px solid #000; padding: 5px;">${formData.yer}</td></tr>
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Toplantı No</td><td style="border: 1px solid #000; padding: 5px;">1</td></tr>
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Zümre Başkanı</td><td style="border: 1px solid #000; padding: 5px;">${formData.baskan}</td></tr>
+          <tr><td style="border: 1px solid #000; padding: 5px; font-weight:bold;">Katılımcılar</td><td style="border: 1px solid #000; padding: 5px;">${formData.katilimcilar}</td></tr>
+      </table>
 
-        <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">GÜNDEM MADDELERİ:</div>
-        <ol>
-            ${formData.gundemMaddeleri.map(g => `<li>${g.madde}</li>`).join('')}
-        </ol>
+      <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">GÜNDEM MADDELERİ:</div>
+      <ol>
+          ${formData.gundemMaddeleri.map(g => `<li>${g.madde}</li>`).join('')}
+      </ol>
 
-        <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">GÜNDEM MADDELERİNİN GÖRÜŞÜLMESİ:</div>
-        ${formData.gundemMaddeleri.map((g, i) => `
-            <p><strong>${i + 1}. MADDENİN GÖRÜŞÜLMESİ:</strong></p>
-            <p style="text-align: justify;">${formData.gorusmeler[i]?.detay || 'Bu madde üzerinde karşılıklı görüş alışverişinde bulunuldu.'}</p>
-        `).join('')}
+      <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">GÜNDEM MADDELERİNİN GÖRÜŞÜLMESİ:</div>
+      ${formData.gundemMaddeleri.map((g, i) => `
+          <p><strong>${i + 1}. MADDENİN GÖRÜŞÜLMESİ:</strong></p>
+          <p style="text-align: justify;">${formData.gorusmeler[i]?.detay || 'Bu madde üzerinde karşılıklı görüş alışverişinde bulunuldu.'}</p>
+      `).join('')}
 
-        <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">ALINAN KARARLAR:</div>
-        ${formData.kararlar.split('\n').map(k => `<p>${k}</p>`).join('')}
+      <div style="font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 10px;">ALINAN KARARLAR:</div>
+      ${formData.kararlar.split('\n').map(k => `<p>${k}</p>`).join('')}
 
-        <br/><br/>
-        ${signatureHtml}
-        
-        <br/><br/>
-        <div style="text-align:center;">
-            UYGUNDUR<br/>
-            .../.../....<br/>
-            <br/><br/>
-            ${formData.okulMuduru}<br/>
-            Okul Müdürü
-        </div>
-      `;
-  };
+      <br/><br/>
+      ${signatureHtml}
+      
+      <br/><br/>
+      <div style="text-align:center;">
+          UYGUNDUR<br/>
+          .../.../....<br/>
+          <br/><br/>
+          ${formData.okulMuduru}<br/>
+          Okul Müdürü
+      </div>
+    `;
+};
 
   const handleWordExport = () => {
     const content = `
@@ -604,7 +602,7 @@ export default function ZumreTab() {
                                                         variant="secondary" 
                                                         size="sm" 
                                                         className="h-7 text-xs bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100"
-                                                        onClick={() => fetchPreviousDecisions()}
+                                                        onClick={() => fetchPreviousDecisions(index)}
                                                         title="Arşivden bir önceki toplantının kararlarını otomatik getir"
                                                     >
                                                         <FileClock className="mr-1 h-3 w-3" /> Önceki Kararları Getir
@@ -663,6 +661,7 @@ export default function ZumreTab() {
             </div>
         </section>
 
+        {/* KARARLAR */}
         <section>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -689,6 +688,8 @@ export default function ZumreTab() {
 
       </main>
 
+      {/* --- MODALS --- */}
+      
       {isPreviewOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl">
@@ -723,7 +724,7 @@ export default function ZumreTab() {
                   </div>
                   
                   <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                      {savedDocs.length === 0 ? (
+                      {(savedDocs || []).length === 0 ? (
                           <div className="text-center py-12 text-slate-400">
                               <Archive className="h-16 w-16 mx-auto mb-4 opacity-20" />
                               <p>Henüz kaydedilmiş bir evrak bulunmuyor.</p>
@@ -808,3 +809,5 @@ export default function ZumreTab() {
     </div>
   );
 }
+
+    
