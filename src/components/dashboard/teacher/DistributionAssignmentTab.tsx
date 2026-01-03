@@ -137,12 +137,13 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                                 <TableCell>
                                      <Select 
                                         value={student.assignedLesson || ''} 
-                                        onValueChange={(value) => handleFieldChange(student.id, 'assignedLesson', value === '' ? null : value)}
+                                        onValueChange={(value) => handleFieldChange(student.id, 'assignedLesson', value)}
                                      >
                                         <SelectTrigger className="h-8">
                                             <SelectValue placeholder="Proje atayın..." />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="">Yok</SelectItem>
                                             {lessons?.map(lesson => (
                                                 <SelectItem key={lesson.id} value={lesson.id}>{lesson.name}</SelectItem>
                                             ))}
