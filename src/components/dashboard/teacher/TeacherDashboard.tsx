@@ -423,8 +423,7 @@ export function TeacherDashboard() {
     }
   }, [classesLoading, classes, teacherId, db]);
 
-
-  const currentClass = useMemo(() => orderedClasses?.find((c: Class) => c.id === selectedClassId), [orderedClasses, selectedClassId]);
+  const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
   const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
   const { data: students } = useFirestore<Student[]>('students-in-class', studentsQuery);
