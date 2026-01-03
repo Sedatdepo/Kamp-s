@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus, Trash2, MessageSquare, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download, ClipboardPaste } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, MessageSquare, Send, FileText, ClipboardCopy, Link as LinkIcon, FileDown, Paperclip, Download, ClipboardPaste, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -31,6 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -313,10 +320,10 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     <>
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <CardTitle className="font-headline">Öğrenci Listesi</CardTitle>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <CardDescription>Sınıf Kodu:</CardDescription>
                   {currentClass?.code && (
                     <Badge variant="secondary" className="text-base font-mono tracking-widest cursor-pointer" onClick={copyClassCode}>
@@ -330,34 +337,6 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleExport}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Listeyi Dışa Aktar
-                </Button>
-                <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
-                  <ClipboardPaste className="mr-2 h-4 w-4" />Toplu Not Girişi
-                </Button>
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" disabled={!students || students.length === 0}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Temizle
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Bu sınıftaki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleClearClass} className="bg-destructive hover:bg-destructive/90">
-                                Tümünü Sil
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button><UserPlus className="mr-2 h-4 w-4" />Toplu Öğrenci Ekle</Button>
@@ -374,6 +353,41 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                         <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline"><MoreVertical className="mr-2 h-4 w-4" /> İşlemler</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={handleExport}>
+                            <FileText className="mr-2 h-4 w-4" /> Listeyi Dışa Aktar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setIsBulkGradeOpen(true)}>
+                            <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Not Girişi
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:bg-red-50 focus:text-red-700">
+                                     <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Temizle
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu sınıftaki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleClearClass} className="bg-destructive hover:bg-destructive/90">
+                                        Tümünü Sil
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
       </CardHeader>
@@ -476,3 +490,4 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
+
