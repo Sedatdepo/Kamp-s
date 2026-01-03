@@ -1,4 +1,3 @@
-
 'use client'; 
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -11,13 +10,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, limit, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { SENARYOLAR } from '@/lib/zumre-senaryolari';
+import { SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+
 
 // --- TİP TANIMLAMALARI ---
 declare global {
@@ -25,74 +25,6 @@ declare global {
     webkitSpeechRecognition: any;
   }
 }
-
-// --- MOCK DATA VE SABİTLER ---
-
-// Akıllı Asistan İçin Kelime Bazlı Öneriler
-const AI_SUGGESTIONS: Record<string, string> = {
-    "sınav": "Sınavların yönetmeliklere uygun olarak, geçerlilik ve güvenilirliği yüksek, kazanımları kapsayan sorulardan oluşmasına özen gösterilecektir.",
-    "kelebek": "Sınav güvenliğini artırmak amacıyla, imkanlar dahilinde sınav oturum düzeninin 'kelebek sistemi' şeklinde planlanmasına karar verildi.",
-    "başarı": "Öğrenci başarısını artırmak amacıyla, eksik kazanımların tespit edilerek destekleme çalışmalarının yapılmasına ve veli işbirliğinin güçlendirilmesine karar verildi.",
-    "kitap": "Ders kitaplarının ve eğitim materyallerinin müfredatla uyumlu olduğu, etkinliklerin zenginleştirilerek uygulanması gerektiği belirtildi.",
-    "proje": "Proje ödevlerinin öğrencilerin ilgi, yetenek ve imkanlarına uygun olarak dağıtılmasına; değerlendirme kriterlerinin (rubrik) önceden öğrencilere duyurulmasına karar verildi.",
-    "gezi": "Eğitimi destekleyici nitelikte, görgü ve bilgiyi artırıcı okul gezilerinin planlanarak okul idaresine sunulmasına karar verildi.",
-    "disiplin": "Sınıf içi disiplini bozan davranışlara karşı, okul rehberlik servisi ile işbirliği yapılarak önleyici rehberlik çalışmalarına ağırlık verilmesi kararlaştırıldı.",
-    "default": "Konuyla ilgili görüş ve öneriler dinlendi. Yapılan değerlendirmeler sonucunda, eğitim-öğretim kalitesini artıracak tedbirlerin alınması konusunda görüş birliğine varıldı."
-};
-
-// Farklı dönemler için hazır şablonlar
-const SABLONLAR: Record<string, string[]> = {
-  "Sene Başı": [
-    "Açılış ve yoklama.",
-    "Bir önceki zümre kararlarının incelenmesi.",
-    "Müfredat programının incelenmesi.",
-    "Yıllık planların ve ders planlarının hazırlanması.",
-    "Ölçme ve değerlendirme kriterlerinin belirlenmesi.",
-    "Proje ödevlerinin konularının ve değerlendirme ölçeklerinin belirlenmesi.",
-    "Öğrenci başarısını artırıcı önlemler.",
-    "İş sağlığı ve güvenliği tedbirleri.",
-    "Dilek ve temenniler.",
-    "Kapanış."
-  ],
-  "2. Dönem Başı": [
-    "Açılış ve yoklama.",
-    "1. Dönem başarı durumunun değerlendirilmesi.",
-    "Uygulanan yıllık planın değerlendirilmesi ve varsa aksaklıkların giderilmesi.",
-    "Ölçme ve değerlendirme çalışmalarının gözden geçirilmesi.",
-    "Başarısız öğrencilere yönelik tedbirlerin görüşülmesi.",
-    "Dilek ve temenniler.",
-    "Kapanış."
-  ],
-  "Sene Sonu": [
-    "Açılış ve yoklama.",
-    "Yıl sonu başarı durumunun ve müfredatın tamamlanma durumunun görüşülmesi.",
-    "Yıllık planın uygulanma durumunun değerlendirilmesi.",
-    "Gelecek eğitim-öğretim yılı için ihtiyaçların belirlenmesi.",
-    "Dilek ve temenniler.",
-    "Kapanış."
-  ]
-};
-
-const GUNDEM_MADDELERI_DEFAULT = SABLONLAR["Sene Başı"];
-
-// Akıllı Karar Eşleştirme Havuzu
-const KARAR_HAVUZU: Record<string, string> = {
-  "Açılış ve yoklama.": "Eğitim öğretim yılının hayırlı olması temennisiyle toplantı açıldı. Yapılan yoklamada zümre öğretmenlerinin hazır olduğu görüldü.",
-  "Bir önceki zümre kararlarının incelenmesi.": "Bir önceki toplantıda alınan kararlar gözden geçirildi ve kararların büyük oranda uygulandığı tespit edildi.",
-  "Müfredat programının incelenmesi.": "Talim Terbiye Kurulu Başkanlığı'nın yayınladığı güncel öğretim programı incelendi ve konuların bu programa göre işlenmesine karar verildi.",
-  "Yıllık planların ve ders planlarının hazırlanması.": "Ünitelendirilmiş yıllık planların çalışma takvimine uygun olarak hazırlandığı, ders planlarının ise düzenli olarak yapılacağı belirtildi.",
-  "Ölçme ve değerlendirme kriterlerinin belirlenmesi.": "Her dönem 2 yazılı sınav yapılmasına, sınavların yönetmelik doğrultusunda ortak ve açık uçlu sorulardan oluşmasına karar verildi.",
-  "Ölçme ve değerlendirme çalışmalarının gözden geçirilmesi.": "Sınav analizlerinin yapılarak kazanım eksiklerinin tespit edilmesine karar verildi.",
-  "Proje ödevlerinin konularının ve değerlendirme ölçeklerinin belirlenmesi.": "Proje konularının öğrencilerin ilgi ve yeteneklerine göre Kasım ayı sonuna kadar dağıtılmasına, değerlendirme ölçeklerinin öğrencilere duyurulmasına karar verildi.",
-  "Öğrenci başarısını artırıcı önlemler.": "Başarısı düşük öğrenciler için destekleme kurslarına yönlendirme yapılmasına, veli işbirliğine gidilmesine ve koçluk sisteminin uygulanmasına karar verildi.",
-  "Başarısız öğrencilere yönelik tedbirlerin görüşülmesi.": "Devamsızlık yapan veya başarısı düşük öğrencilerle birebir görüşmeler yapılmasına ve rehberlik servisine yönlendirilmesine karar verildi.",
-  "1. Dönem başarı durumunun değerlendirilmesi.": "1. Dönem not ortalamaları incelendi, genel başarının iyi olduğu ancak bazı öğrencilerin desteklenmesi gerektiği görüldü.",
-  "Yıl sonu başarı durumunun ve müfredatın tamamlanma durumunun görüşülmesi.": "Müfredatın yıllık plana uygun olarak tamamlandığı, kazanımların verildiği tespit edildi.",
-  "İş sağlığı ve güvenliği tedbirleri.": "Dersliklerde ve laboratuvarlarda gerekli iş sağlığı ve güvenliği tedbirlerinin alındığı, öğrencilerin bilgilendirildiği belirtildi.",
-  "Dilek ve temenniler.": "Başarılı, sağlıklı ve verimli bir eğitim-öğretim süreci geçirilmesi dileğiyle toplantının sonlandırılmasına karar verildi.",
-  "Kapanış.": "Toplantı tutanağı imza altına alındı."
-};
-
 
 // --- MAIN APPLICATION ---
 export default function ZumreTab() {
@@ -212,8 +144,8 @@ export default function ZumreTab() {
       let newText = currentText;
       let matched = false;
 
-      for (const [key, value] of Object.entries(AI_SUGGESTIONS)) {
-          if (currentText.includes(key)) {
+      for (const [key, value] of Object.entries(KARAR_HAVUZU)) {
+          if (currentText.includes(key.substring(0, 10))) {
               newText = value;
               matched = true;
               break;
@@ -223,7 +155,7 @@ export default function ZumreTab() {
       if (!matched && currentText.trim().length > 0) {
           newText = `${formData.gorusmeler[index].detay} hususu detaylıca görüşülmüş olup, ilgili tedbirlerin titizlikle uygulanmasına karar verilmiştir.`;
       } else if (!matched) {
-          newText = AI_SUGGESTIONS["default"];
+          newText = KARAR_HAVUZU["Dilek ve temenniler."];
       }
 
       handleGorusmeChange(index, newText);
@@ -252,13 +184,16 @@ export default function ZumreTab() {
     setIsArchiveOpen(false);
   };
 
-  const deleteFromArchive = (docId: string) => {
+ const deleteFromArchive = (docId: string) => {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
-    setDb((prevDb: any) => ({
-        ...prevDb,
-        zumreDocuments: prevDb.zumreDocuments.filter((d: any) => d.id !== docId)
-    }));
-  };
+    setDb((prevDb: any) => {
+        const updatedDocs = prevDb.zumreDocuments.filter((d: any) => d.id !== docId);
+        return {
+            ...prevDb,
+            zumreDocuments: updatedDocs
+        };
+    });
+};
 
   const generateDocContent = () => {
       const signatures: any[] = [];
