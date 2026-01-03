@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Save, FileDown, Users2, PlusCircle, Trash2,
-  BookOpen, Zap, ListChecks, ChevronDown, ChevronRight,
+  ListChecks, ChevronDown, ChevronRight,
   Archive, FolderOpen, History, FileText, Mic, MicOff, Loader2,
   BookmarkPlus, X, Printer, FileClock, Wand2, Edit, Check
 } from 'lucide-react';
@@ -16,7 +17,6 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT, SENARYOLAR } from '@/lib/zumre-senaryolari';
-
 
 // --- TİP TANIMLAMALARI ---
 declare global {
@@ -57,10 +57,8 @@ export default function ZumreTab() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeScenarioIndex, setActiveScenarioIndex] = useState<number | null>(null);
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
-
-  // New state for editing user scenarios
   const [editingScenario, setEditingScenario] = useState<{ agendaItem: string; index: number; text: string; } | null>(null);
-
+  
   // Handlers
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -108,7 +106,7 @@ export default function ZumreTab() {
     if (expandedIndex === index) setExpandedIndex(null);
   };
 
-  const fetchPreviousDecisions = async (index: number) => {
+  const fetchPreviousDecisions = async () => {
     if (!savedDocs || savedDocs.length === 0) {
       toast({ title: 'Arşiv Boş', description: "Geçmiş toplantı kararları getirilemedi.", variant: 'destructive' });
       return;
@@ -134,13 +132,16 @@ export default function ZumreTab() {
         }
       }
 
-      handleGorusmeChange(index, formattedText);
+      if(expandedIndex !== null) {
+        handleGorusmeChange(expandedIndex, formattedText);
+      } else {
+        toast({title: "Hata", description: "Lütfen önce bir gündem maddesi seçin.", variant: 'destructive'});
+      }
     } catch (error) {
       console.error("Hata:", error);
       toast({ title: 'Hata', description: "Geçmiş kararlar getirilirken bir sorun oluştu.", variant: 'destructive' });
     }
   };
-
 
   const enhanceText = (index: number) => {
     const currentText = formData.gorusmeler[index].detay;
@@ -179,14 +180,18 @@ export default function ZumreTab() {
  const deleteFromArchive = (docId: string) => {
     if (!confirm('Bu arşivi silmek istediğinize emin misiniz?')) return;
     setDb(prevDb => {
-      const updatedDocs = (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId);
-      return {
-        ...prevDb,
-        zumreDocuments: updatedDocs,
-      };
+        // Filter out the document to be deleted from zumreDocuments
+        const updatedDocs = (prevDb.zumreDocuments || []).filter((d: any) => d.id !== docId);
+        
+        // Return the whole database state with the updated zumreDocuments
+        return {
+            ...prevDb,
+            zumreDocuments: updatedDocs,
+        };
     });
     toast({ title: 'Arşiv Silindi', variant: 'destructive' });
-  };
+};
+
 
   const generateDocContent = () => {
     const signatures: any[] = [];
@@ -366,7 +371,7 @@ export default function ZumreTab() {
       toast({ title: "Boş Senaryo", description: "Kaydedilecek senaryo metni boş olamaz.", variant: 'destructive' });
       return;
     }
-    setDb(prev => {
+    setDb((prev: any) => {
       const currentUserScenarios = prev.userScenarios || {};
       const existingScenarios = currentUserScenarios[agendaItem] || [];
       const updatedScenarios = [...existingScenarios, scenarioText];
@@ -383,9 +388,9 @@ export default function ZumreTab() {
 
   const deleteUserScenario = (agendaItem: string, index: number) => {
     if (!confirm('Bu özel senaryoyu silmek istediğinize emin misiniz?')) return;
-    setDb(prev => {
+    setDb((prev: any) => {
       const currentUserScenarios = { ...(prev.userScenarios || {}) };
-      const scenariosForAgenda = (currentUserScenarios[agendaItem] || []).filter((_, i) => i !== index);
+      const scenariosForAgenda = (currentUserScenarios[agendaItem] || []).filter((_: any, i: number) => i !== index);
       if (scenariosForAgenda.length === 0) {
         delete currentUserScenarios[agendaItem];
       } else {
@@ -402,7 +407,7 @@ export default function ZumreTab() {
   
   const saveEditedScenario = () => {
     if (!editingScenario) return;
-    setDb(prev => {
+    setDb((prev: any) => {
       const currentUserScenarios = { ...(prev.userScenarios || {}) };
       const scenariosForAgenda = [...(currentUserScenarios[editingScenario.agendaItem] || [])];
       scenariosForAgenda[editingScenario.index] = editingScenario.text;
@@ -599,7 +604,7 @@ export default function ZumreTab() {
                                                         variant="secondary" 
                                                         size="sm" 
                                                         className="h-7 text-xs bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100"
-                                                        onClick={() => fetchPreviousDecisions(index)}
+                                                        onClick={() => fetchPreviousDecisions()}
                                                         title="Arşivden bir önceki toplantının kararlarını otomatik getir"
                                                     >
                                                         <FileClock className="mr-1 h-3 w-3" /> Önceki Kararları Getir
@@ -608,7 +613,7 @@ export default function ZumreTab() {
                                                 <Button 
                                                     variant="secondary" 
                                                     size="sm" 
-                                                    className="h-7 text-xs bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
+                                                    className="h-7 text-xs bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
                                                     onClick={() => saveUserScenario(index)}
                                                     title="Bu ifadeyi daha sonra kullanmak üzere senaryo havuzuna kaydet"
                                                 >
