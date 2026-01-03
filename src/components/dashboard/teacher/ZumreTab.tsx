@@ -7,18 +7,21 @@ import {
   BookOpen, Settings, Zap, ListChecks, ChevronDown, ChevronRight, 
   Archive, FolderOpen, History, FileText, Mic, MicOff, Loader2, 
   BookmarkPlus, Share2, X, Check, FileEdit, MoreVertical, PenTool, 
-  LayoutTemplate, Wand2, Printer, FileClock // Yeni ikon eklendi
+  LayoutTemplate, Wand2, Printer, FileClock
 } from 'lucide-react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, limit, getDocs } from 'firebase/firestore'; // limit ve getDocs eklendi
+import { useAuth } from '@/hooks/useAuth';
+import { useDatabase } from '@/hooks/use-database';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, limit, getDocs } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 
 // --- TİP TANIMLAMALARI ---
 declare global {
   interface Window {
     webkitSpeechRecognition: any;
-    __firebase_config?: any; 
-    __initial_auth_token?: string; 
   }
 }
 
@@ -100,54 +103,9 @@ const SENARYOLAR: Record<string, string[]> = {
   ]
 };
 
-// --- UI COMPONENTS (Tailwind Based) ---
-const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }: any) => {
-  const baseStyle = "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50";
-  const variants: any = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
-    secondary: "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 shadow-sm",
-    destructive: "bg-red-500 text-white hover:bg-red-600 shadow-sm",
-    ghost: "hover:bg-slate-100 text-slate-700",
-    outline: "border border-slate-200 bg-transparent hover:bg-slate-100 text-slate-900"
-  };
-  const sizes: any = {
-    sm: "h-8 px-3 text-xs",
-    md: "h-10 px-4 py-2 text-sm",
-    lg: "h-12 px-8 text-base",
-    icon: "h-9 w-9"
-  };
-  return (
-    <button className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
-      {children}
-    </button>
-  );
-};
-
-const Input = ({ className = '', ...props }: any) => (
-  <input className={`flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props} />
-);
-
-const Textarea = ({ className = '', ...props }: any) => (
-  <textarea className={`flex min-h-[80px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props} />
-);
-
-const Label = ({ children, className = '' }: any) => (
-  <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700 ${className}`}>
-    {children}
-  </label>
-);
-
-const Card = ({ children, className = '' }: any) => (
-  <div className={`rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
 // --- MAIN APPLICATION ---
-
 export default function ZumreTab() {
-  // State
-  const [user, setUser] = useState<any>(null);
+  const { appUser, db } = useAuth();
   const [loading, setLoading] = useState(true);
   
   // Form State
@@ -177,77 +135,32 @@ export default function ZumreTab() {
   const [activeScenarioIndex, setActiveScenarioIndex] = useState<number | null>(null);
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
   
-  // Firebase Init Refs
-  const [db, setDb] = useState<any>(null);
-  const [auth, setAuth] = useState<any>(null);
-  const [appId, setAppId] = useState('zumre-app-v1');
+  const appId = 'zumre-app-v1';
 
-  // Firebase Setup
+  // Data Sync
   useEffect(() => {
-    const firebaseConfig = typeof window !== 'undefined' && window.__firebase_config 
-      ? JSON.parse(window.__firebase_config) 
-      : { 
-          apiKey: "YOUR_API_KEY",
-          authDomain: "YOUR_PROJECT.firebaseapp.com",
-          projectId: "YOUR_PROJECT_ID",
-          storageBucket: "YOUR_PROJECT.appspot.com",
-          messagingSenderId: "SENDER_ID",
-          appId: "APP_ID"
-        };
-        
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
-       console.warn("Firebase config eksik.");
-       setLoading(false);
-       return;
+    if (!appUser || !db) {
+        setLoading(false);
+        return;
     }
-
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    const _auth = getAuth(app);
-    const _db = getFirestore(app);
-    setAuth(_auth);
-    setDb(_db);
-    
-    const initAuth = async () => {
-        if (typeof window !== 'undefined' && window.__initial_auth_token) {
-            try {
-                await signInWithCustomToken(_auth, window.__initial_auth_token);
-            } catch (e) {
-                console.error("Token Auth Failed", e);
-                await signInAnonymously(_auth);
-            }
-        } else {
-            await signInAnonymously(_auth);
-        }
-    };
-
-    initAuth();
-    
-    const unsubscribe = onAuthStateChanged(_auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    
-    return () => unsubscribe();
-  }, []);
-
-  // Firestore Data Sync
-  useEffect(() => {
-    if (!user || !db) return;
+    setLoading(true);
     
     const q = query(
-      collection(db, 'artifacts', appId, 'users', user.uid, 'zumre_tutanaklari'),
+      collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari'),
       orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSavedDocs(docs);
+      setLoading(false);
     }, (error) => {
         console.error("Firestore Error:", error);
+        setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user, db, appId]);
+  }, [appUser, db]);
 
   // Handlers
   const handleInputChange = (field: string, value: string) => {
@@ -296,9 +209,8 @@ export default function ZumreTab() {
     if (expandedIndex === index) setExpandedIndex(null);
   };
 
-  // --- YENİ: GEÇMİŞ KARARLARI ÇEKME FONKSİYONU ---
   const fetchPreviousDecisions = async (index: number) => {
-    if (!user || !db) {
+    if (!appUser || !db) {
         alert("Bağlantı hatası: Veritabanına erişilemiyor.");
         return;
     }
@@ -308,9 +220,9 @@ export default function ZumreTab() {
 
     try {
         const q = query(
-            collection(db, 'artifacts', appId, 'users', user.uid, 'zumre_tutanaklari'),
+            collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari'),
             orderBy('createdAt', 'desc'),
-            limit(1) // Sadece en sonuncuyu getir
+            limit(1)
         );
         
         const snapshot = await getDocs(q);
@@ -322,13 +234,11 @@ export default function ZumreTab() {
             let formattedText = "Bir önceki toplantı arşivde bulunamadı veya karar girilmemiş.";
             
             if (lastDecisions) {
-                // Karar metnini temizle ve özetle
                 const decisionsList = lastDecisions.split('\n')
                     .filter((d: string) => d.trim().length > 5)
-                    .map((d: string) => d.replace(/^\d+[\.\)\-]\s*/, '').trim()); // Başındaki 1. 2. gibi maddeleri sil
+                    .map((d: string) => d.replace(/^\d+[\.\)\-]\s*/, '').trim());
                 
                 if (decisionsList.length > 0) {
-                     // İlk 3 kararı alıp özetle
                      const summary = decisionsList.slice(0, 3).join('; ') + (decisionsList.length > 3 ? '...' : '');
                      formattedText = `Bir önceki toplantıda alınan "${summary}" kararları gözden geçirilmiş; alınan kararların büyük oranda uygulandığı, eksik kalan hususların ise telafi edildiği görülmüştür.`;
                 }
@@ -344,8 +254,6 @@ export default function ZumreTab() {
     }
   };
 
-
-  // --- AKILLI ASİSTAN FONKSİYONU ---
   const enhanceText = (index: number) => {
       const currentText = formData.gorusmeler[index].detay.toLowerCase();
       let newText = currentText;
@@ -369,7 +277,7 @@ export default function ZumreTab() {
   };
 
   const saveToArchive = async () => {
-    if (!user || !db) {
+    if (!appUser || !db) {
         alert("Kaydetmek için veritabanı bağlantısı gerekli.");
         return;
     }
@@ -383,7 +291,7 @@ export default function ZumreTab() {
 
       const dataToSave = { ...formData, imzalar: currentSignatures };
 
-      await setDoc(doc(collection(db, 'artifacts', appId, 'users', user.uid, 'zumre_tutanaklari')), {
+      await setDoc(doc(collection(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari')), {
         name: docName,
         data: dataToSave,
         createdAt: serverTimestamp()
@@ -402,14 +310,14 @@ export default function ZumreTab() {
 
   const deleteFromArchive = async (docId: string) => {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
+    if (!appUser || !db) return;
     try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'zumre_tutanaklari', docId));
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', appUser.data.uid, 'zumre_tutanaklari', docId));
     } catch (e) {
       console.error(e);
     }
   };
 
-  // --- HTML İÇERİĞİ OLUŞTURUCU (Hem Word hem Önizleme için) ---
   const generateDocContent = () => {
       const signatures: any[] = [];
       if(formData.baskan) signatures.push({ad: formData.baskan, unvan: "Zümre Başkanı"});
@@ -581,6 +489,14 @@ export default function ZumreTab() {
       }
   };
 
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
       
@@ -678,7 +594,6 @@ export default function ZumreTab() {
                         <Input value={formData.yer} onChange={(e: any) => handleInputChange('yer', e.target.value)} />
                     </div>
                     
-                    {/* YENİ: İMZA ALANLARI */}
                     <div className="col-span-full border-t border-slate-100 my-2"></div>
                     
                     <div className="space-y-2">
@@ -757,7 +672,6 @@ export default function ZumreTab() {
                                         <div className="flex items-center justify-between">
                                             <Label>Görüşme Detayları & Alınan Karar</Label>
                                             <div className="flex gap-2">
-                                                {/* YENİ: Geçmiş Karar Getir Butonu (Sadece 'önceki' geçen maddelerde görünür) */}
                                                 {(item.madde.toLowerCase().includes('önceki') || item.madde.toLowerCase().includes('eski')) && (
                                                     <Button 
                                                         variant="secondary" 
@@ -770,7 +684,6 @@ export default function ZumreTab() {
                                                     </Button>
                                                 )}
 
-                                                {/* Akıllı Asistan Butonu */}
                                                 <Button 
                                                     variant="secondary" 
                                                     size="sm" 
@@ -844,7 +757,6 @@ export default function ZumreTab() {
 
       {/* --- MODALS --- */}
       
-      {/* ÖNİZLEME VE YAZDIRMA MODAL */}
       {isPreviewOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl">
@@ -868,7 +780,6 @@ export default function ZumreTab() {
           </div>
       )}
 
-      {/* ARŞİV MODAL */}
       {isArchiveOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl">
@@ -894,7 +805,7 @@ export default function ZumreTab() {
                                           <button onClick={(e) => {e.stopPropagation(); deleteFromArchive(doc.id);}} className="text-slate-300 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
                                       </div>
                                       <h4 className="font-semibold text-slate-800 mb-1 truncate pr-6">{doc.name}</h4>
-                                      <p className="text-xs text-slate-500">{new Date(doc.createdAt?.seconds * 1000).toLocaleDateString('tr-TR')} tarihinde kaydedildi</p>
+                                      <p className="text-xs text-slate-500">{doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : 'Tarih yok'}</p>
                                       <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end">
                                           <span className="text-xs font-medium text-indigo-600 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                               Düzenlemek için tıkla <ChevronRight className="h-3 w-3 ml-1" />
@@ -909,7 +820,6 @@ export default function ZumreTab() {
           </div>
       )}
 
-      {/* SENARYO MODAL */}
       {isScenarioModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
