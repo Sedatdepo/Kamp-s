@@ -1,22 +1,23 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { HomeTab } from '@/components/dashboard/student/HomeTab';
-import { RiskFormTab } from '@/components/dashboard/student/RiskFormTab';
-import { InfoFormTab } from '@/components/dashboard/student/InfoFormTab';
-import { StudentCommunicationTab } from '@/components/dashboard/student/StudentCommunicationTab';
-import { TeacherChatsTab } from '@/components/dashboard/student/TeacherChatsTab';
-import { HomeworkTab } from '@/components/dashboard/student/HomeworkTab';
-import { ElectionVoteTab } from '@/components/dashboard/student/ElectionVoteTab';
-import { DutyRosterTab } from '@/components/dashboard/student/DutyRosterTab';
-import { SeatingPlanTab } from '@/components/dashboard/student/SeatingPlanTab';
-import { StudentSurveyTab } from '@/components/dashboard/student/StudentSurveyTab';
-import { AccountSettingsTab } from '@/components/dashboard/student/AccountSettingsTab';
+import { HomeTab } from './student/HomeTab';
+import { RiskFormTab } from './student/RiskFormTab';
+import { InfoFormTab } from './student/InfoFormTab';
+import { StudentCommunicationTab } from './student/StudentCommunicationTab';
+import { TeacherChatsTab } from './student/TeacherChatsTab';
+import { HomeworkTab } from './student/HomeworkTab';
+import { ElectionVoteTab } from './student/ElectionVoteTab';
+import { DutyRosterTab } from './student/DutyRosterTab';
+import { SeatingPlanTab } from './student/SeatingPlanTab';
+import { StudentSurveyTab } from './student/StudentSurveyTab';
+import { AccountSettingsTab } from './student/AccountSettingsTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -109,6 +110,8 @@ export function StudentDashboard() {
         </div>
     )
   }
+  
+  const behaviorScore = appUser?.type === 'student' ? (appUser.data.behaviorScore ?? 100) : 100;
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
@@ -116,9 +119,15 @@ export function StudentDashboard() {
         <main className="flex-1 p-4 sm:p-6">
             <div className="grid gap-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline text-2xl">Öğrenci Paneli</CardTitle>
-                        <CardDescription>Aşağıdaki menülerden istediğin işleme ulaşabilirsin.</CardDescription>
+                    <CardHeader className="flex flex-row justify-between items-center">
+                        <div>
+                            <CardTitle className="font-headline text-2xl">Öğrenci Paneli</CardTitle>
+                            <CardDescription>Aşağıdaki menülerden istediğin işleme ulaşabilirsin.</CardDescription>
+                        </div>
+                        <Card className="p-4 bg-background text-center">
+                            <CardDescription className="flex items-center gap-2"><UserCheck /> Davranış Puanı</CardDescription>
+                            <p className="text-4xl font-bold text-primary mt-1">{behaviorScore}</p>
+                        </Card>
                     </CardHeader>
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
