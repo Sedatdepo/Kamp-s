@@ -41,7 +41,7 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
     }
   }, [students]);
 
-  const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean) => {
+  const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
     setLocalStudents(prev => 
       prev.map(s => s.id === studentId ? { ...s, [field]: value } : s)
     );
@@ -137,13 +137,12 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                                 <TableCell>
                                      <Select 
                                         value={student.assignedLesson || ''} 
-                                        onValueChange={(value) => handleFieldChange(student.id, 'assignedLesson', value)}
+                                        onValueChange={(value) => handleFieldChange(student.id, 'assignedLesson', value === '' ? null : value)}
                                      >
                                         <SelectTrigger className="h-8">
                                             <SelectValue placeholder="Proje atayın..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Yok</SelectItem>
                                             {lessons?.map(lesson => (
                                                 <SelectItem key={lesson.id} value={lesson.id}>{lesson.name}</SelectItem>
                                             ))}
