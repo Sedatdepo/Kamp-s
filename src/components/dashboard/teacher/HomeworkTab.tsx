@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -11,6 +10,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { LiveHomeworkManagement } from './homework/LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './homework/HomeworkEvaluationTab';
 import { HomeworkLibrary } from './homework/HomeworkLibrary';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 
 // --- MAIN EXPORTED COMPONENT ---
@@ -32,11 +32,14 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
 
     return (
         <Tabs defaultValue="live">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
-                <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
-                <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
-            </TabsList>
+            <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+                <TabsList className="w-full justify-start">
+                    <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
+                    <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
+                    <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             <TabsContent value="live" className="mt-4">
                 <LiveHomeworkManagement
                     classId={classId}
