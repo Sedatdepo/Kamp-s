@@ -20,7 +20,7 @@ import { DisciplineTab } from './DisciplineTab';
 import ExamBuilder from './ExamBuilder';
 import { BepTab } from './BepTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -43,9 +43,10 @@ import { AttendanceTab } from './AttendanceTab';
 import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ZumreTab } from './ZumreTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep" | "zumre";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -327,10 +328,10 @@ function ClassSelectionScreen({
             <TabsContent value="documents" className="mt-4">
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
-                    <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
-                    <MenuCard icon={<Users />} title="Zümre Toplantı Tutanağı" description="Zümre kurulu kararlarını kaydedin." onClick={() => {}} isDisabled={false}/>
+                    <MenuCard icon={<Users2 />} title="Zümre Toplantı Tutanağı" description="Zümre kurulu kararlarını kaydedin." onClick={() => setActiveTab('zumre')} />
                     <MenuCard icon={<ClipboardList />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu kararları." onClick={() => {}} isDisabled={true}/>
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => {}} isDisabled={true}/>
+                    <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
                 </div>
             </TabsContent>
@@ -354,6 +355,7 @@ const TABS_CONFIG = {
   "discipline": { label: "Disiplin Süreci", icon: Scale },
   "questionbank": { label: "Sınav Hazırlama Modülü", icon: FileQuestion },
   "bep": { label: "BEP Modülü", icon: FileHeart },
+  "zumre": { label: "Zümre Tutanağı", icon: Users2 },
 } as const;
 
 
@@ -464,6 +466,40 @@ export function TeacherDashboard() {
         );
     }
     
+    if (activeTab === 'zumre' && !selectedClassId) {
+        return (
+             <div>
+               <div className="mb-6 flex justify-between items-center">
+                 <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                  <Users2 className="w-7 h-7 text-primary" />
+                  Zümre Toplantı Tutanağı
+                </h2>
+                <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+                </Button>
+              </div>
+              <ZumreTab />
+            </div>
+        );
+    }
+    
+    if (activeTab === 'bep' && !selectedClassId) {
+        return (
+             <div>
+               <div className="mb-6 flex justify-between items-center">
+                 <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                  <FileHeart className="w-7 h-7 text-primary" />
+                  BEP Modülü
+                </h2>
+                <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+                </Button>
+              </div>
+              <BepTab />
+            </div>
+        );
+    }
+
     if (!selectedClassId) {
         return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
     }
@@ -519,6 +555,9 @@ export function TeacherDashboard() {
                 break;
             case 'bep':
                 tabContent = <BepTab />;
+                break;
+             case 'zumre':
+                tabContent = <ZumreTab />;
                 break;
             default:
                 tabContent = null;
