@@ -39,7 +39,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssignSettingsModal } from './homework/AssignSettingsModal';
 import { EditAssignmentModal } from './homework/EditAssignmentModal';
@@ -48,269 +47,8 @@ import { RubricModal } from './homework/RubricModal';
 import { AddRubricModal } from './homework/AddRubricModal';
 import { PrintPreviewModal } from './homework/PrintPreviewModal';
 import { SuccessModal } from './homework/SuccessModal';
+import { HomeworkLibrary } from './homework/HomeworkLibrary';
 
-
-// --- HELPER COMPONENTS from User's Code ---
-// (These are defined inside the provided code, so I'm extracting them to be used by HomeworkLibrary)
-
-const LibraryHeader = ({ onOpenAddRubric, onOpenCreateAssignment, history, toggleFavoritesOnly, showFavoritesOnly }: any) => {
-    const [showHistory, setShowHistory] = useState(false);
-  
-    return (
-      <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-10 gap-4">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="bg-blue-600 p-2 rounded-lg text-white">
-            <GraduationCap size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">E-Ödev Yönetim Paneli</h1>
-            <p className="text-sm text-gray-500">Hoş Geldiniz, Öğretmenim</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end relative">
-          <button 
-            onClick={toggleFavoritesOnly}
-            className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors border ${showFavoritesOnly ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
-          >
-            <Heart size={16} className={showFavoritesOnly ? "fill-current" : ""} />
-            Favorilerim
-          </button>
-  
-          <button 
-            onClick={onOpenCreateAssignment}
-            className="flex items-center gap-2 text-sm font-medium text-white bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-          >
-            <PlusCircle size={16} />
-            Yeni Ödev
-          </button>
-          
-          <button 
-            onClick={onOpenAddRubric}
-            className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
-          >
-            <Plus size={16} />
-            Kriter
-          </button>
-  
-          <div className="relative">
-            <button 
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-2 rounded-full hover:bg-gray-100 relative text-gray-600"
-            >
-              <Bell size={20} />
-              {history.length > 0 && (
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-              )}
-            </button>
-            
-            {showHistory && (
-              <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                  <span className="font-bold text-gray-700 text-sm">Son İşlemler</span>
-                  <button onClick={() => setShowHistory(false)}><X size={14} className="text-gray-400" /></button>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {history.length === 0 ? (
-                    <div className="p-4 text-center text-gray-400 text-sm">Henüz işlem yapılmadı.</div>
-                  ) : (
-                    history.map((item: any, index: number) => (
-                      <div key={index} className="p-3 border-b border-gray-50 hover:bg-gray-50 flex gap-3">
-                        <div className="mt-1"><CheckCircle size={16} className="text-green-500" /></div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800 line-clamp-1">{item.title}</p>
-                          <p className="text-xs text-gray-500">{item.class} • {item.date}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-    );
-};
-  
-const StatsCards = ({ total, assignedCount, favoritesCount }: any) => (
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-    <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
-        <BookOpen size={24} />
-    </div>
-    <div>
-        <p className="text-sm text-gray-500 font-medium">Toplam Ödev</p>
-        <h3 className="text-2xl font-bold text-gray-800">{total}</h3>
-    </div>
-    </div>
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-    <div className="p-3 bg-green-50 text-green-600 rounded-full">
-        <CheckCircle size={24} />
-    </div>
-    <div>
-        <p className="text-sm text-gray-500 font-medium">Bu Ay Atanan</p>
-        <h3 className="text-2xl font-bold text-gray-800">{assignedCount}</h3>
-    </div>
-    </div>
-    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-    <div className="p-3 bg-red-50 text-red-600 rounded-full">
-        <Heart size={24} />
-    </div>
-    <div>
-        <p className="text-sm text-gray-500 font-medium">Favoriler</p>
-        <h3 className="text-2xl font-bold text-gray-800">{favoritesCount}</h3>
-    </div>
-    </div>
-</div>
-);
-
-const FilterBar = ({ gradeFilter, subjectFilter, setGradeFilter, setSubjectFilter, disabled }: any) => (
-<div className={`flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-opacity ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
-    <div className="flex items-center gap-2 text-gray-700 font-medium min-w-fit">
-    <Filter size={18} />
-    Filtrele:
-    </div>
-    
-    <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-    <div className="relative">
-        <select 
-        value={gradeFilter}
-        onChange={(e) => setGradeFilter(e.target.value)}
-        className={`appearance-none w-full md:w-48 border text-gray-700 py-2.5 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${gradeFilter === '' ? 'border-blue-400 bg-blue-50 font-semibold' : 'border-gray-300 bg-gray-50'}`}
-        >
-        <option value="" disabled>Sınıf Seçiniz</option>
-        <option value="9">9. Sınıf</option>
-        <option value="10">10. Sınıf</option>
-        <option value="11">11. Sınıf</option>
-        <option value="12">12. Sınıf</option>
-        </select>
-    </div>
-
-    <div className="relative">
-        <select 
-        value={subjectFilter}
-        onChange={(e) => setSubjectFilter(e.target.value)}
-        className={`appearance-none w-full md:w-48 border text-gray-700 py-2.5 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${subjectFilter === '' ? 'border-blue-400 bg-blue-50 font-semibold' : 'border-gray-300 bg-gray-50'}`}
-        >
-        <option value="" disabled>Ders Seçiniz</option>
-        <option value="physics">Fizik</option>
-        <option value="literature">Türk Dili ve Edebiyatı</option>
-        </select>
-    </div>
-    </div>
-</div>
-);
-
-const EmptyState = () => (
-<div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border-2 border-dashed border-blue-100 text-center px-4">
-    <div className="bg-blue-50 p-6 rounded-full mb-6">
-    <Search size={48} className="text-blue-400" />
-    </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">Ödevleri Görüntülemek İçin Seçim Yapınız</h3>
-    <p className="text-gray-500 max-w-md mx-auto">
-    İlgili sınıf ve dersi yukarıdaki filtrelerden seçerek, o gruba ait performans ödevlerini listeleyebilirsiniz.
-    </p>
-</div>
-);
-
-const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onToggleFavorite, onPrint }: any) => {
-    const isPhysics = item.subject === 'physics';
-    
-    const getFormatIcon = () => {
-        if (item.formats.includes('Video')) return <Video size={14} />;
-        if (item.formats.includes('Ses')) return <Mic size={14} />;
-        return <FileText size={14} />;
-    };
-  
-    return (
-      <div className={`group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col h-full ${isPhysics ? 'hover:border-cyan-400' : 'hover:border-rose-400'}`}>
-        <div className={`h-1.5 w-full ${isPhysics ? 'bg-cyan-600' : 'bg-rose-600'}`}></div>
-  
-        <div className="p-5 flex-grow flex flex-col relative">
-          <div className="absolute top-4 right-4 flex gap-2 z-10">
-            <button 
-              onClick={() => onPrint(item)}
-              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Ödevi Yazdır"
-            >
-              <Printer size={16} />
-            </button>
-            <button 
-              onClick={() => onToggleFavorite(item.id)}
-              className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-50 hover:text-gray-500'}`}
-              title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}
-            >
-              <Heart size={16} className={isFavorite ? "fill-current" : ""} />
-            </button>
-            <button 
-              onClick={() => onEdit(item)}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-              title="Ödevi Düzenle"
-            >
-              <Pencil size={16} />
-            </button>
-          </div>
-  
-          <div className="flex justify-between items-start mb-3 pr-24">
-            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
-              isPhysics ? 'bg-cyan-50 text-cyan-700' : 'bg-rose-50 text-rose-700'
-            }`}>
-              {isPhysics ? <Atom size={12} /> : <BookOpen size={12} />}
-              {isPhysics ? 'Fizik' : 'Edebiyat'}
-            </div>
-            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">
-              {item.grade}. Sınıf
-            </span>
-          </div>
-  
-          <h3 className="text-lg font-bold text-gray-800 mb-2 leading-tight group-hover:text-blue-600 transition-colors pr-6">
-            {item.title}
-          </h3>
-          
-          <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-            {item.description}
-          </p>
-  
-          <div className="bg-gray-50 border-l-4 border-gray-300 p-3 rounded-r-md mb-4 text-xs text-gray-600 italic relative">
-             <span className="font-semibold block not-italic mb-1 text-gray-700">Öğrenci Yönergesi:</span>
-             "{item.instructions}"
-          </div>
-  
-          <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 font-medium">
-            <div className="flex items-center gap-1.5" title="Kabul Edilen Formatlar">
-              {getFormatIcon()}
-              {item.formats}
-            </div>
-            <div className="flex items-center gap-1.5" title="Maksimum Dosya Boyutu">
-              <Paperclip size={14} />
-              Max: {item.size}
-            </div>
-          </div>
-        </div>
-  
-        <div className="p-4 pt-0 grid grid-cols-2 gap-3">
-          <button
-            onClick={() => onShowRubric(item)}
-            className="py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-xs"
-          >
-            <ClipboardList size={14} />
-            Kriterler
-          </button>
-          <button 
-            onClick={() => onAssign(item)}
-            className={`py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all active:scale-95 ${
-              isPhysics 
-                ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-cyan-200' 
-                : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
-            } shadow-sm hover:shadow-md text-xs`}
-          >
-            <Send size={14} />
-            Sınıfa Ata
-          </button>
-        </div>
-      </div>
-    );
-};
 
 // --- LIVE HOMEWORK MANAGEMENT COMPONENT ---
 const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
@@ -622,347 +360,8 @@ const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, student
 };
 
 
-// --- HOMEWORK LIBRARY COMPONENT ---
-const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
-    const { db } = useAuth();
-    const { toast } = useToast();
-    
-    const [gradeFilter, setGradeFilter] = useState('');
-    const [subjectFilter, setSubjectFilter] = useState('');
-    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-    
-    const [successModalOpen, setSuccessModalOpen] = useState(false);
-    const [rubricModalOpen, setRubricModalOpen] = useState(false);
-    const [addRubricModalOpen, setAddRubricModalOpen] = useState(false);
-    const [editAssignmentModalOpen, setEditAssignmentModalOpen] = useState(false);
-    const [createAssignmentModalOpen, setCreateAssignmentModalOpen] = useState(false);
-    const [assignSettingsModalOpen, setAssignSettingsModalOpen] = useState(false);
-    const [printModalOpen, setPrintModalOpen] = useState(false);
-    
-    const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-    const [assignDetails, setAssignDetails] = useState<any>(null);
-    const [history, setHistory] = useState<any[]>([]);
-    const [favorites, setFavorites] = useState<number[]>([]);
-    
-    const [assignments, setAssignments] = useState(assignmentsData);
-    const [rubrics, setRubrics] = useState<any>(initialRubricDefinitions);
 
-
-    const toggleFavorite = (id: number) => {
-        setFavorites(prev => 
-        prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
-        );
-    };
-
-    const toggleFavoritesOnly = () => {
-        setShowFavoritesOnly(!showFavoritesOnly);
-        if (!showFavoritesOnly) {
-        setGradeFilter('');
-        setSubjectFilter('');
-        }
-    };
-
-    const filteredAssignments = assignments.filter(item => {
-        if (showFavoritesOnly) {
-        return favorites.includes(item.id);
-        }
-        if (gradeFilter === '' || subjectFilter === '') return false;
-        
-        const gradeMatch = item.grade === parseInt(gradeFilter);
-        const subjectMatch = item.subject === subjectFilter;
-        return gradeMatch && subjectMatch;
-    });
-
-    const handleAssignClick = (assignment: any) => {
-        setSelectedAssignment(assignment);
-        setAssignSettingsModalOpen(true);
-    };
-
-    const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
-        if (!db) return;
-    
-        const rubricType = getRubricType(selectedAssignment.formats);
-        const rubric = rubrics[rubricType];
-    
-        // Group students by classId
-        const studentsByClass: { [key: string]: string[] } = {};
-        details.studentIds.forEach(studentId => {
-            const student = students.find(s => s.id === studentId);
-            if (student) {
-                if (!studentsByClass[student.classId]) {
-                    studentsByClass[student.classId] = [];
-                }
-                studentsByClass[student.classId].push(studentId);
-            }
-        });
-    
-        try {
-            const batch = writeBatch(db);
-    
-            for (const classId in studentsByClass) {
-                const newHomeworkDoc = {
-                    classId: classId,
-                    text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
-                    assignedDate: new Date().toISOString(),
-                    dueDate: details.date ? new Date(details.date).toISOString() : null,
-                    teacherName: teacherProfile?.name,
-                    lessonName: teacherProfile?.branch,
-                    rubric: rubric.items,
-                    assignedStudents: studentsByClass[classId],
-                    seenBy: [],
-                };
-                const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-                const newDocRef = doc(homeworksColRef); // Create a new doc ref to get the ID
-                batch.set(newDocRef, newHomeworkDoc);
-            }
-    
-            await batch.commit();
-            
-            const newHistoryItem = {
-                title: selectedAssignment.title,
-                class: `${details.studentIds.length} öğrenci`,
-                date: new Date().toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-            };
-    
-            setHistory(prev => [newHistoryItem, ...prev]);
-            setAssignDetails({assignedTo: `${details.studentIds.length} öğrenci`, date: details.date});
-            setSuccessModalOpen(true);
-    
-        } catch (error) {
-            toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
-        }
-    };
-
-    const handleShowRubric = (assignment: any) => {
-        setSelectedAssignment(assignment);
-        setRubricModalOpen(true);
-    };
-
-    const handleEditAssignment = (assignment: any) => {
-        setSelectedAssignment(assignment);
-        setEditAssignmentModalOpen(true);
-    };
-
-    const handlePrintAssignment = (assignment: any) => {
-        setSelectedAssignment(assignment);
-        setPrintModalOpen(true);
-    }
-
-    const handleSaveEditedAssignment = (updatedFields: any) => {
-        setAssignments(prev => prev.map(a => 
-        a.id === selectedAssignment.id ? { ...a, ...updatedFields } : a
-        ));
-    };
-
-    const handleSaveNewAssignment = (newAssignment: any) => {
-        const assignmentWithId = {
-            ...newAssignment,
-            id: Date.now(), 
-            grade: parseInt(newAssignment.grade)
-        };
-        setAssignments(prev => [assignmentWithId, ...prev]);
-    };
-
-    const handleSaveNewRubric = (newRubric: any) => {
-        const key = `custom_${Date.now()}`;
-        setRubrics(prev => ({
-        ...prev,
-        [key]: newRubric
-        }));
-    };
-
-    const handleSaveRubric = (key: string, rubric: any) => {
-        setRubrics(prev => ({ ...prev, [key]: rubric }));
-        toast({title: 'Kriterler Güncellendi', description: 'Değişiklikler bu oturum için kaydedildi.'})
-    };
-
-    const hasSelection = (gradeFilter !== '' && subjectFilter !== '') || showFavoritesOnly;
-
-    return (
-        <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-            
-            <LibraryHeader 
-                onOpenAddRubric={() => setAddRubricModalOpen(true)} 
-                onOpenCreateAssignment={() => setCreateAssignmentModalOpen(true)}
-                history={history}
-                toggleFavoritesOnly={toggleFavoritesOnly}
-                showFavoritesOnly={showFavoritesOnly}
-            />
-            
-            <main>
-            <div className="mb-8">
-                {!hasSelection && (
-                <StatsCards 
-                    total={assignments.length} 
-                    assignedCount={history.length} 
-                    favoritesCount={favorites.length} 
-                />
-                )}
-            </div>
-
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Performans Ödevleri (2025-2026 Maarif Modeli)</h2>
-                <p className="text-gray-500">
-                Yüklediğiniz yıllık planlardaki güncel tema ve kazanımlara uygun, araştırma odaklı performans ödevlerini filtreleyin ve özelleştirin.
-                </p>
-            </div>
-
-            {!showFavoritesOnly && (
-                <FilterBar 
-                gradeFilter={gradeFilter}
-                subjectFilter={subjectFilter}
-                setGradeFilter={setGradeFilter}
-                setSubjectFilter={setSubjectFilter}
-                disabled={showFavoritesOnly}
-                />
-            )}
-
-            {showFavoritesOnly && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
-                <span className="text-red-700 font-medium flex items-center gap-2"><Heart className="fill-current" size={18}/> Favori Ödevleriniz Listeleniyor</span>
-                <button onClick={toggleFavoritesOnly} className="text-sm text-red-600 hover:underline">Tümüne Dön</button>
-                </div>
-            )}
-
-            {!hasSelection ? (
-                <EmptyState />
-            ) : filteredAssignments.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredAssignments.map(item => (
-                    <AssignmentCard 
-                    key={item.id} 
-                    item={item} 
-                    onAssign={handleAssignClick}
-                    onShowRubric={handleShowRubric}
-                    onEdit={handleEditAssignment}
-                    isFavorite={favorites.includes(item.id)}
-                    onToggleFavorite={toggleFavorite}
-                    onPrint={handlePrintAssignment}
-                    />
-                ))}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                <div className="bg-gray-100 p-4 rounded-full mb-4">
-                    <Filter size={32} className="text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900">Sonuç Bulunamadı</h3>
-                <p className="text-gray-500">
-                    {showFavoritesOnly 
-                    ? "Henüz favorilere eklediğiniz bir ödev yok." 
-                    : "Seçili filtrelere uygun ödev yok. Lütfen filtreleri değiştirin."}
-                </p>
-                </div>
-            )}
-            </main>
-        </div>
-
-        <AssignSettingsModal 
-            isOpen={assignSettingsModalOpen}
-            onClose={() => setAssignSettingsModalOpen(false)}
-            assignment={selectedAssignment}
-            onConfirm={handleAssignConfirm}
-            classes={classes}
-            students={students}
-        />
-
-        <SuccessModal 
-            isOpen={successModalOpen} 
-            onClose={() => setSuccessModalOpen(false)} 
-            assignment={selectedAssignment}
-            details={assignDetails}
-        />
-
-        <RubricModal 
-            isOpen={rubricModalOpen}
-            onClose={() => setRubricModalOpen(false)}
-            assignment={selectedAssignment}
-            rubrics={rubrics}
-            onAddRubricClick={() => setAddRubricModalOpen(true)}
-            onSaveRubric={handleSaveRubric}
-        />
-
-        <AddRubricModal 
-            isOpen={addRubricModalOpen}
-            onClose={() => setAddRubricModalOpen(false)}
-            onSave={handleSaveNewRubric}
-        />
-
-        <EditAssignmentModal 
-            isOpen={editAssignmentModalOpen}
-            onClose={() => setEditAssignmentModalOpen(false)}
-            assignment={selectedAssignment}
-            onSave={handleSaveEditedAssignment}
-        />
-
-        <CreateAssignmentModal
-            isOpen={createAssignmentModalOpen}
-            onClose={() => setCreateAssignmentModalOpen(false)}
-            onSave={handleSaveNewAssignment}
-        />
-
-        <PrintPreviewModal
-            isOpen={printModalOpen}
-            onClose={() => setPrintModalOpen(false)}
-            assignment={selectedAssignment}
-        />
-        </div>
-    );
-};
-
-// --- MAIN EXPORTED COMPONENT ---
-export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
-    
-    const { db } = useAuth();
-    
-    const allStudentsForTeacherQuery = useMemo(() => {
-        if (!teacherProfile?.id || !db) return null;
-        const classIds = classes.map(c => c.id);
-        if (classIds.length === 0) return null;
-        return query(collection(db, 'students'), where('classId', 'in', classIds));
-    }, [teacherProfile?.id, db, classes]);
-
-    const { data: allStudents } = useFirestore<Student[]>(
-        `all-students-for-teacher-${teacherProfile?.id}`,
-        allStudentsForTeacherQuery
-    );
-
-    return (
-        <Tabs defaultValue="live">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
-                <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
-                <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
-            </TabsList>
-            <TabsContent value="live" className="mt-4">
-                <LiveHomeworkManagement
-                    classId={classId}
-                    currentClass={currentClass}
-                    teacherProfile={teacherProfile}
-                    students={students}
-                />
-            </TabsContent>
-            <TabsContent value="evaluation" className="mt-4">
-                <HomeworkEvaluationTab
-                    classId={classId}
-                    students={students}
-                    currentClass={currentClass}
-                    teacherProfile={teacherProfile}
-                />
-            </TabsContent>
-            <TabsContent value="library" className="mt-4">
-                <HomeworkLibrary 
-                    classId={classId}
-                    teacherProfile={teacherProfile}
-                    classes={classes}
-                    students={allStudents || []}
-                />
-            </TabsContent>
-        </Tabs>
-    );
-}
-
+// --- HOMEWORK EVALUATION TAB ---
 const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -1176,3 +575,57 @@ const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile
         </Card>
     );
 };
+
+
+
+// --- MAIN EXPORTED COMPONENT ---
+export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
+    
+    const { db } = useAuth();
+    
+    const allStudentsForTeacherQuery = useMemo(() => {
+        if (!teacherProfile?.id || !db) return null;
+        const classIds = classes.map(c => c.id);
+        if (classIds.length === 0) return null;
+        return query(collection(db, 'students'), where('classId', 'in', classIds));
+    }, [teacherProfile?.id, db, classes]);
+
+    const { data: allStudents } = useFirestore<Student[]>(
+        `all-students-for-teacher-${teacherProfile?.id}`,
+        allStudentsForTeacherQuery
+    );
+
+    return (
+        <Tabs defaultValue="live">
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
+                <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
+                <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
+            </TabsList>
+            <TabsContent value="live" className="mt-4">
+                <LiveHomeworkManagement
+                    classId={classId}
+                    currentClass={currentClass}
+                    teacherProfile={teacherProfile}
+                    students={students}
+                />
+            </TabsContent>
+            <TabsContent value="evaluation" className="mt-4">
+                <HomeworkEvaluationTab
+                    classId={classId}
+                    students={students}
+                    currentClass={currentClass}
+                    teacherProfile={teacherProfile}
+                />
+            </TabsContent>
+            <TabsContent value="library" className="mt-4">
+                <HomeworkLibrary 
+                    classId={classId}
+                    teacherProfile={teacherProfile}
+                    classes={classes}
+                    students={allStudents || []}
+                />
+            </TabsContent>
+        </Tabs>
+    );
+}
