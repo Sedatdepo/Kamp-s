@@ -1,7 +1,7 @@
 
 'use client'; 
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Home, Save, FileDown, Users2, PlusCircle, Trash2, GripVertical, 
   BookOpen, Settings, Zap, ListChecks, ChevronDown, ChevronRight, 
@@ -18,7 +18,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { SENARYOLAR } from '@/lib/zumre-senaryolari';
-
 
 // --- TİP TANIMLAMALARI ---
 declare global {
@@ -98,9 +97,8 @@ const KARAR_HAVUZU: Record<string, string> = {
 // --- MAIN APPLICATION ---
 export default function ZumreTab() {
   const { appUser, db } = useAuth();
-  const { db: localDb, setDb } = useDatabase();
+  const { db: localDb, setDb, loading } = useDatabase();
   const { zumreDocuments: savedDocs } = localDb;
-  const [loading, setLoading] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -459,7 +457,7 @@ export default function ZumreTab() {
 
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
              <Button variant="outline" size="sm" onClick={() => setIsArchiveOpen(true)}>
-               <FolderOpen className="mr-2 h-4 w-4" /> Arşiv ({savedDocs.length})
+               <FolderOpen className="mr-2 h-4 w-4" /> Arşiv ({savedDocs?.length || 0})
              </Button>
              <Button variant="secondary" size="sm" onClick={saveToArchive}>
                <Save className="mr-2 h-4 w-4" /> Kaydet
@@ -484,6 +482,7 @@ export default function ZumreTab() {
                     <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>
                     <h2 className="text-lg font-semibold text-slate-800">Toplantı Künyesi</h2>
                 </div>
+                {/* Şablon Seçimi */}
                 <div className="flex gap-2">
                     {Object.keys(SABLONLAR).map(sablon => (
                         <button 
@@ -537,6 +536,7 @@ export default function ZumreTab() {
                         <Input value={formData.yer} onChange={(e: any) => handleInputChange('yer', e.target.value)} />
                     </div>
                     
+                    {/* YENİ: İMZA ALANLARI */}
                     <div className="col-span-full border-t border-slate-100 my-2"></div>
                     
                     <div className="space-y-2">
@@ -734,21 +734,21 @@ export default function ZumreTab() {
                   </div>
                   
                   <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                      {savedDocs.length === 0 ? (
+                      {(savedDocs || []).length === 0 ? (
                           <div className="text-center py-12 text-slate-400">
                               <Archive className="h-16 w-16 mx-auto mb-4 opacity-20" />
                               <p>Henüz kaydedilmiş bir evrak bulunmuyor.</p>
                           </div>
                       ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {savedDocs.map(doc => (
+                              {savedDocs.map((doc: any) => (
                                   <div key={doc.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group relative" onClick={() => loadFromArchive(doc)}>
                                       <div className="flex justify-between items-start mb-2">
                                           <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileText className="h-5 w-5" /></div>
                                           <button onClick={(e) => {e.stopPropagation(); deleteFromArchive(doc.id);}} className="text-slate-300 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
                                       </div>
                                       <h4 className="font-semibold text-slate-800 mb-1 truncate pr-6">{doc.name}</h4>
-                                      <p className="text-xs text-slate-500">{doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : 'Tarih yok'}</p>
+                                      <p className="text-xs text-slate-500">{doc.createdAt ? new Date(doc.createdAt?.seconds * 1000).toLocaleDateString('tr-TR') : 'Tarih yok'}</p>
                                       <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end">
                                           <span className="text-xs font-medium text-indigo-600 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                               Düzenlemek için tıkla <ChevronRight className="h-3 w-3 ml-1" />
