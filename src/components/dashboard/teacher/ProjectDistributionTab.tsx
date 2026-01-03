@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { useMemo, useState } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
@@ -13,7 +12,7 @@ import { DistributionAssignmentTab } from './DistributionAssignmentTab';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Button } from '@/components/ui/button';
-import { HomeworkLibrary } from './homework/HomeworkLibrary';
+import { ProjectLibrary } from './project-pool/ProjectLibrary';
 
 
 interface ProjectDistributionTabProps {
@@ -78,7 +77,7 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass, 
           {teacherProfile && <ProjectGradingTab students={students || []} teacherProfile={teacherProfile} currentClass={currentClass} />}
         </TabsContent>
          <TabsContent value="pool" className="mt-4">
-          <HomeworkLibrary 
+          <ProjectLibrary 
             classId={classId}
             teacherProfile={teacherProfile}
             classes={classes}
