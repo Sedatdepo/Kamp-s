@@ -13,6 +13,7 @@ import {
   ShieldCheck as HonorIcon,
   FileText,
   Save,
+  MoreVertical,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -25,6 +26,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Student, Candidate, ElectionType, Class, TeacherProfile, ElectionDocument } from '@/lib/types';
 import {
@@ -302,14 +309,24 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                         <CardDescription>{electionInfo.title}</CardDescription>
                     </div>
                      <div className='flex items-center gap-2'>
-                        {selectedRecordId === null && !currentClass?.isElectionActive && winner && (
-                             <Button variant="secondary" onClick={handleSaveToArchive}>
-                                <Save className="mr-2 h-4 w-4"/> Arşive Kaydet
-                            </Button>
-                        )}
-                        <Button variant="outline" onClick={handleExport} disabled={!winner}>
-                            <FileText className="mr-2 h-4 w-4"/> Tutanak Oluştur (.rtf)
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                    <span className="sr-only">İşlemler</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {selectedRecordId === null && !currentClass?.isElectionActive && winner && (
+                                    <DropdownMenuItem onSelect={handleSaveToArchive}>
+                                        <Save className="mr-2 h-4 w-4"/> Arşive Kaydet
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onSelect={handleExport} disabled={!winner}>
+                                    <FileText className="mr-2 h-4 w-4"/> Tutanak Oluştur (.rtf)
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                      </div>
                 </div>
              </CardHeader>
