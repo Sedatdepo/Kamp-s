@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LessonManager } from './LessonManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 interface DistributionAssignmentTabProps {
   classId: string;
@@ -71,6 +72,24 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
     }
   };
 
+  const handleToggleChange = async (checked: boolean) => {
+    if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', classId);
+    try {
+      await updateDoc(classRef, { isProjectSelectionActive: checked });
+      toast({
+        title: 'Başarılı',
+        description: `Proje seçimi öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.`,
+      });
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Hata',
+        description: 'Güncelleme sırasında bir sorun oluştu.',
+      });
+    }
+  };
+
   const filteredStudents = useMemo(() => {
     if (filterLessonId === 'all') return localStudents;
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
@@ -81,7 +100,23 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-            <LessonManager teacherId={teacherId} students={students} />
+             <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle className="font-headline">Proje Dersleri ve Kontenjanları</CardTitle>
+                            <CardDescription>Proje olarak sunulacak dersleri ve öğrenci kotalarını yönetin.</CardDescription>
+                        </div>
+                        <Switch
+                            checked={currentClass?.isProjectSelectionActive || false}
+                            onCheckedChange={handleToggleChange}
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <LessonManager teacherId={teacherId} students={students} />
+                </CardContent>
+            </Card>
         </div>
         <div className="lg:col-span-2">
             <Card>
@@ -138,7 +173,7 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                                 </TableCell>
                                 <TableCell>
                                      <Select 
-                                        value={student.assignedLesson || ''} 
+                                        value={student.assignedLesson || 'unassigned'} 
                                         onValueChange={(value) => handleFieldChange(student.id, 'assignedLesson', value)}
                                      >
                                         <SelectTrigger className="h-8">

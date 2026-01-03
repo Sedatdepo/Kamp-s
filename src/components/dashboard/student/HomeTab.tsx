@@ -244,7 +244,7 @@ export function HomeTab() {
             </CardContent>
        </Card>
 
-      <ProjectSelection studentClass={studentClass} lessons={lessons} student={appUser.data} db={db} />
+      <ProjectSelection studentClass={studentClass} lessons={lessons || []} student={appUser.data} db={db} />
     </div>
   );
 }
