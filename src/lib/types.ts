@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -159,13 +160,11 @@ export interface Class {
 export type GradingScores = {
     exam1?: number;
     exam2?: number;
-    perf1?: number;
-    perf2?: number;
-    projectScores?: { [key: string]: number };
-    behaviorScores?: { [key: string]: number };
-    // Deprecated, use perf1/perf2
+    // Use scores1/scores2 for performance grades, projectScores for project, behaviorScores for behavior
     scores1?: { [key: string]: number };
     scores2?: { [key: string]: number };
+    projectScores?: { [key: string]: number };
+    behaviorScores?: { [key: string]: number };
 }
 
 export interface Student {
@@ -193,7 +192,7 @@ export interface Student {
     status: 'present' | 'absent' | 'late' | 'excused';
   }[];
 
-  // Project Fields
+  // Project Fields - DEPRECATED, use assignedLesson
   projectCode?: string;
   projectDueDate?: string; // YYYY-MM-DD
   projectSubmitted?: boolean;
