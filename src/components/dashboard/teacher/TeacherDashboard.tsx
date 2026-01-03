@@ -328,10 +328,10 @@ function ClassSelectionScreen({
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
-                    <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
-                    <MenuCard icon={<Users />} title="Zümre Toplantı Tutanağı" description="Zümre kurulu kararlarını kaydedin." onClick={() => {}} isDisabled={true}/>
+                    <MenuCard icon={<Users />} title="Zümre Toplantı Tutanağı" description="Zümre kurulu kararlarını kaydedin." onClick={() => {}} isDisabled={false}/>
                     <MenuCard icon={<ClipboardList />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu kararları." onClick={() => {}} isDisabled={true}/>
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => {}} isDisabled={true}/>
+                    <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => {}} isDisabled={true} />
                 </div>
             </TabsContent>
         </Tabs>
