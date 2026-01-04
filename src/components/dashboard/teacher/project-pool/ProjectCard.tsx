@@ -1,8 +1,7 @@
-
 'use client';
 
 import React from 'react';
-import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Video } from 'lucide-react';
+import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Send, Video, FileDown } from 'lucide-react';
 import { exportProjectToRtf } from '@/lib/word-export'; // Import the new function
 
 export const ProjectCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onToggleFavorite, onPrint }: any) => {
