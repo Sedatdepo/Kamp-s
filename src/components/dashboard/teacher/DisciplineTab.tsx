@@ -248,7 +248,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
                 </DialogContent>
             </Dialog>
             
-            <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
+            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Süreci Kaydet</DialogTitle>
@@ -259,7 +259,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
                         <Input id="save-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsSaveModalOpen(false)}>İptal</Button>
+                        <Button variant="ghost" onClick={() => setIsSaveDialogOpen(false)}>İptal</Button>
                         <Button onClick={handleSaveConfirm}>Kaydet</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -334,8 +334,8 @@ const Phase1 = ({ isVisible, onNext, data, updateFormData, students, teacherProf
                 break;
         }
 
-        const fullHtml = `<!DOCTYPE html><html><head><title>${title}</title><style>body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm; }</style></head><body>${docHtml}</body></html>`;
-        const blob = new Blob([fullHtml], { type: 'application/msword' });
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm; }</style></head><body>${docHtml}</body></html>`;
+        const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -406,7 +406,7 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateFormData }: any) => {
     
      const generateDocument = () => {
         const docHtml = `
-            <!DOCTYPE html><html><head><title>İfade ve Görüşme Tutanağı</title></head>
+            <!DOCTYPE html><html><head><meta charset="UTF-8"><title>İfade ve Görüşme Tutanağı</title></head>
             <body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
                 <h2 style="text-align: center;">ÖĞRENCİ İFADE VE REHBERLİK GÖRÜŞME TUTANAĞI</h2>
                 <p><strong>Öğrenci:</strong> ${data.studentInfo.studentName}</p>
@@ -422,7 +422,7 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateFormData }: any) => {
                 <p style="border: 1px solid #000; padding: 10px; min-height: 100px;">${(localData.counselingSummary || '').replace(/\n/g, '<br>')}</p>
             </body></html>
         `;
-        const blob = new Blob([docHtml], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -467,7 +467,7 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
     
     const generateDocument = () => {
         const docHtml = `
-             <!DOCTYPE html><html><head><title>Disiplin Kuruluna Sevk Yazısı</title></head>
+             <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Disiplin Kuruluna Sevk Yazısı</title></head>
             <body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
                 <h2 style="text-align: center;">DİSİPLİN KURULUNA SEVK YAZISI</h2>
                 <p style="text-align: right;">Tarih: ${new Date().toLocaleDateString('tr-TR')}</p>
@@ -492,7 +492,7 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
                 </p>
             </body></html>
         `;
-        const blob = new Blob([docHtml], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -535,7 +535,7 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
 
     const generateDocument = () => {
          const docHtml = `
-            <!DOCTYPE html><html><head><title>Disiplin Kurulu Karar Tutanağı</title></head>
+            <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Disiplin Kurulu Karar Tutanağı</title></head>
             <body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
                 <h2 style="text-align: center;">DİSİPLİN KURULU KARAR TUTANAĞI</h2>
                 <p><strong>Toplantı Tarihi:</strong> ${localData.disciplinaryDate ? new Date(localData.disciplinaryDate).toLocaleDateString('tr-TR') : ''}</p>
@@ -562,7 +562,7 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
                 </div>
             </body></html>
         `;
-        const blob = new Blob([docHtml], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -616,7 +616,7 @@ const Phase5 = ({ isVisible, onPrev, data, teacherProfile }: any) => {
 
      const generateDocument = () => {
         const docHtml = `
-            <!DOCTYPE html><html><head><title>Karar Bildirim Yazısı</title></head>
+            <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Karar Bildirim Yazısı</title></head>
             <body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
                 <h2 style="text-align: center;">DİSİPLİN KURULU KARAR BİLDİRİM YAZISI</h2>
                 <p style="text-align: right;">Tarih: ${new Date().toLocaleDateString('tr-TR')}</p>
@@ -638,7 +638,7 @@ const Phase5 = ({ isVisible, onPrev, data, teacherProfile }: any) => {
                 <p><strong>İmza:</strong></p>
             </body></html>
         `;
-        const blob = new Blob([docHtml], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
