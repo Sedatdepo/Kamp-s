@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,12 @@ export function GradingSettingsDialog({
 }: GradingSettingsDialogProps) {
     const { toast } = useToast();
     const [localProfile, setLocalProfile] = useState(teacherProfile);
+
+    useEffect(() => {
+        if(isOpen) {
+            setLocalProfile(teacherProfile);
+        }
+    }, [isOpen, teacherProfile]);
 
     const handleSave = () => {
         updateTeacherProfile(localProfile);
