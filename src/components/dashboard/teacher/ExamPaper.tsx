@@ -15,8 +15,8 @@ const getThemeStyles = (theme: ExamTheme) => {
 const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, index: number, styles: any, lineHeight: number }) => {
     return (
       <div 
-        className={`relative p-2 flex flex-col group ${styles.slotBorder} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''}`}
-        style={{ flex: slot.span }}
+        className={`relative p-2 flex flex-col group ${styles.slotBorder} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''} flex-grow-0 flex-shrink-0`}
+        style={{ flexBasis: `${slot.span * 10}%` }} // Using percentage for basis
       >
         <span className={`absolute top-0 right-0 text-[10px] px-1.5 py-0.5 ${styles.slotNumber}`}>#{index + 1}</span>
         {!slot.filled ? (
@@ -27,7 +27,7 @@ const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, in
                 <span className="font-bold">{index + 1}.</span>
                 <div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} />
             </div>
-            {slot.image && <img src={slot.image} alt="Soru görseli" className="max-h-24 my-2 block" />}
+            {slot.image && <img src={slot.image} alt="Soru görseli" className="w-full h-full object-cover my-2 block" />}
             {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
             {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
             {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
