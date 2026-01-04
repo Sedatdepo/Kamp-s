@@ -94,19 +94,28 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                 }
             }
 
-            // For both types, create a homework entry for details
-            const studentsByClass: { [key: string]: string[] } = {};
+            // Group students by class to create separate homework docs for each class
+            const studentsByClass: { [classId: string]: string[] } = {};
             studentIds.forEach(studentId => {
                 const student = students.find(s => s.id === studentId);
-                if (student && student.classId) { // Ensure classId exists
+                // Ensure student and classId are valid before proceeding
+                if (student && student.classId) {
                     if (!studentsByClass[student.classId]) {
                         studentsByClass[student.classId] = [];
                     }
                     studentsByClass[student.classId].push(studentId);
+                } else {
+                    console.warn(`Student with ID ${studentId} not found or has no classId.`);
                 }
             });
     
             for (const classId in studentsByClass) {
+                // Defensive check for classId
+                if (typeof classId !== 'string' || classId.trim() === '') {
+                    console.error("Invalid classId detected:", classId);
+                    continue; // Skip this iteration
+                }
+
                 const newHomeworkDoc: Partial<Homework> = {
                     classId: classId,
                     text: selectedAssignment.title,
@@ -119,10 +128,15 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     seenBy: [],
                     questions: selectedAssignment.questions || [],
                     instructions: selectedAssignment.instructions,
-                    assignmentType: type, // Store the type
+                    assignmentType: type,
                 };
+
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-                const newDocRef = doc(homeworksColRef, type === 'project' ? `project_${selectedAssignment.id}` : undefined);
+                // For projects, we want a specific ID to find it later.
+                const newDocRef = type === 'project' 
+                    ? doc(homeworksColRef, `project_${selectedAssignment.id}`)
+                    : doc(homeworksColRef);
+
                 batch.set(newDocRef, newHomeworkDoc);
             }
     
@@ -140,7 +154,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     
         } catch (error) {
             console.error("Assignment Error:", error);
-            toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
+            toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı. Lütfen konsolu kontrol edin.'});
         }
     };
     
