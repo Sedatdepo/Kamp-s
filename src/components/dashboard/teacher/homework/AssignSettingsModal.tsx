@@ -7,9 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Calendar, Users, Clock, CheckCircle, Send, X, RadioGroup } from 'lucide-react';
+import { Calendar, Users, Clock, CheckCircle, Send, X } from 'lucide-react';
 import { Student, Class } from '@/lib/types';
-import { RadioGroupItem } from '@/components/ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, students }: any) => {
@@ -127,7 +127,7 @@ export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, cl
                 </label>
                 <ScrollArea className="h-64 border rounded-lg p-2 bg-gray-50">
                 {selectedClassIds.length > 0 ? (
-                    (classes || []).filter(c => selectedClassIds.includes(c.id)).map(cls => {
+                    (classes || []).filter((c:Class) => selectedClassIds.includes(c.id)).map((cls:Class) => {
                          const studentsInThisClass = students.filter((s: Student) => s.classId === cls.id);
                          const areAllInClassSelected = studentsInThisClass.every((s: Student) => selectedStudentIds.includes(s.id));
                          return (
