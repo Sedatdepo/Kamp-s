@@ -1,15 +1,14 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { Class, Announcement, CommunicationDocument } from '@/lib/types';
+import { useState, useMemo, useCallback } from 'react';
+import { doc, updateDoc, collection, addDoc, Timestamp, query, where } from 'firebase/firestore';
+import { Class, Announcement, Message, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Megaphone, Clock, Trash2, Eye, Save, Edit, X } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,49 +21,39 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from './RecordManager';
+import { useFirestore } from '@/hooks/useFirestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 interface CommunicationTabProps {
   classId: string;
   currentClass: Class | null;
 }
 
-export function CommunicationTab({ classId, currentClass }: CommunicationTabProps) {
+const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
+
+function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   const [announcementText, setAnnouncementText] = useState('');
   const { toast } = useToast();
   const { db } = useAuth();
-  const { db: localDb, setDb: setLocalDb, loading } = useDatabase();
-  const { communicationDocuments = [] } = localDb;
-
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-
+  
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<number | null>(null);
   const [editingAnnouncementText, setEditingAnnouncementText] = useState('');
-
+  
   const displayedAnnouncements = useMemo(() => {
-    if (selectedRecordId) {
-      const record = communicationDocuments.find(d => d.id === selectedRecordId);
-      return record ? record.data.announcements : [];
-    }
     return currentClass?.announcements || [];
-  }, [selectedRecordId, communicationDocuments, currentClass]);
+  }, [currentClass]);
 
   const handleAddAnnouncement = async () => {
-    if (!db) return;
-    if (!announcementText.trim()) {
-      toast({ variant: 'destructive', title: 'Duyuru metni boş olamaz.' });
-      return;
-    }
-    if (!currentClass) return;
+    if (!db || !announcementText.trim() || !currentClass) return;
 
     const newAnnouncement: Announcement = {
-      id: Date.now(),
-      text: announcementText,
-      date: new Date().toISOString(),
-      seenBy: [],
+      id: Date.now(), text: announcementText, date: new Date().toISOString(), seenBy: [],
     };
-
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = [newAnnouncement, ...(currentClass.announcements || [])];
 
@@ -79,12 +68,8 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
 
   const handleDeleteAnnouncement = async (announcementId: number) => {
     if (!db || !currentClass) return;
-
     const classRef = doc(db, 'classes', classId);
-    const updatedAnnouncements = (currentClass.announcements || []).filter(
-      (ann) => ann.id !== announcementId
-    );
-
+    const updatedAnnouncements = (currentClass.announcements || []).filter((ann) => ann.id !== announcementId);
     try {
       await updateDoc(classRef, { announcements: updatedAnnouncements });
       toast({ title: 'Duyuru silindi.' });
@@ -97,24 +82,14 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
     setEditingAnnouncementId(ann.id);
     setEditingAnnouncementText(ann.text);
   };
-
-  const handleCancelEdit = () => {
-    setEditingAnnouncementId(null);
-    setEditingAnnouncementText('');
-  };
+  const handleCancelEdit = () => { setEditingAnnouncementId(null); setEditingAnnouncementText(''); };
 
   const handleSaveEdit = async () => {
-    if (!db || !currentClass || editingAnnouncementId === null) return;
-    if (!editingAnnouncementText.trim()) {
-        toast({ variant: 'destructive', title: 'Duyuru metni boş olamaz.' });
-        return;
-    }
-
+    if (!db || !currentClass || editingAnnouncementId === null || !editingAnnouncementText.trim()) return;
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = (currentClass.announcements || []).map(ann => 
         ann.id === editingAnnouncementId ? { ...ann, text: editingAnnouncementText } : ann
     );
-
     try {
         await updateDoc(classRef, { announcements: updatedAnnouncements });
         toast({ title: 'Duyuru güncellendi.' });
@@ -124,166 +99,177 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
     }
   };
 
-  const handleSaveToArchive = () => {
-    if (!currentClass || !currentClass.announcements || currentClass.announcements.length === 0) {
-      toast({ variant: 'destructive', title: 'Arşivlenemiyor', description: 'Arşivlenecek duyuru yok.' });
-      return;
-    }
-    const newRecord: CommunicationDocument = {
-      id: `comm_${Date.now()}`,
-      name: `Duyurular - ${new Date().toLocaleDateString('tr-TR')}`,
-      date: new Date().toISOString(),
-      classId: currentClass.id,
-      data: {
-        announcements: currentClass.announcements,
-      },
-    };
-
-    setLocalDb(prevDb => ({
-      ...prevDb,
-      communicationDocuments: [...(prevDb.communicationDocuments || []), newRecord],
-    }));
-    toast({ title: 'Kaydedildi', description: 'Mevcut duyurular arşive başarıyla kaydedildi.' });
-  };
-
-  const handleNewRecord = useCallback(() => {
-    setSelectedRecordId(null);
-  }, []);
-
-  const handleDeleteRecord = useCallback(() => {
-    if (!selectedRecordId) return;
-    setLocalDb(prevDb => ({
-      ...prevDb,
-      communicationDocuments: (prevDb.communicationDocuments || []).filter(d => d.id !== selectedRecordId),
-    }));
-    handleNewRecord();
-    toast({ title: "Silindi", description: "Kayıt arşivden silindi.", variant: "destructive" });
-  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
-
-  if (loading) return <div>Yükleniyor...</div>;
-
   return (
-    <TooltipProvider>
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
-                <Megaphone className="h-6 w-6" />
-                {selectedRecordId ? 'Arşivlenmiş Duyurular' : 'Canlı Duyurular'}
-              </CardTitle>
-              <CardDescription>
-                {selectedRecordId ? 'Seçili kayda ait duyuruları görüntülüyorsunuz.' : 'Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!selectedRecordId && (
-                <>
-                  <Textarea
-                    value={announcementText}
-                    onChange={(e) => setAnnouncementText(e.target.value)}
-                    placeholder="Duyuru metnini buraya yazın..."
-                    rows={5}
-                  />
-                  <Button onClick={handleAddAnnouncement}>Yayınla</Button>
-                </>
-              )}
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
-                {displayedAnnouncements.length > 0 ? (
-                  displayedAnnouncements.map((ann) => (
-                    <div key={ann.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start gap-4">
-                      {editingAnnouncementId === ann.id ? (
+    <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-2">
+            <Megaphone className="h-6 w-6" /> Duyuru Paneli
+          </CardTitle>
+          <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <Textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Duyuru metnini buraya yazın..." rows={5}/>
+            <Button onClick={handleAddAnnouncement}>Yayınla</Button>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
+            {displayedAnnouncements.length > 0 ? (
+                displayedAnnouncements.map((ann) => (
+                <div key={ann.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start gap-4">
+                    {editingAnnouncementId === ann.id ? (
                         <div className="w-full space-y-2">
-                            <Textarea 
-                                value={editingAnnouncementText}
-                                onChange={(e) => setEditingAnnouncementText(e.target.value)}
-                                className="bg-white"
-                            />
-                            <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveEdit}><Save className="mr-2 h-4 w-4"/>Kaydet</Button>
-                                <Button size="sm" variant="ghost" onClick={handleCancelEdit}>İptal</Button>
+                            <Textarea value={editingAnnouncementText} onChange={(e) => setEditingAnnouncementText(e.target.value)} className="bg-white"/>
+                            <div className="flex gap-2"><Button size="sm" onClick={handleSaveEdit}><Save className="mr-2 h-4 w-4"/>Kaydet</Button><Button size="sm" variant="ghost" onClick={handleCancelEdit}>İptal</Button></div>
+                        </div>
+                    ) : ( <>
+                        <div className="flex-1"><p className="text-sm">{ann.text}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                            <div className="flex items-center gap-1"><Clock className="h-3 w-3" /><span>{new Date(ann.date).toLocaleDateString('tr-TR')}</span></div>
                             </div>
                         </div>
-                      ) : (
-                        <>
-                            <div className="flex-1">
-                                <p className="text-sm">{ann.text}</p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                                <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(ann.date).toLocaleDateString('tr-TR')}</span>
-                                </div>
-                                {!selectedRecordId && (
-                                    <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1 cursor-default">
-                                        <Eye className="h-3 w-3" />
-                                        <span>{ann.seenBy?.length || 0} Görüldü</span>
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {ann.seenBy && ann.seenBy.length > 0
-                                        ? <p>{currentClass?.students?.filter(s => ann.seenBy.includes(s.id)).map(s => s.name).join(', ') || 'Gören öğrenci bulunamadı.'}</p>
-                                        : <p>Henüz kimse görmedi.</p>
-                                        }
-                                    </TooltipContent>
-                                    </Tooltip>
-                                )}
-                                </div>
+                        <div className="flex">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-blue-600" onClick={() => handleStartEdit(ann)}><Edit className="h-4 w-4" /></Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu duyuruyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    </>)}
+                </div>
+                ))
+            ) : (<p className="text-center text-sm text-muted-foreground py-4">Görüntülenecek duyuru yok.</p>)}
+            </div>
+        </CardContent>
+    </Card>
+  )
+}
+
+function MessagesPanel({ classId }: { classId: string }) {
+    const { appUser, db } = useAuth();
+    const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [newMessage, setNewMessage] = useState('');
+    const { toast } = useToast();
+
+    const studentsQuery = useMemo(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
+    const { data: students } = useFirestore<Student[]>(`students-for-chat-${classId}`, studentsQuery);
+
+    const messagesQuery = useMemo(() => {
+        if (!db || !teacherId) return null;
+        return query(collection(db, 'messages'), where('participants', 'array-contains', teacherId));
+    }, [db, teacherId]);
+
+    const { data: allMessages } = useFirestore<Message[]>(`all-messages-for-teacher-${teacherId}`, messagesQuery);
+
+    const unreadMessagesCount = useMemo(() => {
+        const counts = new Map<string, number>();
+        allMessages.forEach(msg => {
+            if (msg.receiverId === teacherId && !msg.isRead) {
+                counts.set(msg.senderId, (counts.get(msg.senderId) || 0) + 1);
+            }
+        });
+        return counts;
+    }, [allMessages, teacherId]);
+
+    const handleSendMessage = async () => {
+        if (!newMessage.trim() || !selectedStudent || !db || !teacherId) return;
+        await addDoc(collection(db, 'messages'), {
+            senderId: teacherId,
+            receiverId: selectedStudent.id,
+            participants: [selectedStudent.id, teacherId],
+            text: newMessage,
+            timestamp: Timestamp.now(),
+            isRead: false,
+        });
+        setNewMessage('');
+        toast({ title: "Mesaj gönderildi." });
+    };
+
+    const studentList = useMemo(() => {
+        if (!students) return [];
+        const messageStudentIds = new Set(allMessages.map(m => m.senderId === teacherId ? m.receiverId : m.senderId));
+        const studentsWithMessages = students.filter(s => messageStudentIds.has(s.id));
+        const studentsWithoutMessages = students.filter(s => !messageStudentIds.has(s.id));
+        return [...studentsWithMessages, ...studentsWithoutMessages];
+    }, [students, allMessages, teacherId]);
+
+    const chatMessages = useMemo(() => {
+        if (!selectedStudent) return [];
+        return allMessages.filter(m => m.participants.includes(selectedStudent.id)).sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+    }, [allMessages, selectedStudent]);
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[70vh]">
+            <Card className="md:col-span-1 flex flex-col">
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2"><Users className="h-6 w-6"/> Öğrenciler</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto">
+                    {studentList.map(student => (
+                        <div key={student.id} onClick={() => setSelectedStudent(student)}
+                            className={`p-3 rounded-lg cursor-pointer flex justify-between items-center ${selectedStudent?.id === student.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
+                            <div className="flex items-center gap-3">
+                                <Avatar><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
+                                <span className="font-medium">{student.name}</span>
                             </div>
-                            {!selectedRecordId && (
-                                <div className="flex">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-blue-600" onClick={() => handleStartEdit(ann)}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-red-500">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                        Bu duyuruyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">
-                                        Sil
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                </div>
+                            {unreadMessagesCount.has(student.id) && (
+                                <span className="bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">{unreadMessagesCount.get(student.id)}</span>
                             )}
-                        </>
-                      )}
-                    </div>
-                  ))
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+            <Card className="md:col-span-2 flex flex-col">
+                {selectedStudent ? (
+                    <>
+                        <CardHeader>
+                            <CardTitle className="font-headline flex items-center gap-2">
+                                <MessageSquare className="h-6 w-6"/> Sohbet: {selectedStudent.name}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col gap-4 overflow-y-hidden">
+                             <ScrollArea className="flex-1 p-4 border rounded-md bg-muted/30">
+                                {chatMessages.map(msg => (
+                                    <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
+                                            <p>{msg.text}</p>
+                                            <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p', { locale: tr }) : ''}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </ScrollArea>
+                            <div className="flex gap-2">
+                                <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
+                                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}><Send className="h-4 w-4" /></Button>
+                            </div>
+                        </CardContent>
+                    </>
                 ) : (
-                  <p className="text-center text-sm text-muted-foreground py-4">Görüntülenecek duyuru yok.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                        <User className="h-16 w-16 mb-4"/>
+                        <p>Görüşme başlatmak için bir öğrenci seçin.</p>
+                    </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+            </Card>
         </div>
-        <div className="space-y-4">
-            <RecordManager
-                records={(communicationDocuments || []).filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-                onNewRecord={handleNewRecord}
-                onDeleteRecord={handleDeleteRecord}
-                noun="Duyuru Kaydı"
-            />
-            <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
-                <Save className="mr-2 h-4 w-4" /> Canlı Duyuruları Arşive Kaydet
-            </Button>
-        </div>
-      </div>
-    </TooltipProvider>
+    )
+}
+
+
+export function CommunicationTab({ classId, currentClass }: CommunicationTabProps) {
+  return (
+    <Tabs defaultValue="announcements">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="announcements">Duyurular</TabsTrigger>
+        <TabsTrigger value="messages">Öğrenci Mesajları</TabsTrigger>
+      </TabsList>
+      <TabsContent value="announcements" className="mt-4">
+        <AnnouncementsPanel classId={classId} currentClass={currentClass} />
+      </TabsContent>
+      <TabsContent value="messages" className="mt-4">
+        <MessagesPanel classId={classId} />
+      </TabsContent>
+    </Tabs>
   );
 }

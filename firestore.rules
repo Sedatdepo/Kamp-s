@@ -68,8 +68,11 @@ service cloud.firestore {
     }
     
     match /messages/{messageId} {
-      allow read, write: if request.auth.uid in resource.data.participants;
-      allow list: if isSignedIn() && request.query.filters[0][2] == request.auth.uid;
+      allow read: if request.auth.uid in resource.data.participants;
+      // Öğretmen ve öğrenciler mesaj gönderebilir.
+      // Gönderen kişi kendi auth.uid'si olmalı ve alıcı da participants listesinde olmalı.
+      allow create: if request.auth.uid == request.resource.data.senderId &&
+                     request.resource.data.receiverId in request.resource.data.participants;
     }
     
     match /roles_teacher/{uid} {
