@@ -6,6 +6,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'İTO KAMPÜS',
   description: 'Lise öğretmenleri için dijital bir asistan ve öğrenciler için bir portal.',
+  manifest: '/manifest.json'
 };
 
 export default function RootLayout({
