@@ -17,7 +17,6 @@ import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
 import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
 import { SurveyTab } from '@/components/dashboard/teacher/SurveyTab';
 import { DisciplineTab } from './DisciplineTab';
-import ExamBuilder from './ExamBuilder';
 import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
@@ -48,7 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "questionbank" | "bep" | "zumre" | "veli-toplantisi" | "sok";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -351,11 +350,10 @@ const TABS_CONFIG = {
   "homework": { label: "Ödev Takibi", icon: BookText },
   "risks": { label: "Sınıf Risk Haritası", icon: List },
   "forms": { label: "Bilgi Formları", icon: FileSignature },
-  "communication": { label: "İletişim", icon: MessageCircle },
+  "communication": { label: "İletişim Paneli", icon: MessageCircle },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
   "surveys": { label: "Anket Modülü", icon: ClipboardCheck },
   "discipline": { label: "Disiplin Süreci", icon: Scale },
-  "questionbank": { label: "Sınav Hazırlama Modülü", icon: FileQuestion },
   "bep": { label: "BEP Modülü", icon: FileHeart },
   "zumre": { label: "Zümre Tutanağı", icon: Users2 },
   "veli-toplantisi": { label: "Veli Toplantısı Tutanağı", icon: BookText },
@@ -587,9 +585,6 @@ export function TeacherDashboard() {
              case 'discipline':
                 tabContent = <DisciplineTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
-            case 'questionbank':
-                tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} teacherProfile={teacherProfile} />;
-                break;
             case 'bep':
                 tabContent = <BepTab />;
                 break;
@@ -687,7 +682,6 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
-                <MenuCard icon={<FileQuestion />} title="Sınav Hazırlama Modülü" description="Soru bankası ve sınav oluşturucu." onClick={() => setActiveTab('questionbank')} isDisabled={false} />
             </div>
         </div>
     );
@@ -703,3 +697,4 @@ export function TeacherDashboard() {
       </div>
   );
 }
+

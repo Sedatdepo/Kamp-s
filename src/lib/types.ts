@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -402,30 +403,4 @@ export interface Scenario {
   id: string;
   title: string;
   content: string;
-}
-
-// --- EXAM BUILDER TYPES ---
-export type ExamTheme = 'classic' | 'modern' | 'minimal';
-
-export interface ExamSettings {
-  fontSize: number;
-  lineHeight: number;
-  watermark: string;
-}
-
-export interface ExamInfo {
-  title: string;
-  logo: string | null;
-  group: 'A' | 'B';
-  theme: ExamTheme;
-  settings: ExamSettings;
-}
-
-export interface Exam {
-    examInfo: ExamInfo;
-    questions: Question[];
-}
-
-export interface ExamDocument extends Archivable {
-    data: Exam;
 }
