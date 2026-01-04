@@ -7,10 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 interface ProjectGradingTabProps {
   students: Student[];
@@ -86,6 +98,25 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
     if (!studentScores) return 0;
     return projCriteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
   };
+
+  const handleDeleteAssignment = async (studentId: string) => {
+    if (!db) return;
+    const studentRef = doc(db, 'students', studentId);
+    try {
+        await writeBatch(db)
+            .update(studentRef, {
+                assignedLesson: null,
+                hasProject: false,
+                'term1Grades.projectScores': {},
+                'term2Grades.projectScores': {}
+            })
+            .commit();
+        toast({ title: 'Atama İptal Edildi', description: 'Öğrencinin proje ataması kaldırıldı.' });
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Atama iptal edilemedi.' });
+    }
+  };
   
   if (projectStudents.length === 0) {
     return (
@@ -121,6 +152,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
                   <TableHead key={c.id} className="text-center">{c.name} ({c.max} P)</TableHead>
                 ))}
                 <TableHead className="text-center">Toplam</TableHead>
+                <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,6 +175,29 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
                   ))}
                   <TableCell className="text-center font-bold text-lg">
                     {calculateTotal(student.id)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
+                          <Trash2 size={16} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {student.name} adlı öğrencinin proje atamasını iptal etmek istediğinizden emin misiniz? Girilen tüm notlar silinecektir.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>İptal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteAssignment(student.id)} className="bg-destructive hover:bg-destructive/90">
+                            Atamayı İptal Et
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
