@@ -60,10 +60,13 @@ const NotificationSettings = () => {
     }
     
     return (
-        <Button onClick={requestNotificationPermission} disabled={isSubscribing}>
-            {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
-            Anlık Bildirimleri Etkinleştir
-        </Button>
+        <div className="space-y-3">
+            <p className="text-sm text-gray-600 font-medium">Bu cihaz için anlık bildirimlere izin verilmemiş.</p>
+            <Button onClick={requestNotificationPermission} disabled={isSubscribing}>
+                {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+                Anlık Bildirimleri Etkinleştir
+            </Button>
+        </div>
     )
 }
 
