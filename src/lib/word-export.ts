@@ -893,6 +893,21 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     const term2Avg = calculateTermAverage(student.term2Grades);
     const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
     
+    const getBehaviorIssues = (termGrades?: GradingScores) => {
+        if (!termGrades?.behaviorScores) return [];
+        return Object.entries(termGrades.behaviorScores)
+            .filter(([_, score]) => score > 0)
+            .map(([criteriaId, _]) => {
+                const criterion = behaviorCriteria.find(c => c.id === criteriaId);
+                return criterion ? criterion.name : null;
+            })
+            .filter((name): name is string => name !== null);
+    };
+
+    const term1BehaviorIssues = getBehaviorIssues(student.term1Grades);
+    const term2BehaviorIssues = getBehaviorIssues(student.term2Grades);
+    const allBehaviorIssues = [...new Set([...term1BehaviorIssues, ...term2BehaviorIssues])];
+
     // --- REPORT SECTIONS ---
     const studentInfoSection = `
         <h3>A. ÖĞRENCİ KİMLİK BİLGİLERİ</h3>
@@ -969,8 +984,9 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
         <table style="width: 100%;">
             <tr><td style="width: 30%;"><b>Devamsızlık Durumu:</b></td><td>Toplam ${attendanceCount} gün devamsızlığı bulunmaktadır.</td></tr>
             <tr><td><b>Risk Faktörleri:</b></td><td>${student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label).filter(Boolean).join(', ') || 'Belirtilen risk faktörü yok.'}</td></tr>
-            <tr><td><b>Davranış (Kanaat) Notu:</b></td><td>${calculateAverage(student.term1Grades?.behaviorScores, behaviorCriteria)?.toFixed(2) ?? 'Hesaplanmadı'}</td></tr>
-             <tr><td><b>Proje Ödevi:</b></td><td>${assignedProject ? assignedProject.name : 'Proje ödevi almadı.'}</td></tr>
+            <tr><td><b>Davranış (Kanaat) Notu:</b></td><td>${student.behaviorScore ?? 'Hesaplanmadı'}</td></tr>
+            <tr><td><b>Gözlemlenen Olumsuz Davranışlar:</b></td><td>${allBehaviorIssues.length > 0 ? allBehaviorIssues.join(', ') : 'Kaydedilmiş olumsuz davranış bulunmamaktadır.'}</td></tr>
+            <tr><td><b>Proje Ödevi:</b></td><td>${assignedProject ? assignedProject.name : 'Proje ödevi almadı.'}</td></tr>
         </table>
     `;
 
