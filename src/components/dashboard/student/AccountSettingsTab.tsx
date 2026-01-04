@@ -38,7 +38,6 @@ const NotificationSettings = () => {
         return <p className="text-sm text-destructive">Bildirim hatası: {error.message}</p>
     }
     
-    // Tarayıcıdan tamamen engellenmişse, kullanıcıyı bilgilendir.
     if (typeof window !== 'undefined' && Notification.permission === 'denied') {
         return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen bu site için tarayıcı bildirim ayarlarına manuel olarak izin verin.</p>
     }
