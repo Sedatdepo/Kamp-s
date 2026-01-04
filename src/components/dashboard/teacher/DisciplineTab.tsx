@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -97,7 +98,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
     const [formData, setFormData] = useState<any>({});
     
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveName, setSaveName] = useState('');
 
      const startNewProcess = useCallback(() => {
@@ -136,7 +137,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
             return;
         }
         setSaveName(currentRecord?.name || `Disiplin Süreci - ${formData.studentInfo.studentName}`);
-        setIsSaveModalOpen(true);
+        setIsSaveDialogOpen(true);
     };
 
     const handleSaveConfirm = () => {
@@ -162,7 +163,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
         });
 
         setCurrentRecord(recordToSave);
-        setIsSaveModalOpen(false);
+        setIsSaveDialogOpen(false);
         toast({ title: "Kaydedildi", description: "Disiplin süreci arşive kaydedildi." });
     };
 
