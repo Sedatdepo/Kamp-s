@@ -85,7 +85,6 @@ export default function ExamBuilder() {
 
   const [currentExam, setCurrentExam] = useState<Exam>(createNewExam());
   const [currentSlotId, setCurrentSlotId] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'editor' | 'settings'>('editor');
   const [showAnswerKey, setShowAnswerKey] = useState<boolean>(true);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
@@ -377,92 +376,81 @@ export default function ExamBuilder() {
       
       <div className="flex flex-1 overflow-hidden">
         {/* SOL PANEL */}
-        <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0">
+        <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0 p-4 space-y-4">
           
-          <div className="flex border-b">
-              <button onClick={() => setActiveTab('editor')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'editor' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><FileText size={16} /> Soru Editörü</button>
-              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'settings' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><Settings size={16} /> Ayarlar</button>
+          <div className="p-4 border-b border-gray-200 bg-blue-50 rounded-lg">
+              <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-bold text-blue-800">DÜZENLENEN SORU</span>
+              <span className="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-mono">#{currentSlotId + 1}</span>
+              </div>
           </div>
-
-          {activeTab === 'editor' ? (
-            <div className="flex flex-col h-full">
-                <div className="p-4 border-b border-gray-200 bg-blue-50">
-                    <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-bold text-blue-800">DÜZENLENEN SORU</span>
-                    <span className="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-mono">#{currentSlotId + 1}</span>
-                    </div>
-                </div>
-                <div className="p-5 flex flex-col gap-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Soru Tipi</label>
-                            <div className="flex border rounded overflow-hidden">
-                                <button onClick={() => updateSlotField('type', 'choice')} className={`flex-1 p-2 ${activeSlot.type === 'choice' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><CheckSquare size={16} className="mx-auto"/></button>
-                                <button onClick={() => updateSlotField('type', 'open')} className={`flex-1 p-2 ${activeSlot.type === 'open' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><Type size={16} className="mx-auto"/></button>
-                                <button onClick={() => updateSlotField('type', 'truefalse')} className={`flex-1 p-2 ${activeSlot.type === 'truefalse' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><div className="text-xs font-bold">D/Y</div></button>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Yükseklik</label>
-                            <select className="w-full p-2 border rounded bg-white text-sm" value={activeSlot.span} onChange={(e) => updateSlotField('span', parseInt(e.target.value))}>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Birim</option>)}</select>
-                        </div>
-                    </div>
-                    <div className="h-[200px]"><SimpleHtmlEditor value={editorContent} onChange={setEditorContent} addImage={triggerImageUpload} /></div>
-                    {activeSlot.image && (<div className="relative group border rounded p-2 bg-gray-50 text-center"><img src={activeSlot.image} alt="Soru görseli" className="h-20 mx-auto object-contain" /><button onClick={() => updateSlotField('image', null)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><Trash2 size={12} /></button></div>)}
-                    {activeSlot.type === 'choice' && (
-                    <div className="space-y-2 bg-gray-50 p-3 rounded border">
-                        <div className="text-xs font-bold text-gray-500 mb-1 flex justify-between"><span>SEÇENEKLER</span><span className="text-green-600">DOĞRU CEVAP</span></div>
-                        {activeSlot.options.map((opt, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                            <button onClick={() => updateSlotField('correctOption', activeSlot.correctOption === i ? null : i)} className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition ${activeSlot.correctOption === i ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{['A','B','C','D','E'][i]}</button>
-                            <input type="text" value={opt} onChange={(e) => updateOption(i, e.target.value)} className={`flex-1 p-1.5 text-sm border rounded outline-none transition ${activeSlot.correctOption === i ? 'border-green-500 bg-green-50' : 'focus:border-blue-500'}`} placeholder={`Seçenek ${['A','B','C','D','E'][i]}`} />
-                            {activeSlot.correctOption === i && <CheckCircle size={16} className="text-green-600" />}
-                        </div>
-                        ))}
-                    </div>
-                    )}
-                    <div className="flex gap-2 pt-2">
-                        <button onClick={handleSaveSlice} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded flex items-center justify-center gap-2 transition"><Save size={18} /> Kaydet</button>
-                        <button onClick={handleClearSlice} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded transition"><Trash2 size={18} /></button>
-                    </div>
-                </div>
-            </div>
-          ) : (
-            <div className="p-5 flex flex-col gap-6">
-                <RecordManager
-                    records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
-                    selectedRecordId={selectedRecordId}
-                    onSelectRecord={setSelectedRecordId}
-                    onNewRecord={handleNewProject}
-                    onDeleteRecord={handleDeleteFromArchive}
-                    noun="Sınav"
-                />
-                 <button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
-                    <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
-                 </button>
-                
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Palette size={16}/> GÖRÜNÜM AYARLARI</h3>
-                    <div className="space-y-4">
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
-                    </div>
-                </div>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Settings size={16}/> SINAV BİLGİLERİ</h3>
-                    <div className="space-y-3">
-                        <input type="text" value={currentExam.examInfo.title} onChange={(e) => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, title: e.target.value}}))} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
-                        <div className="flex gap-2">
-                            <button onClick={() => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, group: prev.examInfo.group === 'A' ? 'B' : 'A' } }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {currentExam.examInfo.group}</button>
-                            <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Archive size={14}/> Logo Yükle</button>
-                        </div>
-                        <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
-                    </div>
-                </div>
-            </div>
-          )}
+          <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Soru Tipi</label>
+                      <div className="flex border rounded overflow-hidden">
+                          <button onClick={() => updateSlotField('type', 'choice')} className={`flex-1 p-2 ${activeSlot.type === 'choice' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><CheckSquare size={16} className="mx-auto"/></button>
+                          <button onClick={() => updateSlotField('type', 'open')} className={`flex-1 p-2 ${activeSlot.type === 'open' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><Type size={16} className="mx-auto"/></button>
+                          <button onClick={() => updateSlotField('type', 'truefalse')} className={`flex-1 p-2 ${activeSlot.type === 'truefalse' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><div className="text-xs font-bold">D/Y</div></button>
+                      </div>
+                  </div>
+                  <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Yükseklik</label>
+                      <select className="w-full p-2 border rounded bg-white text-sm" value={activeSlot.span} onChange={(e) => updateSlotField('span', parseInt(e.target.value))}>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Birim</option>)}</select>
+                  </div>
+              </div>
+              <div className="h-[200px]"><SimpleHtmlEditor value={editorContent} onChange={setEditorContent} addImage={triggerImageUpload} /></div>
+              {activeSlot.image && (<div className="relative group border rounded p-2 bg-gray-50 text-center"><img src={activeSlot.image} alt="Soru görseli" className="h-20 mx-auto object-contain" /><button onClick={() => updateSlotField('image', null)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><Trash2 size={12} /></button></div>)}
+              {activeSlot.type === 'choice' && (
+              <div className="space-y-2 bg-gray-50 p-3 rounded border">
+                  <div className="text-xs font-bold text-gray-500 mb-1 flex justify-between"><span>SEÇENEKLER</span><span className="text-green-600">DOĞRU CEVAP</span></div>
+                  {activeSlot.options.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                      <button onClick={() => updateSlotField('correctOption', activeSlot.correctOption === i ? null : i)} className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition ${activeSlot.correctOption === i ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{['A','B','C','D','E'][i]}</button>
+                      <input type="text" value={opt} onChange={(e) => updateOption(i, e.target.value)} className={`flex-1 p-1.5 text-sm border rounded outline-none transition ${activeSlot.correctOption === i ? 'border-green-500 bg-green-50' : 'focus:border-blue-500'}`} placeholder={`Seçenek ${['A','B','C','D','E'][i]}`} />
+                      {activeSlot.correctOption === i && <CheckCircle size={16} className="text-green-600" />}
+                  </div>
+                  ))}
+              </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                  <button onClick={handleSaveSlice} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded flex items-center justify-center gap-2 transition"><Save size={18} /> Kaydet</button>
+                  <button onClick={handleClearSlice} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded transition"><Trash2 size={18} /></button>
+              </div>
+          </div>
+          <div className="border-t pt-4 mt-4 space-y-4">
+              <RecordManager
+                records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                onNewRecord={handleNewProject}
+                onDeleteRecord={handleDeleteFromArchive}
+                noun="Sınav"
+              />
+              <button onClick={handleSaveToArchive} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
+                  <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
+              </button>
+          </div>
+          <div className="bg-white border rounded-lg p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Palette size={16}/> GÖRÜNÜM AYARLARI</h3>
+              <div className="space-y-4">
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
+              </div>
+          </div>
+          <div className="bg-white border rounded-lg p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Settings size={16}/> SINAV BİLGİLERİ</h3>
+              <div className="space-y-3">
+                  <input type="text" value={currentExam.examInfo.title} onChange={(e) => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, title: e.target.value}}))} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
+                  <div className="flex gap-2">
+                      <button onClick={() => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, group: prev.examInfo.group === 'A' ? 'B' : 'A' } }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {currentExam.examInfo.group}</button>
+                      <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Archive size={14}/> Logo Yükle</button>
+                  </div>
+                  <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
+              </div>
+          </div>
         </div>
 
         <div className="flex-1 bg-gray-600 p-8 overflow-y-auto flex justify-center">
