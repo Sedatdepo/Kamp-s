@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -345,4 +343,3 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
       </div>
     );
 };
-

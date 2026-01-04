@@ -189,7 +189,6 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             
             <LibraryHeader 
                 onOpenAddRubric={() => setAddRubricModalOpen(true)} 
-                onOpenCreateAssignment={() => setCreateAssignmentModalOpen(true)}
                 history={history}
                 toggleFavoritesOnly={toggleFavoritesOnly}
                 showFavoritesOnly={showFavoritesOnly}
