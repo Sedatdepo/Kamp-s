@@ -86,10 +86,13 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                             {homework.questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
                                     <div className="font-semibold mb-3">
-                                      <p>{index + 1}. {q.text}</p>
-                                      {q.image && <img src={q.image} alt={`Soru ${index + 1}`} className="mt-2 rounded-md border" />}
+                                      {q.image ? (
+                                        <img src={q.image} alt={`Soru ${index + 1}`} className="mt-2 rounded-md border max-w-full" />
+                                      ) : (
+                                        <p>{index + 1}. {q.text}</p>
+                                      )}
                                     </div>
-                                    {q.type === 'choice' && q.options && (
+                                    {q.type === 'multiple-choice' && q.options && (
                                         <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
                                             {q.options.map((opt, i) => (
                                                 <div key={i} className="flex items-center space-x-2">
@@ -99,7 +102,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                                             ))}
                                         </RadioGroup>
                                     )}
-                                    {q.type === 'open' && (
+                                    {(q.type === 'open' || q.type === 'short-answer') && (
                                         <Textarea 
                                             placeholder="Cevabınızı buraya yazın..."
                                             onChange={(e) => handleAnswerChange(q.id, e.target.value)}

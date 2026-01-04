@@ -9,6 +9,7 @@ import { useDatabase } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { AssignExamModal } from './AssignExamModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,7 @@ import { ExamPaper } from './ExamPaper';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
-  const { db, appUser } = useAuth();
+  const { db, appUser, storage } = useAuth();
   const { toast } = useToast();
 
   const createNewExam = (): Exam => ({
@@ -42,6 +43,8 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const [showAnswerKey, setShowAnswerKey] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const activeQuestion = currentExam.questions.find(q => q.id === selectedQuestionId);
 
@@ -78,14 +81,45 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
     }
   };
   
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || !activeQuestion) return;
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || !activeQuestion || !storage || !appUser) return;
       const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onloadend = () => {
-          updateQuestion(activeQuestion.id, 'image', reader.result as string);
+      setIsUploading(true);
+      reader.onloadend = async () => {
+          const dataUrl = reader.result as string;
+          const imageRef = storageRef(storage, `exam_images/${appUser.data.uid}/${Date.now()}_${file.name}`);
+          try {
+            await uploadString(imageRef, dataUrl, 'data_url');
+            const downloadUrl = await getDownloadURL(imageRef);
+            updateQuestion(activeQuestion.id, 'image', downloadUrl);
+            toast({title: "Resim Yüklendi", description: "Resim başarıyla yüklendi ve soruya eklendi."});
+          } catch(error) {
+            console.error("Image upload error:", error);
+            toast({variant: "destructive", title: "Yükleme Hatası", description: "Resim yüklenirken bir hata oluştu."});
+          } finally {
+            setIsUploading(false);
+          }
       };
       reader.readAsDataURL(file);
+  };
+  
+  const handleDeleteImage = async () => {
+    if (!activeQuestion?.image || !storage) return;
+    try {
+        const imageRef = storageRef(storage, activeQuestion.image);
+        await deleteObject(imageRef);
+        updateQuestion(activeQuestion.id, 'image', null);
+        toast({title: "Resim Silindi"});
+    } catch(error) {
+        // If image not in storage, just remove link
+        if ((error as any).code === 'storage/object-not-found') {
+             updateQuestion(activeQuestion.id, 'image', null);
+        } else {
+            console.error("Image delete error:", error);
+            toast({variant: "destructive", title: "Hata", description: "Resim silinemedi."});
+        }
+    }
   };
 
    const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
@@ -179,9 +213,11 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
               <Label htmlFor="questionText" className="text-lg font-semibold">Soru Metni</Label>
               <div className="flex gap-2 items-center mt-2 mb-4">
                   <input type="file" ref={imageInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-                  <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()}><ImageIcon className="mr-2"/> Resim Ekle</Button>
+                  <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={isUploading}>
+                    {isUploading ? <><loader2 className="animate-spin mr-2"/> Yükleniyor...</> : <><ImageIcon className="mr-2"/> Resim Ekle</>}
+                  </Button>
                   {activeQuestion.image && (
-                     <Button variant="destructive" size="sm" onClick={() => updateQuestion(activeQuestion.id, 'image', null)}><Trash2 className="mr-2"/> Resmi Sil</Button>
+                     <Button variant="destructive" size="sm" onClick={handleDeleteImage}><Trash2 className="mr-2"/> Resmi Sil</Button>
                   )}
               </div>
               {activeQuestion.image && (
@@ -258,12 +294,10 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       {isPreviewOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex justify-center overflow-y-auto py-10">
             <div className="relative">
-                <div className="fixed top-5 right-5 flex flex-col gap-2">
-                  <button onClick={() => setIsPreviewOpen(false)} className="bg-white rounded-full p-2 hover:bg-gray-200 transition"><X size={24} /></button>
-                  <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="bg-white rounded-full p-2 hover:bg-gray-200 transition">
-                      <KeySquare size={24} className={showAnswerKey ? 'text-blue-600' : ''}/>
-                  </button>
-                </div>
+                <button onClick={() => setIsPreviewOpen(false)} className="fixed top-5 right-5 bg-white rounded-full p-2 hover:bg-gray-200 transition"><X size={24} /></button>
+                <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="fixed top-20 right-5 bg-white rounded-full p-2 hover:bg-gray-200 transition">
+                    <KeySquare size={24} className={showAnswerKey ? 'text-blue-600' : ''}/>
+                </button>
                 <ExamPaper exam={currentExam} showAnswerKey={showAnswerKey} />
             </div>
         </div>
