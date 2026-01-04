@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Class, Student, TeacherProfile } from '@/lib/types';
+import { Class, Student, TeacherProfile, Homework } from '@/lib/types';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -74,44 +74,53 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         setAssignSettingsModalOpen(true);
     };
 
-    const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
-        if (!db) return;
+    const handleAssignConfirm = async (details: { studentIds: string[], date: string, type: 'performance' | 'project' }) => {
+        if (!db || !selectedAssignment) return;
     
+        const { studentIds, date, type } = details;
         const rubricType = getRubricType(selectedAssignment.formats);
         const rubric = rubrics[rubricType];
-    
-        // Group students by classId
-        const studentsByClass: { [key: string]: string[] } = {};
-        details.studentIds.forEach(studentId => {
-            const student = students.find(s => s.id === studentId);
-            if (student) {
-                if (!studentsByClass[student.classId]) {
-                    studentsByClass[student.classId] = [];
-                }
-                studentsByClass[student.classId].push(studentId);
-            }
-        });
     
         try {
             const batch = writeBatch(db);
     
+            if (type === 'project') {
+                 for (const studentId of studentIds) {
+                    const studentRef = doc(db, 'students', studentId);
+                    batch.update(studentRef, { 
+                        assignedLesson: `project_${selectedAssignment.id}`,
+                        hasProject: true,
+                    });
+                }
+            }
+
+            // For both types, create a homework entry for details
+            const studentsByClass: { [key: string]: string[] } = {};
+            studentIds.forEach(studentId => {
+                const student = students.find(s => s.id === studentId);
+                if (student) {
+                    if (!studentsByClass[student.classId]) studentsByClass[student.classId] = [];
+                    studentsByClass[student.classId].push(studentId);
+                }
+            });
+    
             for (const classId in studentsByClass) {
-                const newHomeworkDoc = {
+                const newHomeworkDoc: Partial<Homework> = {
                     classId: classId,
-                    text: selectedAssignment.title, // Keep title for list views
+                    text: selectedAssignment.title,
                     assignedDate: new Date().toISOString(),
-                    dueDate: details.date ? new Date(details.date).toISOString() : null,
+                    dueDate: date ? new Date(date).toISOString() : undefined,
                     teacherName: teacherProfile?.name,
                     lessonName: teacherProfile?.branch,
                     rubric: rubric.items,
                     assignedStudents: studentsByClass[classId],
                     seenBy: [],
-                    // Embed the questions directly into the homework document
                     questions: selectedAssignment.questions || [],
                     instructions: selectedAssignment.instructions,
+                    assignmentType: type, // Store the type
                 };
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-                const newDocRef = doc(homeworksColRef); // Create a new doc ref to get the ID
+                const newDocRef = doc(homeworksColRef, type === 'project' ? `project_${selectedAssignment.id}` : undefined);
                 batch.set(newDocRef, newHomeworkDoc);
             }
     
@@ -128,9 +137,11 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             setSuccessModalOpen(true);
     
         } catch (error) {
+            console.error("Assignment Error:", error);
             toast({variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.'});
         }
     };
+    
 
     const handleShowRubric = (assignment: any) => {
         setSelectedAssignment(assignment);

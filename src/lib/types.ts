@@ -41,6 +41,7 @@ export interface Homework {
   rubric?: any; // To differentiate performance homeworks
   instructions?: string;
   assignedStudents?: string[];
+  assignmentType?: 'performance' | 'project';
 }
 
 

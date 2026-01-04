@@ -7,14 +7,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Calendar, Users, Clock, CheckCircle, Send, X } from 'lucide-react';
+import { Calendar, Users, Clock, CheckCircle, Send, X, RadioGroup } from 'lucide-react';
 import { Student, Class } from '@/lib/types';
+import { RadioGroupItem } from '@/components/ui/radio-group';
 
 
 export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, classes, students }: any) => {
     const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [dueDate, setDueDate] = useState('');
+    const [assignmentType, setAssignmentType] = useState<'performance' | 'project'>('performance');
   
     useEffect(() => {
       if (assignment) {
@@ -67,7 +69,7 @@ export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, cl
           alert("Lütfen en az bir öğrenci seçin.");
           return;
       }
-      onConfirm({ studentIds: selectedStudentIds, date: dueDate });
+      onConfirm({ studentIds: selectedStudentIds, date: dueDate, type: assignmentType });
       onClose();
     };
   
@@ -86,10 +88,24 @@ export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, cl
              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800 mb-2">
               <span className="font-bold">{assignment.title}</span> ödevi için atama yapıyorsunuz.
             </div>
+            
+            <div>
+                 <Label className="block text-sm font-bold text-gray-700 mb-2">1. Atama Türünü Seçin</Label>
+                 <RadioGroup defaultValue="performance" value={assignmentType} onValueChange={(value) => setAssignmentType(value as any)} className="flex gap-4">
+                    <Label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
+                        <RadioGroupItem value="performance" id="performance" />
+                        Performans Ödevi
+                    </Label>
+                    <Label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                        <RadioGroupItem value="project" id="project" />
+                        Proje Ödevi
+                    </Label>
+                 </RadioGroup>
+            </div>
 
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <Users size={16} /> 1. Sınıf/Sınıfları Seçin
+                    <Users size={16} /> 2. Sınıf/Sınıfları Seçin
                 </label>
                  <div className="flex flex-wrap gap-2 p-3 bg-gray-100 rounded-lg border">
                     {(classes || []).map((cls: Class) => (
@@ -107,7 +123,7 @@ export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, cl
 
             <div className="min-h-[200px]">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                    <Users size={16} /> 2. Öğrencileri Seçin
+                    <Users size={16} /> 3. Öğrencileri Seçin
                 </label>
                 <ScrollArea className="h-64 border rounded-lg p-2 bg-gray-50">
                 {selectedClassIds.length > 0 ? (
@@ -147,7 +163,7 @@ export const AssignSettingsModal = ({ isOpen, onClose, assignment, onConfirm, cl
   
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                <Clock size={16} /> 3. Son Teslim Tarihi
+                <Clock size={16} /> 4. Son Teslim Tarihi
               </label>
               <div className="relative">
                 <input 
