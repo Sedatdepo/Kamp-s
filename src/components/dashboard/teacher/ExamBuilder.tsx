@@ -105,7 +105,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const [editorContent, setEditorContent] = useState('');
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [assignmentType, setAssignmentType] = useState<'live' | 'performance' | null>(null);
   
   const activeSlot = currentExam.questions.find(s => s.id === currentSlotId) || currentExam.questions[0];
 
@@ -262,52 +261,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
     setCurrentSlotId(0);
   };
 
-
-  // --- ÇIKTI ÜRETECİLERİ ---
-  const generateAnswerKeyHTML = () => {
-    const filled = currentExam.questions.filter(s => s.filled && s.type === 'choice');
-    if (filled.length === 0) return '';
-    let html = `<br><br><div style="border: 1px solid #000; padding: 10px; font-size: 10pt;"><strong>${currentExam.examInfo.group} GRUBU CEVAP ANAHTARI:</strong><br><table style="width: 100%; border-collapse: collapse; margin-top: 5px;"><tr>`;
-    filled.forEach((q, i) => {
-        const char = q.correctOption !== null ? ['A', 'B', 'C', 'D', 'E'][q.correctOption] : '-';
-        html += `<td style="border: 1px solid #ccc; padding: 2px 5px; text-align: center;"><b>${i + 1}.</b> ${char}</td>`;
-        if ((i + 1) % 10 === 0) html += `</tr><tr>`;
-    });
-    html += `</tr></table></div>`;
-    return html;
-  };
-
-  const exportToWord = () => {
-    let extra = '';
-    if (showAnswerKey) extra += generateAnswerKeyHTML();
-    
-    const content = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
-      <head><meta charset="utf-8"><title>${currentExam.examInfo.title}</title></head>
-      <body style="font-family: ${currentExam.examInfo.theme === 'modern' ? 'Arial' : 'Times New Roman'}; font-size: ${currentExam.examInfo.settings.fontSize}pt;">
-        <table style="width:100%; border-bottom: 2px solid black; margin-bottom: 20px;">
-            <tr>
-                ${currentExam.examInfo.logo ? `<td style="width:100px;"><img src="${currentExam.examInfo.logo}" width="80" height="80"></td>` : ''}
-                <td style="text-align:center;"><h1>${currentExam.examInfo.title}</h1><p>Adı Soyadı: ...........................................</p></td>
-                <td style="width:100px; text-align:right;">
-                    <div style="width:40px; height:40px; border:2px solid black; border-radius:50%; text-align:center; line-height:40px; font-weight:bold; display:inline-block; margin-top:5px;">${currentExam.examInfo.group}</div>
-                </td>
-            </tr>
-        </table>
-        <p><i>[Sınav İçeriği Buraya Gelecek]</i></p>
-        ${extra}
-        ${currentExam.examInfo.settings.watermark ? `<div style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); font-size:80pt; color:#eee; z-index:-1;">${currentExam.examInfo.settings.watermark}</div>` : ''}
-      </body></html>`;
-    const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `sinav_${currentExam.examInfo.group}.doc`;
-    link.click();
-  };
-
-
-  const handleOpenAssignModal = (type: 'live' | 'performance') => {
-    setAssignmentType(type);
+  const handleOpenAssignModal = () => {
     setIsAssignModalOpen(true);
   };
   
@@ -315,7 +269,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       if (!db || !currentExam) return;
   
       const { studentIds, date } = details;
-      const isPerformance = assignmentType === 'performance';
   
       try {
           const batch = writeBatch(db);
@@ -337,10 +290,9 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                   dueDate: date ? new Date(date).toISOString() : null,
                   teacherName: teacherProfile?.name,
                   lessonName: teacherProfile?.branch,
-                  rubric: isPerformance ? [] : null, // Add rubric if it's performance
+                  rubric: null, 
                   assignedStudents: studentsByClass[classId],
                   seenBy: [],
-                  // Store exam questions within the homework document
                   questions: currentExam.questions.filter(q => q.filled)
               };
               
@@ -358,16 +310,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       }
   };
 
-  const ExamPaperContent = ({ forPreview = false }: { forPreview?: boolean }) => {
-    return (
-      <ExamPaper 
-        exam={currentExam} 
-        showAnswerKey={!forPreview && showAnswerKey}
-      />
-    );
-  };
-
-
   if(loading) return <div>Yükleniyor...</div>
 
   return (
@@ -378,17 +320,8 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
            <button onClick={handleNewProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 transition" title="Yeni Sınav"><RefreshCw size={16} /><span className="hidden md:inline">Yeni</span></button>
            <button onClick={shuffleQuestions} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 transition" title="Soruları Karıştır"><Shuffle size={16} /><span className="hidden md:inline">Karıştır</span></button>
            <div className="w-px h-6 bg-slate-600 mx-2"></div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-medium transition"><Send size={16} /><span className="hidden md:inline">Ödev Ver</span></button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onSelect={() => handleOpenAssignModal('live')}>Canlı Ödev Ver</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleOpenAssignModal('performance')}>Performans Ödevi Ver</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+           <Button onClick={handleOpenAssignModal} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-medium transition"><Send size={16} /><span className="hidden md:inline">Ödev Ver</span></Button>
            <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-700 transition"><Eye size={16} /><span className="hidden md:inline">Önizle</span></button>
-           <button onClick={exportToWord} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition"><FileText size={16} /><span className="hidden md:inline">Word</span></button>
         </div>
       </header>
 
@@ -430,12 +363,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                           </div>
                           <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
                       </div>
-                      <div className="space-y-4 pt-4 border-t">
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
-                      </div>
                 </CardContent>
             </Card>
 
@@ -452,12 +379,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                       <div className="flex border rounded overflow-hidden">
                           <button onClick={() => updateSlotField('type', 'choice')} className={`flex-1 p-2 ${activeSlot.type === 'choice' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><CheckSquare size={16} className="mx-auto"/></button>
                           <button onClick={() => updateSlotField('type', 'open')} className={`flex-1 p-2 ${activeSlot.type === 'open' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><Type size={16} className="mx-auto"/></button>
-                          <button onClick={() => updateSlotField('type', 'truefalse')} className={`flex-1 p-2 ${activeSlot.type === 'truefalse' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}><div className="text-xs font-bold">D/Y</div></button>
                       </div>
-                  </div>
-                  <div>
-                      <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Yükseklik</label>
-                      <select className="w-full p-2 border rounded bg-white text-sm" value={activeSlot.span} onChange={(e) => updateSlotField('span', parseInt(e.target.value))}>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n} Birim</option>)}</select>
                   </div>
               </div>
               <div className="h-[200px]"><SimpleHtmlEditor value={editorContent} onChange={setEditorContent} addImage={triggerImageUpload} /></div>
@@ -481,8 +403,22 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
           </div>
         </div>
 
-        <div className="flex-1 bg-gray-600 p-8 overflow-y-auto flex justify-center">
-            <ExamPaperContent forPreview={false} />
+        <div className="flex-1 bg-gray-200 p-8 overflow-y-auto">
+             <div className="grid grid-cols-2 gap-4">
+                {currentExam.questions.map((slot, index) => (
+                    <SliceItem 
+                        key={slot.id} 
+                        slot={slot} 
+                        isActive={slot.id === currentSlotId}
+                        onClick={() => setCurrentSlotId(slot.id)}
+                        index={index}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        draggable
+                    />
+                ))}
+             </div>
         </div>
       </div>
 
@@ -490,7 +426,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
         <div className="fixed inset-0 bg-black/80 z-50 flex justify-center overflow-y-auto py-10">
             <div className="relative">
                 <button onClick={() => setIsPreviewOpen(false)} className="fixed top-5 right-5 bg-white rounded-full p-2 hover:bg-gray-200 transition"><X size={24} /></button>
-                <ExamPaperContent forPreview={true} />
+                <ExamPaper exam={currentExam} showAnswerKey={showAnswerKey} />
             </div>
         </div>
       )}
@@ -508,24 +444,23 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
 }
 
 // --- SLICE ITEM ---
-const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, onDrop, draggable, styles, lineHeight }: { slot: ExamQuestion, isActive: boolean, onClick: () => void, index: number, onDragStart?: (id: number) => void, onDragOver?: (e: React.DragEvent) => void, onDrop?: (id: number) => void, draggable?: boolean, styles: any, lineHeight: number }) => {
+const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, onDrop, draggable }: { slot: ExamQuestion, isActive: boolean, onClick: () => void, index: number, onDragStart?: (id: number) => void, onDragOver?: (e: React.DragEvent) => void, onDrop?: (id: number) => void, draggable?: boolean }) => {
   return (
     <div 
       onClick={onClick} draggable={draggable} onDragStart={draggable && onDragStart ? () => onDragStart(slot.id) : undefined} onDragOver={draggable && onDragOver ? (e) => onDragOver(e) : undefined} onDrop={draggable && onDrop ? () => onDrop(slot.id) : undefined}
-      className={`relative p-2 cursor-pointer transition-all flex flex-col group ${styles.slotBorder} ${isActive ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'hover:bg-gray-50 border-l-4 border-l-transparent'} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''}`}
-      style={{ flex: slot.span }}
+      className={`relative p-3 cursor-pointer transition-all flex flex-col group bg-white rounded-lg border-2 h-40 ${isActive ? 'border-blue-600 shadow-lg' : 'hover:border-blue-400 border-gray-200'} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''}`}
     >
-      <span className={`absolute top-0 right-0 text-[10px] px-1.5 py-0.5 ${styles.slotNumber}`}>#{index + 1}</span>
+      <span className={`absolute -top-2 -right-2 text-[10px] px-2 py-0.5 rounded-full font-bold ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>#{index + 1}</span>
       {draggable && <div className="absolute top-1/2 left-1 -translate-y-1/2 text-gray-300 opacity-0 group-hover:opacity-100 cursor-move" title="Taşı"><GripVertical size={16} /></div>}
       {!slot.filled ? (
         <div className="flex flex-col items-center gap-1"><Plus size={20} /><span className="text-xs">Soru Ekle</span></div>
       ) : (
-        <div className="text-sm w-full h-full overflow-hidden pl-4" style={{ lineHeight: lineHeight }}>
-          <div className="flex gap-1 mb-1"><span className="font-bold">{index + 1}.</span><div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} /></div>
-          {slot.image && <img src={slot.image} alt="Soru görseli" className="max-h-24 my-2 block" />}
-          {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold bg-green-50 px-1 rounded inline-block" : ""}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
-          {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
-          {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
+        <div className="text-xs w-full h-full overflow-hidden" >
+          <div className="flex gap-1 mb-1">
+            <div className="prose prose-sm max-w-none m-0 p-0 line-clamp-4" dangerouslySetInnerHTML={{ __html: slot.text }} />
+          </div>
+          {slot.image && <img src={slot.image} alt="Soru görseli" className="max-h-16 my-1 block rounded" />}
+          {slot.type === 'choice' && (<div className="mt-1 text-xs space-y-0.5 text-gray-500">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold" : ""}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
         </div>
       )}
     </div>

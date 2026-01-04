@@ -8,10 +8,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Calendar, Users, Clock, CheckCircle, Send, X } from 'lucide-react';
-import { Student, Class } from '@/lib/types';
+import { Student, Class, Exam } from '@/lib/types';
 
 
-export const AssignExamModal = ({ isOpen, onClose, exam, onConfirm, classes, students }: any) => {
+export const AssignExamModal = ({ isOpen, onClose, exam, onConfirm, classes, students }: {isOpen: boolean, onClose: ()=>void, exam: Exam, onConfirm: (details: {studentIds: string[], date: string})=>void, classes: Class[], students: Student[]}) => {
     const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [dueDate, setDueDate] = useState('');
