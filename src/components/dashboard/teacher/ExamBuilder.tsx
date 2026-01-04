@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
@@ -21,7 +22,7 @@ import { ExamPaper } from './ExamPaper';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
-  const { db, appUser, storage } = useAuth();
+  const { appUser, storage } = useAuth();
   const { toast } = useToast();
 
   const createNewExam = (): Exam => ({
