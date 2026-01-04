@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -107,7 +106,7 @@ export interface Question {
   type: QuestionType;
   options?: string[]; // For multiple-choice
   matchingPairs?: MatchingPair[]; // For matching questions
-  correctAnswer?: string | number | null;
+  correctAnswer?: string | number | boolean | null;
   kazanimId?: string;
   difficulty?: 'kolay' | 'orta' | 'zor';
   points?: number;
