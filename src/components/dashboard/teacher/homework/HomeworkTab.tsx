@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -7,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { collection, query, where } from 'firebase/firestore';
-import { LiveHomeworkManagement } from './homework/LiveHomeworkManagement';
-import { HomeworkEvaluationTab } from './homework/HomeworkEvaluationTab';
-import { HomeworkLibrary } from './homework/HomeworkLibrary';
+import { LiveHomeworkManagement } from './LiveHomeworkManagement';
+import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
+import { HomeworkLibrary } from './HomeworkLibrary';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 

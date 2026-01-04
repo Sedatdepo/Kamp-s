@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo, useEffect } from 'react';
@@ -65,7 +66,7 @@ export function StudentCommunicationTab() {
       <CardContent>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {announcements.length > 0 ? (
-            announcements.map((ann) => (
+            [...announcements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((ann) => (
               <div key={ann.id} className="border p-4 rounded-lg bg-background shadow-sm">
                 <p className="text-sm leading-relaxed">{ann.text}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3 pt-2 border-t">

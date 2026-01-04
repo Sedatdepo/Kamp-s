@@ -9,7 +9,8 @@ import { RiskFormTab } from './student/RiskFormTab';
 import { InfoFormTab } from './student/InfoFormTab';
 import { StudentCommunicationTab } from './student/StudentCommunicationTab';
 import { TeacherChatsTab } from './student/TeacherChatsTab';
-import { HomeworkTab } from './student/HomeworkTab';
+import { PerformanceHomeworkTab } from './student/PerformanceHomeworkTab';
+import { RegularHomeworkTab } from './student/RegularHomeworkTab';
 import { ElectionVoteTab } from './student/ElectionVoteTab';
 import { DutyRosterTab } from './student/DutyRosterTab';
 import { SeatingPlanTab } from './student/SeatingPlanTab';
@@ -75,7 +76,7 @@ export function StudentDashboard() {
     if (activeTab === 'announcements') markAsSeen('announcements');
     else if (activeTab === 'risks') markAsSeen('riskForm');
     else if (activeTab === 'info') markAsSeen('infoForm');
-    else if (activeTab === 'homeworks') markAsSeen('homeworks');
+    else if (activeTab === 'homeworks' || activeTab === 'regular-homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
     else if (activeTab === 'surveys') markAsSeen('surveys');
   }, [activeTab, markAsSeen]);
@@ -86,7 +87,8 @@ export function StudentDashboard() {
           case 'project': return <ProjectTab />;
           case 'announcements': return <StudentCommunicationTab />;
           case 'teacher-chats': return <TeacherChatsTab />;
-          case 'homeworks': return <HomeworkTab />;
+          case 'homeworks': return <PerformanceHomeworkTab />;
+          case 'regular-homeworks': return <RegularHomeworkTab />;
           case 'risks': return <RiskFormTab />;
           case 'info': return <InfoFormTab />;
           case 'election': return <ElectionVoteTab />;
@@ -136,8 +138,8 @@ export function StudentDashboard() {
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
-                    <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Sana atanan performans ödevlerini gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
-                    <MenuCard icon={<BookText />} title="Ödevler" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    <MenuCard icon={<BookText />} title="Ödevler" description="Öğretmeninin verdiği diğer ödevler." onClick={() => setActiveTab('regular-homeworks')} hasNotification={notifications.homeworks} />
                     
                     <MenuCard 
                         isLoading={classLoading}

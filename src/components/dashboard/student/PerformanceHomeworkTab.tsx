@@ -100,7 +100,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-function HomeworkTabContent({ student, classId }: { student: any, classId: string }) {
+function PerformanceHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
     const homeworksQuery = useMemo(() => {
       if (!db || !classId) return null;
@@ -151,7 +151,7 @@ function HomeworkTabContent({ student, classId }: { student: any, classId: strin
     );
 }
 
-export function HomeworkTab() {
+export function PerformanceHomeworkTab() {
   const { appUser, loading } = useAuth();
   
   if (loading) {
@@ -177,5 +177,5 @@ export function HomeworkTab() {
     );
   }
 
-  return <HomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
+  return <PerformanceHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }

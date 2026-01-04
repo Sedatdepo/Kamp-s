@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -49,10 +51,11 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
     const liveHomeworksQuery = useMemo(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'));
+        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
+        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
-    const { data: liveHomeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`homeworks-${classId}`, liveHomeworksQuery);
+    const { data: liveHomeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`live-homeworks-${classId}`, liveHomeworksQuery);
 
     const displayedHomeworks = useMemo(() => {
         if (selectedRecordId) {
@@ -155,9 +158,9 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     dueDate: dueDate ? dueDate.toISOString() : null,
                     teacherName: teacherProfile?.name,
                     lessonName: teacherProfile?.branch,
-                    // Assign to all students in the class by default for this simple form
                     assignedStudents: students.map(s => s.id),
                     seenBy: [],
+                    rubric: null, // Explicitly set to null for live homeworks
                 });
                 toast({ title: "Ödev eklendi!" });
             }

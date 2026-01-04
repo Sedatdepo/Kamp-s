@@ -100,15 +100,15 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-function HomeworkTabContent({ student, classId }: { student: any, classId: string }) {
+function RegularHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
     const homeworksQuery = useMemo(() => {
-      if (!db || !classId) return null;
-      // Only get homeworks that have a rubric, which identifies them as performance homework
-      return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
+        if (!db || !classId) return null;
+        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
+        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
-
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`performance-homeworks-for-class-${classId}`, homeworksQuery);
+    
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`regular-homeworks-for-class-${classId}`, homeworksQuery);
 
     const sortedHomeworks = useMemo(() => {
         if (!homeworks) return [];
@@ -130,9 +130,9 @@ function HomeworkTabContent({ student, classId }: { student: any, classId: strin
         <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <BookText className="h-6 w-6"/>
-                Performans Ödevlerim
+                Ödevlerim
             </CardTitle>
-            <CardDescription>Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz.</CardDescription>
+            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -142,7 +142,7 @@ function HomeworkTabContent({ student, classId }: { student: any, classId: strin
                 ))
             ) : (
                 <div className="text-center py-10 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
+                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
                 </div>
             )}
             </div>
@@ -151,7 +151,7 @@ function HomeworkTabContent({ student, classId }: { student: any, classId: strin
     );
 }
 
-export function HomeworkTab() {
+export function RegularHomeworkTab() {
   const { appUser, loading } = useAuth();
   
   if (loading) {
@@ -177,5 +177,5 @@ export function HomeworkTab() {
     );
   }
 
-  return <HomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
+  return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
