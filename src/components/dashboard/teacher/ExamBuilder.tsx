@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/hooks/useAuth';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { AssignExamModal } from './AssignExamModal';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // --- TİPLER --- Artık types.ts'den geliyor.
 
