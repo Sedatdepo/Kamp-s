@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -36,7 +35,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                 <TabsList className="w-full justify-start">
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
-                    <TabsTrigger value="library">Hazır Ödev Kütüphanesi</TabsTrigger>
+                    <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
