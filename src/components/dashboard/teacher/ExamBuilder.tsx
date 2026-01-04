@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, 
+  Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, Check, CaseUpper
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper
 } from 'lucide-react';
 import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
@@ -22,8 +21,6 @@ import { ExamPaper } from './ExamPaper';
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
   const { db, appUser } = useAuth();
-  const { db: localDb, setDb, loading } = useDatabase();
-  const { examDocuments = [] } = localDb;
   const { toast } = useToast();
 
   const createNewExam = (): Exam => ({
@@ -42,19 +39,9 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const activeQuestion = currentExam.questions.find(q => q.id === selectedQuestionId);
-
-  useEffect(() => {
-    const record = examDocuments.find(d => d.id === selectedRecordId);
-    if (record) {
-        setCurrentExam(record.data);
-        setSelectedQuestionId(record.data.questions[0]?.id || null);
-    } else {
-        setCurrentExam(createNewExam());
-        setSelectedQuestionId(null);
-    }
-  }, [selectedRecordId, examDocuments]);
 
   const updateExamInfo = (field: keyof ExamInfo, value: any) => {
     setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, [field]: value }}));
@@ -68,6 +55,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       options: type === 'multiple-choice' ? Array(4).fill('') : undefined,
       correctAnswer: null,
       points: 10,
+      image: null,
     };
     setCurrentExam(prev => ({...prev, questions: [...prev.questions, newQuestion]}));
     setSelectedQuestionId(newQuestion.id);
@@ -87,43 +75,16 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
         setSelectedQuestionId(null);
     }
   };
-
-  const handleSaveToArchive = () => {
-    const docName = currentExam.examInfo.title || 'İsimsiz Sınav';
-    const newDoc: ExamDocument = {
-        id: selectedRecordId || `exam_${Date.now()}`,
-        name: docName,
-        date: new Date().toISOString(),
-        data: currentExam,
-    };
-
-    setDb(prevDb => {
-        const existing = (prevDb.examDocuments || []).find(d => d.id === newDoc.id);
-        if (existing) {
-            return { ...prevDb, examDocuments: (prevDb.examDocuments || []).map(d => d.id === newDoc.id ? newDoc : d), };
-        }
-        return { ...prevDb, examDocuments: [newDoc, ...(prevDb.examDocuments || [])] };
-    });
-
-    setSelectedRecordId(newDoc.id);
-    toast({ title: 'Arşivlendi!', description: `'${docName}' sınavı başarıyla kaydedildi.` });
-  };
   
-    const handleNewProject = () => {
-        if(confirm('Mevcut çalışma silinecek ve yeni bir sınav oluşturulacak. Emin misiniz?')) {
-            setSelectedRecordId(null);
-            setCurrentExam(createNewExam());
-            setSelectedQuestionId(null);
-            toast({ title: "Yeni Sınav", description: "Editör temizlendi." });
-        }
-    };
-    
-    const handleDeleteFromArchive = () => {
-        if (!selectedRecordId || !confirm("Bu kaydı arşivden silmek istediğinize emin misiniz?")) return;
-        setDb(prev => ({...prev, examDocuments: (prev.examDocuments || []).filter(d => d.id !== selectedRecordId)}));
-        handleNewProject();
-        toast({ title: "Silindi", description: "Sınav arşivden silindi.", variant: "destructive" });
-    };
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || !activeQuestion) return;
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+          updateQuestion(activeQuestion.id, 'image', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+  };
 
    const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
       if (!db || !currentExam) return;
@@ -171,8 +132,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   };
 
 
-  if(loading) return <div>Yükleniyor...</div>
-
   const totalPoints = currentExam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
 
   return (
@@ -196,7 +155,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                         <span className='text-sm font-semibold'>Soru {index + 1} ({q.points || 0} Puan)</span>
                         <Trash2 className='h-4 w-4 text-red-500 hover:text-red-700' onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id)}}/>
                     </div>
-                    <p className='text-xs text-gray-500 truncate'>{q.text || "Boş soru..."}</p>
+                    <p className='text-xs text-gray-500 truncate'>{q.image ? "[Resimli Soru]" : (q.text || "Boş soru...")}</p>
                 </div>
             ))}
         </div>
@@ -215,7 +174,19 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
           <div className="bg-white p-6 rounded-lg shadow-sm border space-y-6 max-w-3xl mx-auto">
             <div>
               <Label htmlFor="questionText" className="text-lg font-semibold">Soru Metni</Label>
-              <Textarea id="questionText" value={activeQuestion.text} onChange={e => updateQuestion(activeQuestion.id, 'text', e.target.value)} rows={5} className="mt-2" placeholder='Sorunuzu buraya yazın...'/>
+              <div className="flex gap-2 items-center mt-2 mb-4">
+                  <input type="file" ref={imageInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                  <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()}><ImageIcon className="mr-2"/> Resim Ekle</Button>
+                  {activeQuestion.image && (
+                     <Button variant="destructive" size="sm" onClick={() => updateQuestion(activeQuestion.id, 'image', null)}><Trash2 className="mr-2"/> Resmi Sil</Button>
+                  )}
+              </div>
+              {activeQuestion.image && (
+                <div className="mb-4 p-2 border rounded-md">
+                    <img src={activeQuestion.image} alt="Soru görseli" className="max-w-full rounded" />
+                </div>
+              )}
+              <Textarea id="questionText" value={activeQuestion.text} onChange={e => updateQuestion(activeQuestion.id, 'text', e.target.value)} rows={5} className="mt-2" placeholder='Sorunuzu buraya yazın ya da bir resim ekleyin...'/>
             </div>
             
             {activeQuestion.type === 'multiple-choice' && (

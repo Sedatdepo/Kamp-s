@@ -19,7 +19,7 @@ const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, in
         className={`relative p-2 flex flex-col group ${styles.slotBorder} flex-grow flex-shrink-0 basis-0`}
       >
         <span className={`absolute top-0 right-0 text-[10px] px-1.5 py-0.5 ${styles.slotNumber}`}>#{index + 1}</span>
-        {!slot.filled ? (
+        {!slot ? (
           <div className="flex flex-col items-center justify-center text-gray-300 h-full">
             <Plus size={20} /><span className="text-xs">Boş Soru</span>
           </div>
@@ -35,11 +35,11 @@ const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, in
                     <span className="font-bold">{index + 1}.</span>
                     <div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} />
                 </div>
-                {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
+                {slot.type === 'multiple-choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
               </>
             )}
-            {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
-            {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
+            {slot.type === 'true-false' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
+            {slot.type === 'short-answer' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
           </div>
         )}
       </div>
@@ -56,11 +56,11 @@ export const ExamPaper = ({ exam, showAnswerKey = false }: ExamPaperProps) => {
     const { fontSize, lineHeight, watermark } = exam.examInfo.settings;
 
     const generateAnswerKeyHTML = () => {
-        const filled = exam.questions.filter(s => s.filled && s.type === 'choice');
+        const filled = exam.questions.filter(s => s && s.type === 'multiple-choice');
         if (filled.length === 0) return '';
         let html = `<br><br><div style="border: 1px solid #000; padding: 10px; font-size: 10pt;"><strong>${exam.examInfo.group} GRUBU CEVAP ANAHTARI:</strong><br><table style="width: 100%; border-collapse: collapse; margin-top: 5px;"><tr>`;
         filled.forEach((q, i) => {
-            const char = q.correctOption !== null ? ['A', 'B', 'C', 'D', 'E'][q.correctOption] : '-';
+            const char = q.correctAnswer !== null && q.correctAnswer !== undefined ? ['A', 'B', 'C', 'D', 'E'][q.correctAnswer as number] : '-';
             html += `<td style="border: 1px solid #ccc; padding: 2px 5px; text-align: center;"><b>${i + 1}.</b> ${char}</td>`;
             if ((i + 1) % 10 === 0) html += `</tr><tr>`;
         });
@@ -92,12 +92,12 @@ export const ExamPaper = ({ exam, showAnswerKey = false }: ExamPaperProps) => {
         </div>
   
         <div className="flex gap-[1cm] flex-1 z-10">
-          {[0, 5].map((startIdx, colIndex) => (
+          {[0, 1].map((colIndex) => (
             <div key={colIndex} className="flex-1 flex flex-col">
-              {exam.questions.slice(startIdx, startIdx + 5).map((slot, i) => (
+              {exam.questions.filter((_,i) => i % 2 === colIndex).map((slot, i) => (
                 <SliceItem 
                   key={slot.id} slot={slot} 
-                  index={i + startIdx} styles={styles} lineHeight={lineHeight}
+                  index={exam.questions.findIndex(q => q.id === slot.id)} styles={styles} lineHeight={lineHeight}
                 />
               ))}
             </div>
