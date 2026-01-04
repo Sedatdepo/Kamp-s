@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { TeacherProfile } from '@/lib/types';
 
 
 interface GradingHeaderProps {
