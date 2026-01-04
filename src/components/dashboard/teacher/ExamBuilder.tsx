@@ -105,7 +105,6 @@ export default function ExamBuilder() {
   const [currentSlotId, setCurrentSlotId] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'editor' | 'settings'>('editor');
   const [showAnswerKey, setShowAnswerKey] = useState<boolean>(true);
-  const [showOpticalForm, setShowOpticalForm] = useState<boolean>(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [examInfo, setExamInfo] = useState<ExamInfo>({
     title: 'MATEMATİK SINAVI',
@@ -156,40 +155,6 @@ export default function ExamBuilder() {
         setExamInfo({ title: 'YENİ SINAV', logo: null, group: 'A', theme: 'classic', settings: { fontSize: 11, lineHeight: 1.5, watermark: '' }, qrUrl: '' });
         setCurrentSlotId(0);
     }
-  };
-
-  const saveProject = () => {
-    const projectData: SavedProject = { examInfo, slots, version: '1.3' };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${examInfo.title.replace(/\s+/g, '_')}_${examInfo.group}.json`;
-    link.click();
-  };
-
-  const triggerLoadProject = () => { projectInputRef.current?.click(); };
-  const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = JSON.parse(evt.target?.result as string) as SavedProject;
-        if (data.slots && data.examInfo) {
-          const loadedInfo = {
-             ...data.examInfo,
-             settings: data.examInfo.settings || { fontSize: 11, lineHeight: 1.5, watermark: '' },
-             qrUrl: data.examInfo.qrUrl || ''
-          };
-          const loadedSlots = data.slots.map(s => ({ ...s, topic: s.topic || '' }));
-          setSlots(loadedSlots);
-          setExamInfo(loadedInfo);
-          alert('Proje başarıyla yüklendi!');
-        }
-      } catch (err) { alert('Hata: Dosya okunamadı veya format hatalı.'); }
-    };
-    reader.readAsText(file);
-    if (projectInputRef.current) projectInputRef.current.value = '';
   };
 
   // --- KARIŞTIRMA (A/B) ---
@@ -265,26 +230,6 @@ export default function ExamBuilder() {
   };
 
   // --- ÇIKTI ÜRETECİLERİ ---
-  const generateOpticalFormHTML = () => {
-    const count = slots.filter(s => s.filled && s.type === 'choice').length;
-    if (count === 0) return '';
-    let html = `<div style="border: 2px solid #000; padding: 10px; margin-top: 20px; page-break-inside: avoid;"><div style="font-weight:bold; text-align:center; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:5px;">OPTİK FORM</div><table style="width: 100%; border-collapse: collapse; font-size: 9pt;"><tr>`;
-    const testQuestions = slots.filter(s => s.filled && s.type === 'choice');
-    const col1 = testQuestions.slice(0, Math.ceil(testQuestions.length / 2));
-    const col2 = testQuestions.slice(Math.ceil(testQuestions.length / 2));
-    const renderRow = (q: Question, idx: number, offset: number) => `
-      <div style="display:flex; align-items:center; margin-bottom:4px;">
-        <span style="width:20px; font-weight:bold; text-align:right; margin-right:5px;">${offset + idx + 1}.</span>
-        ${['A','B','C','D'].map(opt => `<div style="width:18px; height:18px; border-radius:50%; border:1px solid #000; text-align:center; line-height:16px; margin-right:3px; font-size:8pt;">${opt}</div>`).join('')}
-      </div>`;
-    html += `<td style="vertical-align:top; width:50%; border-right:1px dotted #ccc; padding-right:10px;">`;
-    col1.forEach((q, i) => { html += renderRow(q, i, 0); });
-    html += `</td><td style="vertical-align:top; width:50%; padding-left:10px;">`;
-    col2.forEach((q, i) => { html += renderRow(q, i, col1.length); });
-    html += `</td></tr></table></div>`;
-    return html;
-  };
-
   const generateAnswerKeyHTML = () => {
     const filled = slots.filter(s => s.filled && s.type === 'choice');
     if (filled.length === 0) return '';
@@ -301,7 +246,6 @@ export default function ExamBuilder() {
   const exportToWord = () => {
     let extra = '';
     if (showAnswerKey) extra += generateAnswerKeyHTML();
-    if (showOpticalForm) extra += generateOpticalFormHTML();
     const qrCodeImg = examInfo.qrUrl ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(examInfo.qrUrl)}" width="80" height="80" />` : '';
     
     const content = `
@@ -384,20 +328,6 @@ export default function ExamBuilder() {
         </div>
 
         <div className="z-10">
-            {showOpticalForm && (
-                <div className="mt-8 border-2 border-black p-4 w-full max-w-[12cm] mx-auto">
-                    <h4 className="text-center font-bold text-sm border-b border-black mb-2 pb-1">OPTİK FORM</h4>
-                    <div className="flex gap-4 text-xs">
-                        {[0, 1].map(col => (
-                            <div key={col} className={`flex-1 ${col===1 ? 'border-l border-dotted border-gray-400 pl-4' : ''}`}>
-                                {slots.filter(s => s.filled && s.type === 'choice').slice(col * Math.ceil(slots.filter(s => s.filled && s.type === 'choice').length/2), (col+1) * Math.ceil(slots.filter(s => s.filled && s.type === 'choice').length/2)).map((q, i) => (
-                                    <div key={q.id} className="flex items-center mb-1"><span className="w-6 text-right mr-2 font-bold">{i + (col * Math.ceil(slots.filter(s => s.filled && s.type === 'choice').length/2)) + 1}.</span>{['A','B','C','D'].map(opt => <div key={opt} className="w-4 h-4 rounded-full border border-black flex items-center justify-center text-[8px] mr-1">{opt}</div>)}</div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
             {showAnswerKey && (
                 <div className="mt-4 pt-4 border-t-2 border-black">
                     <h3 className="text-sm font-bold mb-2">{examInfo.group} GRUBU CEVAP ANAHTARI</h3>
@@ -417,11 +347,8 @@ export default function ExamBuilder() {
         <div className="flex items-center gap-2"><LayoutTemplate size={24} /><h1 className="text-xl font-bold hidden md:block">Sınav Editörü Pro</h1></div>
         <div className="flex gap-2 items-center">
            <button onClick={newProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 transition" title="Yeni Proje"><FilePlus size={16} /><span className="hidden md:inline">Yeni</span></button>
-           <button onClick={saveProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-slate-600 hover:bg-slate-700 transition" title="Kaydet"><Download size={16} /><span className="hidden md:inline">Kaydet</span></button>
-           <button onClick={triggerLoadProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-slate-600 hover:bg-slate-700 transition" title="Yükle"><FolderOpen size={16} /><span className="hidden md:inline">Yükle</span></button>
            <button onClick={shuffleQuestions} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 transition" title="Karıştır"><Shuffle size={16} /><span className="hidden md:inline">Karıştır</span></button>
            <div className="w-px h-6 bg-slate-600 mx-2"></div>
-           <button onClick={() => setShowOpticalForm(!showOpticalForm)} className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition ${showOpticalForm ? 'bg-indigo-600' : 'bg-gray-600'}`}><Grid3X3 size={16} /><span className="hidden md:inline">Optik</span></button>
            <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-700 transition"><Eye size={16} /><span className="hidden md:inline">Önizle</span></button>
            <button onClick={exportToWord} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition"><FileText size={16} /><span className="hidden md:inline">Word</span></button>
         </div>
@@ -429,7 +356,7 @@ export default function ExamBuilder() {
 
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageFileChange} />
       <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoFileChange} />
-      <input type="file" ref={projectInputRef} className="hidden" accept=".json" onChange={handleLoadProject} />
+      <input type="file" ref={projectInputRef} className="hidden" accept=".json" />
 
       <div className="flex flex-1 overflow-hidden">
         {/* SOL PANEL */}
