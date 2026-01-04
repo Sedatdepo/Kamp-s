@@ -85,9 +85,10 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                             <h2 className="text-2xl font-bold text-center mb-4">{homework.text}</h2>
                             {homework.questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
-                                    <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
-                                    {q.image && <img src={q.image} alt={`Soru ${index + 1}`} className="rounded-md border mb-4" />}
-                                    
+                                    <div className="font-semibold mb-3">
+                                      <p>{index + 1}. {q.text}</p>
+                                      {q.image && <img src={q.image} alt={`Soru ${index + 1}`} className="mt-2 rounded-md border" />}
+                                    </div>
                                     {q.type === 'choice' && q.options && (
                                         <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
                                             {q.options.map((opt, i) => (
