@@ -15,12 +15,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ExamPaper } from '../teacher/ExamPaper';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
     const { toast } = useToast();
-    const [submissionText, setSubmissionText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [answers, setAnswers] = useState<{ [key: string]: string }>({});
 
     const submissionsQuery = useMemo(() => {
       if (!db || !classId) return null;
@@ -33,9 +35,13 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.find(s => s.studentId === student.id);
     }, [submissions, student.id]);
 
+    const handleAnswerChange = (questionId: string | number, answer: string) => {
+        setAnswers(prev => ({...prev, [questionId]: answer }));
+    }
+
     const handleSubmit = async () => {
-        if (!submissionText.trim()) {
-            toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
+        if (homework.questions && homework.questions.some(q => q.required && !answers[q.id])) {
+            toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
         if (!db || !classId) return;
@@ -48,14 +54,13 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
-          text: submissionText || null,
+          answers: answers,
         };
     
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             toast({ title: "Ödev başarıyla teslim edildi!" });
-            setSubmissionText('');
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
@@ -67,31 +72,42 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     return (
         <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
             <div>
-                 {homework.questions && homework.questions.length > 0 ? (
-                    <div className="scale-75 -translate-x-16 -translate-y-16">
-                        <ExamPaper 
-                            exam={{
-                                examInfo: {
-                                    title: homework.text,
-                                    logo: null,
-                                    group: 'A',
-                                    theme: 'classic',
-                                    settings: { fontSize: 12, lineHeight: 1.6, watermark: '' }
-                                },
-                                questions: homework.questions
-                            }}
-                            showAnswerKey={false}
-                        />
-                    </div>
-                ) : (
-                    <p className="text-sm font-semibold">{homework.text}</p>
-                )}
-                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
+                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2 pb-2 border-b">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     {homework.dueDate && (
                         <div className="flex items-center gap-1.5 text-red-600 font-semibold"><CalendarIcon className="h-3 w-3" /><span>Son Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     )}
                  </div>
+                 
+                 {homework.questions && homework.questions.length > 0 ? (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-bold">{homework.text}</h2>
+                        {homework.questions.map((q, index) => (
+                            <div key={q.id} className="p-4 border rounded bg-white">
+                                <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
+                                {q.type === 'choice' && q.options && (
+                                    <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission}>
+                                        {q.options.map((opt, i) => (
+                                            <div key={i} className="flex items-center space-x-2">
+                                                <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
+                                                <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                            </div>
+                                        ))}
+                                    </RadioGroup>
+                                )}
+                                {q.type === 'open' && (
+                                    <Textarea 
+                                        placeholder="Cevabınızı buraya yazın..."
+                                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                        disabled={!!existingSubmission}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm font-semibold">{homework.text}</p>
+                )}
             </div>
 
             {existingSubmission ? (
@@ -113,6 +129,11 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
+            ) : homework.questions && homework.questions.length > 0 ? (
+                 <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Ödevi Teslim Et
+                 </Button>
             ) : null}
         </div>
     )

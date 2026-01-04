@@ -26,6 +26,7 @@ export interface Submission {
   grade?: number;
   feedback?: string;
   rubricScores?: { [criteriaId: string]: number };
+  answers?: { [questionId: string]: string }; // For online tests
 }
 
 export interface Homework {
@@ -97,7 +98,7 @@ export interface MatchingPair {
   answer: string;
 }
 
-export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph' | 'choice';
+export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph' | 'choice' | 'open';
 
 export interface Question {
   id: string | number;
