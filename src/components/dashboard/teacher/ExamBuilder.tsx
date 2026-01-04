@@ -21,7 +21,6 @@ interface Question {
   image: string | null;
   span: number;
   filled: boolean;
-  topic: string;
 }
 
 interface ExamSettings {
@@ -36,7 +35,6 @@ interface ExamInfo {
   group: 'A' | 'B';
   theme: ExamTheme;
   settings: ExamSettings;
-  qrUrl: string;
 }
 
 interface SavedProject {
@@ -98,7 +96,6 @@ export default function ExamBuilder() {
       image: null,
       span: 1,
       filled: false,
-      topic: '' 
     }))
   );
 
@@ -116,7 +113,6 @@ export default function ExamBuilder() {
       lineHeight: 1.5,
       watermark: ''
     },
-    qrUrl: ''
   });
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -151,8 +147,8 @@ export default function ExamBuilder() {
   // --- PROJE İŞLEMLERİ ---
   const newProject = () => {
     if(confirm('Mevcut çalışma silinecek ve yeni bir proje başlatılacak. Emin misiniz?')) {
-        setSlots(Array(10).fill(null).map((_, i) => ({ id: i, text: '', type: 'choice', options: ['', '', '', ''], correctOption: null, image: null, span: 1, filled: false, topic: '' })));
-        setExamInfo({ title: 'YENİ SINAV', logo: null, group: 'A', theme: 'classic', settings: { fontSize: 11, lineHeight: 1.5, watermark: '' }, qrUrl: '' });
+        setSlots(Array(10).fill(null).map((_, i) => ({ id: i, text: '', type: 'choice', options: ['', '', '', ''], correctOption: null, image: null, span: 1, filled: false })));
+        setExamInfo({ title: 'YENİ SINAV', logo: null, group: 'A', theme: 'classic', settings: { fontSize: 11, lineHeight: 1.5, watermark: '' } });
         setCurrentSlotId(0);
     }
   };
@@ -185,7 +181,7 @@ export default function ExamBuilder() {
   };
   const handleClearSlice = () => {
     if (confirm('Temizlensin mi?')) {
-      setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: '', image: null, filled: false, options: ['', '', '', ''], correctOption: null, span: 1, topic: '' } : slot));
+      setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: '', image: null, filled: false, options: ['', '', '', ''], correctOption: null, span: 1 } : slot));
       setEditorContent('');
     }
   };
@@ -220,15 +216,6 @@ export default function ExamBuilder() {
     if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
-  const calculateAnalysis = () => {
-    const filledQuestions = slots.filter(s => s.filled);
-    const total = filledQuestions.length;
-    if (total === 0) return [];
-    const topicCounts: Record<string, number> = {};
-    filledQuestions.forEach(q => { const topic = q.topic.trim() || 'Genel'; topicCounts[topic] = (topicCounts[topic] || 0) + 1; });
-    return Object.entries(topicCounts).map(([name, count]) => ({ name, count, percent: Math.round((count / total) * 100) })).sort((a, b) => b.count - a.count);
-  };
-
   // --- ÇIKTI ÜRETECİLERİ ---
   const generateAnswerKeyHTML = () => {
     const filled = slots.filter(s => s.filled && s.type === 'choice');
@@ -246,7 +233,6 @@ export default function ExamBuilder() {
   const exportToWord = () => {
     let extra = '';
     if (showAnswerKey) extra += generateAnswerKeyHTML();
-    const qrCodeImg = examInfo.qrUrl ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(examInfo.qrUrl)}" width="80" height="80" />` : '';
     
     const content = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
@@ -257,7 +243,6 @@ export default function ExamBuilder() {
                 ${examInfo.logo ? `<td style="width:100px;"><img src="${examInfo.logo}" width="80" height="80"></td>` : ''}
                 <td style="text-align:center;"><h1>${examInfo.title}</h1><p>Adı Soyadı: ...........................................</p></td>
                 <td style="width:100px; text-align:right;">
-                    ${qrCodeImg ? `<div>${qrCodeImg}</div>` : ''}
                     <div style="width:40px; height:40px; border:2px solid black; border-radius:50%; text-align:center; line-height:40px; font-weight:bold; display:inline-block; margin-top:5px;">${examInfo.group}</div>
                 </td>
             </tr>
@@ -305,11 +290,6 @@ export default function ExamBuilder() {
 
             <div className="flex flex-col items-end gap-2 shrink-0">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-2xl bg-white ${styles.groupCircle}`}>{examInfo.group}</div>
-                {examInfo.qrUrl && (
-                    <div className="border p-1 bg-white">
-                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(examInfo.qrUrl)}`} alt="QR" className="w-16 h-16" />
-                    </div>
-                )}
             </div>
         </div>
 
@@ -364,7 +344,7 @@ export default function ExamBuilder() {
           
           <div className="flex border-b">
               <button onClick={() => setActiveTab('editor')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'editor' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><FileText size={16} /> Soru Editörü</button>
-              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'settings' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><Settings size={16} /> Ayarlar & Analiz</button>
+              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'settings' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><Settings size={16} /> Ayarlar</button>
           </div>
 
           {activeTab === 'editor' ? (
@@ -391,10 +371,6 @@ export default function ExamBuilder() {
                         </div>
                     </div>
                     <div className="h-[200px]"><SimpleHtmlEditor value={editorContent} onChange={setEditorContent} addImage={triggerImageUpload} /></div>
-                    <div className="flex items-center gap-2 bg-gray-50 border rounded p-2">
-                        <Tag size={16} className="text-gray-400" />
-                        <input type="text" placeholder="Konu/Kazanım Etiketi (örn: Türev)" className="bg-transparent outline-none text-sm w-full" value={activeSlot.topic} onChange={(e) => updateSlotField('topic', e.target.value)} />
-                    </div>
                     {activeSlot.image && (<div className="relative group border rounded p-2 bg-gray-50 text-center"><img src={activeSlot.image} alt="Soru görseli" className="h-20 mx-auto object-contain" /><button onClick={() => updateSlotField('image', null)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><Trash2 size={12} /></button></div>)}
                     {activeSlot.type === 'choice' && (
                     <div className="space-y-2 bg-gray-50 p-3 rounded border">
@@ -423,7 +399,6 @@ export default function ExamBuilder() {
                         <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={examInfo.settings.fontSize} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, fontSize: parseFloat(e.target.value) } }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
                         <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={examInfo.settings.lineHeight} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, lineHeight: parseFloat(e.target.value) } }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
                         <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={examInfo.settings.watermark} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, watermark: e.target.value } }))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><QrCode size={12}/> QR Kod / Çözüm Linki</label><input type="text" placeholder="https://youtube.com/..." value={examInfo.qrUrl} onChange={(e) => setExamInfo(prev => ({ ...prev, qrUrl: e.target.value }))} className="w-full p-2 border rounded text-sm bg-gray-50" /><p className="text-[10px] text-gray-400 mt-1">Link girildiğinde kağıdın köşesinde QR kod belirir.</p></div>
                     </div>
                 </div>
                 <div className="bg-white border rounded-lg p-4 shadow-sm">
@@ -435,19 +410,6 @@ export default function ExamBuilder() {
                             <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Upload size={14}/> Logo</button>
                         </div>
                         <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Key size={14}/> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
-                    </div>
-                </div>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><PieChart size={16}/> KONU ANALİZİ</h3>
-                    <div className="space-y-2">
-                        {calculateAnalysis().length > 0 ? (
-                            calculateAnalysis().map((item, i) => (
-                                <div key={i} className="text-xs">
-                                    <div className="flex justify-between mb-1"><span className="font-medium text-gray-700">{item.name}</span><span className="text-gray-500">{item.count} Soru (%{item.percent})</span></div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${item.percent}%` }}></div></div>
-                                </div>
-                            ))
-                        ) : (<p className="text-xs text-gray-400 text-center italic">Henüz soru etiketi girilmedi.</p>)}
                     </div>
                 </div>
             </div>
