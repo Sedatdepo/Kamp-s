@@ -12,7 +12,6 @@ import { DistributionAssignmentTab } from './DistributionAssignmentTab';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Button } from '@/components/ui/button';
-import { ProjectLibrary } from './project-pool/ProjectLibrary';
 
 
 interface ProjectDistributionTabProps {
@@ -66,7 +65,6 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass, 
           <TabsList className="w-full justify-start">
             <TabsTrigger value="distribution">1. Tercih & Atama</TabsTrigger>
             <TabsTrigger value="grading">2. Proje Değerlendirme</TabsTrigger>
-            <TabsTrigger value="pool">Proje Havuzu</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -75,14 +73,6 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass, 
         </TabsContent>
         <TabsContent value="grading" className="mt-4">
           {teacherProfile && <ProjectGradingTab students={students || []} teacherProfile={teacherProfile} currentClass={currentClass} />}
-        </TabsContent>
-         <TabsContent value="pool" className="mt-4">
-          <ProjectLibrary 
-            classId={classId}
-            teacherProfile={teacherProfile}
-            classes={classes}
-            students={allStudents || []}
-          />
         </TabsContent>
       </Tabs>
       {teacherProfile && (
