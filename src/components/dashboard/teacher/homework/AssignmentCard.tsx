@@ -1,9 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Video } from 'lucide-react';
+import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Trash2, Video } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
-export const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onToggleFavorite, onPrint }: any) => {
+
+export const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, onDelete, isFavorite, onToggleFavorite, onPrint }: any) => {
     const isPhysics = item.subject === 'physics';
     
     const getFormatIcon = () => {
@@ -17,7 +29,7 @@ export const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorit
         <div className={`h-1.5 w-full ${isPhysics ? 'bg-cyan-600' : 'bg-rose-600'}`}></div>
   
         <div className="p-5 flex-grow flex flex-col relative">
-          <div className="absolute top-4 right-4 flex gap-2 z-10">
+          <div className="absolute top-4 right-4 flex gap-1 z-10">
             <button 
               onClick={() => onPrint(item)}
               className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
@@ -39,6 +51,30 @@ export const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, isFavorit
             >
               <Pencil size={16} />
             </button>
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <button
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                        title="Ödevi Sil"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            "{item.title}" başlıklı ödevi kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDelete(item.id)} className="bg-destructive hover:bg-destructive/90">
+                            Sil
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
           </div>
   
           <div className="flex justify-between items-start mb-3 pr-24">

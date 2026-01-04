@@ -139,6 +139,12 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         setEditAssignmentModalOpen(true);
     };
 
+    const handleDeleteAssignment = (assignmentId: number) => {
+        setAssignments(prev => prev.filter(a => a.id !== assignmentId));
+        setFavorites(prev => prev.filter(id => id !== assignmentId));
+        toast({ title: 'Ödev Silindi', description: 'Ödev kütüphaneden kaldırıldı.', variant: 'destructive'});
+    };
+
     const handlePrintAssignment = (assignment: any) => {
         setSelectedAssignment(assignment);
         setPrintModalOpen(true);
@@ -232,6 +238,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     onAssign={handleAssignClick}
                     onShowRubric={handleShowRubric}
                     onEdit={handleEditAssignment}
+                    onDelete={handleDeleteAssignment}
                     isFavorite={favorites.includes(item.id)}
                     onToggleFavorite={toggleFavorite}
                     onPrint={handlePrintAssignment}
