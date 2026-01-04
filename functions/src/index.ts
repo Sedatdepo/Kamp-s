@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -13,43 +14,49 @@ export const sendNotificationOnNewAnnouncement = functions
       const beforeData = change.before.data();
       const afterData = change.after.data();
 
+      // Duyuru eklenmemişse veya silinmişse işlem yapma
+      if (!afterData.announcements || afterData.announcements.length <= (beforeData.announcements || []).length) {
+        return null;
+      }
+      
       const beforeAnnouncements = beforeData.announcements || [];
       const afterAnnouncements = afterData.announcements || [];
 
-      if (afterAnnouncements.length <= beforeAnnouncements.length) {
-        return null; // Sadece yeni duyuru eklendiğinde çalışsın
-      }
-
+      // En son eklenen duyuruyu bul
       const newAnnouncement = afterAnnouncements.find((ann: any) =>
         !beforeAnnouncements.some((bAnn: any) => bAnn.id === ann.id)
       );
 
       if (!newAnnouncement) {
+        console.log("Yeni bir duyuru bulunamadı.");
         return null;
       }
 
       const classId = context.params.classId;
-      const studentsSnapshot = await db.collection("students")
-          .where("classId", "==", classId)
-          .get();
+      // Hatalı sorgu düzeltildi: Öğrenciler artık doğru alt koleksiyondan alınıyor.
+      const studentsSnapshot = await db.collection("classes").doc(classId).collection("students").get();
 
       if (studentsSnapshot.empty) {
-        console.log("No students found for class:", classId);
+        console.log("Sınıfta öğrenci bulunamadı:", classId);
         return null;
       }
 
       const tokens: string[] = [];
       studentsSnapshot.forEach((doc) => {
         const student = doc.data();
-        if (student.fcmTokens && Array.isArray(student.fcmTokens)) {
+        // fcmTokens alanının varlığını ve bir dizi olduğunu kontrol et
+        if (student.fcmTokens && Array.isArray(student.fcmTokens) && student.fcmTokens.length > 0) {
           tokens.push(...student.fcmTokens);
         }
       });
 
       if (tokens.length === 0) {
-        console.log("No FCM tokens found for students in class:", classId);
+        console.log("Bildirim gönderilecek token bulunamadı:", classId);
         return null;
       }
+
+      // Tekrarlanan tokenları temizle
+      const uniqueTokens = [...new Set(tokens)];
 
       const payload = {
         notification: {
@@ -60,18 +67,18 @@ export const sendNotificationOnNewAnnouncement = functions
       };
 
       try {
-        const response = await messaging.sendToDevice(tokens, payload);
-        console.log("Notifications sent successfully:", response.successCount);
+        const response = await messaging.sendToDevice(uniqueTokens, payload);
+        console.log("Bildirimler başarıyla gönderildi:", response.successCount);
         // Hatalı veya geçersiz tokenları temizleme (isteğe bağlı)
         response.results.forEach((result, index) => {
             const error = result.error;
             if (error) {
-                console.error("Failure sending notification to", tokens[index], error);
+                console.error("Bildirim gönderilirken hata:", uniqueTokens[index], error);
                 // Eğer token geçersizse (unregister), veritabanından silinebilir
             }
         });
       } catch (error) {
-        console.error("Error sending notifications:", error);
+        console.error("Bildirim gönderme hatası:", error);
       }
 
       return null;
