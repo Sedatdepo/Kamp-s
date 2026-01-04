@@ -179,17 +179,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
     <div className="flex flex-col md:flex-row h-[calc(100vh-100px)] bg-gray-50">
       {/* SOL PANEL - Soru Listesi ve Sınav Ayarları */}
       <div className="w-full md:w-80 border-r bg-white p-4 flex flex-col space-y-4 overflow-y-auto">
-        <RecordManager
-            records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
-            selectedRecordId={selectedRecordId}
-            onSelectRecord={setSelectedRecordId}
-            onNewRecord={handleNewProject}
-            onDeleteRecord={handleDeleteFromArchive}
-            noun="Sınav"
-        />
-        <Button onClick={handleSaveToArchive} className="w-full bg-blue-600 hover:bg-blue-700">
-            <Save className="mr-2 h-4 w-4" /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Sınavı Arşive Kaydet'}
-        </Button>
         <Card>
             <CardHeader className='pb-2'>
                 <CardTitle className='text-base'>Sınav Bilgileri</CardTitle>
