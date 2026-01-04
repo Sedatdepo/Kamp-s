@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2
 } from 'lucide-react';
 import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
@@ -214,7 +214,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
               <div className="flex gap-2 items-center mt-2 mb-4">
                   <input type="file" ref={imageInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
                   <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={isUploading}>
-                    {isUploading ? <><loader2 className="animate-spin mr-2"/> Yükleniyor...</> : <><ImageIcon className="mr-2"/> Resim Ekle</>}
+                    {isUploading ? <><Loader2 className="animate-spin mr-2"/> Yükleniyor...</> : <><ImageIcon className="mr-2"/> Resim Ekle</>}
                   </Button>
                   {activeQuestion.image && (
                      <Button variant="destructive" size="sm" onClick={handleDeleteImage}><Trash2 className="mr-2"/> Resmi Sil</Button>
