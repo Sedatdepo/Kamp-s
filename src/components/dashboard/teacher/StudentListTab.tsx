@@ -68,7 +68,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
         );
     }, [student.id, db]);
 
-    const { data: messages, loading: messagesLoading } = useFirestore<Message>(`messages-for-student-${student.id}`, messagesQuery);
+    const { data: messages, loading: messagesLoading } = useFirestore<Message[]>(`messages-for-student-${student.id}`, messagesQuery);
 
     const sortedMessages = useMemo(() => {
         if (!messages) return [];
@@ -147,13 +147,13 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const studentsQuery = useMemo(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student>(`students-in-class-${classId}`, studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
   
   const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
-  const { data: riskFactors } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+  const { data: riskFactors } = useFirestore<RiskFactor[]>(`riskFactors`, riskFactorsQuery);
   
   const lessonsQuery = useMemo(() => (db && teacherProfile?.id ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null), [db, teacherProfile?.id]);
-  const { data: lessons } = useFirestore<Lesson>('lessons', lessonsQuery);
+  const { data: lessons } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherProfile?.id}`, lessonsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
@@ -166,7 +166,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     );
   }, [teacherId, db]);
 
-  const { data: unreadMessages } = useFirestore<Message>(`unread-messages-for-teacher-${teacherId}`, unreadMessagesQuery);
+  const { data: unreadMessages } = useFirestore<Message[]>(`unread-messages-for-teacher-${teacherId}`, unreadMessagesQuery);
 
   const unreadMessagesByStudent = useMemo(() => {
     const map = new Map<string, number>();
@@ -362,8 +362,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                                 Her satıra bir öğrenci gelecek şekilde yapıştırın. Format: OkulNo Ad Soyad.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz
-456 Ayşe Kaya" className="h-48" />
+                        <Textarea value={bulkStudents} onChange={e => setBulkStudents(e.target.value)} placeholder="123 Ahmet Yılmaz\n456 Ayşe Kaya" className="h-48" />
                         <DialogClose asChild><Button onClick={handleBulkAdd}>Öğrencileri Ekle</Button></DialogClose>
                     </DialogContent>
                 </Dialog>
@@ -428,28 +427,24 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                   <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.number}</TableCell>
                   <TableCell className="cursor-pointer" onClick={() => setSelectedStudent(student)}>{student.name}</TableCell>
                   <TableCell className="text-right">
-                    <div className="inline-flex relative z-10" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex">
                         <Button variant="ghost" size="icon" onClick={() => handleExportStudentReport(student)}>
                            <FileDown className="h-4 w-4"/>
                         </Button>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <Button variant="ghost" size="icon" className="relative">
-                                        <MessageSquare className="h-4 w-4"/>
-                                        {unreadMessagesByStudent.has(student.id) && (
-                                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-                                        )}
-                                    </Button>
-                                </div>
+                                <Button variant="ghost" size="icon" className="relative">
+                                    <MessageSquare className="h-4 w-4"/>
+                                    {unreadMessagesByStudent.has(student.id) && (
+                                        <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                                    )}
+                                </Button>
                             </DialogTrigger>
                              {appUser?.type === 'teacher' && <ChatModal student={student} teacherId={appUser.data.uid} />}
                         </Dialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
-                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -488,11 +483,12 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
             setIsOpen={(isOpen) => !isOpen && setSelectedStudent(null)}
         />
     )}
-    <BulkGradeEntryDialog 
+    {currentClass && <BulkGradeEntryDialog 
         isOpen={isBulkGradeOpen}
         setIsOpen={setIsBulkGradeOpen}
         students={sortedStudents}
-    />
+        activeTerm={1} // Defaulting to term 1, this will be handled by GradingToolTab now
+    />}
      {currentClass?.code && (
       <ClassInviteDialog
         isOpen={isInviteOpen}

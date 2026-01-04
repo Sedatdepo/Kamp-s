@@ -208,7 +208,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     
     setLocalDb(prevDb => ({
         ...prevDb,
-        electionDocuments: [...prevDb.electionDocuments, newRecord]
+        electionDocuments: [...(prevDb.electionDocuments || []), newRecord]
     }));
     toast({ title: 'Kaydedildi', description: 'Seçim sonuçları arşive başarıyla kaydedildi.' });
   }
@@ -239,7 +239,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
              <RecordManager
-                records={electionDocuments.filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
+                records={(electionDocuments || []).filter(d => d.classId === currentClass?.id).map(r => ({ id: r.id, name: r.name }))}
                 selectedRecordId={selectedRecordId}
                 onSelectRecord={setSelectedRecordId}
                 onNewRecord={handleNewRecord}
