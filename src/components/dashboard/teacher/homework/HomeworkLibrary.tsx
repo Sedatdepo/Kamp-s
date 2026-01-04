@@ -98,7 +98,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             for (const classId in studentsByClass) {
                 const newHomeworkDoc = {
                     classId: classId,
-                    text: `${selectedAssignment.title}: ${selectedAssignment.instructions}`,
+                    text: selectedAssignment.title, // Keep title for list views
                     assignedDate: new Date().toISOString(),
                     dueDate: details.date ? new Date(details.date).toISOString() : null,
                     teacherName: teacherProfile?.name,
@@ -106,6 +106,9 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     rubric: rubric.items,
                     assignedStudents: studentsByClass[classId],
                     seenBy: [],
+                    // Embed the questions directly into the homework document
+                    questions: selectedAssignment.questions || [],
+                    instructions: selectedAssignment.instructions,
                 };
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
                 const newDocRef = doc(homeworksColRef); // Create a new doc ref to get the ID

@@ -26,7 +26,7 @@ export interface Submission {
   grade?: number;
   feedback?: string;
   rubricScores?: { [criteriaId: string]: number };
-  answers?: { [questionId: string]: string }; // For online tests
+  answers?: { [questionId: string]: string | string[] };
 }
 
 export interface Homework {
@@ -40,6 +40,7 @@ export interface Homework {
   seenBy: string[];
   questions?: Question[]; // Added to support exam questions
   rubric?: any; // To differentiate performance homeworks
+  instructions?: string;
 }
 
 
