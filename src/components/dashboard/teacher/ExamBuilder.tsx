@@ -17,6 +17,7 @@ import { AssignExamModal } from './AssignExamModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ExamPaper } from './ExamPaper';
 
 // --- TİPLER --- Artık types.ts'den geliyor.
 
@@ -304,13 +305,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
     link.click();
   };
 
-  const getThemeStyles = (theme: ExamTheme) => {
-    switch (theme) {
-      case 'modern': return { container: 'font-sans', header: 'border-b-4 border-blue-600 pb-4 mb-6', title: 'text-3xl font-extrabold text-blue-800 uppercase', slotBorder: 'border border-blue-100 rounded-lg shadow-sm', slotNumber: 'bg-blue-600 text-white rounded-br-lg', groupCircle: 'border-4 border-blue-600 text-blue-600' };
-      case 'minimal': return { container: 'font-sans', header: 'border-b border-gray-300 pb-2 mb-4', title: 'text-xl font-normal text-gray-800 uppercase', slotBorder: 'border-b border-gray-100', slotNumber: 'text-gray-400 font-normal', groupCircle: 'border border-gray-400 text-gray-600' };
-      default: return { container: 'font-serif', header: 'border-b-2 border-black pb-4 mb-6', title: 'text-2xl font-bold text-black uppercase', slotBorder: 'border-b border-dashed border-gray-300', slotNumber: 'bg-gray-100 text-gray-500 rounded', groupCircle: 'border-2 border-black text-black' };
-    }
-  };
 
   const handleOpenAssignModal = (type: 'live' | 'performance') => {
     setAssignmentType(type);
@@ -365,59 +359,14 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   };
 
   const ExamPaperContent = ({ forPreview = false }: { forPreview?: boolean }) => {
-    const styles = getThemeStyles(currentExam.examInfo.theme);
-    const { fontSize, lineHeight, watermark } = currentExam.examInfo.settings;
-
     return (
-      <div 
-        className={`bg-white w-[21cm] min-h-[29.7cm] shadow-2xl p-[1.5cm] flex flex-col relative overflow-hidden ${styles.container} ${forPreview ? 'shadow-none' : ''}`}
-        style={{ fontSize: `${fontSize}pt` }}
-      >
-        {watermark && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-45deg] text-gray-100 font-bold text-[80pt] pointer-events-none select-none z-0 whitespace-nowrap">{watermark}</div>}
-
-        <div className={`flex items-start gap-4 shrink-0 relative z-10 ${styles.header}`}>
-            {currentExam.examInfo.logo && <div className="w-[80px] h-[80px] flex items-center justify-center shrink-0"><img src={currentExam.examInfo.logo} alt="Logo" className="max-w-full max-h-full object-contain" /></div>}
-            
-            <div className="flex-1 text-center flex flex-col justify-center">
-                <h1 className={styles.title}>{currentExam.examInfo.title}</h1>
-                <div className="flex justify-between text-sm px-4 mt-2">
-                    <div className="text-left space-y-1"><div>Adı Soyadı: ..............................</div><div>Sınıfı / No: ..............................</div></div>
-                    <div className="text-left space-y-1"><div>Tarih: ...../...../20....</div><div>Notu: .....................</div></div>
-                </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 shrink-0">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-2xl bg-white ${styles.groupCircle}`}>{currentExam.examInfo.group}</div>
-            </div>
-        </div>
-
-        <div className="flex gap-[1cm] flex-1 z-10">
-          {[0, 5].map((startIdx, colIndex) => (
-            <div key={colIndex} className={`flex-1 flex flex-col ${forPreview ? '' : 'border border-dashed border-gray-200 p-1'}`}>
-              {currentExam.questions.slice(startIdx, startIdx + 5).map((slot, i) => (
-                <SliceItem 
-                  key={slot.id} slot={slot} isActive={!forPreview && slot.id === currentSlotId} onClick={() => !forPreview && setCurrentSlotId(slot.id)} 
-                  index={i + startIdx} onDragStart={!forPreview ? handleDragStart : undefined} onDragOver={!forPreview ? handleDragOver : undefined} 
-                  onDrop={!forPreview ? handleDrop : undefined} draggable={!forPreview} styles={styles} lineHeight={lineHeight}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div className="z-10">
-            {showAnswerKey && (
-                <div className="mt-4 pt-4 border-t-2 border-black">
-                    <h3 className="text-sm font-bold mb-2">{currentExam.examInfo.group} GRUBU CEVAP ANAHTARI</h3>
-                    <div className="grid grid-cols-10 gap-2 text-xs border border-gray-300 p-2">
-                        {currentExam.questions.map((slot, i) => { if (!slot.filled || slot.type !== 'choice') return null; return <div key={i} className="flex justify-between border-b border-gray-200 pb-1"><span className="font-bold">{i + 1}.</span><span>{slot.correctOption !== null ? ['A','B','C','D', 'E'][slot.correctOption] : '-'}</span></div>; })}
-                    </div>
-                </div>
-            )}
-        </div>
-      </div>
+      <ExamPaper 
+        exam={currentExam} 
+        showAnswerKey={!forPreview && showAnswerKey}
+      />
     );
   };
+
 
   if(loading) return <div>Yükleniyor...</div>
 
