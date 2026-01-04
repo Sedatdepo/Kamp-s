@@ -42,12 +42,17 @@ export const usePushNotifications = () => {
                 setFcmToken(token);
                 setNotificationPermissionGranted(true);
                 
+                let userRef;
                 if (appUser.type === 'student') {
-                    const studentRef = doc(db, 'students', appUser.data.id);
-                    await updateDoc(studentRef, {
-                        fcmTokens: arrayUnion(token)
-                    });
+                    userRef = doc(db, 'students', appUser.data.id);
+                } else if (appUser.type === 'teacher') {
+                    userRef = doc(db, 'teachers', appUser.data.uid);
                 }
+
+                if (userRef) {
+                    await updateDoc(userRef, { fcmTokens: arrayUnion(token) });
+                }
+                
                 return token;
             } else {
                setError(new Error('No registration token available. Request permission to generate one.'));
@@ -87,19 +92,26 @@ export const usePushNotifications = () => {
     }, [getFCMToken]);
 
     const unsubscribeFromNotifications = useCallback(async () => {
-        if (!db || !appUser || appUser.type !== 'student') return;
+        if (!db || !appUser) return;
 
         setIsSubscribing(true);
         try {
             const currentToken = await getFCMToken(); // Get the token for this device
             if (currentToken) {
-                const studentRef = doc(db, 'students', appUser.data.id);
-                await updateDoc(studentRef, {
-                    fcmTokens: arrayRemove(currentToken)
-                });
+                let userRef;
+                if (appUser.type === 'student') {
+                    userRef = doc(db, 'students', appUser.data.id);
+                } else if (appUser.type === 'teacher') {
+                    userRef = doc(db, 'teachers', appUser.data.uid);
+                }
+
+                if (userRef) {
+                    await updateDoc(userRef, {
+                        fcmTokens: arrayRemove(currentToken)
+                    });
+                }
                 setFcmToken(null);
-                // We cannot programmatically revoke the permission, so we just update our state
-                // and inform the user.
+                setNotificationPermissionGranted(false);
                 toast({title: "Bildirimler kapatıldı", description: "Bu cihaz için bildirim aboneliği kaldırıldı."});
             }
         } catch (err) {

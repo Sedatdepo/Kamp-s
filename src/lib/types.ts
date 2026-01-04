@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -67,6 +66,7 @@ export interface TeacherProfile {
   branch: string;
   schoolName: string;
   principalName: string;
+  fcmTokens?: string[];
   // Grading Tool Data
   reportConfig?: ReportConfig;
   perfCriteria?: Criterion[];
