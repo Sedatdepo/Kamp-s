@@ -27,7 +27,7 @@ const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, in
                 <span className="font-bold">{index + 1}.</span>
                 <div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} />
             </div>
-            {slot.image && <img src={slot.image} alt="Soru görseli" className="w-full h-full object-cover my-2 block" />}
+            {slot.image && <div className="w-full h-full my-2 block"><img src={slot.image} alt="Soru görseli" className="w-full h-full object-contain" /></div>}
             {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
             {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
             {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
