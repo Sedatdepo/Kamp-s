@@ -455,12 +455,14 @@ const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, on
       {!slot.filled ? (
         <div className="flex flex-col items-center gap-1"><Plus size={20} /><span className="text-xs">Soru Ekle</span></div>
       ) : (
-        <div className="text-xs w-full h-full overflow-hidden" >
-          <div className="flex gap-1 mb-1">
-            <div className="prose prose-sm max-w-none m-0 p-0 line-clamp-4" dangerouslySetInnerHTML={{ __html: slot.text }} />
-          </div>
-          {slot.image && <img src={slot.image} alt="Soru görseli" className="max-h-16 my-1 block rounded" />}
-          {slot.type === 'choice' && (<div className="mt-1 text-xs space-y-0.5 text-gray-500">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold" : ""}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
+        <div className="text-xs w-full h-full overflow-hidden flex flex-col" >
+          <div className="prose prose-sm max-w-none m-0 p-0 line-clamp-2" dangerouslySetInnerHTML={{ __html: slot.text }} />
+          {slot.image && 
+            <div className="relative flex-1 mt-1 rounded overflow-hidden">
+                <img src={slot.image} alt="Soru görseli" className="absolute h-full w-full object-cover" />
+            </div>
+          }
+          {slot.type === 'choice' && !slot.image && (<div className="mt-1 text-xs space-y-0.5 text-gray-500">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold" : ""}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
         </div>
       )}
     </div>
