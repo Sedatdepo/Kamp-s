@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -15,19 +16,28 @@ const getThemeStyles = (theme: ExamTheme) => {
 const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, index: number, styles: any, lineHeight: number }) => {
     return (
       <div 
-        className={`relative p-2 flex flex-col group ${styles.slotBorder} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''} flex-grow flex-shrink-0 basis-0`}
+        className={`relative p-2 flex flex-col group ${styles.slotBorder} flex-grow flex-shrink-0 basis-0`}
       >
         <span className={`absolute top-0 right-0 text-[10px] px-1.5 py-0.5 ${styles.slotNumber}`}>#{index + 1}</span>
         {!slot.filled ? (
-          <div className="flex flex-col items-center gap-1"><Plus size={20} /><span className="text-xs">Boş Soru</span></div>
+          <div className="flex flex-col items-center justify-center text-gray-300 h-full">
+            <Plus size={20} /><span className="text-xs">Boş Soru</span>
+          </div>
         ) : (
           <div className="text-sm w-full h-full overflow-hidden pl-4" style={{ lineHeight: lineHeight }}>
-            <div className="flex gap-1 mb-1">
-                <span className="font-bold">{index + 1}.</span>
-                <div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} />
-            </div>
-            {slot.image && <div className="w-full h-full my-2 block"><img src={slot.image} alt="Soru görseli" className="w-full h-full object-contain" /></div>}
-            {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
+            {slot.image ? (
+              <div className="w-full h-full my-2 block">
+                <img src={slot.image} alt="Soru görseli" className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-1 mb-1">
+                    <span className="font-bold">{index + 1}.</span>
+                    <div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} />
+                </div>
+                {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options?.map((opt, i) => opt && (<div key={i}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
+              </>
+            )}
             {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
             {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
           </div>
