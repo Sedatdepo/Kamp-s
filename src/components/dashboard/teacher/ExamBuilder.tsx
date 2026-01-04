@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X
 } from 'lucide-react';
 import { Exam, ExamInfo, ExamQuestion, ExamQuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
