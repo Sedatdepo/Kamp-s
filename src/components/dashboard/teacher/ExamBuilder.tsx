@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send
 } from 'lucide-react';
 import { Exam, ExamInfo, ExamQuestion, ExamQuestionType, ExamTheme, ExamDocument } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // --- TİPLER --- Artık types.ts'den geliyor.
 
@@ -366,6 +367,15 @@ export default function ExamBuilder() {
            <button onClick={handleNewProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 transition" title="Yeni Sınav"><RefreshCw size={16} /><span className="hidden md:inline">Yeni</span></button>
            <button onClick={shuffleQuestions} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 transition" title="Soruları Karıştır"><Shuffle size={16} /><span className="hidden md:inline">Karıştır</span></button>
            <div className="w-px h-6 bg-slate-600 mx-2"></div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-medium transition"><Send size={16} /><span className="hidden md:inline">Ödev Ver</span></button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Canlı Ödev Ver</DropdownMenuItem>
+                <DropdownMenuItem>Performans Ödevi Ver</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
            <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-700 transition"><Eye size={16} /><span className="hidden md:inline">Önizle</span></button>
            <button onClick={exportToWord} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition"><FileText size={16} /><span className="hidden md:inline">Word</span></button>
         </div>
@@ -377,7 +387,19 @@ export default function ExamBuilder() {
       <div className="flex flex-1 overflow-hidden">
         {/* SOL PANEL */}
         <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0 p-4 space-y-4">
-          
+          <div className="border-t pt-4 mt-4 space-y-4">
+              <RecordManager
+                records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                onNewRecord={handleNewProject}
+                onDeleteRecord={handleDeleteFromArchive}
+                noun="Sınav"
+              />
+              <button onClick={handleSaveToArchive} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
+                  <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
+              </button>
+          </div>
           <div className="p-4 border-b border-gray-200 bg-blue-50 rounded-lg">
               <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-bold text-blue-800">DÜZENLENEN SORU</span>
@@ -417,19 +439,6 @@ export default function ExamBuilder() {
                   <button onClick={handleSaveSlice} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded flex items-center justify-center gap-2 transition"><Save size={18} /> Kaydet</button>
                   <button onClick={handleClearSlice} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded transition"><Trash2 size={18} /></button>
               </div>
-          </div>
-          <div className="border-t pt-4 mt-4 space-y-4">
-              <RecordManager
-                records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-                onNewRecord={handleNewProject}
-                onDeleteRecord={handleDeleteFromArchive}
-                noun="Sınav"
-              />
-              <button onClick={handleSaveToArchive} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
-                  <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
-              </button>
           </div>
           <div className="bg-white border rounded-lg p-4 shadow-sm">
               <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Palette size={16}/> GÖRÜNÜM AYARLARI</h3>
