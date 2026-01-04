@@ -137,6 +137,7 @@ export function StudentDashboard() {
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Sana atanan performans ödevlerini gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                    <MenuCard icon={<BookText />} title="Ödevler" description="Sana atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
                     
                     <MenuCard 
                         isLoading={classLoading}
