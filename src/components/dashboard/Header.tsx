@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, User, Settings } from 'lucide-react';
 import { ProfileDialog } from './teacher/ProfileDialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function getInitials(name: string = '') {
     return name
@@ -28,7 +28,11 @@ function getInitials(name: string = '') {
 export function Header() {
   const { appUser, signOut } = useAuth();
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [isStudentSettingsOpen, setStudentSettingsOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
 
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
@@ -40,6 +44,11 @@ export function Header() {
     const event = new CustomEvent('open-student-settings');
     window.dispatchEvent(event);
   };
+
+  if (!isClient) {
+    // Sunucuda veya ilk hidrasyonda hiçbir şey render etme
+    return null;
+  }
 
   return (
     <>
