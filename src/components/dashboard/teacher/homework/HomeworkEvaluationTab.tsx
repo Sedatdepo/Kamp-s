@@ -6,196 +6,191 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Class, TeacherProfile, Submission } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2, Download, Edit, Trash2, Calendar, Users, Save, X } from 'lucide-react';
 import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { exportHomeworkEvaluationToRtf } from '@/lib/word-export';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarPicker } from "@/components/ui/calendar"
+import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-
-export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
+const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete }: any) => {
     const { db } = useAuth();
     const { toast } = useToast();
-    
-    const [selectedHwId, setSelectedHwId] = useState<string | null>(null);
     const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
-    const [submissions, setSubmissions] = useState<{ [studentId: string]: Submission | null }>({});
-
-    const homeworksQuery = useMemo(() => {
-        if (!db || !classId) return null;
-        // Sadece rubrik içeren (yani kütüphaneden atanmış) ödevleri getir
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
-    }, [db, classId]);
-
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<any[]>(`performance-homeworks-${classId}`, homeworksQuery);
+    const [editingHomework, setEditingHomework] = useState<any | null>(null);
     
-    const selectedHomework = useMemo(() => {
-        if (!selectedHwId) return null;
-        return homeworks.find(hw => hw.id === selectedHwId);
-    }, [selectedHwId, homeworks]);
-    
-    const assignedStudents = useMemo(() => {
-        if (!selectedHomework || !selectedHomework.assignedStudents) return [];
-        return students.filter(s => selectedHomework.assignedStudents.includes(s.id));
-    }, [selectedHomework, students]);
-
     useEffect(() => {
-        const fetchSubmissions = async () => {
-            if (!selectedHomework) return;
-            const subs: { [studentId: string]: Submission | null } = {};
-            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`));
-            const snapshot = await getDocs(subsQuery);
-            snapshot.forEach(doc => {
-                const sub = { id: doc.id, ...doc.data() } as Submission;
-                subs[sub.studentId] = sub;
-            });
-            setSubmissions(subs);
-
-            // Populate scores from existing submissions
-            const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
-            Object.values(subs).forEach(sub => {
-                if (sub && sub.rubricScores) {
-                    initialScores[sub.studentId] = sub.rubricScores;
-                }
-            });
-            setScores(initialScores);
-        };
-        fetchSubmissions();
-    }, [selectedHomework, db, classId]);
-
+        const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
+        submissions.forEach((sub: Submission) => {
+            if (sub && sub.rubricScores) {
+                initialScores[sub.studentId] = sub.rubricScores;
+            }
+        });
+        setScores(initialScores);
+    }, [submissions]);
 
     const handleScoreChange = (studentId: string, criteriaLabel: string, value: string) => {
         const newScore = parseInt(value, 10) || 0;
         setScores(prev => ({
             ...prev,
             [studentId]: {
-                ...prev[studentId],
+                ...(prev[studentId] || {}),
                 [criteriaLabel]: newScore,
             }
         }));
     };
-    
-    const handleToggleSubmission = async (student: Student, checked: boolean) => {
-        if (!db || !selectedHomework) return;
-        
-        const subColRef = collection(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`);
 
-        if (checked) {
-            // Create a submission
-            const newSub: Omit<Submission, 'id'> = {
-                studentId: student.id,
-                studentName: student.name,
-                studentNumber: student.number,
-                submittedAt: new Date().toISOString(),
-                homeworkId: selectedHomework.id,
-            };
-            const docRef = await addDoc(subColRef, newSub);
-            setSubmissions(prev => ({...prev, [student.id]: { id: docRef.id, ...newSub }}));
-            toast({title: `${student.name} için ödev teslim edildi olarak işaretlendi.`});
-        } else {
-            // Delete the submission
-            const submission = submissions[student.id];
-            if (submission) {
-                const subDocRef = doc(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`, submission.id);
-                await deleteDoc(subDocRef);
-                setSubmissions(prev => ({...prev, [student.id]: null}));
-                toast({title: `${student.name} için teslimat iptal edildi.`, variant: 'destructive'});
-            }
-        }
-    };
-    
     const handleSaveScores = async () => {
-        if (!db || !selectedHomework) return;
+        if (!db) return;
         const batch = writeBatch(db);
-
         Object.keys(scores).forEach(studentId => {
-            const submission = submissions[studentId];
+            const submission = submissions.find((s: Submission) => s.studentId === studentId);
             if (submission) {
-                const submissionRef = doc(db, `classes/${classId}/homeworks/${selectedHomework.id}/submissions`, submission.id);
+                const submissionRef = doc(db, `classes/${classId}/homeworks/${homework.id}/submissions`, submission.id);
                 const studentScores = scores[studentId];
                 const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
                 batch.update(submissionRef, { grade: totalScore, rubricScores: studentScores });
             }
         });
-        
         try {
             await batch.commit();
             toast({ title: "Notlar başarıyla kaydedildi!" });
         } catch (error) {
-             toast({ title: "Hata!", description: "Notlar kaydedilirken bir sorun oluştu.", variant: 'destructive' });
+            toast({ title: "Hata!", description: "Notlar kaydedilirken bir sorun oluştu.", variant: 'destructive' });
+        }
+    };
+    
+    const handleUpdateHomework = async () => {
+        if (!db || !editingHomework) return;
+        const homeworkRef = doc(db, 'classes', classId, 'homeworks', homework.id);
+        try {
+            await updateDoc(homeworkRef, {
+                text: editingHomework.text,
+                dueDate: editingHomework.dueDate,
+            });
+            toast({ title: "Ödev güncellendi." });
+            setEditingHomework(null);
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Güncelleme hatası", description: (error as Error).message });
         }
     };
 
-    const handleExport = () => {
-        if (currentClass && selectedHomework) {
-            exportHomeworkEvaluationToRtf({
-                students: assignedStudents,
-                selectedHomework,
-                scores,
-                currentClass,
-                teacherProfile,
-            });
-        }
-    }
-
-
-    if (homeworksLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+    const assignedStudents = students.filter((s: Student) => homework.assignedStudents?.includes(s.id));
+    const submittedCount = submissions.length;
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Performans Ödevi Değerlendirme</CardTitle>
-                <CardDescription>Atadığınız performans ödevlerini seçerek öğrencilerinizi kriterlere göre notlayın.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                    <label className="font-medium">Değerlendirilecek Ödev:</label>
-                    <select 
-                        value={selectedHwId || ''} 
-                        onChange={e => setSelectedHwId(e.target.value)}
-                        className="flex-grow p-2 border rounded-md"
-                    >
-                        <option value="" disabled>Bir ödev seçin...</option>
-                        {homeworks.map(hw => (
-                            <option key={hw.id} value={hw.id}>{hw.text}</option>
-                        ))}
-                    </select>
-                    <Button onClick={handleExport} disabled={!selectedHomework} variant="outline">
-                        <Download className="mr-2 h-4 w-4" />
-                        RTF Olarak İndir
-                    </Button>
+        <Card className="overflow-hidden">
+            <CardHeader className="bg-muted/50">
+                <div className="flex justify-between items-start">
+                    <div>
+                         {editingHomework ? (
+                            <Textarea 
+                                value={editingHomework.text} 
+                                onChange={(e) => setEditingHomework({ ...editingHomework, text: e.target.value })}
+                                className="mb-2"
+                            />
+                        ) : (
+                             <CardTitle>{homework.text}</CardTitle>
+                        )}
+                        <CardDescription className="flex items-center gap-4 mt-2 text-xs">
+                             {editingHomework ? (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            size="sm"
+                                            className={cn("w-[200px] justify-start text-left font-normal h-8", !editingHomework.dueDate && "text-muted-foreground")}
+                                        >
+                                            <Calendar className="mr-2 h-4 w-4" />
+                                            {editingHomework.dueDate ? format(new Date(editingHomework.dueDate), "PPP", { locale: tr }) : <span>Tarih seç</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <CalendarPicker
+                                            mode="single"
+                                            selected={editingHomework.dueDate ? new Date(editingHomework.dueDate) : undefined}
+                                            onSelect={(date) => setEditingHomework({ ...editingHomework, dueDate: date?.toISOString() })}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                             ) : (
+                                <span className="flex items-center gap-1.5"><Calendar size={14}/> Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', {locale: tr}) : 'Belirtilmemiş'}</span>
+                             )}
+                            <span className="flex items-center gap-1.5"><Users size={14}/> {submittedCount} / {assignedStudents.length} Teslim</span>
+                        </CardDescription>
+                    </div>
+                     <div className="flex items-center gap-1">
+                        {editingHomework ? (
+                            <>
+                                <Button size="sm" onClick={handleUpdateHomework}><Save size={16} className="mr-2"/>Kaydet</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingHomework(null)}><X size={16}/></Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHomework(homework)}><Edit size={16}/></Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600"><Trash2 size={16}/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                            <AlertDialogDescription>Bu ödevi ve tüm teslimleri kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => onHomeworkDelete(homework.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </>
+                        )}
+                    </div>
                 </div>
-
-                {selectedHomework && (
-                    <div className="border rounded-lg overflow-hidden">
+            </CardHeader>
+             <Accordion type="single" collapsible>
+                <AccordionItem value="evaluation">
+                    <AccordionTrigger className="px-6 text-sm">Değerlendirmeyi Aç/Kapat</AccordionTrigger>
+                    <AccordionContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-1/4">Öğrenci</TableHead>
-                                    <TableHead className="w-[120px] text-center">Teslim Durumu</TableHead>
-                                    {selectedHomework.rubric.map((item: any) => (
+                                    {homework.rubric.map((item: any) => (
                                         <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
                                     ))}
                                     <TableHead className="text-center w-[100px]">Toplam</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {assignedStudents.map(student => {
-                                    const submission = submissions[student.id];
+                                {assignedStudents.map((student: Student) => {
+                                    const submission = submissions.find((s: Submission) => s.studentId === student.id);
                                     const studentScores = scores[student.id] || {};
-                                    const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
+                                    const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
                                     return (
                                         <TableRow key={student.id}>
                                             <TableCell className="font-medium">{student.name}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Checkbox
-                                                    checked={!!submission}
-                                                    onCheckedChange={(checked) => handleToggleSubmission(student, !!checked)}
-                                                />
-                                            </TableCell>
-                                            {selectedHomework.rubric.map((item: any) => (
+                                            {homework.rubric.map((item: any) => (
                                                 <TableCell key={item.label} className="text-center">
                                                     <Input
                                                         type="number"
@@ -214,12 +209,88 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
                                 })}
                             </TableBody>
                         </Table>
-                         <div className="p-4 bg-muted flex justify-end">
+                         <div className="p-4 bg-muted/50 flex justify-end">
                             <Button onClick={handleSaveScores} disabled={Object.keys(scores).length === 0}>Değerlendirmeyi Kaydet</Button>
                         </div>
-                    </div>
-                )}
-                 {homeworks.length === 0 && !homeworksLoading && (
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </Card>
+    );
+};
+
+
+export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+
+    const homeworksQuery = useMemo(() => {
+        if (!db || !classId) return null;
+        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
+    }, [db, classId]);
+
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<any[]>(`performance-homeworks-${classId}`, homeworksQuery);
+
+    const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAllSubmissions = async () => {
+            if (homeworksLoading || !db || !classId || !homeworks || homeworks.length === 0) {
+                 setSubmissionsLoading(false);
+                 return;
+            }
+            setSubmissionsLoading(true);
+            const subsByHomework: { [homeworkId: string]: Submission[] } = {};
+            for (const hw of homeworks) {
+                const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+                const snapshot = await getDocs(subsQuery);
+                const subs: Submission[] = [];
+                snapshot.forEach(doc => {
+                    subs.push({ id: doc.id, ...doc.data() } as Submission);
+                });
+                subsByHomework[hw.id] = subs;
+            }
+            setAllSubmissions(subsByHomework);
+            setSubmissionsLoading(false);
+        };
+        fetchAllSubmissions();
+    }, [homeworks, db, classId, homeworksLoading]);
+    
+    const handleHomeworkDelete = async (homeworkId: string) => {
+        if (!db) return;
+        const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+        try {
+            await deleteDoc(homeworkRef);
+            // Optionally delete all sub-collections, though Firestore console does this
+            toast({ title: "Ödev silindi." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Hata", description: "Ödev silinemedi." });
+        }
+    }
+
+    if (homeworksLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Performans Ödevi Değerlendirme</CardTitle>
+                <CardDescription>Atadığınız performans ödevlerini yönetin ve öğrencilerinizi kriterlere göre notlayın.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 {homeworks && homeworks.length > 0 ? (
+                    homeworks.map(hw => (
+                        <HomeworkEvaluationCard
+                            key={hw.id}
+                            homework={hw}
+                            students={students}
+                            submissions={allSubmissions[hw.id] || []}
+                            classId={classId}
+                            teacherProfile={teacherProfile}
+                            onHomeworkDelete={handleHomeworkDelete}
+                        />
+                    ))
+                ) : (
                     <div className="text-center p-10 bg-muted/50 rounded-lg">
                         <p className="text-muted-foreground">Bu sınıfa atanmış performans ödevi bulunmuyor.</p>
                     </div>
