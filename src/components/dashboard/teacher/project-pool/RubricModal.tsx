@@ -7,6 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Helper function to get rubric type
+const getRubricType = (formats: string) => {
+  if (formats.includes("Video") || formats.includes("MP4") || formats.includes("Ses") || formats.includes("MP3")) return 'multimedia';
+  if (formats.includes("Canva") || formats.includes("JPG") || formats.includes("Poster") || formats.includes("Fotoğraf") || formats.includes("Görsel")) return 'visual';
+  return 'research';
+};
+
 export const RubricModal = ({ isOpen, onClose, project, rubrics, onAddRubricClick, onSaveRubric }: any) => {
     const [selectedRubricKey, setSelectedRubricKey] = React.useState('');
     const [editableRubric, setEditableRubric] = React.useState<any>(null);
@@ -44,14 +51,6 @@ export const RubricModal = ({ isOpen, onClose, project, rubrics, onAddRubricClic
 
     const totalScore = editableRubric.items.reduce((acc: any, curr: any) => acc + (parseInt(curr.score) || 0), 0);
     
-    // Helper function to get rubric type
-    const getRubricType = (formats: string) => {
-      if (formats.includes("Video") || formats.includes("MP4") || formats.includes("Ses") || formats.includes("MP3")) return 'multimedia';
-      if (formats.includes("Canva") || formats.includes("JPG") || formats.includes("Poster") || formats.includes("Fotoğraf") || formats.includes("Görsel")) return 'visual';
-      return 'research';
-    };
-
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">
