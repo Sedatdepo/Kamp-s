@@ -4,9 +4,9 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Homework, Submission, Question, Exam } from '@/lib/types';
+import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
 import { collection, doc, addDoc, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -14,11 +14,66 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ExamPaper } from '../teacher/ExamPaper';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
+const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle className="font-headline text-2xl">{homework.text}</CardTitle>
+                        <CardDescription>Ödevinizin detayları ve değerlendirme kriterleri aşağıdadır.</CardDescription>
+                    </div>
+                    <Button variant="ghost" onClick={onBack}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Geri Dön
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {homework.instructions && (
+                    <div>
+                        <h3 className="font-bold mb-2 text-lg">Proje Yönergesi</h3>
+                        <div className="p-4 bg-muted/50 rounded-lg text-sm prose">
+                            <p>{homework.instructions}</p>
+                        </div>
+                    </div>
+                )}
+                {homework.rubric && (
+                    <div>
+                        <h3 className="font-bold mb-2 text-lg flex items-center gap-2"><ClipboardList/> Değerlendirme Kriterleri</h3>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Kriter</TableHead>
+                                        <TableHead className="text-right">Puan</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {homework.rubric.map((item: any) => (
+                                        <TableRow key={item.label}>
+                                            <TableCell>
+                                                <p className="font-medium">{item.label}</p>
+                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-lg">{item.score}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+
+const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: any, classId: string, onSelect: () => void }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,7 +125,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     };
     
     return (
-        <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
+        <div onClick={onSelect} className={`cursor-pointer border p-4 rounded-lg shadow-sm space-y-3 transition-all hover:border-primary/50 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
             <div>
                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2 pb-2 border-b">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
@@ -82,28 +137,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                  {homework.questions && homework.questions.length > 0 ? (
                     <div className="space-y-6">
                         <h2 className="text-xl font-bold">{homework.text}</h2>
-                        {homework.questions.map((q, index) => (
-                            <div key={q.id} className="p-4 border rounded bg-white">
-                                <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
-                                {q.type === 'choice' && q.options && (
-                                    <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission}>
-                                        {q.options.map((opt, i) => (
-                                            <div key={i} className="flex items-center space-x-2">
-                                                <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
-                                                <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
-                                )}
-                                {q.type === 'open' && (
-                                    <Textarea 
-                                        placeholder="Cevabınızı buraya yazın..."
-                                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                        disabled={!!existingSubmission}
-                                    />
-                                )}
-                            </div>
-                        ))}
+                        <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
                     </div>
                 ) : (
                     <p className="text-sm font-semibold">{homework.text}</p>
@@ -129,92 +163,67 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
-            ) : homework.questions && homework.questions.length > 0 ? (
-                 <Button onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Ödevi Teslim Et
-                 </Button>
             ) : null}
         </div>
     )
 }
 
-function PerformanceHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
-    const { db } = useAuth();
-    const homeworksQuery = useMemo(() => {
-      if (!db || !classId) return null;
-      // Only get homeworks that have a rubric, which identifies them as performance homework
-      return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
-    }, [db, classId]);
-
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`performance-homeworks-for-class-${classId}`, homeworksQuery);
-
-    const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
-
-    if (homeworksLoading) {
-        return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
-        );
-    }
-    
-    return (
-        <Card>
-        <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-                <BookText className="h-6 w-6"/>
-                Performans Ödevlerim
-            </CardTitle>
-            <CardDescription>Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            {sortedHomeworks.length > 0 ? (
-                sortedHomeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                ))
-            ) : (
-                <div className="text-center py-10 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
-                </div>
-            )}
-            </div>
-        </CardContent>
-        </Card>
-    );
-}
-
 export function PerformanceHomeworkTab() {
-  const { appUser, loading } = useAuth();
+  const { appUser, db } = useAuth();
+  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
+
+  if (appUser?.type !== 'student') return null;
+
+  const classId = appUser.data.classId;
+
+  const homeworksQuery = useMemo(() => {
+    if (!db || !classId) return null;
+    return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
+  }, [db, classId]);
+
+  const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`performance-homeworks-for-class-${classId}`, homeworksQuery);
+
+  const sortedHomeworks = useMemo(() => {
+    if (!homeworks) return [];
+    return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+  }, [homeworks]);
+
+  if (selectedHomework) {
+    return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
+  }
   
-  if (loading) {
+  if (homeworksLoading) {
     return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
+      <Card>
+        <CardContent className="flex justify-center items-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
     );
   }
-
-  if (appUser?.type !== 'student') {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Yetki Hatası</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>Bu sayfayı görüntülemek için öğrenci olarak giriş yapmalısınız.</p>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  return <PerformanceHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
+    
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-headline flex items-center gap-2">
+            <BookText className="h-6 w-6"/>
+            Performans Ödevlerim
+        </CardTitle>
+        <CardDescription>Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          {sortedHomeworks.length > 0 ? (
+            sortedHomeworks.map((hw) => (
+              <HomeworkItem key={hw.id} homework={hw} student={appUser.data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
+            ))
+          ) : (
+            <div className="text-center py-10 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
