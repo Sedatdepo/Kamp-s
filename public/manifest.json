@@ -1,11 +1,11 @@
 {
   "name": "İTO KAMPÜS",
-  "short_name": "İTO KAMPÜS",
+  "short_name": "İTO Kampüs",
   "description": "Lise öğretmenleri için dijital bir asistan ve öğrenciler için bir portal.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "theme_color": "#2563eb",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
