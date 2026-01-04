@@ -4,17 +4,16 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Homework, Submission, Criterion } from '@/lib/types';
+import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, ClipboardList, CheckCircle } from 'lucide-react';
-import { collection, doc, addDoc, query, updateDoc, where } from 'firebase/firestore';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
+import { collection, doc, addDoc, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
@@ -67,7 +66,26 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     return (
         <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
             <div>
-                <p className="text-sm font-semibold">{homework.text}</p>
+                 {homework.questions && homework.questions.length > 0 ? (
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-lg">{homework.text}</h3>
+                        {homework.questions.map((q, index) => (
+                            <div key={q.id} className="space-y-2">
+                                <p className="font-semibold">{index + 1}. {q.text}</p>
+                                {q.image && <img src={q.image} alt={`Soru ${index + 1} için görsel`} className="max-w-full rounded-md border" />}
+                                {q.type === 'choice' && (
+                                    <div className="space-y-1 pl-4">
+                                        {q.options?.map((opt, i) => (
+                                            <p key={i} className="text-sm">{String.fromCharCode(65 + i)}) {opt}</p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm font-semibold">{homework.text}</p>
+                )}
                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     {homework.dueDate && (

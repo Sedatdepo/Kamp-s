@@ -37,6 +37,8 @@ export interface Homework {
   teacherName?: string;
   lessonName?: string;
   seenBy: string[];
+  questions?: Question[]; // Added to support exam questions
+  rubric?: any; // To differentiate performance homeworks
 }
 
 
@@ -95,20 +97,23 @@ export interface MatchingPair {
   answer: string;
 }
 
-export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph';
+export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph' | 'choice';
 
 export interface Question {
-  id: string;
+  id: string | number;
   text: string;
   type: QuestionType;
   options?: string[]; // For multiple-choice
   matchingPairs?: MatchingPair[]; // For matching questions
-  correctAnswer?: string;
+  correctAnswer?: string | number | null;
   kazanimId?: string;
   difficulty?: 'kolay' | 'orta' | 'zor';
   points?: number;
   teacherId?: string;
   required?: boolean;
+  image?: string | null;
+  span?: number;
+  filled?: boolean;
 }
 
 
@@ -399,19 +404,7 @@ export interface Scenario {
 }
 
 // --- EXAM BUILDER TYPES ---
-export type ExamQuestionType = 'choice' | 'open' | 'truefalse';
 export type ExamTheme = 'classic' | 'modern' | 'minimal';
-
-export interface ExamQuestion {
-  id: number;
-  text: string;
-  type: ExamQuestionType;
-  options: string[];
-  correctOption: number | null;
-  image: string | null;
-  span: number;
-  filled: boolean;
-}
 
 export interface ExamSettings {
   fontSize: number;
@@ -429,7 +422,7 @@ export interface ExamInfo {
 
 export interface Exam {
     examInfo: ExamInfo;
-    questions: ExamQuestion[];
+    questions: Question[];
 }
 
 export interface ExamDocument extends Archivable {
