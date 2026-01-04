@@ -33,7 +33,7 @@ export const sendNotificationOnNewAnnouncement = functions
       }
 
       const classId = context.params.classId;
-      // Hatalı sorgu düzeltildi: Öğrenciler artık doğru alt koleksiyondan alınıyor.
+      // DOĞRU SORGULAMA YÖNTEMİ: Öğrenciler /classes/{classId}/students alt koleksiyonundan alınmalı.
       const studentsSnapshot = await db.collection("classes").doc(classId).collection("students").get();
 
       if (studentsSnapshot.empty) {
@@ -83,3 +83,4 @@ export const sendNotificationOnNewAnnouncement = functions
 
       return null;
     });
+
