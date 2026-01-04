@@ -81,29 +81,31 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                  
                  {homework.questions && homework.questions.length > 0 ? (
                     <div className="space-y-6">
-                        <h2 className="text-xl font-bold">{homework.text}</h2>
-                        {homework.questions.map((q, index) => (
-                            <div key={q.id} className="p-4 border rounded bg-white">
-                                <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
-                                {q.type === 'choice' && q.options && (
-                                    <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission}>
-                                        {q.options.map((opt, i) => (
-                                            <div key={i} className="flex items-center space-x-2">
-                                                <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
-                                                <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
-                                )}
-                                {q.type === 'open' && (
-                                    <Textarea 
-                                        placeholder="Cevabınızı buraya yazın..."
-                                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                        disabled={!!existingSubmission}
-                                    />
-                                )}
-                            </div>
-                        ))}
+                         <div className="bg-white rounded-lg shadow-md p-4">
+                            <h2 className="text-2xl font-bold text-center mb-4">{homework.text}</h2>
+                            {homework.questions.map((q: Question, index: number) => (
+                                <div key={q.id || index} className="mb-6 pb-4 border-b">
+                                    <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
+                                    {q.type === 'choice' && q.options && (
+                                        <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
+                                            {q.options.map((opt, i) => (
+                                                <div key={i} className="flex items-center space-x-2">
+                                                    <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
+                                                    <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                                </div>
+                                            ))}
+                                        </RadioGroup>
+                                    )}
+                                    {q.type === 'open' && (
+                                        <Textarea 
+                                            placeholder="Cevabınızı buraya yazın..."
+                                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                            disabled={!!existingSubmission}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <p className="text-sm font-semibold">{homework.text}</p>
