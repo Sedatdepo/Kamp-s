@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User } from 'lucide-react';
+import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User, Users } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,7 +112,7 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
             <Button onClick={handleAddAnnouncement}>Yayınla</Button>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
             {displayedAnnouncements.length > 0 ? (
-                displayedAnnouncements.map((ann) => (
+                [...displayedAnnouncements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((ann) => (
                 <div key={ann.id} className="border p-4 rounded-lg bg-muted/50 flex justify-between items-start gap-4">
                     {editingAnnouncementId === ann.id ? (
                         <div className="w-full space-y-2">
