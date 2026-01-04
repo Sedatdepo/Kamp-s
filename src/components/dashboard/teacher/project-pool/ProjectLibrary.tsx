@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -78,6 +79,8 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
         if (!db || !selectedProject) return;
     
         const studentIds = details.studentIds;
+        const rubricType = getRubricType(selectedProject.formats);
+        const rubric = rubrics[rubricType];
 
         try {
             const batch = writeBatch(db);
@@ -85,12 +88,30 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             for (const studentId of studentIds) {
                 const studentRef = doc(db, 'students', studentId);
                  batch.update(studentRef, { 
-                    // We are now assigning the ID of the project, not the title.
-                    // The student panel will resolve this ID to show the title.
                     assignedLesson: `project_${selectedProject.id}`,
                     hasProject: true,
+                    // Embed rubric into student's project grade data
+                    'term1Grades.projectScores': {}, // Initialize project scores
+                    'term2Grades.projectScores': {}
                  });
             }
+            
+            // Also add a record in homeworks to track this.
+             const newHomeworkDoc = {
+                classId: classId,
+                text: selectedProject.title,
+                assignedDate: new Date().toISOString(),
+                dueDate: details.date ? new Date(details.date).toISOString() : null,
+                teacherName: teacherProfile?.name,
+                lessonName: teacherProfile?.branch,
+                rubric: rubric.items, 
+                assignedStudents: studentIds,
+                seenBy: [],
+                instructions: selectedProject.instructions,
+            };
+            const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+            batch.set(doc(homeworksColRef), newHomeworkDoc);
+
     
             await batch.commit();
             

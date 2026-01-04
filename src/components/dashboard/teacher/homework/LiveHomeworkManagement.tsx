@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -49,7 +50,6 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
     const liveHomeworksQuery = useMemo(() => {
         if (!db || !classId) return null;
-        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
@@ -158,7 +158,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     lessonName: teacherProfile?.branch,
                     assignedStudents: students.map(s => s.id),
                     seenBy: [],
-                    rubric: null, // Explicitly set to null for live homeworks
+                    rubric: null, 
                 });
                 toast({ title: "Ödev eklendi!" });
             }
@@ -274,7 +274,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                         {homeworksLoading ? <Loader2 className="mx-auto h-8 w-8 animate-spin" /> : (
                             <div className="space-y-4">
                                 {displayedHomeworks.length > 0 ? displayedHomeworks.map(hw => {
-                                    const assignedStudentIds = (hw as any).assignedStudents || [];
+                                    const assignedStudentIds = hw.assignedStudents || [];
                                     const submittedCount = (displayedSubmissions[hw.id] || []).length;
                                     const studentCount = assignedStudentIds.length;
                                     const relevantStudents = students.filter(s => assignedStudentIds.includes(s.id));

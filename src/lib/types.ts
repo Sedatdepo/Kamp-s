@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -41,6 +40,7 @@ export interface Homework {
   questions?: Question[]; // Added to support exam questions
   rubric?: any; // To differentiate performance homeworks
   instructions?: string;
+  assignedStudents?: string[];
 }
 
 
@@ -406,4 +406,28 @@ export interface Scenario {
   id: string;
   title: string;
   content: string;
+}
+
+// Exam types
+export interface Exam {
+  examInfo: ExamInfo;
+  questions: Question[];
+}
+
+export interface ExamInfo {
+  title: string;
+  logo: string | null;
+  group: 'A' | 'B' | 'C' | 'D' | null;
+  theme: ExamTheme;
+  settings: {
+    fontSize: number;
+    lineHeight: number;
+    watermark: string;
+  };
+}
+
+export type ExamTheme = 'classic' | 'modern' | 'minimalist';
+
+export interface ExamDocument extends Archivable {
+    data: Exam;
 }
