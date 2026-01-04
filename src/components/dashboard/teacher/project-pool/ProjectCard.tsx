@@ -1,7 +1,9 @@
+
 'use client';
 
 import React from 'react';
 import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Video } from 'lucide-react';
+import { exportProjectToRtf } from '@/lib/word-export'; // Import the new function
 
 export const ProjectCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, onToggleFavorite, onPrint }: any) => {
     const isPhysics = item.subject === 'physics';
@@ -19,11 +21,11 @@ export const ProjectCard = ({ item, onAssign, onShowRubric, onEdit, isFavorite, 
         <div className="p-5 flex-grow flex flex-col relative">
           <div className="absolute top-4 right-4 flex gap-2 z-10">
             <button 
-              onClick={() => onPrint(item)}
+              onClick={() => exportProjectToRtf(item)} // Changed to call the RTF export function
               className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Projeyi Yazdır"
+              title="Projeyi Word Olarak İndir"
             >
-              <Printer size={16} />
+              <FileDown size={16} />
             </button>
             <button 
               onClick={() => onToggleFavorite(item.id)}

@@ -1352,3 +1352,42 @@ ${principalSig}
     const blob = new Blob([rtfContent], { type: 'application/rtf' });
     saveAs(blob, `${title.replace(/ /g, '_')}.rtf`);
 }
+
+// --- PROJECT RTF EXPORT ---
+export function exportProjectToRtf(project: any) {
+    const title = project.title || "Proje Ödevi";
+    
+    const content = `
+        <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
+            <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
+                <h1 style="margin: 0; font-size: 18pt;">PERFORMANS PROJESİ</h1>
+                <p style="margin: 0; font-size: 11pt;">${project.grade}. Sınıf - ${project.subject === 'physics' ? 'Fizik' : 'Türk Dili ve Edebiyatı'}</p>
+            </div>
+
+            <table style="width: 100%; border: 1px solid black; border-collapse: collapse; margin-bottom: 30px;">
+                <tr><td style="padding: 8px; border: 1px solid black; font-weight: bold; width: 30%;">Adı Soyadı:</td><td style="border: 1px solid black;"></td></tr>
+                <tr><td style="padding: 8px; border: 1px solid black; font-weight: bold;">Sınıfı / No:</td><td style="border: 1px solid black;"></td></tr>
+                <tr><td style="padding: 8px; border: 1px solid black; font-weight: bold;">Teslim Tarihi:</td><td style="border: 1px solid black;"></td></tr>
+                <tr><td style="padding: 8px; border: 1px solid black; font-weight: bold;">Aldığı Not:</td><td style="border: 1px solid black;"></td></tr>
+            </table>
+
+            <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">1. Proje Konusu</h2>
+            <div style="background-color: #f7f7f7; padding: 15px; border-left: 4px solid #4a90e2; margin-bottom: 20px;">
+                <h3 style="margin-top: 0; font-size: 13pt;">${project.title}</h3>
+                <p style="margin-bottom: 0;">${project.description}</p>
+            </div>
+
+            <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">2. Yönerge</h2>
+            <p style="text-align: justify;">${project.instructions}</p>
+            
+            <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">3. Teslim Şartları</h2>
+            <ul>
+                <li>Bu proje <b>${project.formats}</b> formatında hazırlanmalıdır.</li>
+                <li>Dijital dosya boyutu <b>${project.size}</b>'ı geçmemelidir.</li>
+            </ul>
+        </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}

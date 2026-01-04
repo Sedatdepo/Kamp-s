@@ -402,12 +402,6 @@ export interface SavedDocument<T> {
   data: T;
 }
 
-export interface Scenario {
-  id: string;
-  title: string;
-  content: string;
-}
-
 // Exam types
 export interface Exam {
   examInfo: ExamInfo;
