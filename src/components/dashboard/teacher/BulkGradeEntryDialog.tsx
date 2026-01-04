@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -9,18 +10,22 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, writeBatch } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
+import { ActiveTerm } from './GradingToolTab';
 
 interface BulkGradeEntryDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   students: Student[];
+  activeTerm: ActiveTerm;
 }
 
 type GradeType = 'exam1' | 'exam2' | 'perf1' | 'perf2';
 
-export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeEntryDialogProps) {
+export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
   const { db } = useAuth();
+  const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
@@ -47,22 +52,20 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
             const grade = parseFloat(lines[index]);
             if (!isNaN(grade)) {
                 const studentRef = doc(db, 'students', student.id);
-                // We are only updating term 1 for simplicity based on user request
-                // This assumes perf1/perf2 are also term1 grades.
-                const gradeField = gradeType === 'exam1' ? 'term1Grades.exam1' : 
-                                   gradeType === 'exam2' ? 'term1Grades.exam2' :
-                                   gradeType === 'perf1' ? 'term1Grades.scores1' : // This is an object, but we'll overwrite for simplicity. A better approach would be to handle criteria.
-                                   'term1Grades.scores2';
+                
+                const gradeFieldMap: Record<GradeType, string> = {
+                  exam1: `${termGradesKey}.exam1`,
+                  exam2: `${termGradesKey}.exam2`,
+                  perf1: `${termGradesKey}.scores1`,
+                  perf2: `${termGradesKey}.scores2`,
+                };
+                const gradeField = gradeFieldMap[gradeType];
 
-                // Simplified: we are overwriting performance scores object with a single value.
-                // A more complex implementation would parse criteria scores.
-                // For now, let's assume we're just setting a single performance score.
                 let updateData: any = {};
                 if (gradeType === 'perf1' || gradeType === 'perf2') {
-                    // This is a placeholder logic. Real implementation should handle criteria.
-                    // For now, let's just create a dummy structure.
-                    const scoreKey = gradeType === 'perf1' ? 'scores1' : 'scores2';
-                    updateData[`term1Grades.${scoreKey}`] = { 'topluGiris': grade };
+                    // This is a placeholder logic for bulk entering performance.
+                    // It overwrites the criteria with a single value.
+                    updateData[gradeField] = { 'topluGiris': grade };
                 } else {
                     updateData[gradeField] = grade;
                 }
@@ -79,7 +82,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
             title: 'Notlar Kaydedildi',
             description: `${updatedCount} öğrencinin notu başarıyla güncellendi.`
         });
-        // We can close the dialog after a successful paste, or keep it open for more entries
+        // You might want to close the dialog or refresh data after paste
         // setIsOpen(false); 
     } catch (error: any) {
         toast({
@@ -109,7 +112,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Toplu Not Girişi (1. Dönem)</DialogTitle>
+          <DialogTitle>Toplu Not Girişi ({activeTerm}. Dönem)</DialogTitle>
           <DialogDescription>
             Excel'den bir not sütununu kopyalayıp ilgili sütunun altındaki alana yapıştırın. Sistem, notları sırayla öğrencilere atayacaktır.
           </DialogDescription>
@@ -127,18 +130,21 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students }: BulkGradeE
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStudents.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.number}</TableCell>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.term1Grades?.exam1 ?? 'Girmedi'}</TableCell>
-                  <TableCell>{student.term1Grades?.exam2 ?? 'Girmedi'}</TableCell>
-                  <TableCell>{getPerformanceGrade(student.term1Grades?.scores1)}</TableCell>
-                  <TableCell>{getPerformanceGrade(student.term1Grades?.scores2)}</TableCell>
-                </TableRow>
-              ))}
+              {sortedStudents.map((student) => {
+                const termGrades = student[termGradesKey];
+                return (
+                    <TableRow key={student.id}>
+                        <TableCell>{student.number}</TableCell>
+                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell>{termGrades?.exam1 ?? 'Girmedi'}</TableCell>
+                        <TableCell>{termGrades?.exam2 ?? 'Girmedi'}</TableCell>
+                        <TableCell>{getPerformanceGrade(termGrades?.scores1)}</TableCell>
+                        <TableCell>{getPerformanceGrade(termGrades?.scores2)}</TableCell>
+                    </TableRow>
+                )
+              })}
                <TableRow>
-                <TableCell colSpan={2} className="font-bold p-1 text-right pr-4">Yapıştırma Alanı:</TableCell>
+                <TableCell colSpan={2} className="font-bold p-1 text-right pr-4 align-top pt-3">Yapıştırma Alanı:</TableCell>
                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeType[]).map(gradeType => (
                     <TableCell key={gradeType} className="p-1 align-top">
                         <Textarea

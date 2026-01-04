@@ -21,13 +21,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { Save, Target } from 'lucide-react';
+import { Save, Target, ClipboardPaste } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
+
 
 interface GradingToolTabProps {
   classId: string;
@@ -105,6 +107,7 @@ export function GradingToolTab({
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
 
   // This local state will hold the student data, either live from Firestore or from an archive
   const [students, setStudents] = useState<Student[]>(initialStudents);
@@ -312,77 +315,94 @@ export function GradingToolTab({
     };
 
   return (
-    <Tabs defaultValue="grading">
-        <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-            <TabsList className="w-full justify-start">
-                <TabsTrigger value="grading">Not Girişi & Ölçekler</TabsTrigger>
-                <TabsTrigger value="analysis">Sınav Analizi & Telafi</TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-        <TabsContent value="grading" className="mt-4">
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3">
-                        <GradingHeader
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                            activeTerm={activeTerm}
-                            setActiveTerm={setActiveTerm}
-                            teacherProfile={teacherProfile}
-                            onClearScores={handleClearScores}
-                            updateTeacherProfile={updateTeacherProfile}
-                        />
-                         <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1 mt-4">
-                            <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
-                            <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
-                            <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
-                        </div>
+    <>
+      <Tabs defaultValue="grading">
+          <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+              <TabsList className="w-full justify-start">
+                  <TabsTrigger value="grading">Not Girişi & Ölçekler</TabsTrigger>
+                  <TabsTrigger value="analysis">Sınav Analizi & Telafi</TabsTrigger>
+              </TabsList>
+              <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          <TabsContent value="grading" className="mt-4">
+              <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                      <div className="lg:col-span-3">
+                          <GradingHeader
+                              activeTab={activeTab}
+                              setActiveTab={setActiveTab}
+                              activeTerm={activeTerm}
+                              setActiveTerm={setActiveTerm}
+                              teacherProfile={teacherProfile}
+                              onClearScores={handleClearScores}
+                              updateTeacherProfile={updateTeacherProfile}
+                          />
+                          <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1 mt-4">
+                              <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
+                              <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
+                              <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
+                          </div>
+                      </div>
+                      <div className="lg:col-span-1 space-y-2">
+                          <RecordManager
+                              records={(gradingDocuments || [])
+                                  .filter((d) => d.classId === classId)
+                                  .map((r) => ({ id: r.id, name: r.name }))}
+                              selectedRecordId={selectedRecordId}
+                              onSelectRecord={setSelectedRecordId}
+                              onNewRecord={handleNewRecord}
+                              onDeleteRecord={handleDeleteRecord}
+                              noun="Not Kaydı"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                                onClick={handleSaveToArchive}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                                <Save className="mr-2 h-4 w-4" /> Arşive Kaydet
+                            </Button>
+                            <Button
+                                onClick={() => setIsBulkGradeOpen(true)}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Giriş
+                            </Button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="grid lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                      <GradingTable
+                          activeTab={activeTab}
+                          students={students}
+                          currentCriteria={currentCriteria}
+                          updateStudents={updateStudents}
+                          updateSingleStudent={updateSingleStudent}
+                          termGradesKey={termGradesKey}
+                      />
                     </div>
                     <div className="lg:col-span-1">
-                        <RecordManager
-                            records={(gradingDocuments || [])
-                                .filter((d) => d.classId === classId)
-                                .map((r) => ({ id: r.id, name: r.name }))}
-                            selectedRecordId={selectedRecordId}
-                            onSelectRecord={setSelectedRecordId}
-                            onNewRecord={handleNewRecord}
-                            onDeleteRecord={handleDeleteRecord}
-                            noun="Not Kaydı"
-                        />
-                        <Button
-                            onClick={handleSaveToArchive}
-                            className="w-full mt-2 bg-green-600 hover:bg-green-700"
-                        >
-                            <Save className="mr-2 h-4 w-4" /> Notları Arşive Kaydet
-                        </Button>
+                      <PerformanceRanking 
+                        students={students} 
+                        termGradesKey={termGradesKey} 
+                        scoreKey={scoreKey}
+                      />
                     </div>
-                </div>
-
-                <div className="grid lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <GradingTable
-                        activeTab={activeTab}
-                        students={students}
-                        currentCriteria={currentCriteria}
-                        updateStudents={updateStudents}
-                        updateSingleStudent={updateSingleStudent}
-                        termGradesKey={termGradesKey}
-                    />
                   </div>
-                  <div className="lg:col-span-1">
-                    <PerformanceRanking 
-                      students={students} 
-                      termGradesKey={termGradesKey} 
-                      scoreKey={scoreKey}
-                    />
-                  </div>
-                </div>
-            </div>
-        </TabsContent>
-        <TabsContent value="analysis" className="mt-4">
-            <ExamAnalysisTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
-        </TabsContent>
-    </Tabs>
+              </div>
+          </TabsContent>
+          <TabsContent value="analysis" className="mt-4">
+              <ExamAnalysisTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
+          </TabsContent>
+      </Tabs>
+      <BulkGradeEntryDialog 
+        isOpen={isBulkGradeOpen}
+        setIsOpen={setIsBulkGradeOpen}
+        students={students}
+        activeTerm={activeTerm}
+    />
+    </>
   );
 }
