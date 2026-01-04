@@ -187,6 +187,7 @@ export interface Student {
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
+  fcmTokens?: string[]; // For Push Notifications
   
   // Grading data separated by term
   term1Grades: GradingScores;

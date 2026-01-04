@@ -13,6 +13,8 @@ const withPWA = withPWAInit({
   workboxOptions: {
     disableDevLogs: true,
   },
+  // Point to the custom service worker
+  sw: "service-worker.js",
 });
 
 const nextConfig: NextConfig = {

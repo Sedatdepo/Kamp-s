@@ -18,6 +18,7 @@ import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
 import { ProjectTab } from './student/ProjectTab';
 import { useNotification } from '@/hooks/useNotification';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,12 @@ export function StudentDashboard() {
   const authContext = useContext(AuthContext);
   const { appUser, db } = authContext || {};
   const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
+  const { initializeNotifications } = usePushNotifications();
+
+  useEffect(() => {
+    // When dashboard mounts, try to initialize push notifications
+    initializeNotifications();
+  }, [initializeNotifications]);
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
