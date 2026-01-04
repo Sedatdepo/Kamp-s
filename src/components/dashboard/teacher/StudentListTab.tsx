@@ -444,7 +444,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
                         </Dialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button type="button" variant="ghost" size="icon" className="text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                                <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4"/></Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
