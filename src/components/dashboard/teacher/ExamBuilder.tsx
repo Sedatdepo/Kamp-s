@@ -91,7 +91,7 @@ export default function ExamBuilder() {
       id: i,
       text: '',
       type: 'choice',
-      options: ['', '', '', ''],
+      options: ['', '', '', '', ''],
       correctOption: null,
       image: null,
       span: 1,
@@ -147,7 +147,7 @@ export default function ExamBuilder() {
   // --- PROJE İŞLEMLERİ ---
   const newProject = () => {
     if(confirm('Mevcut çalışma silinecek ve yeni bir proje başlatılacak. Emin misiniz?')) {
-        setSlots(Array(10).fill(null).map((_, i) => ({ id: i, text: '', type: 'choice', options: ['', '', '', ''], correctOption: null, image: null, span: 1, filled: false })));
+        setSlots(Array(10).fill(null).map((_, i) => ({ id: i, text: '', type: 'choice', options: ['', '', '', '', ''], correctOption: null, image: null, span: 1, filled: false })));
         setExamInfo({ title: 'YENİ SINAV', logo: null, group: 'A', theme: 'classic', settings: { fontSize: 11, lineHeight: 1.5, watermark: '' } });
         setCurrentSlotId(0);
     }
@@ -181,7 +181,7 @@ export default function ExamBuilder() {
   };
   const handleClearSlice = () => {
     if (confirm('Temizlensin mi?')) {
-      setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: '', image: null, filled: false, options: ['', '', '', ''], correctOption: null, span: 1 } : slot));
+      setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: '', image: null, filled: false, options: ['', '', '', '', ''], correctOption: null, span: 1 } : slot));
       setEditorContent('');
     }
   };
@@ -222,7 +222,7 @@ export default function ExamBuilder() {
     if (filled.length === 0) return '';
     let html = `<br><br><div style="border: 1px solid #000; padding: 10px; font-size: 10pt;"><strong>${examInfo.group} GRUBU CEVAP ANAHTARI:</strong><br><table style="width: 100%; border-collapse: collapse; margin-top: 5px;"><tr>`;
     filled.forEach((q, i) => {
-        const char = q.correctOption !== null ? ['A', 'B', 'C', 'D'][q.correctOption] : '-';
+        const char = q.correctOption !== null ? ['A', 'B', 'C', 'D', 'E'][q.correctOption] : '-';
         html += `<td style="border: 1px solid #ccc; padding: 2px 5px; text-align: center;"><b>${i + 1}.</b> ${char}</td>`;
         if ((i + 1) % 10 === 0) html += `</tr><tr>`;
     });
@@ -278,7 +278,7 @@ export default function ExamBuilder() {
         {watermark && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-45deg] text-gray-100 font-bold text-[80pt] pointer-events-none select-none z-0 whitespace-nowrap">{watermark}</div>}
 
         <div className={`flex items-start gap-4 shrink-0 relative z-10 ${styles.header}`}>
-            {examInfo.logo && <div className="w-[80px] h-[80px] flex items-center justify-center shrink-0"><img src={examInfo.logo} alt="Logo" className="max-w-full max-h-full object-contain" /></div>}
+            {examInfo.logo && <div className="w-[80px] h-[80px] flex items-center justify-center shrink-0"><img src="${examInfo.logo}" alt="Logo" className="max-w-full max-h-full object-contain" /></div>}
             
             <div className="flex-1 text-center flex flex-col justify-center">
                 <h1 className={styles.title}>{examInfo.title}</h1>
@@ -312,7 +312,7 @@ export default function ExamBuilder() {
                 <div className="mt-4 pt-4 border-t-2 border-black">
                     <h3 className="text-sm font-bold mb-2">{examInfo.group} GRUBU CEVAP ANAHTARI</h3>
                     <div className="grid grid-cols-10 gap-2 text-xs border border-gray-300 p-2">
-                        {slots.map((slot, i) => { if (!slot.filled || slot.type !== 'choice') return null; return <div key={i} className="flex justify-between border-b border-gray-200 pb-1"><span className="font-bold">{i + 1}.</span><span>{slot.correctOption !== null ? ['A','B','C','D'][slot.correctOption] : '-'}</span></div>; })}
+                        {slots.map((slot, i) => { if (!slot.filled || slot.type !== 'choice') return null; return <div key={i} className="flex justify-between border-b border-gray-200 pb-1"><span className="font-bold">{i + 1}.</span><span>{slot.correctOption !== null ? ['A','B','C','D', 'E'][slot.correctOption] : '-'}</span></div>; })}
                     </div>
                 </div>
             )}
@@ -377,8 +377,8 @@ export default function ExamBuilder() {
                         <div className="text-xs font-bold text-gray-500 mb-1 flex justify-between"><span>SEÇENEKLER</span><span className="text-green-600">DOĞRU CEVAP</span></div>
                         {activeSlot.options.map((opt, i) => (
                         <div key={i} className="flex items-center gap-2">
-                            <button onClick={() => updateSlotField('correctOption', activeSlot.correctOption === i ? null : i)} className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition ${activeSlot.correctOption === i ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{['A','B','C','D'][i]}</button>
-                            <input type="text" value={opt} onChange={(e) => updateOption(i, e.target.value)} className={`flex-1 p-1.5 text-sm border rounded outline-none transition ${activeSlot.correctOption === i ? 'border-green-500 bg-green-50' : 'focus:border-blue-500'}`} placeholder={`Seçenek ${['A','B','C','D'][i]}`} />
+                            <button onClick={() => updateSlotField('correctOption', activeSlot.correctOption === i ? null : i)} className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition ${activeSlot.correctOption === i ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{['A','B','C','D','E'][i]}</button>
+                            <input type="text" value={opt} onChange={(e) => updateOption(i, e.target.value)} className={`flex-1 p-1.5 text-sm border rounded outline-none transition ${activeSlot.correctOption === i ? 'border-green-500 bg-green-50' : 'focus:border-blue-500'}`} placeholder={`Seçenek ${['A','B','C','D','E'][i]}`} />
                             {activeSlot.correctOption === i && <CheckCircle size={16} className="text-green-600" />}
                         </div>
                         ))}
@@ -449,7 +449,7 @@ const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, on
         <div className="text-sm w-full h-full overflow-hidden pl-4" style={{ lineHeight: lineHeight }}>
           <div className="flex gap-1 mb-1"><span className="font-bold">{index + 1}.</span><div className="prose prose-sm max-w-none m-0 p-0" dangerouslySetInnerHTML={{ __html: slot.text }} /></div>
           {slot.image && <img src={slot.image} alt="Soru görseli" className="max-h-24 my-2 block" />}
-          {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold bg-green-50 px-1 rounded inline-block" : ""}><span className="font-bold">{['A','B','C','D'][i]})</span> {opt}</div>))}</div>)}
+          {slot.type === 'choice' && (<div className="mt-2 text-xs space-y-1">{slot.options.map((opt, i) => opt && (<div key={i} className={slot.correctOption === i ? "text-green-700 font-bold bg-green-50 px-1 rounded inline-block" : ""}><span className="font-bold">{['A','B','C','D','E'][i]})</span> {opt}</div>))}</div>)}
           {slot.type === 'truefalse' && <div className="mt-4 text-xs">( ) Doğru &nbsp;&nbsp;&nbsp; ( ) Yanlış</div>}
           {slot.type === 'open' && <div className="mt-4 space-y-4"><div className="border-b border-gray-300 border-dotted h-4"></div><div className="border-b border-gray-300 border-dotted h-4"></div></div>}
         </div>
