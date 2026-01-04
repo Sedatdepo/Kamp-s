@@ -255,7 +255,7 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
         assignedLesson: null,
         term1Grades: {},
         term2Grades: {},
-        behaviorScore: 100,
+        behaviorScore: 100, // Behavior score defaults to 100
         hasProject: false,
     });
   };
@@ -504,4 +504,3 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
     </>
   );
 }
-

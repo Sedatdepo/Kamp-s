@@ -6,9 +6,10 @@ import { Student, Criterion } from '@/lib/types';
 import { ActiveGradingTab } from './GradingToolTab';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Users, Trash2 } from 'lucide-react';
+import { Users, Trash2, MinusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GradingTableProps {
   activeTab: ActiveGradingTab;
@@ -43,10 +44,11 @@ export function GradingTable({
   
   const maxTotal = useMemo(() => currentCriteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0), [currentCriteria]);
 
-  const updateScore = (studentId: string, criteriaId: string, value: string) => {
+  const updateScore = (studentId: string, criteriaId: string, value: string | number) => {
     const criterion = currentCriteria.find(c => c.id === criteriaId);
     const limit = criterion ? criterion.max : 100;
-    let numValue = parseInt(value, 10) || 0;
+    let numValue = Number(value);
+    if (isNaN(numValue)) numValue = 0;
     if (numValue < 0) numValue = 0;
     if (numValue > limit) numValue = limit;
     
@@ -62,11 +64,27 @@ export function GradingTable({
 
     if (activeTab === 4) {
       const totalScore = Object.values(updatedScores).reduce((sum, val) => sum + (Number(val) || 0), 0);
-      const totalMax = INITIAL_BEHAVIOR_CRITERIA.reduce((sum, c) => sum + c.max, 0);
-      updates.behaviorScore = Math.round((totalScore / totalMax) * 100);
+      updates.behaviorScore = 100 - totalScore;
     }
     
     updateSingleStudent(studentId, updates);
+  };
+
+  const handleBehaviorClick = (studentId: string, criteriaId: string) => {
+    const criterion = currentCriteria.find(c => c.id === criteriaId);
+    if (!criterion) return;
+
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    
+    const currentTermGrades = student[termGradesKey] || {};
+    const currentScores = currentTermGrades[scoreKey] || {};
+    const currentCriterionScore = currentScores[criteriaId] || 0;
+
+    // Increment by 2, but not over the max for that criterion
+    const newCriterionScore = Math.min(currentCriterionScore + 2, criterion.max);
+
+    updateScore(studentId, criteriaId, newCriterionScore);
   };
 
   const distributeTotalScore = (studentId: string, totalStr: string) => {
@@ -105,8 +123,7 @@ export function GradingTable({
     const updates: Partial<Student> = { [termGradesKey]: updatedTermGrades };
     
     if (activeTab === 4) {
-      const totalMax = INITIAL_BEHAVIOR_CRITERIA.reduce((sum, c) => sum + c.max, 0);
-      updates.behaviorScore = Math.round((newTotal / totalMax) * 100);
+      updates.behaviorScore = 100 - newTotal;
     }
 
     updateSingleStudent(studentId, updates);
@@ -119,6 +136,13 @@ export function GradingTable({
         return "text-red-600 font-bold";
     };
 
+    const getBehaviorScoreColor = (score: number) => {
+        if (score >= 85) return "text-emerald-600 font-bold";
+        if (score >= 70) return "text-blue-600 font-bold";
+        if (score >= 50) return "text-yellow-600 font-bold";
+        return "text-red-600 font-bold";
+    };
+    
     const visibleStudents = students;
 
     if (students.length === 0) {
@@ -132,6 +156,7 @@ export function GradingTable({
     }
 
     return (
+        <TooltipProvider>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
              <div className={`h-1 w-full ${activeTab === 1 ? 'bg-blue-500' : activeTab === 2 ? 'bg-orange-500' : 'bg-emerald-500'}`}></div>
             <div className="overflow-x-auto">
@@ -140,7 +165,7 @@ export function GradingTable({
                         <TableRow className="bg-slate-50 hover:bg-slate-50">
                             <TableHead className="p-4 font-semibold sticky left-0 bg-slate-50 z-10 w-48 min-w-[200px] shadow-sm">Öğrenci</TableHead>
                             {currentCriteria.map(c => <TableHead key={c.id} className="p-4 text-center min-w-[100px]">{c.name.split(' ')[0]} <span className="opacity-50">({c.max})</span></TableHead>)}
-                            <TableHead className="p-4 text-center w-24">Toplam</TableHead>
+                            <TableHead className="p-4 text-center w-24">{activeTab === 4 ? 'Davranış Notu' : 'Toplam'}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -148,16 +173,41 @@ export function GradingTable({
                             const termGrades = student[termGradesKey];
                             const scores = termGrades ? termGrades[scoreKey] : undefined;
                             const total = calculateTotal(scores);
+                            const finalBehaviorScore = 100 - total;
+
                             return (
                                 <TableRow key={student.id} className="group">
                                     <TableCell className="p-3 font-medium text-slate-700 sticky left-0 bg-white group-hover:bg-slate-50">{student.name}</TableCell>
                                     {currentCriteria.map(c => (
                                         <TableCell key={`${student.id}-${c.id}`} className="p-2 text-center">
-                                            <Input type="number" title={c.name} value={scores?.[c.id] ?? ''} onChange={(e) => updateScore(student.id, c.id, e.target.value)} className="w-16 h-9 p-1.5 text-center bg-slate-50 border-slate-200 rounded-lg focus:ring-blue-500 focus:bg-white font-mono" />
+                                            {activeTab === 4 ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="outline"
+                                                            className="w-16 h-9 p-1.5 text-center bg-slate-50 border-slate-200 rounded-lg focus:ring-blue-500 focus:bg-white font-mono"
+                                                            onClick={() => handleBehaviorClick(student.id, c.id)}
+                                                        >
+                                                            {scores?.[c.id] || 0}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{c.name}: 2 Puan Düşür</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <Input type="number" title={c.name} value={scores?.[c.id] ?? ''} onChange={(e) => updateScore(student.id, c.id, e.target.value)} className="w-16 h-9 p-1.5 text-center bg-slate-50 border-slate-200 rounded-lg focus:ring-blue-500 focus:bg-white font-mono" />
+                                            )}
                                         </TableCell>
                                     ))}
                                     <TableCell className="p-3 text-center font-bold">
-                                        <Input type="number" min="0" max={maxTotal} className={`w-16 h-9 p-1.5 text-center bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 ${getScoreColor(total)}`} value={total} onChange={(e) => distributeTotalScore(student.id, e.target.value)} />
+                                         {activeTab === 4 ? (
+                                            <div className={`w-16 mx-auto h-9 flex items-center justify-center text-lg ${getBehaviorScoreColor(finalBehaviorScore)}`}>
+                                                {finalBehaviorScore}
+                                            </div>
+                                        ) : (
+                                            <Input type="number" min="0" max={maxTotal} className={`w-16 h-9 p-1.5 text-center bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 ${getScoreColor(total)}`} value={total} onChange={(e) => distributeTotalScore(student.id, e.target.value)} />
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             );
@@ -166,5 +216,6 @@ export function GradingTable({
                 </Table>
             </div>
         </div>
+        </TooltipProvider>
     );
 }
