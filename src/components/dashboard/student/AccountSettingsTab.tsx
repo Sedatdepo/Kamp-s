@@ -41,6 +41,10 @@ const NotificationSettings = () => {
     if (isNotificationPermissionGranted === null) {
         return <div className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Durum kontrol ediliyor...</div>;
     }
+    
+    if (Notification.permission === 'denied') {
+        return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen bu site için tarayıcı bildirim ayarlarına izin verin.</p>
+    }
 
     if (isNotificationPermissionGranted) {
         return (
@@ -50,15 +54,11 @@ const NotificationSettings = () => {
                     {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />}
                     Bildirimleri Devre Dışı Bırak
                 </Button>
-                 <p className="text-xs text-muted-foreground">Bu cihaz için bildirimleri kapatır. Bildirimleri tamamen engellemek için tarayıcı ayarlarını kullanın.</p>
+                 <p className="text-xs text-muted-foreground">Bu cihaz için bildirim aboneliğini sonlandırır. Bildirimleri tamamen engellemek için tarayıcı ayarlarını kullanın.</p>
             </div>
         )
     }
     
-    if (Notification.permission === 'denied') {
-        return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen tarayıcı ayarlarından izin verin.</p>
-    }
-
     return (
         <Button onClick={requestNotificationPermission} disabled={isSubscribing}>
             {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
