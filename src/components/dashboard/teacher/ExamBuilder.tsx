@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare
 } from 'lucide-react';
 import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
@@ -38,6 +38,8 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | number | null>(null);
   
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showAnswerKey, setShowAnswerKey] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -155,17 +157,18 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                         <span className='text-sm font-semibold'>Soru {index + 1} ({q.points || 0} Puan)</span>
                         <Trash2 className='h-4 w-4 text-red-500 hover:text-red-700' onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id)}}/>
                     </div>
-                    <p className='text-xs text-gray-500 truncate'>{q.image ? "[Resimli Soru]" : (q.text || "Boş soru...")}</p>
+                     <p className='text-xs text-gray-500 truncate'>{q.image ? "[Resimli Soru]" : (q.text || "Boş soru...")}</p>
                 </div>
             ))}
         </div>
         <div className='flex gap-2'>
             <Button variant="outline" onClick={() => addQuestion('multiple-choice')} className='flex-1'><CheckSquare className='mr-2'/>Test</Button>
-            <Button variant="outline" onClick={() => addQuestion('true-false')} className='flex-1'><CaseUpper className='mr-2'/>D/Y</Button>
             <Button variant="outline" onClick={() => addQuestion('short-answer')} className='flex-1'><AlignLeft className='mr-2'/>Kısa Cevap</Button>
         </div>
-        <Button onClick={() => setIsAssignModalOpen(true)}><Send className='mr-2'/>Ata & Yayınla</Button>
-
+        <div className="flex gap-2">
+            <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="flex-1"><Eye className='mr-2'/>Önizleme</Button>
+            <Button onClick={() => setIsAssignModalOpen(true)} className="flex-1"><Send className='mr-2'/>Ata & Yayınla</Button>
+        </div>
       </div>
 
       {/* SAĞ PANEL - Soru Editörü */}
@@ -182,8 +185,8 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                   )}
               </div>
               {activeQuestion.image && (
-                <div className="mb-4 p-2 border rounded-md">
-                    <img src={activeQuestion.image} alt="Soru görseli" className="max-w-full rounded" />
+                <div className="mb-4 p-2 border rounded-md flex justify-center bg-gray-50">
+                    <img src={activeQuestion.image} alt="Soru görseli" className="max-w-full max-h-80 object-contain rounded" />
                 </div>
               )}
               <Textarea id="questionText" value={activeQuestion.text} onChange={e => updateQuestion(activeQuestion.id, 'text', e.target.value)} rows={5} className="mt-2" placeholder='Sorunuzu buraya yazın ya da bir resim ekleyin...'/>
@@ -251,6 +254,20 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
         classes={classes}
         students={students}
       />
+
+      {isPreviewOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex justify-center overflow-y-auto py-10">
+            <div className="relative">
+                <div className="fixed top-5 right-5 flex flex-col gap-2">
+                  <button onClick={() => setIsPreviewOpen(false)} className="bg-white rounded-full p-2 hover:bg-gray-200 transition"><X size={24} /></button>
+                  <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="bg-white rounded-full p-2 hover:bg-gray-200 transition">
+                      <KeySquare size={24} className={showAnswerKey ? 'text-blue-600' : ''}/>
+                  </button>
+                </div>
+                <ExamPaper exam={currentExam} showAnswerKey={showAnswerKey} />
+            </div>
+        </div>
+      )}
     </div>
   );
 }
