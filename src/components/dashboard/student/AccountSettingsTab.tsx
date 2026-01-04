@@ -37,34 +37,30 @@ const NotificationSettings = () => {
     if (error) {
         return <p className="text-sm text-destructive">Bildirim hatası: {error.message}</p>
     }
-
-    if (isNotificationPermissionGranted === null) {
-        return <div className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Durum kontrol ediliyor...</div>;
-    }
     
-    if (Notification.permission === 'denied') {
-        return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen bu site için tarayıcı bildirim ayarlarına izin verin.</p>
+    // Tarayıcıdan tamamen engellenmişse, kullanıcıyı bilgilendir.
+    if (typeof window !== 'undefined' && Notification.permission === 'denied') {
+        return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen bu site için tarayıcı bildirim ayarlarına manuel olarak izin verin.</p>
     }
 
     if (isNotificationPermissionGranted) {
         return (
             <div className="space-y-3">
-                <p className="text-sm text-green-600 font-medium">Bu cihazda anlık bildirimlere izin verilmiş.</p>
-                <Button onClick={unsubscribeFromNotifications} variant="outline" disabled={isSubscribing}>
+                <p className="text-sm text-green-600 font-medium">Bu cihazda anlık bildirimler aktif.</p>
+                <Button onClick={unsubscribeFromNotifications} variant="destructive" disabled={isSubscribing}>
                     {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />}
-                    Bildirimleri Devre Dışı Bırak
+                    Bildirimleri Kapat
                 </Button>
-                 <p className="text-xs text-muted-foreground">Bu cihaz için bildirim aboneliğini sonlandırır. Bildirimleri tamamen engellemek için tarayıcı ayarlarını kullanın.</p>
             </div>
         )
     }
     
     return (
         <div className="space-y-3">
-            <p className="text-sm text-gray-600 font-medium">Bu cihaz için anlık bildirimlere izin verilmemiş.</p>
+             <p className="text-sm text-gray-600 font-medium">Bu cihaz için anlık bildirimler kapalı.</p>
             <Button onClick={requestNotificationPermission} disabled={isSubscribing}>
                 {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
-                Anlık Bildirimleri Etkinleştir
+                Bildirimlere İzin Ver
             </Button>
         </div>
     )
