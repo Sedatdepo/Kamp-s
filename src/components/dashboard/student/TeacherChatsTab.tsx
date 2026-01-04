@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Message, TeacherProfile, Student } from '@/lib/types';
-import { collection, query, where, writeBatch, doc, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, writeBatch, doc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, MessageSquare, Send, Users, User } from 'lucide-react';
 import { format } from 'date-fns';
@@ -38,10 +39,12 @@ export function TeacherChatsTab() {
 
     const teacherIds = useMemo(() => {
         const ids = new Set<string>();
-        allMessages.forEach(msg => {
-            const teacherId = msg.participants.find(p => p !== studentId);
-            if (teacherId) ids.add(teacherId);
-        });
+        if (allMessages) {
+            allMessages.forEach(msg => {
+                const teacherId = msg.participants.find(p => p !== studentId);
+                if (teacherId) ids.add(teacherId);
+            });
+        }
         return Array.from(ids);
     }, [allMessages, studentId]);
 
@@ -50,17 +53,19 @@ export function TeacherChatsTab() {
 
     const unreadMessagesCount = useMemo(() => {
         const counts = new Map<string, number>();
-        allMessages.forEach(msg => {
-            if (msg.receiverId === studentId && !msg.isRead) {
-                const teacherId = msg.senderId;
-                counts.set(teacherId, (counts.get(teacherId) || 0) + 1);
-            }
-        });
+        if (allMessages) {
+            allMessages.forEach(msg => {
+                if (msg.receiverId === studentId && !msg.isRead) {
+                    const teacherId = msg.senderId;
+                    counts.set(teacherId, (counts.get(teacherId) || 0) + 1);
+                }
+            });
+        }
         return counts;
     }, [allMessages, studentId]);
     
     useEffect(() => {
-        if (db && allMessages.length > 0 && selectedTeacher) {
+        if (db && allMessages && allMessages.length > 0 && selectedTeacher) {
             const unread = allMessages.filter(msg => msg.senderId === selectedTeacher.id && msg.receiverId === studentId && !msg.isRead);
             if (unread.length > 0) {
                 const batch = writeBatch(db);
@@ -87,7 +92,7 @@ export function TeacherChatsTab() {
     };
 
     const chatMessages = useMemo(() => {
-        if (!selectedTeacher) return [];
+        if (!selectedTeacher || !allMessages) return [];
         return allMessages.filter(m => m.participants.includes(selectedTeacher.id)).sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
     }, [allMessages, selectedTeacher]);
 
@@ -101,7 +106,7 @@ export function TeacherChatsTab() {
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto">
                     {isLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin"/> :
-                     teacherProfiles.length > 0 ? (
+                     teacherProfiles && teacherProfiles.length > 0 ? (
                         teacherProfiles.map(teacher => (
                             <div key={teacher.id} onClick={() => setSelectedTeacher(teacher)}
                                 className={`p-3 rounded-lg cursor-pointer flex justify-between items-center ${selectedTeacher?.id === teacher.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>

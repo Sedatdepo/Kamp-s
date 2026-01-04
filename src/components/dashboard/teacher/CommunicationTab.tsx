@@ -1,8 +1,9 @@
 
+
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
-import { doc, updateDoc, collection, addDoc, Timestamp, query, where } from 'firebase/firestore';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { doc, updateDoc, collection, addDoc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
 import { Class, Announcement, Message, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,13 +165,28 @@ function MessagesPanel({ classId }: { classId: string }) {
 
     const unreadMessagesCount = useMemo(() => {
         const counts = new Map<string, number>();
-        allMessages.forEach(msg => {
-            if (msg.receiverId === teacherId && !msg.isRead) {
-                counts.set(msg.senderId, (counts.get(msg.senderId) || 0) + 1);
-            }
-        });
+        if(allMessages) {
+            allMessages.forEach(msg => {
+                if (msg.receiverId === teacherId && !msg.isRead) {
+                    counts.set(msg.senderId, (counts.get(msg.senderId) || 0) + 1);
+                }
+            });
+        }
         return counts;
     }, [allMessages, teacherId]);
+
+    useEffect(() => {
+        if (db && allMessages && allMessages.length > 0 && selectedStudent) {
+            const unread = allMessages.filter(msg => msg.senderId === selectedStudent.id && msg.receiverId === teacherId && !msg.isRead);
+            if (unread.length > 0) {
+                const batch = writeBatch(db);
+                unread.forEach(msg => {
+                    batch.update(doc(db, 'messages', msg.id), { isRead: true });
+                });
+                batch.commit();
+            }
+        }
+    }, [allMessages, selectedStudent, teacherId, db]);
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedStudent || !db || !teacherId) return;
@@ -187,7 +203,7 @@ function MessagesPanel({ classId }: { classId: string }) {
     };
 
     const studentList = useMemo(() => {
-        if (!students) return [];
+        if (!students || !allMessages) return students || [];
         const messageStudentIds = new Set(allMessages.map(m => m.senderId === teacherId ? m.receiverId : m.senderId));
         const studentsWithMessages = students.filter(s => messageStudentIds.has(s.id));
         const studentsWithoutMessages = students.filter(s => !messageStudentIds.has(s.id));
@@ -195,7 +211,7 @@ function MessagesPanel({ classId }: { classId: string }) {
     }, [students, allMessages, teacherId]);
 
     const chatMessages = useMemo(() => {
-        if (!selectedStudent) return [];
+        if (!selectedStudent || !allMessages) return [];
         return allMessages.filter(m => m.participants.includes(selectedStudent.id)).sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
     }, [allMessages, selectedStudent]);
 

@@ -4,19 +4,19 @@
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { GradesTab } from './student/GradesTab';
-import { RiskFormTab } from './student/RiskFormTab';
-import { InfoFormTab } from './student/InfoFormTab';
-import { StudentCommunicationTab } from './student/StudentCommunicationTab';
-import { TeacherChatsTab } from './student/TeacherChatsTab';
-import { PerformanceHomeworkTab } from './student/PerformanceHomeworkTab';
-import { RegularHomeworkTab } from './student/RegularHomeworkTab';
-import { ElectionVoteTab } from './student/ElectionVoteTab';
-import { DutyRosterTab } from './student/DutyRosterTab';
-import { SeatingPlanTab } from './student/SeatingPlanTab';
-import { StudentSurveyTab } from './student/StudentSurveyTab';
-import { AccountSettingsTab } from './student/AccountSettingsTab';
-import { ProjectTab } from './student/ProjectTab';
+import { GradesTab } from './GradesTab';
+import { RiskFormTab } from './RiskFormTab';
+import { InfoFormTab } from './InfoFormTab';
+import { StudentCommunicationTab } from './StudentCommunicationTab';
+import { TeacherChatsTab } from './TeacherChatsTab';
+import { PerformanceHomeworkTab } from './PerformanceHomeworkTab';
+import { RegularHomeworkTab } from './RegularHomeworkTab';
+import { ElectionVoteTab } from './ElectionVoteTab';
+import { DutyRosterTab } from './DutyRosterTab';
+import { SeatingPlanTab } from './SeatingPlanTab';
+import { StudentSurveyTab } from './StudentSurveyTab';
+import { AccountSettingsTab } from './AccountSettingsTab';
+import { ProjectTab } from './ProjectTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap } from 'lucide-react';
@@ -79,6 +79,7 @@ export function StudentDashboard() {
     else if (activeTab === 'homeworks' || activeTab === 'regular-homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
     else if (activeTab === 'surveys') markAsSeen('surveys');
+    else if (activeTab === 'teacher-chats') markAsSeen('messages');
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -179,7 +180,7 @@ export function StudentDashboard() {
                         isDisabled={!hasUnansweredSurvey}
                     />
 
-                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
+                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
                     
                     <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
 

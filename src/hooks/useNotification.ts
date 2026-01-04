@@ -5,10 +5,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useFirestore } from './useFirestore';
-import { Class, Survey, SurveyResponse } from '@/lib/types';
+import { Class, Survey, SurveyResponse, Message } from '@/lib/types';
 import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore';
 
-type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'surveys';
+type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'surveys' | 'messages';
 
 interface NotificationState {
   announcements: boolean;
@@ -17,6 +17,7 @@ interface NotificationState {
   homeworks: boolean;
   election: boolean;
   surveys: boolean;
+  messages: boolean;
 }
 
 export const useNotification = () => {
@@ -28,6 +29,7 @@ export const useNotification = () => {
     homeworks: false,
     election: false,
     surveys: false,
+    messages: false,
   });
   
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
@@ -54,6 +56,12 @@ export const useNotification = () => {
     return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
   }, [activeSurveys, userResponses]);
   
+  const messagesQuery = useMemo(() => {
+    if (!db || !studentId) return null;
+    return query(collection(db, 'messages'), where('participants', 'array-contains', studentId), where('isRead', '==', false), where('receiverId', '==', studentId));
+  }, [db, studentId]);
+  const { data: unreadMessages } = useFirestore<Message[]>(`unread-messages-notif-${studentId}`, messagesQuery);
+
 
   const checkNotifications = useCallback(async () => {
     if (!currentClass || !studentId || !db) return;
@@ -90,16 +98,20 @@ export const useNotification = () => {
     // 5. Seçim Kontrolü
     const hasNewElection = currentClass.isElectionActive === true && currentClass.election?.votedStudentIds && !currentClass.election.votedStudentIds.includes(studentId);
 
+    // 6. Mesaj Kontrolü
+    const hasNewMessage = unreadMessages && unreadMessages.length > 0;
+
     setNotifications({
       announcements: hasNewAnnouncement,
       riskForm: hasNewRiskForm,
       infoForm: hasNewInfoForm,
       homeworks: hasNewHomework,
       election: hasNewElection,
-      surveys: hasUnansweredSurvey
+      surveys: hasUnansweredSurvey,
+      messages: hasNewMessage,
     });
 
-  }, [currentClass, studentId, appUser, db, hasUnansweredSurvey]);
+  }, [currentClass, studentId, appUser, db, hasUnansweredSurvey, unreadMessages]);
 
   useEffect(() => {
     checkNotifications();
@@ -131,7 +143,7 @@ export const useNotification = () => {
             await updateDoc(classRef, { homeworks: updatedHomeworks });
         }
     }
-    // Seçim ve Anket için bildirim temizleme işlemi oy/cevap kullanma ile gerçekleşir, burada değil.
+    // Message notifications are cleared in the TeacherChatsTab/StudentCommunicationTab components.
     
     // Refresh notifications after marking as seen
     checkNotifications();
