@@ -98,8 +98,10 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             const studentsByClass: { [key: string]: string[] } = {};
             studentIds.forEach(studentId => {
                 const student = students.find(s => s.id === studentId);
-                if (student) {
-                    if (!studentsByClass[student.classId]) studentsByClass[student.classId] = [];
+                if (student && student.classId) { // Ensure classId exists
+                    if (!studentsByClass[student.classId]) {
+                        studentsByClass[student.classId] = [];
+                    }
                     studentsByClass[student.classId].push(studentId);
                 }
             });
