@@ -1,14 +1,15 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useAuth } from './useAuth';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useToast } from './use-toast';
 
 export const usePushNotifications = () => {
     const { appUser, db } = useAuth();
+    const { toast } = useToast();
     const [isNotificationPermissionGranted, setNotificationPermissionGranted] = useState<boolean | null>(null);
     const [fcmToken, setFcmToken] = useState<string | null>(null);
     const [error, setError] = useState<any>(null);
@@ -23,7 +24,7 @@ export const usePushNotifications = () => {
     }, []);
 
     const getFCMToken = useCallback(async () => {
-        if (!db || !appUser) return;
+        if (!db || !appUser) return null;
         
         setIsSubscribing(true);
         setError(null);
@@ -47,15 +48,17 @@ export const usePushNotifications = () => {
                         fcmTokens: arrayUnion(token)
                     });
                 }
-                
+                return token;
             } else {
                setError(new Error('No registration token available. Request permission to generate one.'));
                setNotificationPermissionGranted(false);
+               return null;
             }
         } catch (err) {
             console.error('An error occurred while retrieving token. ', err);
             setError(err);
             setNotificationPermissionGranted(false);
+            return null;
         } finally {
             setIsSubscribing(false);
         }
@@ -82,16 +85,45 @@ export const usePushNotifications = () => {
             setIsSubscribing(false);
         }
     }, [getFCMToken]);
+
+    const unsubscribeFromNotifications = useCallback(async () => {
+        if (!db || !appUser || appUser.type !== 'student') return;
+
+        setIsSubscribing(true);
+        try {
+            const currentToken = await getFCMToken(); // Get the token for this device
+            if (currentToken) {
+                const studentRef = doc(db, 'students', appUser.data.id);
+                await updateDoc(studentRef, {
+                    fcmTokens: arrayRemove(currentToken)
+                });
+                setFcmToken(null);
+                // We cannot programmatically revoke the permission, so we just update our state
+                // and inform the user.
+                toast({title: "Bildirimler kapatıldı", description: "Bu cihaz için bildirim aboneliği kaldırıldı."});
+            }
+        } catch (err) {
+            console.error("Error unsubscribing:", err);
+            setError(err);
+            toast({variant: 'destructive', title: "Hata", description: "Bildirimler kapatılamadı."})
+        } finally {
+            setIsSubscribing(false);
+        }
+    }, [db, appUser, getFCMToken, toast]);
     
     // Listen for foreground messages
     useEffect(() => {
         if (typeof window !== 'undefined' && 'firebase' in window) {
-            const messaging = getMessaging();
-            const unsubscribe = onMessage(messaging, (payload) => {
-                console.log('Foreground message received. ', payload);
-            });
-
-            return () => unsubscribe();
+            try {
+                const messaging = getMessaging();
+                const unsubscribe = onMessage(messaging, (payload) => {
+                    console.log('Foreground message received. ', payload);
+                    // Optionally show a custom in-app notification here
+                });
+                return () => unsubscribe();
+            } catch (e) {
+                console.error("Could not initialize messaging:", e);
+            }
         }
     }, []);
 
@@ -100,5 +132,7 @@ export const usePushNotifications = () => {
         requestNotificationPermission,
         isSubscribing,
         error,
+        unsubscribeFromNotifications,
+        getFCMToken,
     };
 };

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState } from 'react';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, KeyRound, Bell } from 'lucide-react';
+import { Loader2, KeyRound, BellOff, Bell } from 'lucide-react';
 import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -31,6 +30,7 @@ const NotificationSettings = () => {
         isNotificationPermissionGranted, 
         requestNotificationPermission, 
         isSubscribing,
+        unsubscribeFromNotifications,
         error
     } = usePushNotifications();
 
@@ -43,11 +43,20 @@ const NotificationSettings = () => {
     }
 
     if (isNotificationPermissionGranted) {
-        return <p className="text-sm text-green-600 font-medium">Bu cihazda anlık bildirimlere izin verilmiş.</p>
+        return (
+            <div className="space-y-3">
+                <p className="text-sm text-green-600 font-medium">Bu cihazda anlık bildirimlere izin verilmiş.</p>
+                <Button onClick={unsubscribeFromNotifications} variant="outline" disabled={isSubscribing}>
+                    {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />}
+                    Bildirimleri Devre Dışı Bırak
+                </Button>
+                 <p className="text-xs text-muted-foreground">Bu cihaz için bildirimleri kapatır. Bildirimleri tamamen engellemek için tarayıcı ayarlarını kullanın.</p>
+            </div>
+        )
     }
     
     if (Notification.permission === 'denied') {
-        return <p className="text-sm text-red-600 font-medium">Bildirimler engellenmiş. Lütfen tarayıcı ayarlarından izin verin.</p>
+        return <p className="text-sm text-red-600 font-medium">Bildirimler tarayıcı ayarlarından engellenmiş. Lütfen tarayıcı ayarlarından izin verin.</p>
     }
 
     return (
