@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -94,10 +95,12 @@ export interface MatchingPair {
   answer: string;
 }
 
+export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph';
+
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph';
+  type: QuestionType;
   options?: string[]; // For multiple-choice
   matchingPairs?: MatchingPair[]; // For matching questions
   correctAnswer?: string;
@@ -250,6 +253,16 @@ export interface Message {
   };
 }
 
+// --- ARCHIVABLE DOCUMENT TYPES ---
+export interface Archivable {
+    id: string;
+    name: string;
+    date: string;
+    classId?: string; // classId is optional for some documents like Dilekce
+    data: any;
+}
+
+
 // Annual Plan Types
 export interface DailyPlan {
   id: string;
@@ -290,14 +303,6 @@ export interface AnnualPlan {
       ogretmen: string;
       ders: string;
   };
-}
-
-export interface Archivable {
-    id: string;
-    name: string;
-    date: string;
-    classId: string;
-    data: any;
 }
 
 export interface DilekceDocument extends Archivable {
@@ -391,4 +396,42 @@ export interface Scenario {
   id: string;
   title: string;
   content: string;
+}
+
+// --- EXAM BUILDER TYPES ---
+export type ExamQuestionType = 'choice' | 'open' | 'truefalse';
+export type ExamTheme = 'classic' | 'modern' | 'minimal';
+
+export interface ExamQuestion {
+  id: number;
+  text: string;
+  type: ExamQuestionType;
+  options: string[];
+  correctOption: number | null;
+  image: string | null;
+  span: number;
+  filled: boolean;
+}
+
+export interface ExamSettings {
+  fontSize: number;
+  lineHeight: number;
+  watermark: string;
+}
+
+export interface ExamInfo {
+  title: string;
+  logo: string | null;
+  group: 'A' | 'B';
+  theme: ExamTheme;
+  settings: ExamSettings;
+}
+
+export interface Exam {
+    examInfo: ExamInfo;
+    questions: ExamQuestion[];
+}
+
+export interface ExamDocument extends Archivable {
+    data: Exam;
 }

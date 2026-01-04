@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, HomeworkDocument } from '@/lib/types';
+import { 
+    AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
+    ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
+    HomeworkDocument, ExamDocument 
+} from '@/lib/types';
 
 // localStorage anahtarı
 const DB_KEY = 'ito_kampus_database';
@@ -17,6 +21,7 @@ interface Database {
   riskMapDocuments: RiskMapDocument[];
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
+  examDocuments: ExamDocument[];
   userScenarios: Record<string, string[]>; // Yeni eklendi
 }
 
@@ -31,6 +36,7 @@ const initialDb: Database = {
   riskMapDocuments: [],
   communicationDocuments: [],
   homeworkDocuments: [],
+  examDocuments: [],
   userScenarios: {}, // Yeni eklendi
 };
 

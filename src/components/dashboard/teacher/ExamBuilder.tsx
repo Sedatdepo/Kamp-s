@@ -1,47 +1,17 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, Image as ImageIcon, 
-  Trash2, Save, FileText, ArrowUp, ArrowDown, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, Key, GripVertical, Upload, X,
-  Download, FolderOpen, Shuffle, RefreshCw, Palette, Grid3X3, Settings, PieChart, Tag,
-  QrCode, FilePlus
+  Trash2, Save, FileText, Plus, Eye, Printer,
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen
 } from 'lucide-react';
+import { Exam, ExamInfo, ExamQuestion, ExamQuestionType, ExamTheme, ExamDocument } from '@/lib/types';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+import { useToast } from '@/hooks/use-toast';
 
-// --- TİPLER ---
-type QuestionType = 'choice' | 'open' | 'truefalse';
-type ExamTheme = 'classic' | 'modern' | 'minimal';
-
-interface Question {
-  id: number;
-  text: string;
-  type: QuestionType;
-  options: string[];
-  correctOption: number | null;
-  image: string | null;
-  span: number;
-  filled: boolean;
-}
-
-interface ExamSettings {
-  fontSize: number;
-  lineHeight: number;
-  watermark: string;
-}
-
-interface ExamInfo {
-  title: string;
-  logo: string | null;
-  group: 'A' | 'B';
-  theme: ExamTheme;
-  settings: ExamSettings;
-}
-
-interface SavedProject {
-  examInfo: ExamInfo;
-  slots: Question[];
-  version: string;
-}
+// --- TİPLER --- Artık types.ts'den geliyor.
 
 // --- BASİT HTML EDİTÖRÜ ---
 const SimpleHtmlEditor = ({ value, onChange, addImage }: { value: string, onChange: (val: string) => void, addImage: () => void }) => {
@@ -85,9 +55,23 @@ const SimpleHtmlEditor = ({ value, onChange, addImage }: { value: string, onChan
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder() {
-  // Varsayılan 10 boş slot
-  const [slots, setSlots] = useState<Question[]>(
-    Array(10).fill(null).map((_, i) => ({
+  const { db, setDb, loading } = useDatabase();
+  const { examDocuments = [] } = db;
+  const { toast } = useToast();
+
+  const createNewExam = (): Exam => ({
+    examInfo: {
+      title: 'Yeni Sınav',
+      logo: null,
+      group: 'A',
+      theme: 'classic',
+      settings: {
+        fontSize: 11,
+        lineHeight: 1.5,
+        watermark: ''
+      },
+    },
+    questions: Array(10).fill(null).map((_, i) => ({
       id: i,
       text: '',
       type: 'choice',
@@ -97,96 +81,125 @@ export default function ExamBuilder() {
       span: 1,
       filled: false,
     }))
-  );
+  });
 
+  const [currentExam, setCurrentExam] = useState<Exam>(createNewExam());
   const [currentSlotId, setCurrentSlotId] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'editor' | 'settings'>('editor');
   const [showAnswerKey, setShowAnswerKey] = useState<boolean>(true);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
-  const [examInfo, setExamInfo] = useState<ExamInfo>({
-    title: 'MATEMATİK SINAVI',
-    logo: null,
-    group: 'A',
-    theme: 'classic',
-    settings: {
-      fontSize: 11,
-      lineHeight: 1.5,
-      watermark: ''
-    },
-  });
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const projectInputRef = useRef<HTMLInputElement>(null);
 
   const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
   const [editorContent, setEditorContent] = useState('');
   
-  const activeSlot = slots.find(s => s.id === currentSlotId) || slots[0];
+  const activeSlot = currentExam.questions.find(s => s.id === currentSlotId) || currentExam.questions[0];
 
   useEffect(() => {
     setEditorContent(activeSlot.text);
   }, [currentSlotId, activeSlot.text]);
+
+  useEffect(() => {
+    const record = examDocuments.find(d => d.id === selectedRecordId);
+    if (record) {
+        setCurrentExam(record.data);
+    } else {
+        setCurrentExam(createNewExam());
+    }
+}, [selectedRecordId, examDocuments]);
 
   // --- DRAG & DROP ---
   const handleDragStart = (index: number) => { setDraggedSlotIndex(index); };
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
   const handleDrop = (targetIndex: number) => {
     if (draggedSlotIndex === null || draggedSlotIndex === targetIndex) return;
-    const newSlots = [...slots];
-    // Basit swap: Veriyi değiştir, ID'leri koru (konum sabitliği için)
-    const draggedItem = { ...newSlots[draggedSlotIndex] };
-    const targetItem = { ...newSlots[targetIndex] };
-    newSlots[draggedSlotIndex] = { ...targetItem, id: draggedSlotIndex };
-    newSlots[targetIndex] = { ...draggedItem, id: targetIndex };
-    setSlots(newSlots);
+    
+    const newQuestions = [...currentExam.questions];
+    const draggedItem = { ...newQuestions[draggedSlotIndex] };
+    const targetItem = { ...newQuestions[targetIndex] };
+    
+    newQuestions[draggedSlotIndex] = { ...targetItem, id: draggedSlotIndex };
+    newQuestions[targetIndex] = { ...draggedItem, id: targetIndex };
+
+    setCurrentExam(prev => ({ ...prev, questions: newQuestions }));
     setDraggedSlotIndex(null);
     setCurrentSlotId(targetIndex); 
   };
 
-  // --- PROJE İŞLEMLERİ ---
-  const newProject = () => {
-    if(confirm('Mevcut çalışma silinecek ve yeni bir proje başlatılacak. Emin misiniz?')) {
-        setSlots(Array(10).fill(null).map((_, i) => ({ id: i, text: '', type: 'choice', options: ['', '', '', '', ''], correctOption: null, image: null, span: 1, filled: false })));
-        setExamInfo({ title: 'YENİ SINAV', logo: null, group: 'A', theme: 'classic', settings: { fontSize: 11, lineHeight: 1.5, watermark: '' } });
+  const handleNewProject = () => {
+    if(confirm('Mevcut çalışma silinecek ve yeni bir sınav oluşturulacak. Emin misiniz?')) {
+        setSelectedRecordId(null);
+        setCurrentExam(createNewExam());
         setCurrentSlotId(0);
+        toast({ title: "Yeni Sınav", description: "Editör temizlendi." });
     }
   };
 
-  // --- KARIŞTIRMA (A/B) ---
-  const shuffleQuestions = () => {
-    const nextGroup = examInfo.group === 'A' ? 'B' : 'A';
-    if (!confirm(`Sorular karıştırılıp ${nextGroup} Grubu yapılacak. Emin misiniz?`)) return;
-    
-    const filledSlots = slots.filter(s => s.filled);
-    const emptySlots = slots.filter(s => !s.filled);
-    
-    // Fisher-Yates Shuffle
-    for (let i = filledSlots.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [filledSlots[i], filledSlots[j]] = [filledSlots[j], filledSlots[i]];
-    }
-    
-    const allContent = [...filledSlots, ...emptySlots];
-    const newSlots = slots.map((slot, index) => ({ ...allContent[index], id: index }));
-    
-    setSlots(newSlots);
-    setCurrentSlotId(0);
-    setExamInfo(prev => ({ ...prev, group: nextGroup }));
+  const handleSaveToArchive = () => {
+    const docName = currentExam.examInfo.title || 'İsimsiz Sınav';
+    const newDoc: ExamDocument = {
+        id: selectedRecordId || `exam_${Date.now()}`,
+        name: docName,
+        date: new Date().toISOString(),
+        data: currentExam,
+    };
+
+    setDb(prevDb => {
+        const existing = (prevDb.examDocuments || []).find(d => d.id === newDoc.id);
+        if (existing) {
+            return {
+                ...prevDb,
+                examDocuments: (prevDb.examDocuments || []).map(d => d.id === newDoc.id ? newDoc : d),
+            };
+        }
+        return {
+            ...prevDb,
+            examDocuments: [newDoc, ...(prevDb.examDocuments || [])]
+        };
+    });
+
+    setSelectedRecordId(newDoc.id);
+    toast({ title: 'Arşivlendi!', description: `'${docName}' sınavı başarıyla kaydedildi.` });
   };
+
+  const handleDeleteFromArchive = () => {
+    if (!selectedRecordId || !confirm("Bu kaydı arşivden silmek istediğinize emin misiniz?")) return;
+    
+    setDb(prev => ({
+        ...prev,
+        examDocuments: (prev.examDocuments || []).filter(d => d.id !== selectedRecordId)
+    }));
+    
+    handleNewProject();
+    toast({ title: "Silindi", description: "Sınav arşivden silindi.", variant: "destructive" });
+  };
+
 
   // --- SLOT & EDİTÖR İŞLEMLERİ ---
   const handleSaveSlice = () => {
-    setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: editorContent, filled: true } : slot));
+    const newQuestions = currentExam.questions.map(slot => 
+        slot.id === currentSlotId ? { ...slot, text: editorContent, filled: editorContent.trim() !== '' || !!slot.image } : slot
+    );
+    setCurrentExam(prev => ({ ...prev, questions: newQuestions }));
+    toast({ title: "Kaydedildi", description: `Soru #${currentSlotId + 1} güncellendi.` });
   };
   const handleClearSlice = () => {
-    if (confirm('Temizlensin mi?')) {
-      setSlots(prev => prev.map(slot => slot.id === currentSlotId ? { ...slot, text: '', image: null, filled: false, options: ['', '', '', '', ''], correctOption: null, span: 1 } : slot));
+    if (confirm('Bu soruyu temizlemek istediğinizden emin misiniz?')) {
+      const newQuestions = currentExam.questions.map(slot => 
+        slot.id === currentSlotId ? { ...createNewExam().questions[0], id: slot.id } : slot
+      );
+      setCurrentExam(prev => ({ ...prev, questions: newQuestions }));
       setEditorContent('');
     }
   };
-  const updateSlotField = (field: keyof Question, value: any) => {
-    setSlots(prev => prev.map(s => s.id === currentSlotId ? { ...s, [field]: value } : s));
+  const updateSlotField = (field: keyof ExamQuestion, value: any) => {
+    const newQuestions = currentExam.questions.map(s => 
+        s.id === currentSlotId ? { ...s, [field]: value } : s
+    );
+    setCurrentExam(prev => ({ ...prev, questions: newQuestions }));
   };
   const updateOption = (index: number, value: string) => {
     const newOptions = [...activeSlot.options];
@@ -194,7 +207,6 @@ export default function ExamBuilder() {
     updateSlotField('options', newOptions);
   };
   
-  // Resim & Logo
   const triggerImageUpload = () => imageInputRef.current?.click();
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,17 +222,41 @@ export default function ExamBuilder() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (evt) => { if (evt.target?.result) setExamInfo(prev => ({ ...prev, logo: evt.target?.result as string })); };
+      reader.onload = (evt) => { if (evt.target?.result) setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, logo: evt.target.result as string } })); };
       reader.readAsDataURL(file);
     }
     if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
+  const shuffleQuestions = () => {
+    const nextGroup = currentExam.examInfo.group === 'A' ? 'B' : 'A';
+    if (!confirm(`Sorular karıştırılıp ${nextGroup} Grubu yapılacak. Emin misiniz?`)) return;
+    
+    const filledSlots = currentExam.questions.filter(s => s.filled);
+    const emptySlots = currentExam.questions.filter(s => !s.filled);
+    
+    for (let i = filledSlots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filledSlots[i], filledSlots[j]] = [filledSlots[j], filledSlots[i]];
+    }
+    
+    const allContent = [...filledSlots, ...emptySlots];
+    const newQuestions = currentExam.questions.map((slot, index) => ({ ...allContent[index], id: index }));
+    
+    setCurrentExam(prev => ({ 
+        ...prev, 
+        questions: newQuestions, 
+        examInfo: { ...prev.examInfo, group: nextGroup }
+    }));
+    setCurrentSlotId(0);
+  };
+
+
   // --- ÇIKTI ÜRETECİLERİ ---
   const generateAnswerKeyHTML = () => {
-    const filled = slots.filter(s => s.filled && s.type === 'choice');
+    const filled = currentExam.questions.filter(s => s.filled && s.type === 'choice');
     if (filled.length === 0) return '';
-    let html = `<br><br><div style="border: 1px solid #000; padding: 10px; font-size: 10pt;"><strong>${examInfo.group} GRUBU CEVAP ANAHTARI:</strong><br><table style="width: 100%; border-collapse: collapse; margin-top: 5px;"><tr>`;
+    let html = `<br><br><div style="border: 1px solid #000; padding: 10px; font-size: 10pt;"><strong>${currentExam.examInfo.group} GRUBU CEVAP ANAHTARI:</strong><br><table style="width: 100%; border-collapse: collapse; margin-top: 5px;"><tr>`;
     filled.forEach((q, i) => {
         const char = q.correctOption !== null ? ['A', 'B', 'C', 'D', 'E'][q.correctOption] : '-';
         html += `<td style="border: 1px solid #ccc; padding: 2px 5px; text-align: center;"><b>${i + 1}.</b> ${char}</td>`;
@@ -236,25 +272,25 @@ export default function ExamBuilder() {
     
     const content = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
-      <head><meta charset="utf-8"><title>${examInfo.title}</title></head>
-      <body style="font-family: ${examInfo.theme === 'modern' ? 'Arial' : 'Times New Roman'}; font-size: ${examInfo.settings.fontSize}pt;">
+      <head><meta charset="utf-8"><title>${currentExam.examInfo.title}</title></head>
+      <body style="font-family: ${currentExam.examInfo.theme === 'modern' ? 'Arial' : 'Times New Roman'}; font-size: ${currentExam.examInfo.settings.fontSize}pt;">
         <table style="width:100%; border-bottom: 2px solid black; margin-bottom: 20px;">
             <tr>
-                ${examInfo.logo ? `<td style="width:100px;"><img src="${examInfo.logo}" width="80" height="80"></td>` : ''}
-                <td style="text-align:center;"><h1>${examInfo.title}</h1><p>Adı Soyadı: ...........................................</p></td>
+                ${currentExam.examInfo.logo ? `<td style="width:100px;"><img src="${currentExam.examInfo.logo}" width="80" height="80"></td>` : ''}
+                <td style="text-align:center;"><h1>${currentExam.examInfo.title}</h1><p>Adı Soyadı: ...........................................</p></td>
                 <td style="width:100px; text-align:right;">
-                    <div style="width:40px; height:40px; border:2px solid black; border-radius:50%; text-align:center; line-height:40px; font-weight:bold; display:inline-block; margin-top:5px;">${examInfo.group}</div>
+                    <div style="width:40px; height:40px; border:2px solid black; border-radius:50%; text-align:center; line-height:40px; font-weight:bold; display:inline-block; margin-top:5px;">${currentExam.examInfo.group}</div>
                 </td>
             </tr>
         </table>
-        <p><i>[Sınav İçeriği]</i></p>
+        <p><i>[Sınav İçeriği Buraya Gelecek]</i></p>
         ${extra}
-        ${examInfo.settings.watermark ? `<div style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); font-size:80pt; color:#eee; z-index:-1;">${examInfo.settings.watermark}</div>` : ''}
+        ${currentExam.examInfo.settings.watermark ? `<div style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); font-size:80pt; color:#eee; z-index:-1;">${currentExam.examInfo.settings.watermark}</div>` : ''}
       </body></html>`;
     const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `sinav_${examInfo.group}.doc`;
+    link.download = `sinav_${currentExam.examInfo.group}.doc`;
     link.click();
   };
 
@@ -266,9 +302,9 @@ export default function ExamBuilder() {
     }
   };
 
-  const ExamPaperContent = ({ forPreview = false }) => {
-    const styles = getThemeStyles(examInfo.theme);
-    const { fontSize, lineHeight, watermark } = examInfo.settings;
+  const ExamPaperContent = ({ forPreview = false }: { forPreview?: boolean }) => {
+    const styles = getThemeStyles(currentExam.examInfo.theme);
+    const { fontSize, lineHeight, watermark } = currentExam.examInfo.settings;
 
     return (
       <div 
@@ -278,10 +314,10 @@ export default function ExamBuilder() {
         {watermark && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-45deg] text-gray-100 font-bold text-[80pt] pointer-events-none select-none z-0 whitespace-nowrap">{watermark}</div>}
 
         <div className={`flex items-start gap-4 shrink-0 relative z-10 ${styles.header}`}>
-            {examInfo.logo && <div className="w-[80px] h-[80px] flex items-center justify-center shrink-0"><img src="${examInfo.logo}" alt="Logo" className="max-w-full max-h-full object-contain" /></div>}
+            {currentExam.examInfo.logo && <div className="w-[80px] h-[80px] flex items-center justify-center shrink-0"><img src={currentExam.examInfo.logo} alt="Logo" className="max-w-full max-h-full object-contain" /></div>}
             
             <div className="flex-1 text-center flex flex-col justify-center">
-                <h1 className={styles.title}>{examInfo.title}</h1>
+                <h1 className={styles.title}>{currentExam.examInfo.title}</h1>
                 <div className="flex justify-between text-sm px-4 mt-2">
                     <div className="text-left space-y-1"><div>Adı Soyadı: ..............................</div><div>Sınıfı / No: ..............................</div></div>
                     <div className="text-left space-y-1"><div>Tarih: ...../...../20....</div><div>Notu: .....................</div></div>
@@ -289,14 +325,14 @@ export default function ExamBuilder() {
             </div>
 
             <div className="flex flex-col items-end gap-2 shrink-0">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-2xl bg-white ${styles.groupCircle}`}>{examInfo.group}</div>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-2xl bg-white ${styles.groupCircle}`}>{currentExam.examInfo.group}</div>
             </div>
         </div>
 
         <div className="flex gap-[1cm] flex-1 z-10">
           {[0, 5].map((startIdx, colIndex) => (
             <div key={colIndex} className={`flex-1 flex flex-col ${forPreview ? '' : 'border border-dashed border-gray-200 p-1'}`}>
-              {slots.slice(startIdx, startIdx + 5).map((slot, i) => (
+              {currentExam.questions.slice(startIdx, startIdx + 5).map((slot, i) => (
                 <SliceItem 
                   key={slot.id} slot={slot} isActive={!forPreview && slot.id === currentSlotId} onClick={() => !forPreview && setCurrentSlotId(slot.id)} 
                   index={i + startIdx} onDragStart={!forPreview ? handleDragStart : undefined} onDragOver={!forPreview ? handleDragOver : undefined} 
@@ -310,9 +346,9 @@ export default function ExamBuilder() {
         <div className="z-10">
             {showAnswerKey && (
                 <div className="mt-4 pt-4 border-t-2 border-black">
-                    <h3 className="text-sm font-bold mb-2">{examInfo.group} GRUBU CEVAP ANAHTARI</h3>
+                    <h3 className="text-sm font-bold mb-2">{currentExam.examInfo.group} GRUBU CEVAP ANAHTARI</h3>
                     <div className="grid grid-cols-10 gap-2 text-xs border border-gray-300 p-2">
-                        {slots.map((slot, i) => { if (!slot.filled || slot.type !== 'choice') return null; return <div key={i} className="flex justify-between border-b border-gray-200 pb-1"><span className="font-bold">{i + 1}.</span><span>{slot.correctOption !== null ? ['A','B','C','D', 'E'][slot.correctOption] : '-'}</span></div>; })}
+                        {currentExam.questions.map((slot, i) => { if (!slot.filled || slot.type !== 'choice') return null; return <div key={i} className="flex justify-between border-b border-gray-200 pb-1"><span className="font-bold">{i + 1}.</span><span>{slot.correctOption !== null ? ['A','B','C','D', 'E'][slot.correctOption] : '-'}</span></div>; })}
                     </div>
                 </div>
             )}
@@ -321,13 +357,15 @@ export default function ExamBuilder() {
     );
   };
 
+  if(loading) return <div>Yükleniyor...</div>
+
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">
       <header className="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-2"><LayoutTemplate size={24} /><h1 className="text-xl font-bold hidden md:block">Sınav Editörü Pro</h1></div>
+        <div className="flex items-center gap-2"><LayoutTemplate size={24} /><h1 className="text-xl font-bold hidden md:block">Sınav Editörü</h1></div>
         <div className="flex gap-2 items-center">
-           <button onClick={newProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 transition" title="Yeni Proje"><FilePlus size={16} /><span className="hidden md:inline">Yeni</span></button>
-           <button onClick={shuffleQuestions} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 transition" title="Karıştır"><Shuffle size={16} /><span className="hidden md:inline">Karıştır</span></button>
+           <button onClick={handleNewProject} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 transition" title="Yeni Sınav"><RefreshCw size={16} /><span className="hidden md:inline">Yeni</span></button>
+           <button onClick={shuffleQuestions} className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 transition" title="Soruları Karıştır"><Shuffle size={16} /><span className="hidden md:inline">Karıştır</span></button>
            <div className="w-px h-6 bg-slate-600 mx-2"></div>
            <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-700 transition"><Eye size={16} /><span className="hidden md:inline">Önizle</span></button>
            <button onClick={exportToWord} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition"><FileText size={16} /><span className="hidden md:inline">Word</span></button>
@@ -336,8 +374,7 @@ export default function ExamBuilder() {
 
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageFileChange} />
       <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoFileChange} />
-      <input type="file" ref={projectInputRef} className="hidden" accept=".json" />
-
+      
       <div className="flex flex-1 overflow-hidden">
         {/* SOL PANEL */}
         <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0">
@@ -351,7 +388,7 @@ export default function ExamBuilder() {
             <div className="flex flex-col h-full">
                 <div className="p-4 border-b border-gray-200 bg-blue-50">
                     <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-bold text-blue-800">DÜZENLENEN KUTU</span>
+                    <span className="text-sm font-bold text-blue-800">DÜZENLENEN SORU</span>
                     <span className="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-mono">#{currentSlotId + 1}</span>
                     </div>
                 </div>
@@ -392,24 +429,36 @@ export default function ExamBuilder() {
             </div>
           ) : (
             <div className="p-5 flex flex-col gap-6">
+                <RecordManager
+                    records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
+                    selectedRecordId={selectedRecordId}
+                    onSelectRecord={setSelectedRecordId}
+                    onNewRecord={handleNewProject}
+                    onDeleteRecord={handleDeleteFromArchive}
+                    noun="Sınav"
+                />
+                 <button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
+                    <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
+                 </button>
+                
                 <div className="bg-white border rounded-lg p-4 shadow-sm">
                     <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Palette size={16}/> GÖRÜNÜM AYARLARI</h3>
                     <div className="space-y-4">
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setExamInfo(prev => ({ ...prev, theme: t }))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={examInfo.settings.fontSize} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, fontSize: parseFloat(e.target.value) } }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={examInfo.settings.lineHeight} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, lineHeight: parseFloat(e.target.value) } }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={examInfo.settings.watermark} onChange={(e) => setExamInfo(prev => ({ ...prev, settings: { ...prev.settings, watermark: e.target.value } }))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
+                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
+                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
                     </div>
                 </div>
                 <div className="bg-white border rounded-lg p-4 shadow-sm">
                     <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Settings size={16}/> SINAV BİLGİLERİ</h3>
                     <div className="space-y-3">
-                        <input type="text" value={examInfo.title} onChange={(e) => setExamInfo({...examInfo, title: e.target.value})} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
+                        <input type="text" value={currentExam.examInfo.title} onChange={(e) => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, title: e.target.value}}))} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
                         <div className="flex gap-2">
-                            <button onClick={() => setExamInfo(prev => ({ ...prev, group: prev.group === 'A' ? 'B' : 'A' }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {examInfo.group}</button>
-                            <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Upload size={14}/> Logo</button>
+                            <button onClick={() => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, group: prev.examInfo.group === 'A' ? 'B' : 'A' } }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {currentExam.examInfo.group}</button>
+                            <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Archive size={14}/> Logo Yükle</button>
                         </div>
-                        <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Key size={14}/> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
+                        <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
                     </div>
                 </div>
             </div>
@@ -434,7 +483,7 @@ export default function ExamBuilder() {
 }
 
 // --- SLICE ITEM ---
-const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, onDrop, draggable, styles, lineHeight }: { slot: Question, isActive: boolean, onClick: () => void, index: number, onDragStart?: (id: number) => void, onDragOver?: (e: React.DragEvent) => void, onDrop?: (id: number) => void, draggable?: boolean, styles: any, lineHeight: number }) => {
+const SliceItem = ({ slot, isActive, onClick, index, onDragStart, onDragOver, onDrop, draggable, styles, lineHeight }: { slot: ExamQuestion, isActive: boolean, onClick: () => void, index: number, onDragStart?: (id: number) => void, onDragOver?: (e: React.DragEvent) => void, onDrop?: (id: number) => void, draggable?: boolean, styles: any, lineHeight: number }) => {
   return (
     <div 
       onClick={onClick} draggable={draggable} onDragStart={draggable && onDragStart ? () => onDragStart(slot.id) : undefined} onDragOver={draggable && onDragOver ? (e) => onDragOver(e) : undefined} onDrop={draggable && onDrop ? () => onDrop(slot.id) : undefined}
