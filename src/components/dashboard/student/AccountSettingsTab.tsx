@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -11,9 +12,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, KeyRound } from 'lucide-react';
+import { Loader2, KeyRound, Bell } from 'lucide-react';
 import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
   password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
@@ -22,6 +25,38 @@ const formSchema = z.object({
   message: 'Şifreler uyuşmuyor.',
   path: ['confirmPassword'],
 });
+
+const NotificationSettings = () => {
+    const { 
+        isNotificationPermissionGranted, 
+        requestNotificationPermission, 
+        isSubscribing,
+        error
+    } = usePushNotifications();
+
+    if (error) {
+        return <p className="text-sm text-destructive">Bildirim hatası: {error.message}</p>
+    }
+
+    if (isNotificationPermissionGranted === null) {
+        return <div className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Durum kontrol ediliyor...</div>;
+    }
+
+    if (isNotificationPermissionGranted) {
+        return <p className="text-sm text-green-600 font-medium">Bu cihazda anlık bildirimlere izin verilmiş.</p>
+    }
+    
+    if (Notification.permission === 'denied') {
+        return <p className="text-sm text-red-600 font-medium">Bildirimler engellenmiş. Lütfen tarayıcı ayarlarından izin verin.</p>
+    }
+
+    return (
+        <Button onClick={requestNotificationPermission} disabled={isSubscribing}>
+            {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+            Anlık Bildirimleri Etkinleştir
+        </Button>
+    )
+}
 
 export function AccountSettingsTab() {
   const { appUser, auth, db } = useAuth();
@@ -86,55 +121,71 @@ export function AccountSettingsTab() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline flex items-center gap-2">
-            <KeyRound />
-            Hesap ve Şifre Ayarları
-        </CardTitle>
-        <CardDescription>
-            {hasAuthAccount 
-                ? 'Mevcut şifrenizi buradan güncelleyebilirsiniz.' 
-                : 'Kalıcı bir şifre oluşturarak hesabınızı güvence altına alın ve diğer cihazlardan giriş yapın.'
-            }
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-md">
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Yeni Şifre (en az 6 karakter)</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Yeni Şifreyi Onayla</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {hasAuthAccount ? 'Şifreyi Güncelle' : 'Şifre Oluştur'}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <div className="grid gap-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <KeyRound />
+                    Hesap ve Şifre Ayarları
+                </CardTitle>
+                <CardDescription>
+                    {hasAuthAccount 
+                        ? 'Mevcut şifrenizi buradan güncelleyebilirsiniz.' 
+                        : 'Kalıcı bir şifre oluşturarak hesabınızı güvence altına alın ve diğer cihazlardan giriş yapın.'
+                    }
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-md">
+                    <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Yeni Şifre (en az 6 karakter)</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Yeni Şifreyi Onayla</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <Button type="submit" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {hasAuthAccount ? 'Şifreyi Güncelle' : 'Şifre Oluştur'}
+                    </Button>
+                </form>
+                </Form>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <Bell />
+                    Bildirim Ayarları
+                </CardTitle>
+                <CardDescription>
+                    Ödevler, duyurular ve diğer önemli güncellemelerden anında haberdar olmak için bildirimlere izin verin.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <NotificationSettings />
+            </CardContent>
+        </Card>
+    </div>
   );
 }

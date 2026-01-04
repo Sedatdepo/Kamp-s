@@ -62,12 +62,6 @@ export function StudentDashboard() {
   const authContext = useContext(AuthContext);
   const { appUser, db } = authContext || {};
   const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
-  const { initializeNotifications } = usePushNotifications();
-
-  useEffect(() => {
-    // When dashboard mounts, try to initialize push notifications
-    initializeNotifications();
-  }, [initializeNotifications]);
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);

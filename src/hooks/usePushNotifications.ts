@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,29 +9,24 @@ import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 export const usePushNotifications = () => {
     const { appUser, db } = useAuth();
-    const [isNotificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
+    const [isNotificationPermissionGranted, setNotificationPermissionGranted] = useState<boolean | null>(null);
     const [fcmToken, setFcmToken] = useState<string | null>(null);
     const [error, setError] = useState<any>(null);
+    const [isSubscribing, setIsSubscribing] = useState(false);
 
-    const requestNotificationPermission = useCallback(async () => {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                setNotificationPermissionGranted(true);
-                return true;
-            } else {
-                setNotificationPermissionGranted(false);
-                return false;
-            }
-        } catch (err) {
-            setError(err);
-            return false;
+    useEffect(() => {
+        if ('Notification' in window) {
+            setNotificationPermissionGranted(Notification.permission === 'granted');
+        } else {
+            setNotificationPermissionGranted(false);
         }
     }, []);
 
     const getFCMToken = useCallback(async () => {
         if (!db || !appUser) return;
         
+        setIsSubscribing(true);
+        setError(null);
         try {
             const messaging = getMessaging();
             const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
@@ -43,8 +39,8 @@ export const usePushNotifications = () => {
 
             if (token) {
                 setFcmToken(token);
+                setNotificationPermissionGranted(true);
                 
-                // Save the token to the user's document
                 if (appUser.type === 'student') {
                     const studentRef = doc(db, 'students', appUser.data.id);
                     await updateDoc(studentRef, {
@@ -53,45 +49,56 @@ export const usePushNotifications = () => {
                 }
                 
             } else {
-                console.log('No registration token available. Request permission to generate one.');
+               setError(new Error('No registration token available. Request permission to generate one.'));
+               setNotificationPermissionGranted(false);
             }
         } catch (err) {
             console.error('An error occurred while retrieving token. ', err);
             setError(err);
+            setNotificationPermissionGranted(false);
+        } finally {
+            setIsSubscribing(false);
         }
     }, [appUser, db]);
 
 
-    const initializeNotifications = useCallback(async () => {
-        if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-                setNotificationPermissionGranted(true);
-                await getFCMToken();
-            } else if (Notification.permission !== 'denied') {
-                const granted = await requestNotificationPermission();
-                if (granted) {
-                    await getFCMToken();
-                }
-            }
+    const requestNotificationPermission = useCallback(async () => {
+        if (!('Notification' in window)) {
+            setError(new Error('This browser does not support desktop notification'));
+            return;
         }
-    }, [getFCMToken, requestNotificationPermission]);
+
+        setIsSubscribing(true);
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                await getFCMToken();
+            } else {
+                setNotificationPermissionGranted(false);
+            }
+        } catch (err) {
+            setError(err);
+        } finally {
+            setIsSubscribing(false);
+        }
+    }, [getFCMToken]);
     
     // Listen for foreground messages
     useEffect(() => {
-        const messaging = getMessaging();
-        const unsubscribe = onMessage(messaging, (payload) => {
-            console.log('Foreground message received. ', payload);
-            // You can show a custom in-app notification here
-            // For example, using a toast library
-        });
+        if (typeof window !== 'undefined' && 'firebase' in window) {
+            const messaging = getMessaging();
+            const unsubscribe = onMessage(messaging, (payload) => {
+                console.log('Foreground message received. ', payload);
+            });
 
-        return () => unsubscribe();
+            return () => unsubscribe();
+        }
     }, []);
 
     return {
         isNotificationPermissionGranted,
-        fcmToken,
+        requestNotificationPermission,
+        isSubscribing,
         error,
-        initializeNotifications,
     };
 };
