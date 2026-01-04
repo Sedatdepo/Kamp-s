@@ -15,8 +15,7 @@ const getThemeStyles = (theme: ExamTheme) => {
 const SliceItem = ({ slot, index, styles, lineHeight }: { slot: ExamQuestion, index: number, styles: any, lineHeight: number }) => {
     return (
       <div 
-        className={`relative p-2 flex flex-col group ${styles.slotBorder} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''} flex-grow-0 flex-shrink-0`}
-        style={{ flexBasis: `${slot.span * 10}%` }} // Using percentage for basis
+        className={`relative p-2 flex flex-col group ${styles.slotBorder} ${!slot.filled ? 'justify-center items-center text-gray-300' : ''} flex-grow flex-shrink-0 basis-0`}
       >
         <span className={`absolute top-0 right-0 text-[10px] px-1.5 py-0.5 ${styles.slotNumber}`}>#{index + 1}</span>
         {!slot.filled ? (
