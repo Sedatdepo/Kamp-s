@@ -18,19 +18,11 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarPicker } from "@/components/ui/calendar"
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from '../RecordManager';
 import { cn } from '@/lib/utils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+
 
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete }: any) => {
     const { db } = useAuth();
@@ -168,53 +160,48 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                     </div>
                 </div>
             </CardHeader>
-             <Accordion type="single" collapsible>
-                <AccordionItem value="evaluation">
-                    <AccordionTrigger className="px-6 text-sm">Değerlendirmeyi Aç/Kapat</AccordionTrigger>
-                    <AccordionContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-1/4">Öğrenci</TableHead>
+            <div className="p-4 max-h-[400px] overflow-y-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-1/4">Öğrenci</TableHead>
+                            {homework.rubric.map((item: any) => (
+                                <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
+                            ))}
+                            <TableHead className="text-center w-[100px]">Toplam</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {assignedStudents.map((student: Student) => {
+                            const submission = submissions.find((s: Submission) => s.studentId === student.id);
+                            const studentScores = scores[student.id] || {};
+                            const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
+                            return (
+                                <TableRow key={student.id}>
+                                    <TableCell className="font-medium">{student.name}</TableCell>
                                     {homework.rubric.map((item: any) => (
-                                        <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
+                                        <TableCell key={item.label} className="text-center">
+                                            <Input
+                                                type="number"
+                                                max={item.score}
+                                                min={0}
+                                                disabled={!submission}
+                                                value={studentScores[item.label] || ''}
+                                                onChange={e => handleScoreChange(student.id, item.label, e.target.value)}
+                                                className="w-20 mx-auto text-center h-8"
+                                            />
+                                        </TableCell>
                                     ))}
-                                    <TableHead className="text-center w-[100px]">Toplam</TableHead>
+                                    <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {assignedStudents.map((student: Student) => {
-                                    const submission = submissions.find((s: Submission) => s.studentId === student.id);
-                                    const studentScores = scores[student.id] || {};
-                                    const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
-                                    return (
-                                        <TableRow key={student.id}>
-                                            <TableCell className="font-medium">{student.name}</TableCell>
-                                            {homework.rubric.map((item: any) => (
-                                                <TableCell key={item.label} className="text-center">
-                                                    <Input
-                                                        type="number"
-                                                        max={item.score}
-                                                        min={0}
-                                                        disabled={!submission}
-                                                        value={studentScores[item.label] || ''}
-                                                        onChange={e => handleScoreChange(student.id, item.label, e.target.value)}
-                                                        className="w-20 mx-auto text-center h-8"
-                                                    />
-                                                </TableCell>
-                                            ))}
-                                            <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                         <div className="p-4 bg-muted/50 flex justify-end">
-                            <Button onClick={handleSaveScores} disabled={Object.keys(scores).length === 0}>Değerlendirmeyi Kaydet</Button>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
+             <div className="p-4 bg-muted/50 flex justify-end border-t">
+                <Button onClick={handleSaveScores} disabled={Object.keys(scores).length === 0}>Değerlendirmeyi Kaydet</Button>
+            </div>
         </Card>
     );
 };
