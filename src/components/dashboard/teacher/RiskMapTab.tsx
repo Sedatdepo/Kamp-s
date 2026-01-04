@@ -30,6 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
@@ -446,5 +447,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     </div>
   );
 }
+
+    
 
     
