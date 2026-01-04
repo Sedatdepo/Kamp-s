@@ -1,7 +1,7 @@
 
 
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -852,8 +852,12 @@ interface StudentDevelopmentReportArgs {
     riskFactors: RiskFactor[];
     teacherProfile: TeacherProfile;
     currentClass: Class;
+    homeworks: Homework[];
+    submissions: Submission[];
+    disciplineRecords: DisciplineRecord[];
+    lessons: Lesson[];
 }
-export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass }: StudentDevelopmentReportArgs) {
+export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass, homeworks, submissions, disciplineRecords, lessons }: StudentDevelopmentReportArgs) {
     const reportTitle = "ÖĞRENCİ GELİŞİM VE DEĞERLENDİRME RAPORU";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
     const footer = generateReportFooter(teacherProfile);
@@ -958,17 +962,64 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     `;
     
     const attendanceCount = student.attendance?.filter(a => a.status === 'absent').length || 0;
+    const assignedProject = lessons.find(l => l.id === student.assignedLesson);
+    
     const socialSection = `
         <h3>D. SOSYAL VE DAVRANIŞSAL DURUMU</h3>
         <table style="width: 100%;">
             <tr><td style="width: 30%;"><b>Devamsızlık Durumu:</b></td><td>Toplam ${attendanceCount} gün devamsızlığı bulunmaktadır.</td></tr>
             <tr><td><b>Risk Faktörleri:</b></td><td>${student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label).filter(Boolean).join(', ') || 'Belirtilen risk faktörü yok.'}</td></tr>
             <tr><td><b>Davranış (Kanaat) Notu:</b></td><td>${calculateAverage(student.term1Grades?.behaviorScores, behaviorCriteria)?.toFixed(2) ?? 'Hesaplanmadı'}</td></tr>
+             <tr><td><b>Proje Ödevi:</b></td><td>${assignedProject ? assignedProject.name : 'Proje ödevi almadı.'}</td></tr>
         </table>
     `;
 
+    const homeworkRows = homeworks.map(hw => {
+        const submission = submissions.find(s => s.homeworkId === hw.id && s.studentId === student.id);
+        return `
+            <tr>
+                <td>${format(new Date(hw.assignedDate), 'dd.MM.yyyy')}</td>
+                <td>${hw.text}</td>
+                <td class="center">${submission ? 'Evet' : 'Hayır'}</td>
+                <td class="center">${submission?.grade ?? '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const homeworkSection = `
+        <h3>E. ÖDEV DURUMU</h3>
+        ${homeworks.length > 0 ? `
+            <table style="width: 100%;">
+                <tr><th>Veriliş Tarihi</th><th>Ödev Konusu</th><th>Teslim Edildi Mi?</th><th>Notu</th></tr>
+                ${homeworkRows}
+            </table>
+        ` : '<p>Öğrenciye atanmış ödev bulunmamaktadır.</p>'}
+    `;
+
+    const disciplineRows = disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).map(dr => {
+        const phaseMap = ['Olay Tespiti', 'Savunma', 'Kurula Sevk', 'Kurul Toplantısı', 'Karar'];
+        return `
+            <tr>
+                <td>${format(new Date(dr.date), 'dd.MM.yyyy')}</td>
+                <td>${dr.formData?.phase1Data?.behaviorType ? (dr.formData.phase1Data.behaviorType.label || dr.formData.phase1Data.behaviorType) : 'Belirtilmemiş'}</td>
+                <td>${phaseMap[dr.currentPhase - 1] || 'Bilinmiyor'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const disciplineSection = `
+        <h3>F. DİSİPLİN SÜREÇLERİ</h3>
+         ${disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).length > 0 ? `
+            <table style="width: 100%;">
+                <tr><th>Tarih</th><th>Konu</th><th>Mevcut Aşama</th></tr>
+                ${disciplineRows}
+            </table>
+        ` : '<p>Öğrenci hakkında başlatılmış bir disiplin süreci bulunmamaktadır.</p>'}
+    `;
+
+
     const observationSection = `
-        <h3>E. ÖĞRETMEN GÖZLEM VE DEĞERLENDİRMELERİ</h3>
+        <h3>G. ÖĞRETMEN GÖZLEM VE DEĞERLENDİRMELERİ</h3>
         <div style="border: 1px solid black; height: 200px; padding: 5px;"></div>
     `;
 
@@ -978,6 +1029,8 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
         ${familyInfoSection}
         ${gradesSection}
         ${socialSection}
+        ${homeworkSection}
+        ${disciplineSection}
         ${observationSection}
         ${footer}
     `;

@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor } from '@/lib/types';
+import { Student, Message, Class, TeacherProfile, InfoForm, RiskFactor, Homework, Submission, DisciplineRecord, Lesson } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -47,6 +47,7 @@ import { Badge } from '@/components/ui/badge';
 import { StudentDetailModal } from './StudentDetailModal';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 import { ClassInviteDialog } from './ClassInviteDialog';
+import { useDatabase } from '@/hooks/use-database';
 
 interface StudentListTabProps {
   classId: string;
@@ -109,7 +110,7 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
                                         <a href={msg.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-background/20 p-2 rounded-md hover:bg-background/40">
                                             <Paperclip className="h-4 w-4" />
                                             <span className="truncate">{msg.file.name}</span>
-                                            <Download className="h-4 w-4" />
+                                            <Download className="h-4 w-4 ml-auto" />
                                         </a>
                                     )}
                                     <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}</p>
@@ -135,6 +136,8 @@ function ChatModal({ student, teacherId }: { student: Student; teacherId: string
 export function StudentListTab({ classId, teacherProfile, currentClass }: StudentListTabProps) {
   const { toast } = useToast();
   const { appUser, db } = useAuth();
+  const { db: localDb } = useDatabase();
+  const { disciplineRecords = [] } = localDb;
   
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
@@ -148,6 +151,9 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   
   const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
   const { data: riskFactors } = useFirestore<RiskFactor>('riskFactors', riskFactorsQuery);
+  
+  const lessonsQuery = useMemo(() => (db && teacherProfile?.id ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null), [db, teacherProfile?.id]);
+  const { data: lessons } = useFirestore<Lesson>('lessons', lessonsQuery);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
@@ -185,17 +191,21 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
   }, [students]);
 
   const handleExportStudentReport = async (student: Student) => {
-    if (!db || !teacherProfile || !currentClass) {
+    if (!db || !teacherProfile || !currentClass || !riskFactors || !lessons) {
         toast({variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli bilgiler yüklenemedi.'});
         return;
     }
     try {
         const infoFormSnap = await getDocs(query(collection(db, 'infoForms'), where('studentId', '==', student.id)));
-        
-        let infoForm: InfoForm | null = null;
-        if (!infoFormSnap.empty) {
-            const doc = infoFormSnap.docs[0];
-            infoForm = { id: doc.id, ...doc.data() } as InfoForm;
+        const homeworksSnap = await getDocs(query(collection(db, 'classes', classId, 'homeworks')));
+        const submissionsSnap = await getDocs(query(collection(db, 'classes', classId, 'homeworks'), where('studentId', '==', student.id)));
+
+        const infoForm: InfoForm | null = infoFormSnap.empty ? null : { id: infoFormSnap.docs[0].id, ...infoFormSnap.docs[0].data() } as InfoForm;
+        const homeworks: Homework[] = homeworksSnap.docs.map(d => ({id: d.id, ...d.data()} as Homework));
+        const submissions: Submission[] = [];
+        for (const hw of homeworks) {
+            const subsSnap = await getDocs(query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'), where('studentId', '==', student.id)));
+            subsSnap.forEach(doc => submissions.push({id: doc.id, ...doc.data()} as Submission));
         }
 
         exportStudentDevelopmentReportToRtf({
@@ -203,7 +213,11 @@ export function StudentListTab({ classId, teacherProfile, currentClass }: Studen
             infoForm,
             riskFactors,
             teacherProfile,
-            currentClass
+            currentClass,
+            homeworks,
+            submissions,
+            disciplineRecords: disciplineRecords as DisciplineRecord[],
+            lessons
         });
     } catch (error) {
         console.error("Rapor oluşturma hatası:", error);

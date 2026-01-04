@@ -383,6 +383,7 @@ export interface DisciplineRecord {
     currentPhase: number;
     formData: any;
     classId: string;
+    studentName?: string; // Add studentName for easy access
 }
 
 export interface BepStudent {
