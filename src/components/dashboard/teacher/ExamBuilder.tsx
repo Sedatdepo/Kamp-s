@@ -6,11 +6,14 @@ import {
   Trash2, Save, FileText, Plus, Eye, Printer,
   LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send
 } from 'lucide-react';
-import { Exam, ExamInfo, ExamQuestion, ExamQuestionType, ExamTheme, ExamDocument } from '@/lib/types';
+import { Exam, ExamInfo, ExamQuestion, ExamQuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/hooks/useAuth';
+import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
+import { AssignExamModal } from './AssignExamModal';
 
 // --- TİPLER --- Artık types.ts'den geliyor.
 
@@ -55,9 +58,10 @@ const SimpleHtmlEditor = ({ value, onChange, addImage }: { value: string, onChan
 };
 
 // --- ANA BİLEŞEN ---
-export default function ExamBuilder() {
-  const { db, setDb, loading } = useDatabase();
-  const { examDocuments = [] } = db;
+export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
+  const { db, appUser } = useAuth();
+  const { db: localDb, setDb, loading } = useDatabase();
+  const { examDocuments = [] } = localDb;
   const { toast } = useToast();
 
   const createNewExam = (): Exam => ({
@@ -95,6 +99,9 @@ export default function ExamBuilder() {
 
   const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
   const [editorContent, setEditorContent] = useState('');
+
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignmentType, setAssignmentType] = useState<'live' | 'performance' | null>(null);
   
   const activeSlot = currentExam.questions.find(s => s.id === currentSlotId) || currentExam.questions[0];
 
@@ -302,6 +309,58 @@ export default function ExamBuilder() {
     }
   };
 
+  const handleOpenAssignModal = (type: 'live' | 'performance') => {
+    setAssignmentType(type);
+    setIsAssignModalOpen(true);
+  };
+  
+  const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
+      if (!db || !currentExam) return;
+  
+      const { studentIds, date } = details;
+      const isPerformance = assignmentType === 'performance';
+  
+      try {
+          const batch = writeBatch(db);
+          const studentsByClass: { [key: string]: string[] } = {};
+          
+          studentIds.forEach(studentId => {
+              const student = students.find(s => s.id === studentId);
+              if (student) {
+                  if (!studentsByClass[student.classId]) studentsByClass[student.classId] = [];
+                  studentsByClass[student.classId].push(studentId);
+              }
+          });
+  
+          for (const classId in studentsByClass) {
+              const newHomeworkDoc = {
+                  classId: classId,
+                  text: currentExam.examInfo.title,
+                  assignedDate: new Date().toISOString(),
+                  dueDate: date ? new Date(date).toISOString() : null,
+                  teacherName: teacherProfile?.name,
+                  lessonName: teacherProfile?.branch,
+                  rubric: isPerformance ? [] : null, // Add rubric if it's performance
+                  assignedStudents: studentsByClass[classId],
+                  seenBy: [],
+                  // Store exam questions within the homework document
+                  questions: currentExam.questions.filter(q => q.filled)
+              };
+              
+              const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+              const newDocRef = doc(homeworksColRef);
+              batch.set(newDocRef, newHomeworkDoc);
+          }
+  
+          await batch.commit();
+          toast({ title: "Başarılı!", description: "Sınav, ödev olarak atandı." });
+  
+      } catch (error) {
+          console.error("Assignment error:", error);
+          toast({ variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.' });
+      }
+  };
+
   const ExamPaperContent = ({ forPreview = false }: { forPreview?: boolean }) => {
     const styles = getThemeStyles(currentExam.examInfo.theme);
     const { fontSize, lineHeight, watermark } = currentExam.examInfo.settings;
@@ -372,8 +431,8 @@ export default function ExamBuilder() {
                 <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-medium transition"><Send size={16} /><span className="hidden md:inline">Ödev Ver</span></button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>Canlı Ödev Ver</DropdownMenuItem>
-                <DropdownMenuItem>Performans Ödevi Ver</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleOpenAssignModal('live')}>Canlı Ödev Ver</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleOpenAssignModal('performance')}>Performans Ödevi Ver</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
            <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-700 transition"><Eye size={16} /><span className="hidden md:inline">Önizle</span></button>
@@ -387,26 +446,54 @@ export default function ExamBuilder() {
       <div className="flex flex-1 overflow-hidden">
         {/* SOL PANEL */}
         <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0 p-4 space-y-4">
-          <div className="border-t pt-4 mt-4 space-y-4">
-              <RecordManager
-                records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-                onNewRecord={handleNewProject}
-                onDeleteRecord={handleDeleteFromArchive}
-                noun="Sınav"
-              />
-              <button onClick={handleSaveToArchive} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded flex items-center justify-center gap-2 transition">
-                  <Save size={18} /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Yeni Sınavı Arşive Kaydet'}
-              </button>
-          </div>
-          <div className="p-4 border-b border-gray-200 bg-blue-50 rounded-lg">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><Archive /> Sınav Arşivi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <RecordManager
+                        records={(examDocuments || []).map(r => ({ id: r.id, name: r.name }))}
+                        selectedRecordId={selectedRecordId}
+                        onSelectRecord={setSelectedRecordId}
+                        onNewRecord={handleNewProject}
+                        onDeleteRecord={handleDeleteFromArchive}
+                        noun="Sınav"
+                    />
+                    <Button onClick={handleSaveToArchive} className="w-full mt-2 bg-blue-600 hover:bg-blue-700">
+                        <Save className="mr-2 h-4 w-4" /> {selectedRecordId ? 'Değişiklikleri Kaydet' : 'Sınavı Arşive Kaydet'}
+                    </Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><Settings size={16}/> Ayarlar</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                          <label className="block text-xs font-bold text-gray-500">Sınav Başlığı</label>
+                          <input type="text" value={currentExam.examInfo.title} onChange={(e) => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, title: e.target.value}}))} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
+                          <div className="flex gap-2">
+                              <button onClick={() => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, group: prev.examInfo.group === 'A' ? 'B' : 'A' } }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {currentExam.examInfo.group}</button>
+                              <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Archive size={14}/> Logo Yükle</button>
+                          </div>
+                          <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
+                      </div>
+                      <div className="space-y-4 pt-4 border-t">
+                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
+                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                          <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
+                      </div>
+                </CardContent>
+            </Card>
+
+            <div className="p-4 border rounded-lg bg-blue-50">
               <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-bold text-blue-800">DÜZENLENEN SORU</span>
               <span className="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-mono">#{currentSlotId + 1}</span>
               </div>
-          </div>
-          <div className="flex flex-col gap-5">
+            </div>
+            <div className="flex flex-col gap-5">
               <div className="grid grid-cols-2 gap-4">
                   <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Soru Tipi</label>
@@ -440,26 +527,6 @@ export default function ExamBuilder() {
                   <button onClick={handleClearSlice} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded transition"><Trash2 size={18} /></button>
               </div>
           </div>
-          <div className="bg-white border rounded-lg p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Palette size={16}/> GÖRÜNÜM AYARLARI</h3>
-              <div className="space-y-4">
-                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Tema Seçimi</label><div className="flex gap-2">{(['classic', 'modern', 'minimal'] as ExamTheme[]).map(t => (<button key={t} onClick={() => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, theme: t}}))} className={`text-xs px-3 py-2 rounded border flex-1 capitalize transition ${currentExam.examInfo.theme === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{t}</button>))}</div></div>
-                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Yazı Boyutu: {currentExam.examInfo.settings.fontSize}pt</label><input type="range" min="9" max="16" step="0.5" value={currentExam.examInfo.settings.fontSize} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, fontSize: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Satır Aralığı: {currentExam.examInfo.settings.lineHeight}</label><input type="range" min="1" max="2.5" step="0.1" value={currentExam.examInfo.settings.lineHeight} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, lineHeight: parseFloat(e.target.value) } }}))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
-                  <div><label className="block text-xs font-bold text-gray-500 mb-1">Arka Plan Filigranı</label><input type="text" placeholder="Örn: TASLAK veya OKUL İSMİ" value={currentExam.examInfo.settings.watermark} onChange={(e) => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, settings: { ...prev.examInfo.settings, watermark: e.target.value } }}))} className="w-full p-2 border rounded text-sm bg-gray-50" /></div>
-              </div>
-          </div>
-          <div className="bg-white border rounded-lg p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Settings size={16}/> SINAV BİLGİLERİ</h3>
-              <div className="space-y-3">
-                  <input type="text" value={currentExam.examInfo.title} onChange={(e) => setCurrentExam(prev => ({...prev, examInfo: {...prev.examInfo, title: e.target.value}}))} className="w-full p-2 border rounded font-bold text-center text-sm" placeholder="Sınav Başlığı" />
-                  <div className="flex gap-2">
-                      <button onClick={() => setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, group: prev.examInfo.group === 'A' ? 'B' : 'A' } }))} className="flex-1 border rounded py-2 font-bold bg-gray-50 text-blue-800 text-sm">Grup: {currentExam.examInfo.group}</button>
-                      <button onClick={triggerLogoUpload} className="flex-1 border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"><Archive size={14}/> Logo Yükle</button>
-                  </div>
-                  <button onClick={() => setShowAnswerKey(!showAnswerKey)} className="w-full border rounded py-2 bg-gray-50 text-gray-600 text-sm flex items-center justify-center gap-2"> Cevap Anahtarı: {showAnswerKey ? 'Açık' : 'Kapalı'}</button>
-              </div>
-          </div>
         </div>
 
         <div className="flex-1 bg-gray-600 p-8 overflow-y-auto flex justify-center">
@@ -475,6 +542,15 @@ export default function ExamBuilder() {
             </div>
         </div>
       )}
+
+      <AssignExamModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        exam={currentExam}
+        onConfirm={handleAssignConfirm}
+        classes={classes}
+        students={students}
+      />
     </div>
   );
 }

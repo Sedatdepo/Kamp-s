@@ -588,7 +588,7 @@ export function TeacherDashboard() {
                 tabContent = <DisciplineTab students={students || []} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
             case 'questionbank':
-                tabContent = <ExamBuilder />;
+                tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} teacherProfile={teacherProfile} />;
                 break;
             case 'bep':
                 tabContent = <BepTab />;
