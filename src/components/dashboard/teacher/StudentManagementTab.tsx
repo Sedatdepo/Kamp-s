@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +7,6 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { useFirestore } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // --- STUDENT LIST COMPONENT ---
 function StudentList({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
@@ -229,20 +226,22 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
     const { db } = useAuth();
     const { toast } = useToast();
 
-    const handleStatusChange = async (studentId: string, newStatus: 'present' | 'absent' | 'late' | 'excused') => {
+    const handleStatusChange = async (studentId: string, isAbsent: boolean) => {
         if (!date || !db) return;
         const studentRef = doc(db, 'students', studentId);
         const dateString = format(date, 'yyyy-MM-dd');
-        const student = students.find(s => s.id === studentId);
-        const existingAttendance = student?.attendance?.find(a => a.date === dateString);
+        
+        const currentAttendance = students.find(s => s.id === studentId)?.attendance || [];
+        
+        let updatedAttendance = currentAttendance.filter(a => a.date !== dateString);
+        
+        if (isAbsent) {
+            updatedAttendance.push({ date: dateString, status: 'absent' });
+        } else {
+             // If unchecking, it means student is present, so we just remove the record.
+        }
 
         try {
-            let updatedAttendance = student?.attendance ? [...student.attendance] : [];
-            if (existingAttendance) {
-                updatedAttendance = updatedAttendance.filter(a => a.date !== dateString);
-            }
-            updatedAttendance.push({ date: dateString, status: newStatus });
-            
             await updateDoc(studentRef, { attendance: updatedAttendance });
             toast({ title: 'Yoklama kaydedildi.' });
         } catch (error) {
@@ -250,22 +249,66 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
             toast({ variant: 'destructive', title: 'Hata', description: 'Yoklama kaydedilemedi.' });
         }
     };
-
-    const getStudentStatusForDate = (student: Student, selectedDate: Date): 'present' | 'absent' | 'late' | 'excused' => {
-        if (!student.attendance) return 'present';
+    
+    const isStudentAbsent = (student: Student, selectedDate: Date): boolean => {
+        if (!student.attendance) return false;
         const dateString = format(selectedDate, 'yyyy-MM-dd');
-        return student.attendance.find(a => a.date === dateString)?.status || 'present';
+        return student.attendance.some(a => a.date === dateString && a.status === 'absent');
     };
 
     if (!students || students.length === 0) return <Card><CardHeader><CardTitle>Yoklama</CardTitle><CardDescription>Bu sınıfta öğrenci bulunmuyor.</CardDescription></CardHeader></Card>;
 
+    const sortedStudents = [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1"><Card><CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader><CardContent><CalendarPicker mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} /></CardContent></Card></div>
-            <div className="md:col-span-2"><Card><CardHeader><CardTitle>Öğrenci Yoklama Listesi</CardTitle><CardDescription>{date ? format(date, 'dd MMMM yyyy, cccc', { locale: tr }) : 'Tarih seçin'}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Öğrenci Adı</TableHead><TableHead>Durum</TableHead></TableRow></TableHeader><TableBody>{students.map(student => (<TableRow key={student.id}><TableCell>{student.name}</TableCell><TableCell><RadioGroup defaultValue="present" value={date ? getStudentStatusForDate(student, date) : 'present'} onValueChange={(status) => handleStatusChange(student.id, status as any)} className="flex gap-4" disabled={!date}><Label className="flex items-center gap-2 cursor-pointer text-green-600"><RadioGroupItem value="present" />Geldi</Label><Label className="flex items-center gap-2 cursor-pointer text-red-600"><RadioGroupItem value="absent" />Gelmedi</Label><Label className="flex items-center gap-2 cursor-pointer text-orange-600"><RadioGroupItem value="late" />Geç</Label><Label className="flex items-center gap-2 cursor-pointer text-blue-600"><RadioGroupItem value="excused" />İzinli</Label></RadioGroup></TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div>
+            <div className="md:col-span-1">
+                <Card>
+                    <CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader>
+                    <CardContent>
+                        <CalendarPicker mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} />
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Öğrenci Yoklama Listesi</CardTitle>
+                        <CardDescription>{date ? format(date, 'dd MMMM yyyy, cccc', { locale: tr }) : 'Tarih seçin'}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>No</TableHead>
+                                    <TableHead>Öğrenci Adı</TableHead>
+                                    <TableHead className="text-center">GELMEDİ</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {sortedStudents.map(student => (
+                                    <TableRow key={student.id}>
+                                        <TableCell>{student.number}</TableCell>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Checkbox
+                                                checked={date ? isStudentAbsent(student, date) : false}
+                                                onCheckedChange={(checked) => handleStatusChange(student.id, !!checked)}
+                                                disabled={!date}
+                                                className="w-5 h-5"
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
+
 
 // --- DUTY ROSTER TAB COMPONENT ---
 function DutyRosterTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
@@ -275,6 +318,11 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     const [startDate, setStartDate] = useState<Date | undefined>(new Date());
     const [numberOfWeeks, setNumberOfWeeks] = useState(4);
     const [studentsPerDuty, setStudentsPerDuty] = useState(2);
+    
+    const sortedStudents = useMemo(() => {
+        if (!students) return [];
+        return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+    }, [students]);
 
     const handleGenerateRoster = async () => {
         if (!db || !currentClass || !startDate || selectedStudents.length === 0) {
@@ -307,7 +355,7 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     if (!currentClass) return <p>Sınıf bilgisi yüklenemedi.</p>;
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 space-y-6"><Card><CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Başlangıç Tarihi</Label><CalendarPicker mode="single" selected={startDate} onSelect={setStartDate} className="rounded-md border" locale={tr} /></div><div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div><div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div></CardContent></Card><Card><CardHeader><CardTitle>Öğrenci Seçimi</CardTitle></CardHeader><CardContent className="space-y-2 max-h-60 overflow-y-auto">{students.map(s => (<div key={s.id} className="flex items-center gap-2"><Checkbox id={`roster-${s.id}`} checked={selectedStudents.includes(s.id)} onCheckedChange={(checked) => { setSelectedStudents(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id)); }} /><Label htmlFor={`roster-${s.id}`}>{s.name}</Label></div>))}</CardContent></Card><Button onClick={handleGenerateRoster}>Nöbet Listesini Oluştur</Button></div>
+            <div className="md:col-span-1 space-y-6"><Card><CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Başlangıç Tarihi</Label><CalendarPicker mode="single" selected={startDate} onSelect={setStartDate} className="rounded-md border" locale={tr} /></div><div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div><div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div></CardContent></Card><Card><CardHeader><CardTitle>Öğrenci Seçimi</CardTitle></CardHeader><CardContent className="space-y-2 max-h-60 overflow-y-auto">{sortedStudents.map(s => (<div key={s.id} className="flex items-center gap-2"><Checkbox id={`roster-${s.id}`} checked={selectedStudents.includes(s.id)} onCheckedChange={(checked) => { setSelectedStudents(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id)); }} /><Label htmlFor={`roster-${s.id}`}>{s.name} ({s.number})</Label></div>))}</CardContent></Card><Button onClick={handleGenerateRoster}>Nöbet Listesini Oluştur</Button></div>
             <div className="md:col-span-2"><Card><CardHeader><CardTitle>Nöbet Listesi Önizlemesi</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Gün</TableHead><TableHead>Nöbetçi Öğrenciler</TableHead></TableRow></TableHeader><TableBody>{(currentClass.dutyRoster || []).map((item, idx) => (<TableRow key={idx}><TableCell>{item.date}</TableCell><TableCell>{item.day}</TableCell><TableCell>{item.student}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div>
         </div>
     );
@@ -340,7 +388,7 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
     return (
         <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-1 space-y-6"><Card><CardHeader><CardTitle>Plan Ayarları</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Sıra Sayısı (Dikey)</Label><Input type="number" value={rowCount} onChange={e => setRowCount(Number(e.target.value))} /></div><div className="space-y-2"><Label>Sütun Sayısı (Yatay)</Label><Input type="number" value={colCount} onChange={e => setColCount(Number(e.target.value))} /></div><Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button></CardContent></Card></div>
-            <div className="md:col-span-2"><Card><CardHeader><CardTitle>Sınıf Oturma Planı</CardTitle></CardHeader><CardContent className="flex flex-col"><div className="w-full bg-slate-800 text-white text-center py-3 rounded-lg mb-8 shadow-md"><span className="font-bold tracking-widest text-lg">TAHTA</span></div><div className="flex-1 flex justify-center items-start overflow-x-auto p-4"><div className="grid gap-4 mx-auto" style={{ gridTemplateColumns: `repeat(${colCount}, minmax(160px, 1fr))`, gridTemplateRows: `repeat(${rowCount}, 1fr)` }}>{Array.from({ length: rowCount }).map((_, r) => Array.from({ length: colCount }).map((_, c) => (<div key={`${r}-${c}`} className="relative bg-amber-100/70 rounded-lg border-2 border-amber-200 p-1 flex gap-1 shadow-inner aspect-[2/1]">{[0, 1].map((side) => { const key = `${r}-${c}-${side}`; const selectedStudentId = seatingPlan[key]; return (<div key={key} className="flex-1"><Select value={selectedStudentId || "empty"} onValueChange={(studentId) => handleSeatChange(key, studentId)}><SelectTrigger className="h-full bg-background border-primary/20 shadow-sm text-xs p-1"><SelectValue placeholder="Boş" /></SelectTrigger><SelectContent><SelectItem value="empty">Boş</SelectItem>{students.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}</SelectContent></Select></div>); })}</div>)))}</div></div></CardContent></Card></div>
+            <div className="md:col-span-2"><Card><CardHeader><CardTitle>Sınıf Oturma Planı</CardTitle></CardHeader><CardContent className="flex flex-col"><div className="w-full bg-slate-800 text-white text-center py-3 rounded-lg mb-8 shadow-md"><span className="font-bold tracking-widest text-lg">TAHTA</span></div><div className="flex-1 flex justify-center items-start overflow-x-auto p-4"><div className="grid gap-4 mx-auto" style={{ gridTemplateColumns: `repeat(${colCount}, minmax(160px, 1fr))`, gridTemplateRows: `repeat(${rowCount}, 1fr)` }}>{Array.from({ length: rowCount }).map((_, r) => Array.from({ length: colCount }).map((_, c) => (<div key={`${r}-${c}`} className="relative bg-amber-100/70 rounded-lg border-2 border-amber-200 p-1 flex gap-1 shadow-inner aspect-[2/1]">{[0, 1].map((side) => { const key = `${r}-${c}-${side}`; const selectedStudentId = seatingPlan[key]; return (<div key={key} className="flex-1"><Select value={selectedStudentId || "empty"} onValueChange={(studentId) => handleSeatChange(key, studentId)}><SelectTrigger className="h-full bg-background border-primary/20 shadow-sm text-xs p-1"><SelectValue placeholder="Boş" /></SelectTrigger><SelectContent><SelectItem value="empty">Boş</SelectItem>{students.map(s => (<SelectItem key={s.id} value={s.id}>{s.name} ({s.number})</SelectItem>))}</SelectContent></Select></div>); })}</div>)))}</div></div></CardContent></Card></div>
         </div>
     );
 }
