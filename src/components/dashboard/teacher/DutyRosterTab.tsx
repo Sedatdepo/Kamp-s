@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, addDays } from 'date-fns';
+import { format, addDays, eachDayOfInterval, isWeekend } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,38 +23,51 @@ export function DutyRosterTab({ students: initialStudents, currentClass, db }: {
     const { toast } = useToast();
     const [students, setStudents] = useState(initialStudents);
     const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-    const [numberOfWeeks, setNumberOfWeeks] = useState(4);
+    const [endDate, setEndDate] = useState<Date | undefined>();
     const [studentsPerDuty, setStudentsPerDuty] = useState(2);
     
     useEffect(() => {
-        setStudents(initialStudents);
+        // Sort students by number initially
+        setStudents([...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true })));
     }, [initialStudents]);
 
-    const handleShuffle = () => {
-        setStudents(prev => [...prev].sort(() => Math.random() - 0.5));
-        toast({ title: "Liste Karıştırıldı", description: "Öğrenci listesi nöbet için rastgele sıralandı." });
-    };
-
     const handleGenerateRoster = async () => {
-        if (!db || !currentClass || !startDate || students.length === 0) {
-            toast({ variant: 'destructive', title: 'Eksik Bilgi', description: 'Lütfen başlangıç tarihi ve öğrenci listesi olduğundan emin olun.' });
+        if (!db || !currentClass || !startDate || !endDate || students.length === 0) {
+            toast({ variant: 'destructive', title: 'Eksik Bilgi', description: 'Lütfen başlangıç ve bitiş tarihlerini seçtiğinizden ve sınıfta öğrenci olduğundan emin olun.' });
             return;
         }
+
         const roster: RosterItem[] = [];
-        let currentDate = new Date(startDate);
-        let studentIndex = 0;
-        for (let i = 0; i < numberOfWeeks * 5; i++) {
-            if (currentDate.getDay() === 0 || currentDate.getDay() === 6) { currentDate = addDays(currentDate, 1); i--; continue; }
+        const workDays = eachDayOfInterval({ start: startDate, end: endDate }).filter(day => !isWeekend(day));
+
+        // Find the starting point
+        const lastRosterItem = currentClass.dutyRoster?.[currentClass.dutyRoster.length - 1];
+        const lastStudentId = lastRosterItem?.studentIds[lastRosterItem.studentIds.length - 1];
+        
+        let startingIndex = 0;
+        if (lastStudentId) {
+            const lastStudentIndex = students.findIndex(s => s.id === lastStudentId);
+            if (lastStudentIndex !== -1) {
+                startingIndex = (lastStudentIndex + 1) % students.length;
+            }
+        }
+        
+        let studentIndex = startingIndex;
+
+        for (const day of workDays) {
             const dutyStudents: Student[] = [];
             const dutyStudentIds: string[] = [];
             for (let j = 0; j < studentsPerDuty; j++) {
                 const student = students[studentIndex % students.length];
-                if (student) { dutyStudents.push(student); dutyStudentIds.push(student.id); }
+                if (student) { 
+                    dutyStudents.push(student); 
+                    dutyStudentIds.push(student.id); 
+                }
                 studentIndex++;
             }
-            roster.push({ date: format(currentDate, 'dd.MM.yyyy'), day: format(currentDate, 'cccc', { locale: tr }), student: dutyStudents.map(s => s.name).join(' - '), studentIds: dutyStudentIds });
-            currentDate = addDays(currentDate, 1);
+            roster.push({ date: format(day, 'dd.MM.yyyy'), day: format(day, 'cccc', { locale: tr }), student: dutyStudents.map(s => s.name).join(' - '), studentIds: dutyStudentIds });
         }
+        
         try {
             const classRef = doc(db, 'classes', currentClass.id);
             await updateDoc(classRef, { dutyRoster: roster });
@@ -84,19 +97,31 @@ export function DutyRosterTab({ students: initialStudents, currentClass, db }: {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div>
+                        <div className="space-y-2">
+                            <Label>Bitiş Tarihi</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!endDate && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {endDate ? format(endDate, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={tr} disabled={(date) => startDate ? date < startDate : false} />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                         <div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div>
                         <div className="flex gap-2 pt-4 border-t">
-                            <Button onClick={handleShuffle} variant="outline" className="w-full"><Shuffle className="mr-2 h-4 w-4"/>Listeyi Karıştır</Button>
                             <Button onClick={handleGenerateRoster} className="w-full">Oluştur</Button>
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader><CardTitle>Nöbetçi Öğrenci Sırası</CardTitle></CardHeader>
+                 <Card>
+                    <CardHeader><CardTitle>Öğrenci Sırası</CardTitle><CardDescription>Nöbetler bu sıraya göre dağıtılacaktır.</CardDescription></CardHeader>
                     <CardContent className="space-y-2 max-h-60 overflow-y-auto">
                         <ol className="list-decimal list-inside">
-                           {students.map(s => (<li key={s.id} className="text-sm p-1">{s.name}</li>))}
+                           {students.map(s => (<li key={s.id} className="text-sm p-1">{s.number} - {s.name}</li>))}
                         </ol>
                     </CardContent>
                 </Card>
