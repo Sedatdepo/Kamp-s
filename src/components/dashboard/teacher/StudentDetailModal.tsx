@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
+import { useState, useMemo, useEffect } from 'react';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
+import { useDatabase } from '@/hooks/use-database';
 
 
 interface StudentDetailModalProps {
@@ -87,11 +89,14 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
       return query(collection(db, 'classes', currentClass.id, 'homeworks'));
     }, [db, currentClass]);
 
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
+    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
 
-    useMemo(() => {
+    useEffect(() => {
         const fetchSubmissions = async () => {
-            if (!db || !currentClass || homeworksLoading) return;
+            if (!db || !currentClass || homeworksLoading || !homeworks) {
+                setSubmissionsLoading(false);
+                return;
+            };
             setSubmissionsLoading(true);
             const submissionsPromises = homeworks.map(hw => {
                 const subQuery = query(collection(db, 'classes', currentClass.id, 'homeworks', hw.id, 'submissions'), where('studentId', '==', student.id));
@@ -216,6 +221,40 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
 
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    const { db: localDb } = useDatabase();
+    const { disciplineRecords = [] } = localDb;
+
+    // Data fetching for the report
+    const { data: infoForm } = useFirestore<InfoForm | null>(`infoform-${student.id}`, doc(db, 'infoForms', student.id));
+    const { data: riskFactors } = useFirestore<RiskFactor[]>(`risk-factors`, query(collection(db, 'riskFactors')));
+    const { data: homeworks } = useFirestore<Homework[]>(`homeworks-${student.classId}`, query(collection(db, 'classes', student.classId, 'homeworks')));
+    const { data: submissions } = useFirestore<Submission[]>(`submissions-${student.id}`, query(collection(db, `classes/${student.classId}/homeworks`), where('studentId', '==', student.id)));
+    const { data: lessons } = useFirestore<Lesson[]>(`lessons-teacher-${teacherProfile.id}`, query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)));
+
+
+    const handleExportReport = () => {
+        if (!currentClass || !riskFactors || !homeworks || !submissions || !lessons) {
+            toast({
+                title: "Veri Eksik",
+                description: "Raporu oluşturmak için gerekli tüm veriler henüz yüklenmedi.",
+                variant: "destructive"
+            });
+            return;
+        }
+        exportStudentDevelopmentReportToRtf({
+            student,
+            infoForm,
+            riskFactors,
+            teacherProfile,
+            currentClass,
+            homeworks,
+            submissions,
+            disciplineRecords,
+            lessons
+        });
+    };
     
     const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades) return 0;
@@ -246,15 +285,21 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl p-0">
-        <DialogHeader className="p-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-2xl">{getInitials(student.name)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <DialogTitle className="text-2xl font-headline">{student.name}</DialogTitle>
-              <DialogDescription>Okul No: {student.number}</DialogDescription>
+        <DialogHeader className="p-6 pb-4">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                <AvatarFallback className="text-2xl">{getInitials(student.name)}</AvatarFallback>
+                </Avatar>
+                <div>
+                <DialogTitle className="text-2xl font-headline">{student.name}</DialogTitle>
+                <DialogDescription>Okul No: {student.number}</DialogDescription>
+                </div>
             </div>
+            <Button onClick={handleExportReport} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Gelişim Raporu İndir
+            </Button>
           </div>
         </DialogHeader>
         <div className="p-6 pt-0 bg-muted/50">
