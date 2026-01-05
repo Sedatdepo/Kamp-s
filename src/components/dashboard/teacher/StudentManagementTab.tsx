@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar as CalendarIconLucide, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge, Loader2 } from 'lucide-react';
+import { Users, Calendar as CalendarIconLucide, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge, Loader2, ClipboardPaste } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,11 +26,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
+
 
 type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 type TermKey = 'term1Grades' | 'term2Grades';
 
-// --- STUDENT LIST COMPONENT (Moved Inside) ---
 function StudentList({ students, onStudentsChange, currentClass, teacherProfile }: { students: Student[], onStudentsChange: (students: Student[]) => void, currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
@@ -49,7 +50,7 @@ function StudentList({ students, onStudentsChange, currentClass, teacherProfile 
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim() || !db || !currentClass) return;
     try {
-      const newStudentData = {
+      const newStudentData: Omit<Student, 'id'> = {
         name: newStudentName,
         number: newStudentNumber,
         classId: currentClass.id,
@@ -235,7 +236,6 @@ function StudentList({ students, onStudentsChange, currentClass, teacherProfile 
   );
 }
 
-// --- ATTENDANCE TAB COMPONENT (Moved Inside) ---
 function AttendanceTab({ students, onStudentsChange }: { students: Student[], onStudentsChange: (students: Student[]) => void }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -347,7 +347,6 @@ function AttendanceTab({ students, onStudentsChange }: { students: Student[], on
     );
 }
 
-// --- DUTY ROSTER TAB COMPONENT (Moved Inside) ---
 function DutyRosterTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -437,7 +436,6 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     );
 }
 
-// --- SEATING PLAN TAB COMPONENT (Moved Inside) ---
 function SeatingPlanTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -469,7 +467,6 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
     );
 }
 
-// --- GRADING TAB COMPONENT (Moved Inside) ---
 const TermGradingTable = ({
   students,
   termKey,
@@ -557,6 +554,7 @@ function GradingTab({ students, onStudentsChange }: { students: Student[], onStu
     const { db } = useAuth();
     const { toast } = useToast();
     const [activeTerm, setActiveTerm] = useState<TermKey>('term1Grades');
+    const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
 
     const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
         onStudentsChange(prevStudents =>
@@ -596,18 +594,31 @@ function GradingTab({ students, onStudentsChange }: { students: Student[], onStu
     };
 
     return (
-        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTerm(val === 'term1' ? 'term1Grades' : 'term2Grades')}>
-            <TabsList>
-                <TabsTrigger value="term1">1. Dönem</TabsTrigger>
-                <TabsTrigger value="term2">2. Dönem</TabsTrigger>
-            </TabsList>
-            <TabsContent value="term1" className="mt-4">
-                <TermGradingTable students={students} termKey="term1Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
-            </TabsContent>
-            <TabsContent value="term2" className="mt-4">
-                <TermGradingTable students={students} termKey="term2Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
-            </TabsContent>
-        </Tabs>
+        <>
+            <Tabs defaultValue="term1" onValueChange={(val) => setActiveTerm(val === 'term1' ? 'term1Grades' : 'term2Grades')}>
+                <div className="flex justify-between items-center mb-4">
+                    <TabsList>
+                        <TabsTrigger value="term1">1. Dönem</TabsTrigger>
+                        <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+                    </TabsList>
+                    <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
+                        <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Not Girişi
+                    </Button>
+                </div>
+                <TabsContent value="term1">
+                    <TermGradingTable students={students} termKey="term1Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
+                </TabsContent>
+                <TabsContent value="term2">
+                    <TermGradingTable students={students} termKey="term2Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
+                </TabsContent>
+            </Tabs>
+            <BulkGradeEntryDialog 
+                isOpen={isBulkGradeOpen}
+                setIsOpen={setIsBulkGradeOpen}
+                students={students}
+                activeTerm={activeTerm === 'term1Grades' ? 1 : 2}
+            />
+        </>
     )
 }
 
@@ -619,16 +630,13 @@ interface StudentManagementTabProps {
 }
 
 export function StudentManagementTab({ currentClass, teacherProfile, ...props }: StudentManagementTabProps) {
-  const { db } = useAuth();
-  
   const [localStudents, setLocalStudents] = useState<Student[]>(props.students);
+  const studentsLoading = !localStudents;
 
   useEffect(() => {
     setLocalStudents(props.students);
   }, [props.students]);
-
-  const studentsLoading = !localStudents;
-
+  
   if (studentsLoading) {
     return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>
   }
