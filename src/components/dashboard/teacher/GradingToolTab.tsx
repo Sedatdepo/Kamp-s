@@ -1,34 +1,24 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import {
   Student,
   TeacherProfile,
   Class,
-  Criterion,
-  GradingDocument,
   GradingScores,
 } from '@/lib/types';
-import { GradingHeader } from './GradingHeader';
-import { GradingTable } from './GradingTable';
-import {
-  INITIAL_BEHAVIOR_CRITERIA,
-  INITIAL_PERF_CRITERIA,
-} from '@/lib/grading-defaults';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from './RecordManager';
-import { Save, Target, ClipboardPaste } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ExamAnalysisTab } from './ExamAnalysisTab';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
+import { ClipboardPaste } from 'lucide-react';
 
 
 interface GradingToolTabProps {
@@ -38,57 +28,85 @@ interface GradingToolTabProps {
   currentClass?: Class | null;
 }
 
-export type ActiveGradingTab = 1 | 2 | 4; // 1: Perf1, 2: Perf2, 4: Davranış
-export type ActiveTerm = 1 | 2;
-
-const PerformanceRanking = ({ students, termGradesKey, scoreKey }: { students: Student[], termGradesKey: 'term1Grades' | 'term2Grades', scoreKey: 'scores1' | 'scores2' | 'behaviorScores' }) => {
-    
-    const rankedStudents = useMemo(() => {
-        return students.map(student => {
-            const termGrades = student[termGradesKey];
-            const scores = termGrades ? termGrades[scoreKey] : undefined;
-            const total = scores ? Object.values(scores).reduce((sum, val) => sum + (Number(val) || 0), 0) : 0;
-            return { 
-                ...student, 
-                totalScore: total,
-                exam1: termGrades?.exam1,
-                exam2: termGrades?.exam2,
-            };
-        }).sort((a, b) => b.totalScore - a.totalScore);
-    }, [students, termGradesKey, scoreKey]);
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base"><Target/> Performans Sıralaması</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Öğrenci</TableHead>
-                            <TableHead className="text-right">1. Yazılı</TableHead>
-                            <TableHead className="text-right">2. Yazılı</TableHead>
-                            <TableHead className="text-right">Performans</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rankedStudents.map(student => (
-                            <TableRow key={student.id}>
-                                <TableCell>{student.name}</TableCell>
-                                <TableCell className="text-right font-medium">{student.exam1 ?? '-'}</TableCell>
-                                <TableCell className="text-right font-medium">{student.exam2 ?? '-'}</TableCell>
-                                <TableCell className="text-right font-bold">{student.totalScore}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
-};
+type TermKey = 'term1Grades' | 'term2Grades';
+type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2';
 
 
+// --- DÖNEM NOT TABLOSU BİLEŞENİ ---
+const TermGradingTable = ({
+  students,
+  termKey,
+  onSave,
+  onStudentGradeChange
+}: {
+  students: Student[];
+  termKey: TermKey;
+  onSave: () => void;
+  onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
+}) => {
+  
+  const calculateAverage = (grades: GradingScores = {}) => {
+      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2].filter(g => g !== undefined && g !== null) as number[];
+      if (scores.length === 0) return 0;
+      return scores.reduce((a, b) => a + b, 0) / scores.length;
+  };
+  
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+  }, [students]);
+
+  return (
+      <Card>
+          <CardHeader>
+              <div className="flex justify-between items-center">
+                  <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
+                  <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+              </div>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>No</TableHead>
+                          <TableHead>Öğrenci</TableHead>
+                          <TableHead className="text-center">1. Sınav</TableHead>
+                          <TableHead className="text-center">2. Sınav</TableHead>
+                          <TableHead className="text-center">1. Performans</TableHead>
+                          <TableHead className="text-center">2. Performans</TableHead>
+                          <TableHead className="text-center">Ortalama</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {sortedStudents.map(student => {
+                          const grades: any = student[termKey] || {};
+                          const average = calculateAverage(grades);
+                          return (
+                              <TableRow key={student.id}>
+                                  <TableCell>{student.number}</TableCell>
+                                  <TableCell className="font-medium">{student.name}</TableCell>
+                                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
+                                       <TableCell key={field}>
+                                          <Input
+                                              type="number"
+                                              className="w-20 mx-auto text-center h-8"
+                                              value={grades[field] ?? ''}
+                                              onChange={e => onStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
+                                          />
+                                      </TableCell>
+                                  ))}
+                                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
+                              </TableRow>
+                          )
+                      })}
+                  </TableBody>
+              </Table>
+          </CardContent>
+      </Card>
+  )
+}
+
+
+// --- ANA DEĞERLENDİRME ARACI BİLEŞENİ ---
 export function GradingToolTab({
   classId,
   teacherProfile,
@@ -97,312 +115,93 @@ export function GradingToolTab({
 }: GradingToolTabProps) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const {
-    db: localDb,
-    setDb: setLocalDb,
-    loading: localDbLoading,
-  } = useDatabase();
-  const { gradingDocuments = [] } = localDb;
-
-  const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
-  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
-
-  // This local state will hold the student data, either live from Firestore or from an archive
   const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
+  const [activeTermForBulk, setActiveTermForBulk] = useState<1 | 2>(1);
+
 
   useEffect(() => {
-    const classRecords = gradingDocuments.filter(
-      (doc) => doc.classId === classId
-    );
-
-    if (selectedRecordId) {
-      const record = classRecords.find((doc) => doc.id === selectedRecordId);
-      if (record) {
-        const tempStudents = initialStudents.map((student) => {
-          const archivedData = record.data.studentGrades.find(
-            (sg) => sg.studentId === student.id
-          );
-          const termKey =
-            record.data.term === 'term1' ? 'term1Grades' : 'term2Grades';
-          return {
-            ...student,
-            [termKey]: archivedData ? archivedData.grades : student[termKey],
-          };
-        });
-        setStudents(tempStudents);
-        setActiveTerm(record.data.term === 'term1' ? 1 : 2);
-      } else {
-        setStudents(initialStudents); // If record not found, fall back to live data
-      }
-    } else {
-      setStudents(initialStudents); // If no record selected, use live data
-    }
-  }, [selectedRecordId, gradingDocuments, initialStudents, classId]);
-
-  const teacherId = teacherProfile?.id;
-  const perfCriteria = teacherProfile?.perfCriteria ?? INITIAL_PERF_CRITERIA;
-  const behaviorCriteria =
-    teacherProfile?.behaviorCriteria ?? INITIAL_BEHAVIOR_CRITERIA;
-
-  const termGradesKey: 'term1Grades' | 'term2Grades' =
-    activeTerm === 1 ? 'term1Grades' : 'term2Grades';
-
-  const currentCriteria = useMemo(() => {
-    if (activeTab === 4) return behaviorCriteria;
-    return perfCriteria;
-  }, [activeTab, perfCriteria, behaviorCriteria]);
-
-  const getScoreTargetKey = (tab: ActiveGradingTab) => {
-    switch (tab) {
-      case 1:
-        return 'scores1';
-      case 2:
-        return 'scores2';
-      case 4:
-        return 'behaviorScores';
-    }
-  };
-  const scoreKey = getScoreTargetKey(activeTab);
-
-  const handleClearScores = async () => {
-    if (!db) return;
-    const batch = writeBatch(db);
-
-    students.forEach((student) => {
-      const studentRef = doc(db, 'students', student.id);
-      const currentTermGrades = student[termGradesKey] || {};
-
-      batch.update(studentRef, {
-        [termGradesKey]: {
-          ...currentTermGrades,
-          [scoreKey]: {},
-        },
-      });
-    });
-
-    try {
-      await batch.commit();
-      toast({ title: 'Tüm notlar temizlendi.' });
-    } catch (e) {
-      toast({
-        variant: 'destructive',
-        title: 'Temizleme sırasında hata oluştu!',
-        description: (e as Error).message,
-      });
-    }
-  };
-
-  const updateStudents = async (updatedStudents: Student[]) => {
-    if (!db || students.length === 0) return;
-    const batch = writeBatch(db);
-    updatedStudents.forEach((updatedStudent) => {
-      const originalStudent = students.find((s) => s.id === updatedStudent.id);
-      if (originalStudent) {
-        // Compare only the fields that can be changed by GradingTable
-        const hasProjectChanged =
-          originalStudent.hasProject !== updatedStudent.hasProject;
-        const termGradesChanged =
-          JSON.stringify(originalStudent[termGradesKey]) !==
-          JSON.stringify(updatedStudent[termGradesKey]);
-
-        if (hasProjectChanged || termGradesChanged) {
-          const studentRef = doc(db, 'students', updatedStudent.id);
-          const changes: Partial<Student> = {};
-          if (hasProjectChanged) changes.hasProject = updatedStudent.hasProject;
-          if (termGradesChanged)
-            changes[termGradesKey] = updatedStudent[termGradesKey];
-          batch.update(studentRef, changes);
-        }
-      }
-    });
-    try {
-      await batch.commit();
-      toast({ title: 'Notlar kaydedildi.' });
-    } catch (e) {
-      toast({
-        variant: 'destructive',
-        title: 'Kaydederken hata oluştu!',
-        description: (e as Error).message,
-      });
-      console.error(e);
-    }
-  };
-  
-  const updateSingleStudent = async (studentId: string, updates: Partial<Student>) => {
-    if (!db) return;
-    const studentRef = doc(db, 'students', studentId);
-    try {
-      await updateDoc(studentRef, updates);
-      // No toast here to avoid spamming on every small update
-    } catch (e) {
-      toast({
-        variant: 'destructive',
-        title: 'Kaydederken hata oluştu!',
-        description: (e as Error).message,
-      });
-    }
-  }
-
-  const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
-    if (!teacherId || !db) return;
-    const teacherRef = doc(db, 'teachers', teacherId);
-    await updateDoc(teacherRef, data);
-  };
-
-  const handleSaveToArchive = () => {
-    if (!currentClass) return;
-
-    const studentGrades = students.map((student) => ({
-      studentId: student.id,
-      grades: student[termGradesKey] || {},
-    }));
-
-    const newRecord: GradingDocument = {
-      id: `grading_${Date.now()}`,
-      name: `${activeTerm}. Dönem Notları - ${new Date().toLocaleDateString(
-        'tr-TR'
-      )}`,
-      date: new Date().toISOString(),
-      classId: currentClass.id,
-      data: {
-        term: activeTerm === 1 ? 'term1' : 'term2',
-        studentGrades,
-      },
-    };
-
-    setLocalDb((prevDb) => ({
-      ...prevDb,
-      gradingDocuments: [...(prevDb.gradingDocuments || []), newRecord],
-    }));
-
-    toast({
-      title: 'Notlar Arşive Kaydedildi',
-      description: 'Mevcut not tablosunun bir kopyası oluşturuldu.',
-    });
-  };
-
-  const handleNewRecord = useCallback(() => {
-    setSelectedRecordId(null);
-    setStudents(initialStudents); // Revert to live data
+    setStudents(initialStudents);
   }, [initialStudents]);
-
-  const handleDeleteRecord = useCallback(() => {
-    if (!selectedRecordId) return;
-    setLocalDb((prevDb) => ({
-      ...prevDb,
-      gradingDocuments: (prevDb.gradingDocuments || []).filter(
-        (d) => d.id !== selectedRecordId
-      ),
-    }));
-    handleNewRecord();
-    toast({
-      title: 'Silindi',
-      description: 'Not kaydı arşivden silindi.',
-      variant: 'destructive',
-    });
-  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
-
-  if (!teacherProfile || !currentClass) {
-    return <p>Öğretmen profili veya sınıf bilgisi yüklenemedi.</p>;
-  }
   
-    const getTabStyle = (tabId: ActiveGradingTab) => {
-        const isActive = activeTab === tabId;
-        return `flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap 
-        ${isActive ? 'bg-primary/10 text-primary ring-2 ring-primary/20' : 'text-slate-500 hover:bg-slate-50'}`;
-    };
+  const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
+      setStudents(prevStudents => 
+          prevStudents.map(student => {
+              if (student.id === studentId) {
+                  const termKey = activeTermForBulk === 1 ? 'term1Grades' : 'term2Grades';
+                  const updatedGrades = { ...(student[termKey] || {}) };
+                  
+                  if (value === null) {
+                    // @ts-ignore
+                    delete updatedGrades[field];
+                  } else {
+                    // @ts-ignore
+                    updatedGrades[field] = value;
+                  }
+                  
+                  return { ...student, [termKey]: updatedGrades };
+              }
+              return student;
+          })
+      );
+  };
+  
+  const handleSaveChanges = async (termKey: TermKey) => {
+    if (!db || students.length === 0) return;
+
+    const batch = writeBatch(db);
+    students.forEach(student => {
+        const studentRef = doc(db, 'students', student.id);
+        const termGrades = student[termKey] || {};
+        batch.update(studentRef, { [termKey]: termGrades });
+    });
+    
+    try {
+        await batch.commit();
+        toast({ title: "Başarılı!", description: `${termKey === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
+    } catch (e) {
+        toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
+        console.error(e);
+    }
+  };
+
 
   return (
     <>
-      <Tabs defaultValue="grading">
-          <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-              <TabsList className="w-full justify-start">
-                  <TabsTrigger value="grading">Not Girişi & Ölçekler</TabsTrigger>
-                  <TabsTrigger value="analysis">Sınav Analizi & Telafi</TabsTrigger>
-              </TabsList>
-              <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-          <TabsContent value="grading" className="mt-4">
-              <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                      <div className="lg:col-span-3">
-                          <GradingHeader
-                              activeTab={activeTab}
-                              setActiveTab={setActiveTab}
-                              activeTerm={activeTerm}
-                              setActiveTerm={setActiveTerm}
-                              teacherProfile={teacherProfile}
-                              onClearScores={handleClearScores}
-                              updateTeacherProfile={updateTeacherProfile}
-                          />
-                          <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto gap-1 mt-4">
-                              <button onClick={() => setActiveTab(1)} className={getTabStyle(1)}>1. Performans</button>
-                              <button onClick={() => setActiveTab(2)} className={getTabStyle(2)}>2. Performans</button>
-                              <button onClick={() => setActiveTab(4)} className={getTabStyle(4)}>Davranış Notu</button>
-                          </div>
-                      </div>
-                      <div className="lg:col-span-1 space-y-2">
-                          <RecordManager
-                              records={(gradingDocuments || [])
-                                  .filter((d) => d.classId === classId)
-                                  .map((r) => ({ id: r.id, name: r.name }))}
-                              selectedRecordId={selectedRecordId}
-                              onSelectRecord={setSelectedRecordId}
-                              onNewRecord={handleNewRecord}
-                              onDeleteRecord={handleDeleteRecord}
-                              noun="Not Kaydı"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                                onClick={handleSaveToArchive}
-                                className="w-full bg-green-600 hover:bg-green-700"
-                            >
-                                <Save className="mr-2 h-4 w-4" /> Arşive Kaydet
-                            </Button>
-                            <Button
-                                onClick={() => setIsBulkGradeOpen(true)}
-                                variant="outline"
-                                className="w-full"
-                            >
-                                <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Giriş
-                            </Button>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="grid lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                      <GradingTable
-                          activeTab={activeTab}
-                          students={students}
-                          currentCriteria={currentCriteria}
-                          updateStudents={updateStudents}
-                          updateSingleStudent={updateSingleStudent}
-                          termGradesKey={termGradesKey}
-                      />
-                    </div>
-                    <div className="lg:col-span-1">
-                      <PerformanceRanking 
-                        students={students} 
-                        termGradesKey={termGradesKey} 
-                        scoreKey={scoreKey}
-                      />
-                    </div>
-                  </div>
-              </div>
-          </TabsContent>
-          <TabsContent value="analysis" className="mt-4">
-              <ExamAnalysisTab students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
-          </TabsContent>
+      <Tabs defaultValue="term1" onValueChange={(val) => setActiveTermForBulk(val === 'term1' ? 1 : 2)}>
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="term1">1. Dönem</TabsTrigger>
+            <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+          </TabsList>
+          <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
+             <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Not Girişi
+          </Button>
+        </div>
+        <TabsContent value="term1">
+          <TermGradingTable
+            students={students}
+            termKey="term1Grades"
+            onSave={() => handleSaveChanges('term1Grades')}
+            onStudentGradeChange={handleStudentGradeChange}
+          />
+        </TabsContent>
+        <TabsContent value="term2">
+          <TermGradingTable
+            students={students}
+            termKey="term2Grades"
+            onSave={() => handleSaveChanges('term2Grades')}
+            onStudentGradeChange={handleStudentGradeChange}
+          />
+        </TabsContent>
       </Tabs>
+
       <BulkGradeEntryDialog 
         isOpen={isBulkGradeOpen}
         setIsOpen={setIsBulkGradeOpen}
         students={students}
-        activeTerm={activeTerm}
-    />
+        activeTerm={activeTermForBulk}
+      />
     </>
   );
 }
