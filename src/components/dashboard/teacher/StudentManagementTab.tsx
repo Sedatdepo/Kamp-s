@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar as CalendarIconLucide, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge } from 'lucide-react';
+import { Users, Calendar as CalendarIconLucide, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge, Loader2 } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -236,7 +236,7 @@ function StudentList({ students, onStudentsChange, currentClass, teacherProfile 
 }
 
 // --- ATTENDANCE TAB COMPONENT (Moved Inside) ---
-function AttendanceTab({ students }: { students: Student[] }) {
+function AttendanceTab({ students, onStudentsChange }: { students: Student[], onStudentsChange: (students: Student[]) => void }) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [date, setDate] = useState<Date | undefined>(new Date());
@@ -267,25 +267,24 @@ function AttendanceTab({ students }: { students: Student[] }) {
         if (!date || !db) return;
         const dateString = format(date, 'yyyy-MM-dd');
         const batch = writeBatch(db);
-
-        students.forEach(student => {
+        const updatedStudents = students.map(student => {
             const studentRef = doc(db, 'students', student.id);
             const newStatus = attendanceStatus[student.id];
             const existingAttendance = student.attendance || [];
             
-            // Remove any existing record for this date
-            const updatedAttendance = existingAttendance.filter(a => a.date !== dateString);
+            let updatedAttendance = existingAttendance.filter(a => a.date !== dateString);
             
-            // Add the new status if it's not 'present'
             if (newStatus && newStatus !== 'present') {
                 updatedAttendance.push({ date: dateString, status: newStatus as 'absent' | 'late' | 'excused' });
             }
 
             batch.update(studentRef, { attendance: updatedAttendance });
+            return {...student, attendance: updatedAttendance};
         });
         
         try {
             await batch.commit();
+            onStudentsChange(updatedStudents); // Update local state
             toast({ title: 'Yoklama kaydedildi.' });
             setShowOnlyAbsentees(true);
         } catch(error) {
@@ -554,18 +553,13 @@ const TermGradingTable = ({
   )
 }
 
-function GradingTab({ students: initialStudents }: { students: Student[] }) {
+function GradingTab({ students, onStudentsChange }: { students: Student[], onStudentsChange: (students: Student[]) => void }) {
     const { db } = useAuth();
     const { toast } = useToast();
-    const [students, setStudents] = useState<Student[]>(initialStudents);
     const [activeTerm, setActiveTerm] = useState<TermKey>('term1Grades');
 
-    useEffect(() => {
-        setStudents(initialStudents);
-    }, [initialStudents]);
-
     const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
-        setStudents(prevStudents =>
+        onStudentsChange(prevStudents =>
             prevStudents.map(student => {
                 if (student.id === studentId) {
                     const updatedGrades = { ...(student[activeTerm] || {}) };
@@ -619,27 +613,21 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
 
 // --- MAIN MANAGEMENT TAB COMPONENT ---
 interface StudentManagementTabProps {
+  students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
 }
 
-export function StudentManagementTab({ currentClass, teacherProfile }: StudentManagementTabProps) {
+export function StudentManagementTab({ currentClass, teacherProfile, ...props }: StudentManagementTabProps) {
   const { db } = useAuth();
   
-  const studentsQuery = useMemo(() => {
-    if (!currentClass?.id || !db) return null;
-    return query(collection(db, 'students'), where('classId', '==', currentClass.id));
-  }, [currentClass?.id, db]);
-
-  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${currentClass?.id}`, studentsQuery);
-
-  const [localStudents, setLocalStudents] = useState<Student[]>([]);
+  const [localStudents, setLocalStudents] = useState<Student[]>(props.students);
 
   useEffect(() => {
-    if(students) {
-      setLocalStudents(students);
-    }
-  }, [students]);
+    setLocalStudents(props.students);
+  }, [props.students]);
+
+  const studentsLoading = !localStudents;
 
   if (studentsLoading) {
     return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>
@@ -664,11 +652,11 @@ export function StudentManagementTab({ currentClass, teacherProfile }: StudentMa
       <TabsContent value="student-list" className="mt-4">
         <StudentList students={localStudents} onStudentsChange={setLocalStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
-      <TabsContent value="grading" className="mt-4">
-        <GradingTab students={localStudents} />
+       <TabsContent value="grading" className="mt-4">
+        <GradingTab students={localStudents} onStudentsChange={setLocalStudents}/>
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
-        <AttendanceTab students={localStudents} />
+        <AttendanceTab students={localStudents} onStudentsChange={setLocalStudents} />
       </TabsContent>
       <TabsContent value="duty-roster" className="mt-4">
         <DutyRosterTab students={localStudents} currentClass={currentClass} />
@@ -679,5 +667,3 @@ export function StudentManagementTab({ currentClass, teacherProfile }: StudentMa
     </Tabs>
   );
 }
-
-    
