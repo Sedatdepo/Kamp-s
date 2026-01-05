@@ -1,12 +1,13 @@
-'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+"use client";
+
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode } from 'lucide-react';
+import { Users, Calendar, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
+import { Student, Class, TeacherProfile, RosterItem, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +23,9 @@ import { format, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+type TermKey = 'term1Grades' | 'term2Grades';
+type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2';
 
 // --- STUDENT LIST COMPONENT ---
 function StudentList({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
@@ -419,6 +423,140 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
     );
 }
 
+// --- GRADING TAB COMPONENT ---
+const TermGradingTable = ({
+  students: initialStudents,
+  termKey
+}: {
+  students: Student[];
+  termKey: TermKey;
+}) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    const [students, setStudents] = useState<Student[]>(initialStudents);
+    
+    useEffect(() => {
+        setStudents(initialStudents);
+    }, [initialStudents]);
+
+    const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
+      setStudents(prevStudents => 
+          prevStudents.map(student => {
+              if (student.id === studentId) {
+                  const updatedGrades = { ...(student[termKey] || {}) };
+                  
+                  if (value === null) {
+                    // @ts-ignore
+                    delete updatedGrades[field];
+                  } else {
+                    // @ts-ignore
+                    updatedGrades[field] = value;
+                  }
+                  
+                  return { ...student, [termKey]: updatedGrades };
+              }
+              return student;
+          })
+      );
+    };
+
+    const handleSaveChanges = async () => {
+        if (!db || students.length === 0) return;
+
+        const batch = writeBatch(db);
+        students.forEach(student => {
+            const studentRef = doc(db, 'students', student.id);
+            const termGrades = student[termKey] || {};
+            batch.update(studentRef, { [termKey]: termGrades });
+        });
+        
+        try {
+            await batch.commit();
+            toast({ title: "Başarılı!", description: `${termKey === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
+        } catch (e) {
+            toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
+            console.error(e);
+        }
+    };
+
+  const calculateAverage = (grades: GradingScores = {}) => {
+      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2].filter(g => g !== undefined && g !== null) as number[];
+      if (scores.length === 0) return 0;
+      return scores.reduce((a, b) => a + b, 0) / scores.length;
+  };
+  
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+  }, [students]);
+
+  return (
+      <Card>
+          <CardHeader>
+              <div className="flex justify-between items-center">
+                  <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
+                  <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+              </div>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>No</TableHead>
+                          <TableHead>Öğrenci</TableHead>
+                          <TableHead className="text-center">1. Sınav</TableHead>
+                          <TableHead className="text-center">2. Sınav</TableHead>
+                          <TableHead className="text-center">1. Performans</TableHead>
+                          <TableHead className="text-center">2. Performans</TableHead>
+                          <TableHead className="text-center">Ortalama</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {sortedStudents.map(student => {
+                          const grades: any = student[termKey] || {};
+                          const average = calculateAverage(grades);
+                          return (
+                              <TableRow key={student.id}>
+                                  <TableCell>{student.number}</TableCell>
+                                  <TableCell className="font-medium">{student.name}</TableCell>
+                                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
+                                       <TableCell key={field}>
+                                          <Input
+                                              type="number"
+                                              className="w-20 mx-auto text-center h-8"
+                                              value={grades[field] ?? ''}
+                                              onChange={e => handleStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
+                                          />
+                                      </TableCell>
+                                  ))}
+                                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
+                              </TableRow>
+                          )
+                      })}
+                  </TableBody>
+              </Table>
+          </CardContent>
+      </Card>
+  )
+}
+
+function GradingTab({ students }: { students: Student[] }) {
+    return (
+        <Tabs defaultValue="term1">
+            <TabsList>
+                <TabsTrigger value="term1">1. Dönem</TabsTrigger>
+                <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+            </TabsList>
+            <TabsContent value="term1" className="mt-4">
+                <TermGradingTable students={students} termKey="term1Grades" />
+            </TabsContent>
+            <TabsContent value="term2" className="mt-4">
+                <TermGradingTable students={students} termKey="term2Grades" />
+            </TabsContent>
+        </Tabs>
+    )
+}
+
+// --- MAIN MANAGEMENT TAB COMPONENT ---
 interface StudentManagementTabProps {
   students: Student[];
   currentClass: Class | null;
@@ -435,6 +573,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
       <ScrollArea className="w-full whitespace-nowrap rounded-lg">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="student-list"><Users className="mr-2 h-4 w-4" />Öğrenci Listesi</TabsTrigger>
+          <TabsTrigger value="grading"><Gauge className="mr-2 h-4 w-4" />Not Girişi</TabsTrigger>
           <TabsTrigger value="attendance"><Calendar className="mr-2 h-4 w-4" />Yoklama</TabsTrigger>
           <TabsTrigger value="duty-roster"><ClipboardList className="mr-2 h-4 w-4" />Nöbet Listesi</TabsTrigger>
           <TabsTrigger value="seating-plan"><Grid className="mr-2 h-4 w-4" />Oturma Planı</TabsTrigger>
@@ -443,6 +582,9 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
       </ScrollArea>
       <TabsContent value="student-list" className="mt-4">
         <StudentList classId={currentClass.id} students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
+      </TabsContent>
+       <TabsContent value="grading" className="mt-4">
+        <GradingTab students={students} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
         <AttendanceTab students={students} currentClass={currentClass} />
