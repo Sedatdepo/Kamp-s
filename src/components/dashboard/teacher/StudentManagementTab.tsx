@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge } from 'lucide-react';
+import { Users, Calendar as CalendarIconLucide, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Gauge } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,8 +22,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 type TermKey = 'term1Grades' | 'term2Grades';
@@ -304,7 +306,7 @@ function AttendanceTab({ students }: { students: Student[] }) {
 
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1"><Card><CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader><CardContent><CalendarPicker mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} /></CardContent></Card></div>
+            <div className="md:col-span-1"><Card><CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader><CardContent><Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} /></CardContent></Card></div>
             <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
@@ -391,7 +393,46 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     if (!currentClass) return <p>Sınıf bilgisi yüklenemedi.</p>;
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 space-y-6"><Card><CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Başlangıç Tarihi</Label><CalendarPicker mode="single" selected={startDate} onSelect={setStartDate} className="rounded-md border" locale={tr} /></div><div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div><div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div></CardContent></Card><Card><CardHeader><CardTitle>Öğrenci Seçimi</CardTitle></CardHeader><CardContent className="space-y-2 max-h-60 overflow-y-auto">{sortedStudents.map(s => (<div key={s.id} className="flex items-center gap-2"><Checkbox id={`roster-${s.id}`} checked={selectedStudents.includes(s.id)} onCheckedChange={(checked) => { setSelectedStudents(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id)); }} /><Label htmlFor={`roster-${s.id}`}>{s.name} ({s.number})</Label></div>))}</CardContent></Card><Button onClick={handleGenerateRoster}>Nöbet Listesini Oluştur</Button></div>
+            <div className="md:col-span-1 space-y-6">
+                <Card>
+                    <CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Başlangıç Tarihi</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !startDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIconLucide className="mr-2 h-4 w-4" />
+                                    {startDate ? format(startDate, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={startDate}
+                                    onSelect={setStartDate}
+                                    initialFocus
+                                    locale={tr}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div>
+                        <div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Öğrenci Seçimi</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">{sortedStudents.map(s => (<div key={s.id} className="flex items-center gap-2"><Checkbox id={`roster-${s.id}`} checked={selectedStudents.includes(s.id)} onCheckedChange={(checked) => { setSelectedStudents(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id)); }} /><Label htmlFor={`roster-${s.id}`}>{s.name} ({s.number})</Label></div>))}</CardContent>
+                </Card>
+                <Button onClick={handleGenerateRoster}>Nöbet Listesini Oluştur</Button>
+            </div>
             <div className="md:col-span-2"><Card><CardHeader><CardTitle>Nöbet Listesi Önizlemesi</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Gün</TableHead><TableHead>Nöbetçi Öğrenciler</TableHead></TableRow></TableHeader><TableBody>{(currentClass.dutyRoster || []).map((item, idx) => (<TableRow key={idx}><TableCell>{item.date}</TableCell><TableCell>{item.day}</TableCell><TableCell>{item.student}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div>
         </div>
     );
@@ -578,17 +619,31 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
 
 // --- MAIN MANAGEMENT TAB COMPONENT ---
 interface StudentManagementTabProps {
-  students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
 }
 
-export function StudentManagementTab({ students: initialStudents, currentClass, teacherProfile }: StudentManagementTabProps) {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+export function StudentManagementTab({ currentClass, teacherProfile }: StudentManagementTabProps) {
+  const { db } = useAuth();
   
+  const studentsQuery = useMemo(() => {
+    if (!currentClass?.id || !db) return null;
+    return query(collection(db, 'students'), where('classId', '==', currentClass.id));
+  }, [currentClass?.id, db]);
+
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${currentClass?.id}`, studentsQuery);
+
+  const [localStudents, setLocalStudents] = useState<Student[]>([]);
+
   useEffect(() => {
-      setStudents(initialStudents);
-  }, [initialStudents]);
+    if(students) {
+      setLocalStudents(students);
+    }
+  }, [students]);
+
+  if (studentsLoading) {
+    return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>
+  }
   
   if (!currentClass) {
     return <Card><CardHeader><CardTitle>Lütfen bir sınıf seçin.</CardTitle></CardHeader></Card>;
@@ -600,26 +655,26 @@ export function StudentManagementTab({ students: initialStudents, currentClass, 
         <TabsList className="w-full justify-start">
           <TabsTrigger value="student-list"><Users className="mr-2 h-4 w-4" />Öğrenci Listesi</TabsTrigger>
           <TabsTrigger value="grading"><Gauge className="mr-2 h-4 w-4" />Not Girişi</TabsTrigger>
-          <TabsTrigger value="attendance"><Calendar className="mr-2 h-4 w-4" />Yoklama</TabsTrigger>
+          <TabsTrigger value="attendance"><CalendarIconLucide className="mr-2 h-4 w-4" />Yoklama</TabsTrigger>
           <TabsTrigger value="duty-roster"><ClipboardList className="mr-2 h-4 w-4" />Nöbet Listesi</TabsTrigger>
           <TabsTrigger value="seating-plan"><Grid className="mr-2 h-4 w-4" />Oturma Planı</TabsTrigger>
         </TabsList>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <TabsContent value="student-list" className="mt-4">
-        <StudentList students={students} onStudentsChange={setStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
+        <StudentList students={localStudents} onStudentsChange={setLocalStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
       <TabsContent value="grading" className="mt-4">
-        <GradingTab students={students} />
+        <GradingTab students={localStudents} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
-        <AttendanceTab students={students} />
+        <AttendanceTab students={localStudents} />
       </TabsContent>
       <TabsContent value="duty-roster" className="mt-4">
-        <DutyRosterTab students={students} currentClass={currentClass} />
+        <DutyRosterTab students={localStudents} currentClass={currentClass} />
       </TabsContent>
       <TabsContent value="seating-plan" className="mt-4">
-        <SeatingPlanTab students={students} currentClass={currentClass} />
+        <SeatingPlanTab students={localStudents} currentClass={currentClass} />
       </TabsContent>
     </Tabs>
   );
