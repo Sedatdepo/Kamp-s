@@ -2,32 +2,22 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar as CalendarIcon, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
-import { useAuth } from '@/hooks/useAuth';
-import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { useFirestore } from '@/hooks/useFirestore';
-import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { StudentDetailModal } from './StudentDetailModal';
-import { ClassInviteDialog } from './ClassInviteDialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, addDays } from 'date-fns';
-import { tr } from 'date-fns/locale';
-import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Calendar as CalendarIcon, Save } from 'lucide-react';
+import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Student } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
+import { writeBatch, doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-// --- ATTENDANCE TAB COMPONENT ---
 export function AttendanceTab({ students, onStudentsChange }: { students: Student[], onStudentsChange: (students: Student[]) => void }) {
     const { db } = useAuth();
     const { toast } = useToast();
