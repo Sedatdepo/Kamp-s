@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
@@ -19,13 +18,13 @@ import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2 } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2, Upload, QrCode } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
-import { Class, Student, TeacherProfile } from '@/lib/types';
-import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { Class, Student, TeacherProfile, RosterItem } from '@/lib/types';
+import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +39,17 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
-
+import { StudentDetailModal } from './StudentDetailModal';
+import { ClassInviteDialog } from './ClassInviteDialog';
+import * as XLSX from 'xlsx';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format, addDays } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok";
 
@@ -355,7 +364,7 @@ const TABS_CONFIG = {
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
 } as const;
 
-
+// Main Component
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
@@ -422,18 +431,20 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
-  const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student[]>('students-in-class', studentsQuery);
-
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
     const classIds = (classes || []).map(c => c.id);
     if (classIds.length === 0) return null;
     return query(collection(db, 'students'), where('classId', 'in', classIds));
   }, [teacherId, db, classes]);
-  const { data: allStudents } = useFirestore<Student[]>('all-students-for-count', allStudentsForTeacherQuery);
+  const { data: allStudents, loading: allStudentsLoading } = useFirestore<Student[]>('all-students-for-teacher', allStudentsForTeacherQuery);
 
-  const isLoading = teacherLoading || classesLoading || (selectedClassId && studentsLoading);
+  const students = useMemo(() => {
+    if (!selectedClassId || !allStudents) return [];
+    return allStudents.filter(s => s.classId === selectedClassId);
+  }, [selectedClassId, allStudents]);
+
+  const isLoading = teacherLoading || classesLoading || allStudentsLoading;
   
   const renderContent = () => {
     if (isLoading && (selectedClassId || activeTab !== 'dashboard')) {
@@ -558,7 +569,7 @@ export function TeacherDashboard() {
                 tabContent = <ProjectDistributionTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />;
                 break;
             case 'homework':
-                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={allStudents || []} classes={classes || []}/>;
+                tabContent = <HomeworkTab classId={selectedClassId} currentClass={currentClass} teacherProfile={teacherProfile} students={students || []} classes={classes || []}/>;
                 break;
             case 'risks':
                 tabContent = <RiskMapTab classId={selectedClassId} teacherProfile={teacherProfile} currentClass={currentClass} />;
@@ -680,7 +691,6 @@ export function TeacherDashboard() {
     );
   }
 
-
   return (
       <div className="flex flex-col min-h-screen w-full bg-muted/40">
           <Header />
@@ -690,5 +700,3 @@ export function TeacherDashboard() {
       </div>
   );
 }
-
-    
