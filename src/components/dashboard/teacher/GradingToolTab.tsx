@@ -8,6 +8,7 @@ import {
   TeacherProfile,
   Class,
   GradingScores,
+  Criterion,
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,132 +17,104 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, FileDown, ClipboardPaste } from 'lucide-react';
+import { Save, FileDown, ClipboardPaste, Settings } from 'lucide-react';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 import { exportTermGradesToRtf } from '@/lib/word-export';
-import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { GradingSettingsDialog } from './GradingSettingsDialog';
 
 
 interface GradingToolTabProps {
   classId: string;
-  teacherProfile?: TeacherProfile | null;
+  teacherProfile: TeacherProfile | null;
   students: Student[];
-  currentClass?: Class | null;
+  currentClass: Class | null;
 }
 
 export type TermKey = 'term1Grades' | 'term2Grades';
 export type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
+type CriteriaKey = 'perfCriteria' | 'projCriteria' | 'behaviorCriteria';
+type ScoreKey = 'scores1' | 'scores2' | 'projectScores' | 'behaviorScores';
 
 
-// --- DÖNEM NOT TABLOSU BİLEŞENİ ---
-const TermGradingTable = ({
+// --- KRİTER BAZLI DEĞERLENDİRME TABLOSU ---
+const CriteriaGradingTable = ({
   students,
+  criteria,
+  scoreKey,
   termKey,
-  onSave,
-  onStudentGradeChange,
-  onExport,
+  onScoresChange,
+  onSave
 }: {
   students: Student[];
+  criteria: Criterion[];
+  scoreKey: ScoreKey;
   termKey: TermKey;
+  onScoresChange: (studentId: string, criteriaId: string, value: number | null) => void;
   onSave: () => void;
-  onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
-  onExport: () => void;
 }) => {
-  
-  const calculateAverage = (grades: GradingScores = {}, hasProject?: boolean) => {
-      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
-      if (hasProject && termKey === 'term2Grades') {
-          scores.push(grades.projectGrade);
-      }
-      const validScores = scores.filter(g => g !== undefined && g !== null && g !== -1) as number[];
-      if (validScores.length === 0) return 0;
-      return validScores.reduce((a, b) => a + b, 0) / validScores.length;
-  };
-  
-  const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
-  }, [students]);
+    
+    const calculateTotal = (studentId: string) => {
+        const student = students.find(s => s.id === studentId);
+        const scores = student?.[termKey]?.[scoreKey];
+        if (!scores) return 0;
+        return criteria.reduce((sum, c) => sum + (Number(scores[c.id]) || 0), 0);
+    };
 
-  const displayGrade = (grade: number | undefined | null) => {
-    if (grade === -1) return 'G';
-    return grade ?? '';
-  };
-
-  const handleInputChange = (studentId: string, field: GradeField, value: string) => {
-    if (value.toUpperCase() === 'G') {
-        onStudentGradeChange(studentId, field, -1);
-    } else {
-        const numValue = value === '' ? null : Number(value);
-        if(numValue === null || !isNaN(numValue)) {
-            onStudentGradeChange(studentId, field, numValue);
-        }
-    }
-  };
-
-  return (
-      <Card>
-          <CardHeader>
-              <div className="flex justify-between items-center">
-                  <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={onExport}><FileDown className="mr-2 h-4 w-4"/> Çıktı Al</Button>
-                    <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
-                  </div>
-              </div>
-          </CardHeader>
-          <CardContent>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead>No</TableHead>
-                          <TableHead>Öğrenci</TableHead>
-                          <TableHead className="text-center">1. Sınav</TableHead>
-                          <TableHead className="text-center">2. Sınav</TableHead>
-                          <TableHead className="text-center">1. Performans</TableHead>
-                          <TableHead className="text-center">2. Performans</TableHead>
-                          {termKey === 'term2Grades' && <TableHead className="text-center">Proje</TableHead>}
-                          <TableHead className="text-center">Ortalama</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {sortedStudents.map(student => {
-                          const grades: any = student[termKey] || {};
-                          const average = calculateAverage(grades, student.hasProject);
-                          return (
-                              <TableRow key={student.id}>
-                                  <TableCell>{student.number}</TableCell>
-                                  <TableCell className="font-medium">{student.name}</TableCell>
-                                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
-                                       <TableCell key={field}>
-                                          <Input
-                                              type="text" // Change to text to allow 'G'
-                                              className="w-20 mx-auto text-center h-8"
-                                              value={displayGrade(grades[field])}
-                                              onChange={e => handleInputChange(student.id, field, e.target.value)}
-                                          />
-                                      </TableCell>
-                                  ))}
-                                  {termKey === 'term2Grades' && (
-                                     <TableCell>
-                                         <Input
-                                            type="text" // Change to text
-                                            className="w-20 mx-auto text-center h-8"
-                                            value={displayGrade(grades.projectGrade)}
-                                            disabled={!student.hasProject}
-                                            onChange={e => handleInputChange(student.id, 'projectGrade', e.target.value)}
-                                         />
-                                     </TableCell>
-                                  )}
-                                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
-                              </TableRow>
-                          )
-                      })}
-                  </TableBody>
-              </Table>
-          </CardContent>
-      </Card>
-  )
-}
+    return (
+        <Card>
+            <CardHeader>
+                 <div className="flex justify-between items-center">
+                    <CardTitle>Kriter Bazlı Değerlendirme</CardTitle>
+                    <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Notları Kaydet</Button>
+                 </div>
+                 <CardDescription>Aşağıdaki tabloyu kullanarak her öğrenci için belirtilen kriterlere göre not girişi yapın.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky left-0 bg-secondary z-10">Öğrenci</TableHead>
+                                {criteria.map(c => (
+                                    <TableHead key={c.id} className="text-center">{c.name}<br/><span className="text-xs text-muted-foreground">({c.max} P)</span></TableHead>
+                                ))}
+                                <TableHead className="text-center sticky right-0 bg-secondary z-10">Toplam</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {students.map(student => {
+                                const termGrades = student[termKey];
+                                // @ts-ignore
+                                const studentScores = termGrades ? termGrades[scoreKey] : {};
+                                return (
+                                <TableRow key={student.id}>
+                                    <TableCell className="font-medium sticky left-0 bg-background z-10">{student.name}</TableCell>
+                                    {criteria.map(c => (
+                                        <TableCell key={c.id} className="text-center">
+                                            <Input
+                                                type="number"
+                                                max={c.max}
+                                                min={0}
+                                                value={studentScores?.[c.id] || ''}
+                                                onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
+                                                className="w-20 mx-auto text-center h-9"
+                                            />
+                                        </TableCell>
+                                    ))}
+                                    <TableCell className="text-center font-bold text-lg sticky right-0 bg-background z-10">
+                                        {calculateTotal(student.id)}
+                                    </TableCell>
+                                </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
 
 // --- ANA DEĞERLENDİRME ARACI BİLEŞENİ ---
@@ -154,110 +127,174 @@ export function GradingToolTab({
   const { toast } = useToast();
   const { db } = useAuth();
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
   const [activeTerm, setActiveTerm] = useState<1 | 2>(1);
-
+  
+  const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
 
   useEffect(() => {
     setStudents(initialStudents);
   }, [initialStudents]);
+
+  const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
+    if (!teacherProfile?.id || !db) return;
+    const teacherRef = doc(db, 'teachers', teacherProfile.id);
+    await updateDoc(teacherRef, data);
+  };
   
-  const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
+  const handleScoreChange = (studentId: string, criteriaId: string, value: number | null, scoreKey: ScoreKey) => {
+    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+    setStudents(prevStudents =>
+      prevStudents.map(student => {
+        if (student.id === studentId) {
+          const updatedTermGrades = { ...(student[termKey] || {}) };
+          // @ts-ignore
+          const updatedScores = { ...(updatedTermGrades[scoreKey] || {}) };
+
+          if (value === null) {
+            delete updatedScores[criteriaId];
+          } else {
+            updatedScores[criteriaId] = value;
+          }
+          // @ts-ignore
+          updatedTermGrades[scoreKey] = updatedScores;
+          return { ...student, [termKey]: updatedTermGrades };
+        }
+        return student;
+      })
+    );
+  };
+
+  const handleSaveScores = async (scoreKey: ScoreKey, criteria: Criterion[]) => {
+      if (!db || students.length === 0) return;
       const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
-      setStudents(prevStudents => 
-          prevStudents.map(student => {
-              if (student.id === studentId) {
-                  const updatedGrades = { ...(student[termKey] || {}) };
-                  
-                  if (value === null) {
-                    // @ts-ignore
-                    delete updatedGrades[field];
-                  } else {
-                    // @ts-ignore
-                    updatedGrades[field] = value;
-                  }
-                  
-                  return { ...student, [termKey]: updatedGrades };
-              }
-              return student;
-          })
-      );
+      const batch = writeBatch(db);
+
+      students.forEach(student => {
+          const studentRef = doc(db, 'students', student.id);
+          // @ts-ignore
+          const studentScores = student[termKey]?.[scoreKey] || {};
+          
+          const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
+          const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
+          const finalGrade = (totalScore / maxScore) * 100;
+          
+          let performanceGradeKey: 'perf1' | 'perf2' | 'projectGrade' = 'perf1';
+          if(scoreKey === 'scores1') performanceGradeKey = 'perf1';
+          else if(scoreKey === 'scores2') performanceGradeKey = 'perf2';
+          else if(scoreKey === 'projectScores') performanceGradeKey = 'projectGrade';
+
+          if (scoreKey === 'behaviorScores') {
+               batch.update(studentRef, { 
+                  [`${termKey}.${scoreKey}`]: studentScores,
+                  behaviorScore: Math.round(finalGrade)
+              });
+          } else {
+               batch.update(studentRef, { 
+                  [`${termKey}.${scoreKey}`]: studentScores,
+                  [`${termKey}.${performanceGradeKey}`]: Math.round(finalGrade)
+              });
+          }
+      });
+      
+      try {
+          await batch.commit();
+          toast({ title: "Başarılı!", description: `Notlar kaydedildi ve genel ortalamalar güncellendi.` });
+      } catch (e) {
+          toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
+          console.error(e);
+      }
   };
-  
-  const handleSaveChanges = async (termKey: TermKey) => {
-    if (!db || students.length === 0) return;
 
-    const batch = writeBatch(db);
-    students.forEach(student => {
-        const studentRef = doc(db, 'students', student.id);
-        const termGrades = student[termKey] || {};
-        batch.update(studentRef, { [termKey]: termGrades });
-    });
-    
-    try {
-        await batch.commit();
-        toast({ title: "Başarılı!", description: `${termKey === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
-    } catch (e) {
-        toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
-        console.error(e);
-    }
-  };
 
-  const handleExport = () => {
-    if (!currentClass || !teacherProfile) {
-        toast({variant: "destructive", title: "Hata", description: "Rapor oluşturmak için gerekli bilgiler eksik."});
-        return;
-    }
-    exportTermGradesToRtf({
-        students,
-        term: activeTerm,
-        currentClass,
-        teacherProfile,
-        perfCriteria: teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA,
-        projCriteria: teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA
-    })
-  }
-
+  const perfCriteria = teacherProfile?.perfCriteria || INITIAL_PERF_CRITERIA;
+  const projCriteria = teacherProfile?.projCriteria || INITIAL_PROJ_CRITERIA;
+  const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
 
   return (
     <>
-      <Tabs defaultValue="term1" onValueChange={(val) => setActiveTerm(val === 'term1' ? 1 : 2)}>
+      <Tabs defaultValue="performance">
         <div className="flex justify-between items-center mb-4">
           <TabsList>
-            <TabsTrigger value="term1">1. Dönem</TabsTrigger>
-            <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+            <TabsTrigger value="performance">Performans</TabsTrigger>
+            <TabsTrigger value="project">Proje</TabsTrigger>
+            <TabsTrigger value="behavior">Davranış</TabsTrigger>
           </TabsList>
-          <Button variant="outline" onClick={() => setIsBulkGradeOpen(true)}>
-             <ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Not Girişi
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+                <Label>Dönem:</Label>
+                <Select value={String(activeTerm)} onValueChange={(val) => setActiveTerm(Number(val) as 1 | 2)}>
+                    <SelectTrigger className="w-[120px] h-9">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="1">1. Dönem</SelectItem>
+                        <SelectItem value="2">2. Dönem</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <Button variant="outline" onClick={() => setGradingSettingsOpen(true)}>
+                <Settings className="mr-2 h-4 w-4" /> Kriter Ayarları
+            </Button>
+          </div>
         </div>
-        <TabsContent value="term1">
-          <TermGradingTable
-            students={students}
-            termKey="term1Grades"
-            onSave={() => handleSaveChanges('term1Grades')}
-            onStudentGradeChange={handleStudentGradeChange}
-            onExport={handleExport}
-          />
+        <TabsContent value="performance">
+          <Tabs defaultValue="perf1">
+             <TabsList>
+                <TabsTrigger value="perf1">1. Performans Notu</TabsTrigger>
+                <TabsTrigger value="perf2">2. Performans Notu</TabsTrigger>
+              </TabsList>
+               <TabsContent value="perf1" className="mt-4">
+                    <CriteriaGradingTable 
+                        students={students} 
+                        criteria={perfCriteria} 
+                        scoreKey="scores1"
+                        termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
+                        onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores1')}
+                        onSave={() => handleSaveScores('scores1', perfCriteria)}
+                    />
+               </TabsContent>
+               <TabsContent value="perf2" className="mt-4">
+                    <CriteriaGradingTable 
+                        students={students} 
+                        criteria={perfCriteria} 
+                        scoreKey="scores2"
+                        termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
+                        onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores2')}
+                        onSave={() => handleSaveScores('scores2', perfCriteria)}
+                    />
+               </TabsContent>
+          </Tabs>
         </TabsContent>
-        <TabsContent value="term2">
-          <TermGradingTable
-            students={students}
-            termKey="term2Grades"
-            onSave={() => handleSaveChanges('term2Grades')}
-            onStudentGradeChange={handleStudentGradeChange}
-            onExport={handleExport}
-          />
+        <TabsContent value="project">
+           <CriteriaGradingTable 
+                students={students.filter(s => s.hasProject)} 
+                criteria={projCriteria} 
+                scoreKey="projectScores"
+                termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
+                onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
+                onSave={() => handleSaveScores('projectScores', projCriteria)}
+            />
+        </TabsContent>
+        <TabsContent value="behavior">
+            <CriteriaGradingTable 
+                students={students} 
+                criteria={behaviorCriteria} 
+                scoreKey="behaviorScores"
+                termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
+                onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'behaviorScores')}
+                onSave={() => handleSaveScores('behaviorScores', behaviorCriteria)}
+            />
         </TabsContent>
       </Tabs>
 
-      <BulkGradeEntryDialog 
-        isOpen={isBulkGradeOpen}
-        setIsOpen={setIsBulkGradeOpen}
-        students={students}
-        activeTerm={activeTerm}
-        onBulkUpdate={setStudents}
-      />
+      {teacherProfile && (
+        <GradingSettingsDialog 
+            isOpen={isGradingSettingsOpen}
+            setIsOpen={setGradingSettingsOpen}
+            teacherProfile={teacherProfile}
+            updateTeacherProfile={updateTeacherProfile}
+        />
+      )}
     </>
   );
 }
