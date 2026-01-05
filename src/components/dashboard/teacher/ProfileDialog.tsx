@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TeacherProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Bell, BellOff } from 'lucide-react';
+import { Loader2, Bell, BellOff, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Separator } from '@/components/ui/separator';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -70,7 +70,7 @@ interface ProfileDialogProps {
 
 export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDialogProps) {
   const { toast } = useToast();
-  const { db } = useAuth();
+  const { db, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState(teacherProfile);
 
@@ -143,7 +143,11 @@ export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDial
                  </div>
             </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="justify-between">
+          <Button variant="destructive" onClick={signOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Çıkış Yap
+          </Button>
           <Button onClick={handleSave} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Kaydet

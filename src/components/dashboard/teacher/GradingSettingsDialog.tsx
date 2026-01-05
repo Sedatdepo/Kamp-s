@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -17,13 +18,14 @@ import { Criterion, ReportConfig, TeacherProfile } from '@/lib/types';
 import { Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { useAuth } from '@/hooks/useAuth';
+import { doc, updateDoc } from 'firebase/firestore';
 
 
 interface GradingSettingsDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   teacherProfile: TeacherProfile;
-  updateTeacherProfile: (data: Partial<TeacherProfile>) => Promise<void>;
 }
 
 type CriteriaKey = 'perfCriteria' | 'projCriteria' | 'behaviorCriteria';
@@ -61,9 +63,9 @@ export function GradingSettingsDialog({
   isOpen,
   setIsOpen,
   teacherProfile,
-  updateTeacherProfile,
 }: GradingSettingsDialogProps) {
     const { toast } = useToast();
+    const { db } = useAuth();
     const [localProfile, setLocalProfile] = useState(teacherProfile);
 
     useEffect(() => {
@@ -71,6 +73,12 @@ export function GradingSettingsDialog({
             setLocalProfile(teacherProfile);
         }
     }, [isOpen, teacherProfile]);
+
+    const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
+      if (!teacherProfile?.id || !db) return;
+      const teacherRef = doc(db, 'teachers', teacherProfile.id);
+      await updateDoc(teacherRef, data);
+    };
 
     const handleSave = () => {
         updateTeacherProfile(localProfile);

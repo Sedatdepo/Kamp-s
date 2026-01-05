@@ -19,7 +19,7 @@ import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2, Upload, QrCode } from 'lucide-react';
+import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2, Upload, QrCode, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -40,7 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
-import { GradingSettingsDialog } from './GradingSettingsDialog';
+import { ProfileDialog } from './ProfileDialog';
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok";
@@ -363,7 +363,7 @@ export function TeacherDashboard() {
   const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-  const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
@@ -440,13 +440,6 @@ export function TeacherDashboard() {
     if (!selectedClassId || !allStudents) return [];
     return allStudents.filter(s => s.classId === selectedClassId);
   }, [selectedClassId, allStudents]);
-
-  const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
-    if (!teacherId || !db) return;
-    const teacherRef = doc(db, 'teachers', teacherId);
-    await updateDoc(teacherRef, data);
-  };
-
 
   const isLoading = teacherLoading || classesLoading || allStudentsLoading;
   
@@ -681,7 +674,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<Scale />} title="Ölçekler" description="Değerlendirme kriterlerini yönetin." onClick={() => setGradingSettingsOpen(true)} />
+                <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
                 <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
@@ -693,11 +686,10 @@ export function TeacherDashboard() {
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
             </div>
             {teacherProfile && (
-                <GradingSettingsDialog
-                    isOpen={isGradingSettingsOpen}
-                    setIsOpen={setGradingSettingsOpen}
+                <ProfileDialog
+                    isOpen={isProfileOpen}
+                    setIsOpen={setIsProfileOpen}
                     teacherProfile={teacherProfile}
-                    updateTeacherProfile={updateTeacherProfile}
                 />
             )}
         </div>
