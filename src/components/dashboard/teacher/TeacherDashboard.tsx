@@ -24,6 +24,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -92,7 +94,10 @@ function ClassSelectionScreen({
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
     const [newClassName, setNewClassName] = useState('');
-    
+    const [editingClass, setEditingClass] = useState<Class | null>(null);
+    const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+    const [draggedClassId, setDraggedClassId] = useState<string | null>(null);
+
     const handleAddClass = async () => {
         if (!newClassName.trim() || !teacherId || !db) return;
         try {
@@ -113,6 +118,37 @@ function ClassSelectionScreen({
             toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf oluşturulamadı.' });
         }
     };
+
+    const handleUpdateClass = async () => {
+        if (!editingClass || !editingClass.name.trim() || !db) return;
+        try {
+            await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
+            toast({ title: 'Sınıf adı güncellendi' });
+            setEditingClass(null);
+        } catch(error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf güncellenemedi.' });
+        }
+    };
+
+    const handleDeleteClass = async (classId: string) => {
+        if (!db) return;
+        setDeletingClassId(classId);
+        try {
+            const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+            const studentSnapshot = await getDocs(studentsQuery);
+            const batch = writeBatch(db);
+            studentSnapshot.forEach(studentDoc => {
+                batch.delete(doc(db, 'students', studentDoc.id));
+            });
+            batch.delete(doc(db, 'classes', classId));
+            await batch.commit();
+            toast({ title: 'Sınıf ve öğrenciler silindi', variant: 'destructive' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinemedi.' });
+        } finally {
+            setDeletingClassId(null);
+        }
+    }
     
     const studentCounts = useMemo(() => {
         const counts = new Map<string, number>();
@@ -124,7 +160,7 @@ function ClassSelectionScreen({
     }, [allStudents, classes]);
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, classId: string) => {
-        e.dataTransfer.setData('application/json', JSON.stringify({type: 'class-card', classId}));
+        setDraggedClassId(classId);
         e.dataTransfer.effectAllowed = 'move';
     };
 
@@ -134,22 +170,17 @@ function ClassSelectionScreen({
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetClassId: string) => {
         e.preventDefault();
-        const draggedData = e.dataTransfer.getData('application/json');
-        if (!draggedData) return;
-    
-        const { type, classId: draggedClassId } = JSON.parse(draggedData);
-        if (type !== 'class-card' || !draggedClassId || draggedClassId === targetClassId) return;
+        if (!draggedClassId || draggedClassId === targetClassId) return;
 
         const draggedIndex = classes.findIndex(c => c.id === draggedClassId);
         const targetIndex = classes.findIndex(c => c.id === targetClassId);
-
-        if (draggedIndex === -1 || targetIndex === -1) return;
 
         const newOrderedClasses = [...classes];
         const [draggedItem] = newOrderedClasses.splice(draggedIndex, 1);
         newOrderedClasses.splice(targetIndex, 0, draggedItem);
         
         setOrderedClasses(newOrderedClasses);
+        setDraggedClassId(null);
     };
 
     if (loading) {
@@ -174,15 +205,24 @@ function ClassSelectionScreen({
             <TabsContent value="classes" className="mt-4">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold font-headline">Sınıflarınız</h1>
-                    <div className="flex gap-2">
-                        <Input 
-                            value={newClassName}
-                            onChange={(e) => setNewClassName(e.target.value)}
-                            placeholder="Yeni Sınıf Adı (örn. 9/A)"
-                            className="w-48"
-                        />
-                        <Button onClick={handleAddClass}><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
-                    </div>
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Button><Plus className="mr-2 h-4 w-4" /> Yeni Sınıf Ekle</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader><DialogTitle>Yeni Sınıf Oluştur</DialogTitle></DialogHeader>
+                            <div className="space-y-4">
+                                <Input 
+                                    value={newClassName}
+                                    onChange={(e) => setNewClassName(e.target.value)}
+                                    placeholder="Sınıf Adı (örn. 9/A)"
+                                />
+                                <DialogClose asChild>
+                                    <Button onClick={handleAddClass} className="w-full">Oluştur</Button>
+                                </DialogClose>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
                  {classes.length === 0 ? (
                      <Card className="w-full text-center shadow-lg">
@@ -205,16 +245,75 @@ function ClassSelectionScreen({
                                 onDragStart={(e) => handleDragStart(e, cls.id)}
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, cls.id)}
-                                className={cn('transition-opacity duration-300')}
-                                onClick={() => onSelectClass(cls.id)}
+                                className={cn(
+                                    'transition-opacity duration-300',
+                                    draggedClassId === cls.id ? 'opacity-50' : 'opacity-100'
+                                )}
                             >
                                 <Card className="flex flex-col hover:shadow-lg transition-shadow h-full cursor-grab active:cursor-grabbing">
-                                    <CardHeader className="flex-1">
+                                    <div className="flex-1 p-6" onClick={() => onSelectClass(cls.id)}>
                                         <CardTitle>{cls.name}</CardTitle>
                                         <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
-                                    </CardHeader>
+                                    </div>
                                     <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
                                         <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
+                                        <div className="flex items-center">
+                                            <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
+                                                <DialogTrigger asChild>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8" 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingClass(cls);
+                                                        }}
+                                                    >
+                                                        <Edit className="h-4 w-4"/>
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent>
+                                                    <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
+                                                    <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
+                                                    <DialogClose asChild>
+                                                        <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                                    </DialogClose>
+                                                </DialogContent>
+                                            </Dialog>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            disabled={deletingClassId === cls.id}
+                                                        >
+                                                            {deletingClassId === cls.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin"/> 
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4"/>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClass(cls.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            Sil
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>
