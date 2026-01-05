@@ -1,13 +1,8 @@
 
-
 "use client";
 
-import { useMemo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Student, Class, TeacherProfile } from '@/lib/types';
-import { collection, query, where } from 'firebase/firestore';
 import { Users, Calendar, Grid, ClipboardList } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -19,7 +14,6 @@ interface StudentManagementTabProps {
 }
 
 export function StudentManagementTab({ studentList, attendance, dutyRoster, seatingPlan }: StudentManagementTabProps) {
-  
   return (
     <Tabs defaultValue="student-list">
       <ScrollArea className="w-full whitespace-nowrap rounded-lg">
