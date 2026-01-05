@@ -22,6 +22,8 @@ import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 import { exportTermGradesToRtf } from '@/lib/word-export';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 
 interface GradingToolTabProps {
@@ -31,7 +33,10 @@ interface GradingToolTabProps {
   currentClass: Class | null;
 }
 
-export type TermKey = 'term1Grades' | 'term2Grades';
+export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1:perf1, 2:perf2, 3:project, 4:behavior
+export type ActiveTerm = 1 | 2;
+
+type TermKey = 'term1Grades' | 'term2Grades';
 export type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 type CriteriaKey = 'perfCriteria' | 'projCriteria' | 'behaviorCriteria';
 type ScoreKey = 'scores1' | 'scores2' | 'projectScores' | 'behaviorScores';
@@ -127,7 +132,7 @@ export function GradingToolTab({
   const { toast } = useToast();
   const { db } = useAuth();
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [activeTerm, setActiveTerm] = useState<1 | 2>(1);
+  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   
   const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
 
