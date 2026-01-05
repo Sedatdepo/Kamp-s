@@ -1,8 +1,10 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { Calendar, Search, BookOpen, Clock, Filter, FileSignature } from 'lucide-react';
+import { useDatabase } from '@/hooks/use-database';
+import { AnnualPlanEntry, AnnualPlan } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 // --- VERİ SETLERİ ---
 
@@ -121,7 +123,7 @@ export default function KazanımlarTab() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Sınıf bazlı filtre konfigürasyonu
-  const gradeConfig: { [key: number]: { data: any[]; filters: any[] } } = {
+  const gradeConfig = {
     9: {
       data: plan9,
       filters: [
@@ -178,7 +180,7 @@ export default function KazanımlarTab() {
   }, [activeGrade, activeFilter, activeMonth, searchTerm, gradeConfig]);
 
   // Yardımcı fonksiyon: Ünite tipine göre renk döndür
-  const getAccentColor = (unitType: string) => {
+  const getAccentColor = (unitType) => {
     switch(unitType) {
       case 'fizik-bilimi': return 'border-amber-500';
       case 'kuvvet-hareket': return 'border-red-500';
@@ -193,7 +195,7 @@ export default function KazanımlarTab() {
     }
   };
 
-  const getBadgeColor = (unitType: string) => {
+  const getBadgeColor = (unitType) => {
     switch(unitType) {
       case 'fizik-bilimi': return 'bg-amber-500';
       case 'kuvvet-hareket': return 'bg-red-500';
@@ -207,7 +209,7 @@ export default function KazanımlarTab() {
     }
   };
 
-  const getBackgroundColor = (unitType: string, isBreak?: boolean) => {
+  const getBackgroundColor = (unitType, isBreak) => {
     if (isBreak) return 'bg-yellow-50';
     if (unitType === 'okul-temelli') return 'bg-violet-50';
     if (unitType === 'sosyal') return 'bg-pink-50';
@@ -380,22 +382,20 @@ export default function KazanımlarTab() {
                       {week.specialDays}
                     </div>
                   )}
-
-                   {/* Add Daily Plan Button */}
-                   {!week.isBreak && week.hours > 0 && (
-                        <div className="pt-4 border-t border-slate-100 flex justify-end">
-                            <button
-                                onClick={() => {
-                                    // Placeholder for future functionality
-                                    console.log("Dönüştürülecek hafta:", week);
-                                }}
-                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
-                            >
-                                <FileSignature size={14} />
-                                Günlük Plana Dönüştür
-                            </button>
-                        </div>
-                    )}
+                  {!week.isBreak && week.hours > 0 && (
+                    <div className="pt-4 border-t border-slate-100 flex justify-end">
+                        <button
+                            onClick={() => {
+                                // Placeholder for future functionality
+                                console.log("Dönüştürülecek hafta:", week);
+                            }}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                            <FileSignature size={14} />
+                            Günlük Plana Dönüştür
+                        </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -414,4 +414,3 @@ export default function KazanımlarTab() {
     </div>
   );
 }
-
