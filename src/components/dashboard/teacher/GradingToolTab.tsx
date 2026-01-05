@@ -50,7 +50,7 @@ const TermGradingTable = ({
   
   const calculateAverage = (grades: GradingScores = {}, hasProject?: boolean) => {
       const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
-      if (hasProject) {
+      if (hasProject && termKey === 'term2Grades') {
           scores.push(grades.projectGrade);
       }
       const validScores = scores.filter(g => g !== undefined && g !== null && g !== -1) as number[];
