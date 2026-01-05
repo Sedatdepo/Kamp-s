@@ -1391,3 +1391,70 @@ export function exportProjectToRtf(project: any) {
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
+
+// --- TERM GRADES EXPORT ---
+interface ExportTermGradesArgs {
+    students: Student[];
+    term: 1 | 2;
+    currentClass: Class;
+    teacherProfile: TeacherProfile;
+    perfCriteria: Criterion[];
+    projCriteria: Criterion[];
+}
+
+export function exportTermGradesToRtf({ students, term, currentClass, teacherProfile, perfCriteria, projCriteria }: ExportTermGradesArgs) {
+    const reportTitle = `${term}. DÖNEM NOT ÇİZELGESİ`;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${term}. Dönem Notları`;
+    const termKey = term === 1 ? 'term1Grades' : 'term2Grades';
+
+    const calculateAverage = (grades: GradingScores, hasProject?: boolean) => {
+        const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
+        if (term === 2 && hasProject) {
+            scores.push(grades.projectGrade);
+        }
+        const validScores = scores.filter(g => g !== undefined && g !== null && g !== -1) as number[];
+        if (validScores.length === 0) return 0;
+        return validScores.reduce((a, b) => a + b, 0) / validScores.length;
+    };
+    
+    const sortedStudents = [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+
+    const tableHeader = `
+        <tr>
+            <th>S.No</th>
+            <th>Okul No</th>
+            <th>Adı Soyadı</th>
+            <th>1. Sınav</th>
+            <th>2. Sınav</th>
+            <th>1. Performans</th>
+            <th>2. Performans</th>
+            ${term === 2 ? '<th>Proje</th>' : ''}
+            <th>Ortalama</th>
+        </tr>
+    `;
+
+    const dataRows = sortedStudents.map((s, index) => {
+        const grades = s[termKey] || {};
+        const average = calculateAverage(grades, s.hasProject);
+        const displayGrade = (grade: number | undefined | null) => (grade === -1 ? 'G' : grade ?? '');
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
+                <td>${s.name}</td>
+                <td class="center">${displayGrade(grades.exam1)}</td>
+                <td class="center">${displayGrade(grades.exam2)}</td>
+                <td class="center">${displayGrade(grades.perf1)}</td>
+                <td class="center">${displayGrade(grades.perf2)}</td>
+                ${term === 2 ? `<td class="center">${s.hasProject ? displayGrade(grades.projectGrade) : 'N/A'}</td>` : ''}
+                <td class="center bold">${average.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}

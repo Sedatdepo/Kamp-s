@@ -16,9 +16,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
+import { Save, FileDown, ClipboardPaste } from 'lucide-react';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
-import { ClipboardPaste } from 'lucide-react';
+import { exportTermGradesToRtf } from '@/lib/word-export';
+import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 
 
 interface GradingToolTabProps {
@@ -37,12 +38,14 @@ const TermGradingTable = ({
   students,
   termKey,
   onSave,
-  onStudentGradeChange
+  onStudentGradeChange,
+  onExport,
 }: {
   students: Student[];
   termKey: TermKey;
   onSave: () => void;
   onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
+  onExport: () => void;
 }) => {
   
   const calculateAverage = (grades: GradingScores = {}, hasProject?: boolean) => {
@@ -80,7 +83,10 @@ const TermGradingTable = ({
           <CardHeader>
               <div className="flex justify-between items-center">
                   <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
-                  <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={onExport}><FileDown className="mr-2 h-4 w-4"/> Çıktı Al</Button>
+                    <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+                  </div>
               </div>
           </CardHeader>
           <CardContent>
@@ -197,6 +203,21 @@ export function GradingToolTab({
     }
   };
 
+  const handleExport = () => {
+    if (!currentClass || !teacherProfile) {
+        toast({variant: "destructive", title: "Hata", description: "Rapor oluşturmak için gerekli bilgiler eksik."});
+        return;
+    }
+    exportTermGradesToRtf({
+        students,
+        term: activeTerm,
+        currentClass,
+        teacherProfile,
+        perfCriteria: teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA,
+        projCriteria: teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA
+    })
+  }
+
 
   return (
     <>
@@ -216,6 +237,7 @@ export function GradingToolTab({
             termKey="term1Grades"
             onSave={() => handleSaveChanges('term1Grades')}
             onStudentGradeChange={handleStudentGradeChange}
+            onExport={handleExport}
           />
         </TabsContent>
         <TabsContent value="term2">
@@ -224,6 +246,7 @@ export function GradingToolTab({
             termKey="term2Grades"
             onSave={() => handleSaveChanges('term2Grades')}
             onStudentGradeChange={handleStudentGradeChange}
+            onExport={handleExport}
           />
         </TabsContent>
       </Tabs>
