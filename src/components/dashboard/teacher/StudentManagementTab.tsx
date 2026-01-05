@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -8,6 +7,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useFirestore } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,10 +24,10 @@ import { tr } from 'date-fns/locale';
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-type TermKey = 'term1Grades' | 'term2Grades';
 type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
+type TermKey = 'term1Grades' | 'term2Grades';
 
-// --- STUDENT LIST COMPONENT ---
+// --- STUDENT LIST COMPONENT (Moved Inside) ---
 function StudentList({ students, setStudents, currentClass, teacherProfile }: { students: Student[], setStudents: React.Dispatch<React.SetStateAction<Student[]>>, currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
@@ -232,7 +232,7 @@ function StudentList({ students, setStudents, currentClass, teacherProfile }: { 
   );
 }
 
-// --- ATTENDANCE TAB COMPONENT ---
+// --- ATTENDANCE TAB COMPONENT (Moved Inside) ---
 function AttendanceTab({ students }: { students: Student[] }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -250,7 +250,7 @@ function AttendanceTab({ students }: { students: Student[] }) {
             });
         }
         setAttendanceStatus(newStatus);
-        setShowOnlyAbsentees(false);
+        setShowOnlyAbsentees(false); // Reset filter when date changes
     }, [date, students]);
 
     const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
@@ -270,8 +270,10 @@ function AttendanceTab({ students }: { students: Student[] }) {
             const newStatus = attendanceStatus[student.id];
             const existingAttendance = student.attendance || [];
             
+            // Remove any existing record for this date
             const updatedAttendance = existingAttendance.filter(a => a.date !== dateString);
             
+            // Add the new status if it's not 'present'
             if (newStatus && newStatus !== 'present') {
                 updatedAttendance.push({ date: dateString, status: newStatus as 'absent' | 'late' | 'excused' });
             }
@@ -343,8 +345,7 @@ function AttendanceTab({ students }: { students: Student[] }) {
     );
 }
 
-
-// --- DUTY ROSTER TAB COMPONENT ---
+// --- DUTY ROSTER TAB COMPONENT (Moved Inside) ---
 function DutyRosterTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -395,7 +396,7 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     );
 }
 
-// --- SEATING PLAN TAB COMPONENT ---
+// --- SEATING PLAN TAB COMPONENT (Moved Inside) ---
 function SeatingPlanTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -427,102 +428,95 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
     );
 }
 
-// --- GRADING TAB COMPONENT ---
+// --- GRADING TAB COMPONENT (Moved Inside) ---
 const TermGradingTable = ({
   students,
   termKey,
   onSave,
   onStudentGradeChange,
-  isSecondTerm,
 }: {
   students: Student[];
   termKey: TermKey;
   onSave: () => void;
   onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
-  isSecondTerm: boolean;
 }) => {
-  const calculateAverage = (student: Student, termKey: TermKey) => {
-    const grades = student[termKey] || {};
-    const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
-    if (isSecondTerm && student.hasProject) {
-        scores.push(grades.projectGrade);
-    }
-    const validScores = scores.filter(g => g !== undefined && g !== null) as number[];
-    if (validScores.length === 0) return 0;
-    return validScores.reduce((a, b) => a + b, 0) / validScores.length;
+  const calculateAverage = (grades: GradingScores = {}) => {
+    const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2, grades.projectGrade].filter(g => g !== undefined && g !== null) as number[];
+    if (scores.length === 0) return 0;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
   };
-
+  
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
   }, [students]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
-          <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>No</TableHead>
-              <TableHead>Öğrenci</TableHead>
-              <TableHead className="text-center">1. Sınav</TableHead>
-              <TableHead className="text-center">2. Sınav</TableHead>
-              <TableHead className="text-center">1. Performans</TableHead>
-              <TableHead className="text-center">2. Performans</TableHead>
-              {isSecondTerm && <TableHead className="text-center">Proje</TableHead>}
-              <TableHead className="text-center">Ortalama</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedStudents.map(student => {
-              const grades: any = student[termKey] || {};
-              const average = calculateAverage(student, termKey);
-              return (
-                <TableRow key={student.id}>
-                  <TableCell>{student.number}</TableCell>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
-                    <TableCell key={field}>
-                      <Input
-                        type="number"
-                        className="w-20 mx-auto text-center h-8"
-                        value={grades[field] ?? ''}
-                        onChange={e => onStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
-                      />
-                    </TableCell>
-                  ))}
-                  {isSecondTerm && (
-                    <TableCell>
-                      <Input
-                        type="number"
-                        className="w-20 mx-auto text-center h-8"
-                        value={grades.projectGrade ?? ''}
-                        disabled={!student.hasProject}
-                        onChange={e => onStudentGradeChange(student.id, 'projectGrade', e.target.value === '' ? null : Number(e.target.value))}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-};
+      <Card>
+          <CardHeader>
+              <div className="flex justify-between items-center">
+                  <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
+                  <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Notları Kaydet</Button>
+              </div>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>No</TableHead>
+                          <TableHead>Öğrenci</TableHead>
+                          <TableHead className="text-center">1. Sınav</TableHead>
+                          <TableHead className="text-center">2. Sınav</TableHead>
+                          <TableHead className="text-center">1. Performans</TableHead>
+                          <TableHead className="text-center">2. Performans</TableHead>
+                          {termKey === 'term2Grades' && <TableHead className="text-center">Proje</TableHead>}
+                          <TableHead className="text-center">Ortalama</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {sortedStudents.map(student => {
+                          const grades: any = student[termKey] || {};
+                          const average = calculateAverage(grades);
+                          return (
+                              <TableRow key={student.id}>
+                                  <TableCell>{student.number}</TableCell>
+                                  <TableCell className="font-medium">{student.name}</TableCell>
+                                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
+                                       <TableCell key={field}>
+                                          <Input
+                                              type="number"
+                                              className="w-20 mx-auto text-center h-8"
+                                              value={grades[field] ?? ''}
+                                              onChange={e => onStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
+                                          />
+                                      </TableCell>
+                                  ))}
+                                  {termKey === 'term2Grades' && (
+                                     <TableCell>
+                                         <Input
+                                            type="number"
+                                            className="w-20 mx-auto text-center h-8"
+                                            value={grades.projectGrade ?? ''}
+                                            disabled={!student.hasProject}
+                                            onChange={e => onStudentGradeChange(student.id, 'projectGrade', e.target.value === '' ? null : Number(e.target.value))}
+                                         />
+                                     </TableCell>
+                                  )}
+                                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
+                              </TableRow>
+                          )
+                      })}
+                  </TableBody>
+              </Table>
+          </CardContent>
+      </Card>
+  )
+}
 
 function GradingTab({ students: initialStudents }: { students: Student[] }) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [students, setStudents] = useState<Student[]>(initialStudents);
-    const [activeTab, setActiveTab] = useState<TermKey>('term1Grades');
+    const [activeTerm, setActiveTerm] = useState<TermKey>('term1Grades');
 
     useEffect(() => {
         setStudents(initialStudents);
@@ -532,7 +526,7 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
         setStudents(prevStudents =>
             prevStudents.map(student => {
                 if (student.id === studentId) {
-                    const updatedGrades = { ...(student[activeTab] || {}) };
+                    const updatedGrades = { ...(student[activeTerm] || {}) };
                     if (value === null) {
                         // @ts-ignore
                         delete updatedGrades[field];
@@ -540,7 +534,7 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
                         // @ts-ignore
                         updatedGrades[field] = value;
                     }
-                    return { ...student, [activeTab]: updatedGrades };
+                    return { ...student, [activeTerm]: updatedGrades };
                 }
                 return student;
             })
@@ -552,13 +546,13 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
         const batch = writeBatch(db);
         students.forEach(student => {
             const studentRef = doc(db, 'students', student.id);
-            const termGrades = student[activeTab] || {};
-            batch.update(studentRef, { [activeTab]: termGrades });
+            const termGrades = student[activeTerm] || {};
+            batch.update(studentRef, { [activeTerm]: termGrades });
         });
         
         try {
             await batch.commit();
-            toast({ title: "Başarılı!", description: `${activeTab === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
+            toast({ title: "Başarılı!", description: `${activeTerm === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
         } catch (e) {
             toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
             console.error(e);
@@ -566,16 +560,16 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
     };
 
     return (
-        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTab(val as TermKey)}>
+        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTab(val === 'term1' ? 'term1Grades' : 'term2Grades')}>
             <TabsList>
-                <TabsTrigger value="term1Grades">1. Dönem</TabsTrigger>
-                <TabsTrigger value="term2Grades">2. Dönem</TabsTrigger>
+                <TabsTrigger value="term1">1. Dönem</TabsTrigger>
+                <TabsTrigger value="term2">2. Dönem</TabsTrigger>
             </TabsList>
-            <TabsContent value="term1Grades" className="mt-4">
-                <TermGradingTable students={students} termKey="term1Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} isSecondTerm={false} />
+            <TabsContent value="term1" className="mt-4">
+                <TermGradingTable students={students} termKey="term1Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
             </TabsContent>
-            <TabsContent value="term2Grades" className="mt-4">
-                <TermGradingTable students={students} termKey="term2Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} isSecondTerm={true} />
+            <TabsContent value="term2" className="mt-4">
+                <TermGradingTable students={students} termKey="term2Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} />
             </TabsContent>
         </Tabs>
     )
