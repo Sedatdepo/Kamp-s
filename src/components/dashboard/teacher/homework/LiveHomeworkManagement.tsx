@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -166,7 +167,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             setEditingHomework(null);
         } catch (error) {
             console.error("Homework error:", error);
-            toast({ variant: "destructive", title: "Hata", description: "İşlem sırasında bir sorun oluştu." });
+            toast({ variant: "destructive", title: "İşlem sırasında bir sorun oluştu." });
         }
     };
 
