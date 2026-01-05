@@ -382,13 +382,7 @@ export interface HomeworkDocument extends Archivable {
 }
 
 // Yeni eklenen DisciplineRecord tipi
-export interface DisciplineRecord {
-    id: string;
-    name: string;
-    date: string;
-    currentPhase: number;
-    formData: any;
-    classId: string;
+export interface DisciplineRecord extends Archivable {
     studentName?: string; // Add studentName for easy access
 }
 
