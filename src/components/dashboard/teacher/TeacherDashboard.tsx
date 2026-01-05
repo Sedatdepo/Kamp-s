@@ -341,7 +341,7 @@ const TABS_CONFIG = {
   "dashboard": { label: "Panel", icon: School },
   "students": { label: "Öğrenci Yönetimi", icon: Users },
   "grading": { label: "Değerlendirme Aracı", icon: Gauge },
-  "planning": { label: "Planlama Araçları", icon: ClipboardList },
+  "planning": { label: "Yıllık Plan", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
   "projects": { label: "Proje Dağıtımı", icon: BookText },
   "homework": { label: "Ödev Takibi", icon: BookText },
@@ -551,7 +551,7 @@ export function TeacherDashboard() {
                     <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
                 </Button>
               </div>
-              <KazanımlarTab />
+              <KazanımlarTab setActiveTab={setActiveTab} />
             </div>
         );
     }
@@ -618,7 +618,7 @@ export function TeacherDashboard() {
                 tabContent = <SokTab />;
                 break;
             case 'kazanimlar':
-                tabContent = <KazanımlarTab />;
+                tabContent = <KazanımlarTab setActiveTab={setActiveTab} />;
                 break;
             default:
                 tabContent = null;
@@ -696,7 +696,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
+                <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık ve günlük planlar oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
                 <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
@@ -705,6 +705,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
+                 <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
             {teacherProfile && (
                 <ProfileDialog
@@ -723,7 +724,3 @@ export function TeacherDashboard() {
           <Header />
           <main className="flex-1 p-4 sm:p-6">
             {renderContent()}
-          </main>
-      </div>
-  );
-}

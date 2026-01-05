@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, Search, BookOpen, Clock, Filter, FileSignature } from 'lucide-react';
 import { useDatabase } from '@/hooks/use-database';
-import { AnnualPlanEntry, AnnualPlan } from '@/lib/types';
+import { AnnualPlan, AnnualPlanEntry } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 // --- VERİ SETLERİ ---
@@ -116,14 +116,64 @@ const plan10 = [
   { month: "HAZİRAN", monthId: "haziran", week: "38. Hafta", dates: "22-26 Haziran", hours: 0, unit: "SOSYAL ETKİNLİK", topic: "Sosyal Etkinlik", unitType: "sosyal" }
 ];
 
-export default function KazanımlarTab() {
+export default function KazanımlarTab({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   const [activeGrade, setActiveGrade] = useState(9);
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeMonth, setActiveMonth] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const { db, setDb } = useDatabase();
+  const { toast } = useToast();
+
+  const handleConvertToDailyPlan = (weekData: any) => {
+    // Find the default annual plan or create one if it doesn't exist
+    let plan = db.annualPlans.find(p => p.id === 1); // Assuming a default plan with id=1
+    if (!plan) {
+      plan = {
+        id: 1,
+        title: 'Varsayılan Yıllık Plan',
+        rows: [],
+        dailyPlanSettings: { okul: '', mudur: '', ogretmen: '', ders: '' }
+      };
+      setDb(prev => ({ ...prev, annualPlans: [...prev.annualPlans, plan as AnnualPlan] }));
+    }
+
+    // Create a new row for the annual plan
+    const newRow: AnnualPlanEntry = {
+      id: `kazanim-${Date.now()}`,
+      hafta: weekData.dates,
+      saat: weekData.hours.toString(),
+      unite: weekData.unit,
+      konu: weekData.topic,
+      cikti: weekData.learningOutcome,
+      yontem: 'Anlatım, Soru-Cevap',
+      arac: 'Ders Kitabı, Akıllı Tahta',
+      degerlendirme: 'Sözlü Değerlendirme',
+      isDone: false,
+      isSpecial: false,
+      dailyPlan: null,
+    };
+    
+    const updatedPlan = { ...plan, rows: [...plan.rows, newRow] };
+    setDb(prev => ({
+        ...prev,
+        annualPlans: prev.annualPlans.map(p => p.id === plan!.id ? updatedPlan : p)
+    }));
+
+    toast({
+        title: "Günlük Plana Aktarıldı",
+        description: `'${weekData.topic}' konusu Yıllık Plan'a eklendi.`
+    });
+
+    // Navigate to the planning tab
+    setActiveTab('planning');
+    
+    // We can't directly open the modal, but we can set a flag to do so
+    // This part requires communication between components, which is complex here.
+    // For now, we just navigate.
+  };
 
   // Sınıf bazlı filtre konfigürasyonu
-  const gradeConfig = {
+  const gradeConfig: any = {
     9: {
       data: plan9,
       filters: [
@@ -150,17 +200,16 @@ export default function KazanımlarTab() {
   const filteredWeeks = useMemo(() => {
     const currentData = gradeConfig[activeGrade].data;
     
-    return currentData.filter(week => {
+    return currentData.filter((week: any) => {
       // 1. Ay Filtresi
       if (activeMonth !== 'all' && week.monthId !== activeMonth) return false;
       
       // 2. Konu Filtresi
-      if (activeFilter !== 'all' && week.unitType !== activeFilter) {
-          // Tatilleri ve özel planlamaları her zaman göster
-          if (week.unitType !== 'break' && week.unitType !== 'okul-temelli' && week.unitType !== 'sosyal') {
-              return false;
-          }
-      }
+      if (activeFilter !== 'all' 
+          && week.unitType !== activeFilter 
+          && week.unitType !== 'break' 
+          && week.unitType !== 'okul-temelli' 
+          && week.unitType !== 'sosyal') return false;
 
       // 3. Arama Filtresi
       if (searchTerm) {
@@ -180,7 +229,7 @@ export default function KazanımlarTab() {
   }, [activeGrade, activeFilter, activeMonth, searchTerm, gradeConfig]);
 
   // Yardımcı fonksiyon: Ünite tipine göre renk döndür
-  const getAccentColor = (unitType) => {
+  const getAccentColor = (unitType: any) => {
     switch(unitType) {
       case 'fizik-bilimi': return 'border-amber-500';
       case 'kuvvet-hareket': return 'border-red-500';
@@ -195,7 +244,7 @@ export default function KazanımlarTab() {
     }
   };
 
-  const getBadgeColor = (unitType) => {
+  const getBadgeColor = (unitType: any) => {
     switch(unitType) {
       case 'fizik-bilimi': return 'bg-amber-500';
       case 'kuvvet-hareket': return 'bg-red-500';
@@ -209,7 +258,7 @@ export default function KazanımlarTab() {
     }
   };
 
-  const getBackgroundColor = (unitType, isBreak) => {
+  const getBackgroundColor = (unitType: any, isBreak: any) => {
     if (isBreak) return 'bg-yellow-50';
     if (unitType === 'okul-temelli') return 'bg-violet-50';
     if (unitType === 'sosyal') return 'bg-pink-50';
@@ -256,7 +305,7 @@ export default function KazanımlarTab() {
             
             {/* Dynamic Filters */}
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
-              {gradeConfig[activeGrade].filters.map((filter) => (
+              {gradeConfig[activeGrade].filters.map((filter: any) => (
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
@@ -315,7 +364,7 @@ export default function KazanımlarTab() {
         {/* Content List */}
         <div className="space-y-6">
           {filteredWeeks.length > 0 ? (
-            filteredWeeks.map((week, index) => (
+            filteredWeeks.map((week: any, index) => (
               <div 
                 key={index}
                 className={`relative rounded-xl p-6 shadow-sm border border-slate-200 transition-transform hover:-translate-y-1 hover:shadow-md border-l-4 ${getAccentColor(week.unitType)} ${getBackgroundColor(week.unitType, week.isBreak)}`}
@@ -385,10 +434,7 @@ export default function KazanımlarTab() {
                   {!week.isBreak && week.hours > 0 && (
                     <div className="pt-4 border-t border-slate-100 flex justify-end">
                         <button
-                            onClick={() => {
-                                // Placeholder for future functionality
-                                console.log("Dönüştürülecek hafta:", week);
-                            }}
+                            onClick={() => handleConvertToDailyPlan(week)}
                             className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
                         >
                             <FileSignature size={14} />
