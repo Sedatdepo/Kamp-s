@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Calendar as CalendarIcon, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, Upload, QrCode, Shuffle } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -262,24 +263,61 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
 
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1"><Card><CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader><CardContent><Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} /></CardContent></Card></div>
+            <div className="md:col-span-1">
+                <Card>
+                    <CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader>
+                    <CardContent>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                                locale={tr}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </CardContent>
+                </Card>
+            </div>
             <div className="md:col-span-2"><Card><CardHeader><CardTitle>Öğrenci Yoklama Listesi</CardTitle><CardDescription>{date ? format(date, 'dd MMMM yyyy, cccc', { locale: tr }) : 'Tarih seçin'}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Öğrenci Adı</TableHead><TableHead>Durum</TableHead></TableRow></TableHeader><TableBody>{students.map(student => (<TableRow key={student.id}><TableCell>{student.name}</TableCell><TableCell><RadioGroup defaultValue="present" value={date ? getStudentStatusForDate(student, date) : 'present'} onValueChange={(status) => handleStatusChange(student.id, status as any)} className="flex gap-4" disabled={!date}><Label className="flex items-center gap-2 cursor-pointer text-green-600"><RadioGroupItem value="present" />Geldi</Label><Label className="flex items-center gap-2 cursor-pointer text-red-600"><RadioGroupItem value="absent" />Gelmedi</Label><Label className="flex items-center gap-2 cursor-pointer text-orange-600"><RadioGroupItem value="late" />Geç</Label><Label className="flex items-center gap-2 cursor-pointer text-blue-600"><RadioGroupItem value="excused" />İzinli</Label></RadioGroup></TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div>
         </div>
     );
 }
 
 // --- DUTY ROSTER TAB COMPONENT ---
-function DutyRosterTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
-    const { db } = useAuth();
+export function DutyRosterTab({ students: initialStudents, currentClass, teacherProfile, db }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null, db: any }) {
     const { toast } = useToast();
-    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [students, setStudents] = useState(initialStudents);
     const [startDate, setStartDate] = useState<Date | undefined>(new Date());
     const [numberOfWeeks, setNumberOfWeeks] = useState(4);
     const [studentsPerDuty, setStudentsPerDuty] = useState(2);
+    
+    useEffect(() => {
+        setStudents(initialStudents);
+    }, [initialStudents]);
+
+    const handleShuffle = () => {
+        setStudents(prev => [...prev].sort(() => Math.random() - 0.5));
+        toast({ title: "Liste Karıştırıldı", description: "Öğrenci listesi nöbet için rastgele sıralandı." });
+    };
 
     const handleGenerateRoster = async () => {
-        if (!db || !currentClass || !startDate || selectedStudents.length === 0) {
-            toast({ variant: 'destructive', title: 'Eksik Bilgi', description: 'Lütfen başlangıç tarihi ve en az bir öğrenci seçin.' });
+        if (!db || !currentClass || !startDate || students.length === 0) {
+            toast({ variant: 'destructive', title: 'Eksik Bilgi', description: 'Lütfen başlangıç tarihi ve öğrenci listesi olduğundan emin olun.' });
             return;
         }
         const roster: RosterItem[] = [];
@@ -290,9 +328,8 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
             const dutyStudents: Student[] = [];
             const dutyStudentIds: string[] = [];
             for (let j = 0; j < studentsPerDuty; j++) {
-                const studentId = selectedStudents[studentIndex % selectedStudents.length];
-                const student = students.find(s => s.id === studentId);
-                if (student) { dutyStudents.push(student); dutyStudentIds.push(studentId); }
+                const student = students[studentIndex % students.length];
+                if (student) { dutyStudents.push(student); dutyStudentIds.push(student.id); }
                 studentIndex++;
             }
             roster.push({ date: format(currentDate, 'dd.MM.yyyy'), day: format(currentDate, 'cccc', { locale: tr }), student: dutyStudents.map(s => s.name).join(' - '), studentIds: dutyStudentIds });
@@ -306,49 +343,55 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     };
 
     if (!currentClass) return <p>Sınıf bilgisi yüklenemedi.</p>;
+
     return (
         <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-1 space-y-6">
                 <Card>
                     <CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
+                         <div className="space-y-2">
                             <Label>Başlangıç Tarihi</Label>
-                             <Popover>
+                            <Popover>
                                 <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !startDate && "text-muted-foreground"
-                                    )}
-                                >
+                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!startDate && "text-muted-foreground")}>
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {startDate ? format(startDate, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={startDate}
-                                    onSelect={setStartDate}
-                                    initialFocus
-                                    locale={tr}
-                                />
+                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={tr} />
                                 </PopoverContent>
                             </Popover>
                         </div>
                         <div className="space-y-2"><Label>Hafta Sayısı</Label><Input type="number" value={numberOfWeeks} onChange={e => setNumberOfWeeks(Number(e.target.value))} /></div>
                         <div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div>
+                        <div className="flex gap-2 pt-4 border-t">
+                            <Button onClick={handleShuffle} variant="outline" className="w-full"><Shuffle className="mr-2 h-4 w-4"/>Listeyi Karıştır</Button>
+                            <Button onClick={handleGenerateRoster} className="w-full">Oluştur</Button>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader><CardTitle>Öğrenci Seçimi</CardTitle></CardHeader>
-                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">{students.map(s => (<div key={s.id} className="flex items-center gap-2"><Checkbox id={`roster-${s.id}`} checked={selectedStudents.includes(s.id)} onCheckedChange={(checked) => { setSelectedStudents(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id)); }} /><Label htmlFor={`roster-${s.id}`}>{s.name}</Label></div>))}</CardContent>
+                    <CardHeader><CardTitle>Nöbetçi Öğrenci Sırası</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                        <ol className="list-decimal list-inside">
+                           {students.map(s => (<li key={s.id} className="text-sm p-1">{s.name}</li>))}
+                        </ol>
+                    </CardContent>
                 </Card>
-                <Button onClick={handleGenerateRoster}>Nöbet Listesini Oluştur</Button>
             </div>
-            <div className="md:col-span-2"><Card><CardHeader><CardTitle>Nöbet Listesi Önizlemesi</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Gün</TableHead><TableHead>Nöbetçi Öğrenciler</TableHead></TableRow></TableHeader><TableBody>{(currentClass.dutyRoster || []).map((item, idx) => (<TableRow key={idx}><TableCell>{item.date}</TableCell><TableCell>{item.day}</TableCell><TableCell>{item.student}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div>
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader><CardTitle>Nöbet Listesi Önizlemesi</CardTitle></CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Gün</TableHead><TableHead>Nöbetçi Öğrenciler</TableHead></TableRow></TableHeader>
+                            <TableBody>{(currentClass.dutyRoster || []).map((item, idx) => (<TableRow key={idx}><TableCell>{item.date}</TableCell><TableCell>{item.day}</TableCell><TableCell>{item.student}</TableCell></TableRow>))}</TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
@@ -383,40 +426,4 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
             <div className="md:col-span-2"><Card><CardHeader><CardTitle>Sınıf Oturma Planı</CardTitle></CardHeader><CardContent className="flex flex-col"><div className="w-full bg-slate-800 text-white text-center py-3 rounded-lg mb-8 shadow-md"><span className="font-bold tracking-widest text-lg">TAHTA</span></div><div className="flex-1 flex justify-center items-start overflow-x-auto p-4"><div className="grid gap-4 mx-auto" style={{ gridTemplateColumns: `repeat(${colCount}, minmax(160px, 1fr))`, gridTemplateRows: `repeat(${rowCount}, 1fr)` }}>{Array.from({ length: rowCount }).map((_, r) => Array.from({ length: colCount }).map((_, c) => (<div key={`${r}-${c}`} className="relative bg-amber-100/70 rounded-lg border-2 border-amber-200 p-1 flex gap-1 shadow-inner aspect-[2/1]">{[0, 1].map((side) => { const key = `${r}-${c}-${side}`; const selectedStudentId = seatingPlan[key]; return (<div key={key} className="flex-1"><Select value={selectedStudentId || "empty"} onValueChange={(studentId) => handleSeatChange(key, studentId)}><SelectTrigger className="h-full bg-background border-primary/20 shadow-sm text-xs p-1"><SelectValue placeholder="Boş" /></SelectTrigger><SelectContent><SelectItem value="empty">Boş</SelectItem>{students.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}</SelectContent></Select></div>); })}</div>)))}</div></div></CardContent></Card></div>
         </div>
     );
-}
-
-
-// --- MAIN MANAGEMENT TAB COMPONENT ---
-interface StudentManagementTabProps {
-  students: Student[];
-  currentClass: Class | null;
-  teacherProfile: TeacherProfile | null;
-}
-
-export function StudentManagementTab({ students, currentClass, teacherProfile }: StudentManagementTabProps) {
-  return (
-    <Tabs defaultValue="student-list">
-      <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="student-list"><Users className="mr-2 h-4 w-4" />Öğrenci Listesi</TabsTrigger>
-          <TabsTrigger value="attendance"><CalendarIcon className="mr-2 h-4 w-4" />Yoklama</TabsTrigger>
-          <TabsTrigger value="duty-roster"><ClipboardList className="mr-2 h-4 w-4" />Nöbet Listesi</TabsTrigger>
-          <TabsTrigger value="seating-plan"><Grid className="mr-2 h-4 w-4" />Oturma Planı</TabsTrigger>
-        </TabsList>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-      <TabsContent value="student-list" className="mt-4">
-        {currentClass && <StudentList classId={currentClass.id} students={students} currentClass={currentClass} teacherProfile={teacherProfile} />}
-      </TabsContent>
-      <TabsContent value="attendance" className="mt-4">
-        <AttendanceTab students={students} currentClass={currentClass} />
-      </TabsContent>
-      <TabsContent value="duty-roster" className="mt-4">
-        <DutyRosterTab students={students} currentClass={currentClass} />
-      </TabsContent>
-      <TabsContent value="seating-plan" className="mt-4">
-        <SeatingPlanTab students={students} currentClass={currentClass} />
-      </TabsContent>
-    </Tabs>
-  );
 }
