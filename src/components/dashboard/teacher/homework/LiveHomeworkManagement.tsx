@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Calendar, Users, Clock, Loader2, FileText } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -29,7 +28,7 @@ import { exportHomeworkStatusToRtf } from '@/lib/word-export';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarPicker } from "@/components/ui/calendar"
+import { Calendar } from "@/components/ui/calendar"
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '../RecordManager';
 import { cn } from '@/lib/utils';
@@ -101,7 +100,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     }, [liveHomeworks, homeworksLoading, db, classId]);
     
     const handleSaveToArchive = async () => {
-        if (!currentClass) return;
+        if (!currentClass || !liveHomeworks) return;
         const allSubmissions: Submission[] = Object.values(submissions).flat();
 
         const newRecord: HomeworkDocument = {
@@ -235,12 +234,12 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                     !dueDate && "text-muted-foreground"
                                 )}
                             >
-                                <Calendar className="mr-2 h-4 w-4" />
+                                <CalendarIcon className="mr-2 h-4 w-4" />
                                 {dueDate ? format(dueDate, "PPP", { locale: tr }) : <span>Son teslim tarihi seçin</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                            <CalendarPicker
+                            <Calendar
                                 mode="single"
                                 selected={dueDate}
                                 onSelect={setDueDate}
