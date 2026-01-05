@@ -355,6 +355,7 @@ const TABS_CONFIG = {
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
 } as const;
 
+
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");

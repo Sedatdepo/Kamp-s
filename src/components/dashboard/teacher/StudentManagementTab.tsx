@@ -29,7 +29,7 @@ type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 type TermKey = 'term1Grades' | 'term2Grades';
 
 // --- STUDENT LIST COMPONENT (Moved Inside) ---
-function StudentList({ students, setStudents, currentClass, teacherProfile }: { students: Student[], setStudents: React.Dispatch<React.SetStateAction<Student[]>>, currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
+function StudentList({ students, onStudentsChange, currentClass, teacherProfile }: { students: Student[], onStudentsChange: (students: Student[]) => void, currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
   const [newStudentName, setNewStudentName] = useState('');
@@ -60,7 +60,7 @@ function StudentList({ students, setStudents, currentClass, teacherProfile }: { 
         hasProject: false,
       };
       const docRef = await addDoc(collection(db, 'students'), newStudentData);
-      setStudents(prev => [...prev, {id: docRef.id, ...newStudentData}]);
+      onStudentsChange([...students, {id: docRef.id, ...newStudentData}]);
       toast({ title: 'Öğrenci eklendi!' });
       setNewStudentName('');
       setNewStudentNumber('');
@@ -78,7 +78,7 @@ function StudentList({ students, setStudents, currentClass, teacherProfile }: { 
         number: editingStudent.number,
         hasProject: editingStudent.hasProject,
       });
-      setStudents(prev => prev.map(s => s.id === editingStudent.id ? editingStudent : s));
+      onStudentsChange(students.map(s => s.id === editingStudent.id ? editingStudent : s));
       toast({ title: 'Öğrenci güncellendi.' });
       setEditingStudent(null);
     } catch (error) {
@@ -91,7 +91,7 @@ function StudentList({ students, setStudents, currentClass, teacherProfile }: { 
     if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
         try {
             await deleteDoc(doc(db, 'students', studentId));
-            setStudents(prev => prev.filter(s => s.id !== studentId));
+            onStudentsChange(students.filter(s => s.id !== studentId));
             toast({ title: 'Öğrenci silindi.', variant: 'destructive' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci silinemedi.' });
@@ -127,7 +127,7 @@ function StudentList({ students, setStudents, currentClass, teacherProfile }: { 
             });
             
             await batch.commit();
-            setStudents(prev => [...prev, ...newStudentsForState]);
+            onStudentsChange([...students, ...newStudentsForState]);
             toast({ title: `${studentsToAdd.length} öğrenci başarıyla eklendi!` });
 
         } catch (error) {
@@ -607,9 +607,9 @@ export function StudentManagementTab({ students: initialStudents, currentClass, 
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <TabsContent value="student-list" className="mt-4">
-        <StudentList students={students} setStudents={setStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
+        <StudentList students={students} onStudentsChange={setStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
-       <TabsContent value="grading" className="mt-4">
+      <TabsContent value="grading" className="mt-4">
         <GradingTab students={students} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
