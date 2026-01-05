@@ -28,8 +28,8 @@ interface GradingToolTabProps {
   currentClass?: Class | null;
 }
 
-type TermKey = 'term1Grades' | 'term2Grades';
-type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2';
+export type TermKey = 'term1Grades' | 'term2Grades';
+export type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 
 
 // --- DÖNEM NOT TABLOSU BİLEŞENİ ---
@@ -45,15 +45,35 @@ const TermGradingTable = ({
   onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
 }) => {
   
-  const calculateAverage = (grades: GradingScores = {}) => {
-      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2].filter(g => g !== undefined && g !== null) as number[];
-      if (scores.length === 0) return 0;
-      return scores.reduce((a, b) => a + b, 0) / scores.length;
+  const calculateAverage = (grades: GradingScores = {}, hasProject?: boolean) => {
+      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
+      if (hasProject) {
+          scores.push(grades.projectGrade);
+      }
+      const validScores = scores.filter(g => g !== undefined && g !== null && g !== -1) as number[];
+      if (validScores.length === 0) return 0;
+      return validScores.reduce((a, b) => a + b, 0) / validScores.length;
   };
   
   const sortedStudents = useMemo(() => {
     return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
   }, [students]);
+
+  const displayGrade = (grade: number | undefined | null) => {
+    if (grade === -1) return 'G';
+    return grade ?? '';
+  };
+
+  const handleInputChange = (studentId: string, field: GradeField, value: string) => {
+    if (value.toUpperCase() === 'G') {
+        onStudentGradeChange(studentId, field, -1);
+    } else {
+        const numValue = value === '' ? null : Number(value);
+        if(numValue === null || !isNaN(numValue)) {
+            onStudentGradeChange(studentId, field, numValue);
+        }
+    }
+  };
 
   return (
       <Card>
@@ -73,13 +93,14 @@ const TermGradingTable = ({
                           <TableHead className="text-center">2. Sınav</TableHead>
                           <TableHead className="text-center">1. Performans</TableHead>
                           <TableHead className="text-center">2. Performans</TableHead>
+                          {termKey === 'term2Grades' && <TableHead className="text-center">Proje</TableHead>}
                           <TableHead className="text-center">Ortalama</TableHead>
                       </TableRow>
                   </TableHeader>
                   <TableBody>
                       {sortedStudents.map(student => {
                           const grades: any = student[termKey] || {};
-                          const average = calculateAverage(grades);
+                          const average = calculateAverage(grades, student.hasProject);
                           return (
                               <TableRow key={student.id}>
                                   <TableCell>{student.number}</TableCell>
@@ -87,13 +108,24 @@ const TermGradingTable = ({
                                   {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
                                        <TableCell key={field}>
                                           <Input
-                                              type="number"
+                                              type="text" // Change to text to allow 'G'
                                               className="w-20 mx-auto text-center h-8"
-                                              value={grades[field] ?? ''}
-                                              onChange={e => onStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
+                                              value={displayGrade(grades[field])}
+                                              onChange={e => handleInputChange(student.id, field, e.target.value)}
                                           />
                                       </TableCell>
                                   ))}
+                                  {termKey === 'term2Grades' && (
+                                     <TableCell>
+                                         <Input
+                                            type="text" // Change to text
+                                            className="w-20 mx-auto text-center h-8"
+                                            value={displayGrade(grades.projectGrade)}
+                                            disabled={!student.hasProject}
+                                            onChange={e => handleInputChange(student.id, 'projectGrade', e.target.value)}
+                                         />
+                                     </TableCell>
+                                  )}
                                   <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
                               </TableRow>
                           )
@@ -117,7 +149,7 @@ export function GradingToolTab({
   const { db } = useAuth();
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [isBulkGradeOpen, setIsBulkGradeOpen] = useState(false);
-  const [activeTermForBulk, setActiveTermForBulk] = useState<1 | 2>(1);
+  const [activeTerm, setActiveTerm] = useState<1 | 2>(1);
 
 
   useEffect(() => {
@@ -125,10 +157,10 @@ export function GradingToolTab({
   }, [initialStudents]);
   
   const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
+      const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
       setStudents(prevStudents => 
           prevStudents.map(student => {
               if (student.id === studentId) {
-                  const termKey = activeTermForBulk === 1 ? 'term1Grades' : 'term2Grades';
                   const updatedGrades = { ...(student[termKey] || {}) };
                   
                   if (value === null) {
@@ -168,7 +200,7 @@ export function GradingToolTab({
 
   return (
     <>
-      <Tabs defaultValue="term1" onValueChange={(val) => setActiveTermForBulk(val === 'term1' ? 1 : 2)}>
+      <Tabs defaultValue="term1" onValueChange={(val) => setActiveTerm(val === 'term1' ? 1 : 2)}>
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="term1">1. Dönem</TabsTrigger>
@@ -200,7 +232,8 @@ export function GradingToolTab({
         isOpen={isBulkGradeOpen}
         setIsOpen={setIsBulkGradeOpen}
         students={students}
-        activeTerm={activeTermForBulk}
+        activeTerm={activeTerm}
+        onBulkUpdate={setStudents}
       />
     </>
   );
