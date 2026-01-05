@@ -25,7 +25,7 @@ import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -398,7 +398,6 @@ export function TeacherDashboard() {
   }, [teacherId]);
 
   useEffect(() => {
-    // Automatically create a class if the teacher has none
     if (!classesLoading && teacherId && db && classes && classes.length === 0) {
       const createInitialClass = async () => {
         try {
@@ -424,7 +423,7 @@ export function TeacherDashboard() {
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
   const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
-  const { data: students } = useFirestore<Student[]>('students-in-class', studentsQuery);
+  const { data: students, loading: studentsLoading } = useFirestore<Student[]>('students-in-class', studentsQuery);
 
   const allStudentsForTeacherQuery = useMemo(() => {
     if (!teacherId || !db) return null;
@@ -434,10 +433,10 @@ export function TeacherDashboard() {
   }, [teacherId, db, classes]);
   const { data: allStudents } = useFirestore<Student[]>('all-students-for-count', allStudentsForTeacherQuery);
 
-  const isLoading = teacherLoading || (selectedClassId && classesLoading);
+  const isLoading = teacherLoading || classesLoading || (selectedClassId && studentsLoading);
   
   const renderContent = () => {
-    if (isLoading && selectedClassId) {
+    if (isLoading && (selectedClassId || activeTab !== 'dashboard')) {
       return (
         <div className="flex justify-center items-center h-full p-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -540,9 +539,7 @@ export function TeacherDashboard() {
             case 'students':
                 tabContent = (
                     <StudentManagementTab
-                        classId={selectedClassId} 
                         students={students || []}
-                        db={db!}
                         currentClass={currentClass}
                         teacherProfile={teacherProfile}
                     />
@@ -693,3 +690,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
