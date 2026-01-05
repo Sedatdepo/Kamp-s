@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter } from 'lucide-react';
+import { Calendar, Search, BookOpen, Clock, Filter, FileSignature } from 'lucide-react';
 
 // --- VERİ SETLERİ ---
 
@@ -95,7 +95,7 @@ const plan10 = [
   { month: "MART", monthId: "mart", week: "23. Hafta", dates: "2-6 Mart", hours: 2, unit: "ELEKTRİK", topic: "Üreteçlerin Bağlanması", learningOutcome: "FİZ.10.3.5. Üreteçlerin bağlanma türüne göre potansiyel fark çıkarımı", unitType: "elektrik" },
   { month: "MART", monthId: "mart", week: "24. Hafta", dates: "9-13 Mart", hours: 2, unit: "ELEKTRİK", topic: "Üreteçlerin Bağlanması", learningOutcome: "FİZ.10.3.5. Devamı...", unitType: "elektrik" },
   { month: "MART", monthId: "mart", week: "2. DÖNEM ARA TATİLİ", dates: "16-20 Mart", hours: 0, isBreak: true, unitType: "break" },
-  { month: "MART", monthId: "mart", week: "25. Hafta", dates: "23-27 Mart", hours: 2, unit: "ELEKTRİK", topic: "Elektrik Tehlikeleri", learningOutcome: "FİZ.10.3.6. Elektrik akımının oluşturabileceği tehlikelere karşı önlemler", unitType: "elektrik" },
+  { month: "MART", monthId: "mart", week: "25. Hafta", dates: "23-27 Mart", hours: 2, unit: "ELEKTRİK", topic: "Elektrik Tehlikeleri", learningOutcome: "FİZ.10.3.6. Elektrik akımının oluşturabileceği tehlikelere karşı alınması gereken önlemler", unitType: "elektrik" },
   { month: "MART", monthId: "mart", week: "26. Hafta", dates: "30 Mart-3 Nisan", hours: 2, unit: "ELEKTRİK", topic: "Topraklama", learningOutcome: "FİZ.10.3.7. Topraklama olayının önemini sorgulayabilme", unitType: "elektrik" },
   // NİSAN
   { month: "NİSAN", monthId: "nisan", week: "27. Hafta", dates: "6-10 Nisan", hours: 2, unit: "DALGALAR", topic: "Dalgaların Temel Kavramları", learningOutcome: "FİZ.10.4.1. Dalgaların temel kavramlarına ilişkin operasyonel tanımlama yapabilme", unitType: "dalgalar" },
@@ -115,11 +115,12 @@ const plan10 = [
 ];
 
 export default function KazanımlarTab() {
-  const [activeGrade, setActiveGrade] = useState<number>(9);
+  const [activeGrade, setActiveGrade] = useState(9);
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeMonth, setActiveMonth] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Sınıf bazlı filtre konfigürasyonu
   const gradeConfig: { [key: number]: { data: any[]; filters: any[] } } = {
     9: {
       data: plan9,
@@ -143,13 +144,23 @@ export default function KazanımlarTab() {
     }
   };
 
+  // Filtreleme Mantığı
   const filteredWeeks = useMemo(() => {
     const currentData = gradeConfig[activeGrade].data;
     
     return currentData.filter(week => {
+      // 1. Ay Filtresi
       if (activeMonth !== 'all' && week.monthId !== activeMonth) return false;
-      if (activeFilter !== 'all' && week.unitType !== activeFilter && !week.isBreak) return false;
+      
+      // 2. Konu Filtresi
+      if (activeFilter !== 'all' && week.unitType !== activeFilter) {
+          // Tatilleri ve özel planlamaları her zaman göster
+          if (week.unitType !== 'break' && week.unitType !== 'okul-temelli' && week.unitType !== 'sosyal') {
+              return false;
+          }
+      }
 
+      // 3. Arama Filtresi
       if (searchTerm) {
         const text = `
           ${week.unit || ''} 
@@ -166,6 +177,7 @@ export default function KazanımlarTab() {
     });
   }, [activeGrade, activeFilter, activeMonth, searchTerm, gradeConfig]);
 
+  // Yardımcı fonksiyon: Ünite tipine göre renk döndür
   const getAccentColor = (unitType: string) => {
     switch(unitType) {
       case 'fizik-bilimi': return 'border-amber-500';
@@ -206,6 +218,7 @@ export default function KazanımlarTab() {
     <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
         
+        {/* Header */}
         <header className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-extrabold text-indigo-950 mb-2 tracking-tight">
             Fizik Dersi Yıllık Planı
@@ -215,13 +228,14 @@ export default function KazanımlarTab() {
           </div>
         </header>
 
+        {/* Grade Switcher */}
         <div className="flex justify-center gap-4 mb-8">
           {[9, 10].map((grade) => (
             <button
               key={grade}
               onClick={() => {
                 setActiveGrade(grade);
-                setActiveFilter('all');
+                setActiveFilter('all'); // Sınıf değişince filtreyi sıfırla
               }}
               className={`px-8 py-3 rounded-xl font-bold transition-all shadow-sm border-2 ${
                 activeGrade === grade 
@@ -234,9 +248,11 @@ export default function KazanımlarTab() {
           ))}
         </div>
 
+        {/* Controls */}
         <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 sticky top-4 z-10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             
+            {/* Dynamic Filters */}
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
               {gradeConfig[activeGrade].filters.map((filter) => (
                 <button
@@ -253,6 +269,7 @@ export default function KazanımlarTab() {
               ))}
             </div>
 
+            {/* Month & Search */}
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <div className="relative">
                 <select
@@ -293,6 +310,7 @@ export default function KazanımlarTab() {
           </div>
         </div>
 
+        {/* Content List */}
         <div className="space-y-6">
           {filteredWeeks.length > 0 ? (
             filteredWeeks.map((week, index) => (
@@ -300,10 +318,12 @@ export default function KazanımlarTab() {
                 key={index}
                 className={`relative rounded-xl p-6 shadow-sm border border-slate-200 transition-transform hover:-translate-y-1 hover:shadow-md border-l-4 ${getAccentColor(week.unitType)} ${getBackgroundColor(week.unitType, week.isBreak)}`}
               >
+                {/* Month Tag */}
                 <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded mb-3 border border-slate-200">
                   {week.month}
                 </span>
 
+                {/* Header */}
                 <div className="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
                   <div>
                     <h3 className="text-xl font-bold text-slate-900">{week.week}</h3>
@@ -320,6 +340,7 @@ export default function KazanımlarTab() {
                   )}
                 </div>
 
+                {/* Body */}
                 <div className="space-y-4">
                   {(week.unit || week.topic) && (
                     <div>
@@ -359,6 +380,22 @@ export default function KazanımlarTab() {
                       {week.specialDays}
                     </div>
                   )}
+
+                   {/* Add Daily Plan Button */}
+                   {!week.isBreak && week.hours > 0 && (
+                        <div className="pt-4 border-t border-slate-100 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    // Placeholder for future functionality
+                                    console.log("Dönüştürülecek hafta:", week);
+                                }}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
+                            >
+                                <FileSignature size={14} />
+                                Günlük Plana Dönüştür
+                            </button>
+                        </div>
+                    )}
                 </div>
               </div>
             ))
