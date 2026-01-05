@@ -164,12 +164,14 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                             <TableRow key={student.id}>
                                 <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
                                 <TableCell>
-                                    <ol className="list-decimal list-inside text-xs">
-                                        {(student.projectPreferences || []).map(prefId => {
-                                            const lesson = lessons?.find(l => l.id === prefId);
-                                            return <li key={prefId}>{lesson ? lesson.name : 'Bilinmeyen Ders'}</li>
-                                        })}
-                                    </ol>
+                                    {!student.assignedLesson && (
+                                        <ol className="list-decimal list-inside text-xs">
+                                            {(student.projectPreferences || []).map(prefId => {
+                                                const lesson = lessons?.find(l => l.id === prefId);
+                                                return <li key={prefId}>{lesson ? lesson.name : 'Bilinmeyen Ders'}</li>
+                                            })}
+                                        </ol>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                      <Select 
