@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -54,12 +55,6 @@ export function ProjectDistributionTab({ classId, teacherProfile, currentClass, 
   
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
-          <Settings className="mr-2 h-4 w-4" />
-          Proje Değerlendirme Ayarları
-        </Button>
-      </div>
       <Tabs defaultValue="distribution">
         <ScrollArea className="w-full whitespace-nowrap rounded-lg">
           <TabsList className="w-full justify-start">

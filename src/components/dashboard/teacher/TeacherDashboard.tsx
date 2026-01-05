@@ -40,6 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
+import { GradingSettingsDialog } from './GradingSettingsDialog';
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok";
@@ -362,6 +363,8 @@ export function TeacherDashboard() {
   const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
+  const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
+
   const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
   const teacherProfile = teacherData ?? null;
@@ -437,6 +440,12 @@ export function TeacherDashboard() {
     if (!selectedClassId || !allStudents) return [];
     return allStudents.filter(s => s.classId === selectedClassId);
   }, [selectedClassId, allStudents]);
+
+  const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
+    if (!teacherId || !db) return;
+    const teacherRef = doc(db, 'teachers', teacherId);
+    await updateDoc(teacherRef, data);
+  };
 
 
   const isLoading = teacherLoading || classesLoading || allStudentsLoading;
@@ -672,6 +681,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                <MenuCard icon={<Scale />} title="Ölçekler" description="Değerlendirme kriterlerini yönetin." onClick={() => setGradingSettingsOpen(true)} />
                 <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
@@ -682,6 +692,14 @@ export function TeacherDashboard() {
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
             </div>
+            {teacherProfile && (
+                <GradingSettingsDialog
+                    isOpen={isGradingSettingsOpen}
+                    setIsOpen={setGradingSettingsOpen}
+                    teacherProfile={teacherProfile}
+                    updateTeacherProfile={updateTeacherProfile}
+                />
+            )}
         </div>
     );
   }
