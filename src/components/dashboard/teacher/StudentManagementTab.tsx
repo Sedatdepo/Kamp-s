@@ -6,7 +6,7 @@ import { Users, Calendar, Grid, ClipboardList, UserPlus, Trash2, Edit, Save, X, 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // --- STUDENT LIST COMPONENT ---
 function StudentList({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
@@ -222,81 +223,106 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
 
 // --- ATTENDANCE TAB COMPONENT ---
 function AttendanceTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
-    const [date, setDate] = useState<Date | undefined>(new Date());
     const { db } = useAuth();
     const { toast } = useToast();
+    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: 'present' | 'absent' | 'late' }>({});
+    const [showOnlyAbsentees, setShowOnlyAbsentees] = useState(false);
 
-    const handleStatusChange = async (studentId: string, isAbsent: boolean) => {
-        if (!date || !db) return;
-        const studentRef = doc(db, 'students', studentId);
-        const dateString = format(date, 'yyyy-MM-dd');
-        
-        const currentAttendance = students.find(s => s.id === studentId)?.attendance || [];
-        
-        let updatedAttendance = currentAttendance.filter(a => a.date !== dateString);
-        
-        if (isAbsent) {
-            updatedAttendance.push({ date: dateString, status: 'absent' });
-        } else {
-             // If unchecking, it means student is present, so we just remove the record.
+    // Update local state when date or students change
+    useEffect(() => {
+        const newStatus: { [studentId: string]: 'present' | 'absent' | 'late' } = {};
+        const dateString = date ? format(date, 'yyyy-MM-dd') : null;
+        if(dateString) {
+            students.forEach(student => {
+                const record = student.attendance?.find(a => a.date === dateString);
+                newStatus[student.id] = record?.status as 'absent' | 'late' | 'present' || 'present';
+            });
         }
+        setAttendanceStatus(newStatus);
+        setShowOnlyAbsentees(false); // Reset filter when date changes
+    }, [date, students]);
 
+    const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
+        setAttendanceStatus(prev => ({
+            ...prev,
+            [studentId]: status
+        }));
+    };
+    
+    const handleSaveAttendance = async () => {
+        if (!date || !db) return;
+        const dateString = format(date, 'yyyy-MM-dd');
+        const batch = writeBatch(db);
+
+        students.forEach(student => {
+            const studentRef = doc(db, 'students', student.id);
+            const newStatus = attendanceStatus[student.id];
+            const existingAttendance = student.attendance || [];
+            
+            // Remove any old record for this date
+            const updatedAttendance = existingAttendance.filter(a => a.date !== dateString);
+            
+            // Add new record only if not 'present'
+            if (newStatus && newStatus !== 'present') {
+                updatedAttendance.push({ date: dateString, status: newStatus });
+            }
+
+            batch.update(studentRef, { attendance: updatedAttendance });
+        });
+        
         try {
-            await updateDoc(studentRef, { attendance: updatedAttendance });
+            await batch.commit();
             toast({ title: 'Yoklama kaydedildi.' });
-        } catch (error) {
+            setShowOnlyAbsentees(true);
+        } catch(error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Hata', description: 'Yoklama kaydedilemedi.' });
         }
     };
-    
-    const isStudentAbsent = (student: Student, selectedDate: Date): boolean => {
-        if (!student.attendance) return false;
-        const dateString = format(selectedDate, 'yyyy-MM-dd');
-        return student.attendance.some(a => a.date === dateString && a.status === 'absent');
-    };
+
+    const sortedStudents = useMemo(() => {
+        const list = [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+        if (showOnlyAbsentees) {
+            return list.filter(student => attendanceStatus[student.id] && attendanceStatus[student.id] !== 'present');
+        }
+        return list;
+    }, [students, showOnlyAbsentees, attendanceStatus]);
 
     if (!students || students.length === 0) return <Card><CardHeader><CardTitle>Yoklama</CardTitle><CardDescription>Bu sınıfta öğrenci bulunmuyor.</CardDescription></CardHeader></Card>;
 
-    const sortedStudents = [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
-
     return (
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-                <Card>
-                    <CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader>
-                    <CardContent>
-                        <CalendarPicker mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} />
-                    </CardContent>
-                </Card>
-            </div>
+            <div className="md:col-span-1"><Card><CardHeader><CardTitle>Tarih Seçimi</CardTitle></CardHeader><CardContent><CalendarPicker mode="single" selected={date} onSelect={setDate} className="rounded-md border" locale={tr} /></CardContent></Card></div>
             <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Öğrenci Yoklama Listesi</CardTitle>
-                        <CardDescription>{date ? format(date, 'dd MMMM yyyy, cccc', { locale: tr }) : 'Tarih seçin'}</CardDescription>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Öğrenci Yoklama Listesi</CardTitle>
+                                <CardDescription>{date ? format(date, 'dd MMMM yyyy, cccc', { locale: tr }) : 'Tarih seçin'}</CardDescription>
+                            </div>
+                            {showOnlyAbsentees ? (
+                                <Button variant="outline" onClick={() => setShowOnlyAbsentees(false)}>Tüm Listeyi Göster</Button>
+                            ) : (
+                                <Button onClick={handleSaveAttendance}><Save className="mr-2 h-4 w-4"/>Yoklamayı Kaydet</Button>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>No</TableHead>
-                                    <TableHead>Öğrenci Adı</TableHead>
-                                    <TableHead className="text-center">GELMEDİ</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                            <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Öğrenci Adı</TableHead><TableHead className="text-center">Durum</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {sortedStudents.map(student => (
                                     <TableRow key={student.id}>
                                         <TableCell>{student.number}</TableCell>
                                         <TableCell>{student.name}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Checkbox
-                                                checked={date ? isStudentAbsent(student, date) : false}
-                                                onCheckedChange={(checked) => handleStatusChange(student.id, !!checked)}
-                                                disabled={!date}
-                                                className="w-5 h-5"
-                                            />
+                                        <TableCell>
+                                            <RadioGroup value={attendanceStatus[student.id] || 'present'} onValueChange={(status) => handleStatusChange(student.id, status as any)} className="flex justify-center gap-4" disabled={!date}>
+                                                <Label className="flex items-center gap-1.5 cursor-pointer text-green-600"><RadioGroupItem value="present" />Geldi</Label>
+                                                <Label className="flex items-center gap-1.5 cursor-pointer text-red-600"><RadioGroupItem value="absent" />Gelmedi</Label>
+                                                <Label className="flex items-center gap-1.5 cursor-pointer text-orange-600"><RadioGroupItem value="late" />Geç</Label>
+                                            </RadioGroup>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -393,8 +419,6 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
     );
 }
 
-
-// --- MAIN MANAGEMENT TAB COMPONENT ---
 interface StudentManagementTabProps {
   students: Student[];
   currentClass: Class | null;
@@ -402,6 +426,10 @@ interface StudentManagementTabProps {
 }
 
 export function StudentManagementTab({ students, currentClass, teacherProfile }: StudentManagementTabProps) {
+  if (!currentClass) {
+    return <Card><CardHeader><CardTitle>Lütfen bir sınıf seçin.</CardTitle></CardHeader></Card>;
+  }
+
   return (
     <Tabs defaultValue="student-list">
       <ScrollArea className="w-full whitespace-nowrap rounded-lg">
@@ -414,7 +442,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <TabsContent value="student-list" className="mt-4">
-        {currentClass && <StudentList classId={currentClass.id} students={students} currentClass={currentClass} teacherProfile={teacherProfile} />}
+        <StudentList classId={currentClass.id} students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
         <AttendanceTab students={students} currentClass={currentClass} />
