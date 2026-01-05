@@ -5,15 +5,27 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Calendar, Grid, ClipboardList } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Firestore } from 'firebase/firestore';
 
 interface StudentManagementTabProps {
+  classId: string;
+  students: Student[];
+  db: Firestore;
+  currentClass: Class | null;
+  teacherProfile: TeacherProfile | null;
   studentList: React.ReactNode;
   attendance: React.ReactNode;
   dutyRoster: React.ReactNode;
   seatingPlan: React.ReactNode;
 }
 
-export function StudentManagementTab({ studentList, attendance, dutyRoster, seatingPlan }: StudentManagementTabProps) {
+export function StudentManagementTab({
+  studentList,
+  attendance,
+  dutyRoster,
+  seatingPlan
+}: StudentManagementTabProps) {
   return (
     <Tabs defaultValue="student-list">
       <ScrollArea className="w-full whitespace-nowrap rounded-lg">

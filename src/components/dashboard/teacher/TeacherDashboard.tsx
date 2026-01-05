@@ -542,7 +542,7 @@ export function TeacherDashboard() {
                     <StudentManagementTab
                         classId={selectedClassId} 
                         students={students || []}
-                        db={db}
+                        db={db!}
                         currentClass={currentClass}
                         teacherProfile={teacherProfile}
                     />
