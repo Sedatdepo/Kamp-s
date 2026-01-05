@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
@@ -694,3 +695,5 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    

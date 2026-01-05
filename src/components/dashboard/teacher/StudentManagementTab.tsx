@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -560,7 +561,7 @@ function GradingTab({ students: initialStudents }: { students: Student[] }) {
     };
 
     return (
-        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTab(val === 'term1' ? 'term1Grades' : 'term2Grades')}>
+        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTerm(val === 'term1' ? 'term1Grades' : 'term2Grades')}>
             <TabsList>
                 <TabsTrigger value="term1">1. Dönem</TabsTrigger>
                 <TabsTrigger value="term2">2. Dönem</TabsTrigger>
@@ -623,3 +624,5 @@ export function StudentManagementTab({ students: initialStudents, currentClass, 
     </Tabs>
   );
 }
+
+    
