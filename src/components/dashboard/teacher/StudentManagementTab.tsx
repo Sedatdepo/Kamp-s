@@ -25,10 +25,10 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type TermKey = 'term1Grades' | 'term2Grades';
-type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2';
+type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 
 // --- STUDENT LIST COMPONENT ---
-function StudentList({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
+function StudentList({ students, setStudents, currentClass, teacherProfile }: { students: Student[], setStudents: React.Dispatch<React.SetStateAction<Student[]>>, currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
   const [newStudentName, setNewStudentName] = useState('');
@@ -40,30 +40,26 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
 
   const sortedStudents = useMemo(() => {
     if (!students) return [];
-    return [...students].sort((a, b) => {
-        const numA = parseInt(a.number, 10);
-        const numB = parseInt(b.number, 10);
-        if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-        }
-        return a.number.localeCompare(b.number, undefined, { numeric: true });
-    });
+    return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
   }, [students]);
 
   const handleAddStudent = async () => {
-    if (!newStudentName.trim() || !newStudentNumber.trim() || !db) return;
+    if (!newStudentName.trim() || !newStudentNumber.trim() || !db || !currentClass) return;
     try {
-      await addDoc(collection(db, 'students'), {
+      const newStudentData = {
         name: newStudentName,
         number: newStudentNumber,
-        classId: classId,
+        classId: currentClass.id,
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
         term1Grades: {},
         term2Grades: {},
         behaviorScore: 100,
-      });
+        hasProject: false,
+      };
+      const docRef = await addDoc(collection(db, 'students'), newStudentData);
+      setStudents(prev => [...prev, {id: docRef.id, ...newStudentData}]);
       toast({ title: 'Öğrenci eklendi!' });
       setNewStudentName('');
       setNewStudentNumber('');
@@ -79,7 +75,9 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
       await updateDoc(studentRef, {
         name: editingStudent.name,
         number: editingStudent.number,
+        hasProject: editingStudent.hasProject,
       });
+      setStudents(prev => prev.map(s => s.id === editingStudent.id ? editingStudent : s));
       toast({ title: 'Öğrenci güncellendi.' });
       setEditingStudent(null);
     } catch (error) {
@@ -92,6 +90,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
     if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
         try {
             await deleteDoc(doc(db, 'students', studentId));
+            setStudents(prev => prev.filter(s => s.id !== studentId));
             toast({ title: 'Öğrenci silindi.', variant: 'destructive' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci silinemedi.' });
@@ -101,7 +100,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
   
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !db) return;
+    if (!file || !db || !currentClass) return;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -118,12 +117,16 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
             })).filter(s => s.number && s.name);
 
             const batch = writeBatch(db);
+            const newStudentsForState: Student[] = [];
             studentsToAdd.forEach(student => {
                 const newStudentRef = doc(collection(db, 'students'));
-                batch.set(newStudentRef, { ...student, classId: classId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100 });
+                const newStudentData = { ...student, classId: currentClass.id, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
+                batch.set(newStudentRef, newStudentData);
+                newStudentsForState.push({ id: newStudentRef.id, ...newStudentData});
             });
             
             await batch.commit();
+            setStudents(prev => [...prev, ...newStudentsForState]);
             toast({ title: `${studentsToAdd.length} öğrenci başarıyla eklendi!` });
 
         } catch (error) {
@@ -168,6 +171,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
               <TableRow>
                 <TableHead className="w-[100px]">Okul No</TableHead>
                 <TableHead>Adı Soyadı</TableHead>
+                <TableHead className="w-[120px]">Proje Ödevi</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
@@ -177,6 +181,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
                   <TableRow key={student.id}>
                     <TableCell><Input value={editingStudent.number} onChange={(e) => setEditingStudent({...editingStudent, number: e.target.value})} /></TableCell>
                     <TableCell><Input value={editingStudent.name} onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})} /></TableCell>
+                    <TableCell className="text-center"><Checkbox checked={editingStudent.hasProject} onCheckedChange={(checked) => setEditingStudent({...editingStudent, hasProject: !!checked})}/></TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" onClick={handleUpdateStudent} className="mr-2"><Save className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setEditingStudent(null)}><X className="h-4 w-4" /></Button>
@@ -186,6 +191,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
                   <TableRow key={student.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleOpenDetailModal(student)}>
                     <TableCell>{student.number}</TableCell>
                     <TableCell>{student.name}</TableCell>
+                    <TableCell className="text-center"><Checkbox checked={student.hasProject} disabled /></TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingStudent(student); }}><Edit className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4" /></Button>
@@ -196,6 +202,7 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
               <TableRow>
                 <TableCell><Input placeholder="Okul No" value={newStudentNumber} onChange={(e) => setNewStudentNumber(e.target.value)} /></TableCell>
                 <TableCell><Input placeholder="Adı Soyadı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} /></TableCell>
+                <TableCell></TableCell>
                 <TableCell className="text-right">
                   <Button onClick={handleAddStudent}><UserPlus className="mr-2 h-4 w-4" /> Ekle</Button>
                 </TableCell>
@@ -226,14 +233,13 @@ function StudentList({ classId, students, currentClass, teacherProfile }: { clas
 }
 
 // --- ATTENDANCE TAB COMPONENT ---
-function AttendanceTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
+function AttendanceTab({ students }: { students: Student[] }) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: 'present' | 'absent' | 'late' }>({});
     const [showOnlyAbsentees, setShowOnlyAbsentees] = useState(false);
 
-    // Update local state when date or students change
     useEffect(() => {
         const newStatus: { [studentId: string]: 'present' | 'absent' | 'late' } = {};
         const dateString = date ? format(date, 'yyyy-MM-dd') : null;
@@ -244,7 +250,7 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
             });
         }
         setAttendanceStatus(newStatus);
-        setShowOnlyAbsentees(false); // Reset filter when date changes
+        setShowOnlyAbsentees(false);
     }, [date, students]);
 
     const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
@@ -264,12 +270,10 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
             const newStatus = attendanceStatus[student.id];
             const existingAttendance = student.attendance || [];
             
-            // Remove any old record for this date
             const updatedAttendance = existingAttendance.filter(a => a.date !== dateString);
             
-            // Add new record only if not 'present'
             if (newStatus && newStatus !== 'present') {
-                updatedAttendance.push({ date: dateString, status: newStatus });
+                updatedAttendance.push({ date: dateString, status: newStatus as 'absent' | 'late' | 'excused' });
             }
 
             batch.update(studentRef, { attendance: updatedAttendance });
@@ -286,7 +290,7 @@ function AttendanceTab({ students, currentClass }: { students: Student[], curren
     };
 
     const sortedStudents = useMemo(() => {
-        const list = [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+        const list = [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
         if (showOnlyAbsentees) {
             return list.filter(student => attendanceStatus[student.id] && attendanceStatus[student.id] !== 'present');
         }
@@ -351,7 +355,7 @@ function DutyRosterTab({ students, currentClass }: { students: Student[], curren
     
     const sortedStudents = useMemo(() => {
         if (!students) return [];
-        return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+        return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
     }, [students]);
 
     const handleGenerateRoster = async () => {
@@ -425,132 +429,153 @@ function SeatingPlanTab({ students, currentClass }: { students: Student[], curre
 
 // --- GRADING TAB COMPONENT ---
 const TermGradingTable = ({
-  students: initialStudents,
-  termKey
+  students,
+  termKey,
+  onSave,
+  onStudentGradeChange,
+  isSecondTerm,
 }: {
   students: Student[];
   termKey: TermKey;
+  onSave: () => void;
+  onStudentGradeChange: (studentId: string, field: GradeField, value: number | null) => void;
+  isSecondTerm: boolean;
 }) => {
+  const calculateAverage = (student: Student, termKey: TermKey) => {
+    const grades = student[termKey] || {};
+    const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2];
+    if (isSecondTerm && student.hasProject) {
+        scores.push(grades.projectGrade);
+    }
+    const validScores = scores.filter(g => g !== undefined && g !== null) as number[];
+    if (validScores.length === 0) return 0;
+    return validScores.reduce((a, b) => a + b, 0) / validScores.length;
+  };
+
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+  }, [students]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
+          <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>No</TableHead>
+              <TableHead>Öğrenci</TableHead>
+              <TableHead className="text-center">1. Sınav</TableHead>
+              <TableHead className="text-center">2. Sınav</TableHead>
+              <TableHead className="text-center">1. Performans</TableHead>
+              <TableHead className="text-center">2. Performans</TableHead>
+              {isSecondTerm && <TableHead className="text-center">Proje</TableHead>}
+              <TableHead className="text-center">Ortalama</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedStudents.map(student => {
+              const grades: any = student[termKey] || {};
+              const average = calculateAverage(student, termKey);
+              return (
+                <TableRow key={student.id}>
+                  <TableCell>{student.number}</TableCell>
+                  <TableCell className="font-medium">{student.name}</TableCell>
+                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
+                    <TableCell key={field}>
+                      <Input
+                        type="number"
+                        className="w-20 mx-auto text-center h-8"
+                        value={grades[field] ?? ''}
+                        onChange={e => onStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
+                      />
+                    </TableCell>
+                  ))}
+                  {isSecondTerm && (
+                    <TableCell>
+                      <Input
+                        type="number"
+                        className="w-20 mx-auto text-center h-8"
+                        value={grades.projectGrade ?? ''}
+                        disabled={!student.hasProject}
+                        onChange={e => onStudentGradeChange(student.id, 'projectGrade', e.target.value === '' ? null : Number(e.target.value))}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+};
+
+function GradingTab({ students: initialStudents }: { students: Student[] }) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [students, setStudents] = useState<Student[]>(initialStudents);
-    
+    const [activeTab, setActiveTab] = useState<TermKey>('term1Grades');
+
     useEffect(() => {
         setStudents(initialStudents);
     }, [initialStudents]);
 
     const handleStudentGradeChange = (studentId: string, field: GradeField, value: number | null) => {
-      setStudents(prevStudents => 
-          prevStudents.map(student => {
-              if (student.id === studentId) {
-                  const updatedGrades = { ...(student[termKey] || {}) };
-                  
-                  if (value === null) {
-                    // @ts-ignore
-                    delete updatedGrades[field];
-                  } else {
-                    // @ts-ignore
-                    updatedGrades[field] = value;
-                  }
-                  
-                  return { ...student, [termKey]: updatedGrades };
-              }
-              return student;
-          })
-      );
+        setStudents(prevStudents =>
+            prevStudents.map(student => {
+                if (student.id === studentId) {
+                    const updatedGrades = { ...(student[activeTab] || {}) };
+                    if (value === null) {
+                        // @ts-ignore
+                        delete updatedGrades[field];
+                    } else {
+                        // @ts-ignore
+                        updatedGrades[field] = value;
+                    }
+                    return { ...student, [activeTab]: updatedGrades };
+                }
+                return student;
+            })
+        );
     };
 
     const handleSaveChanges = async () => {
         if (!db || students.length === 0) return;
-
         const batch = writeBatch(db);
         students.forEach(student => {
             const studentRef = doc(db, 'students', student.id);
-            const termGrades = student[termKey] || {};
-            batch.update(studentRef, { [termKey]: termGrades });
+            const termGrades = student[activeTab] || {};
+            batch.update(studentRef, { [activeTab]: termGrades });
         });
         
         try {
             await batch.commit();
-            toast({ title: "Başarılı!", description: `${termKey === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
+            toast({ title: "Başarılı!", description: `${activeTab === 'term1Grades' ? '1. Dönem' : '2. Dönem'} notları kaydedildi.` });
         } catch (e) {
             toast({ title: "Hata!", description: "Notlar kaydedilemedi.", variant: 'destructive' });
             console.error(e);
         }
     };
 
-  const calculateAverage = (grades: GradingScores = {}) => {
-      const scores = [grades.exam1, grades.exam2, grades.perf1, grades.perf2].filter(g => g !== undefined && g !== null) as number[];
-      if (scores.length === 0) return 0;
-      return scores.reduce((a, b) => a + b, 0) / scores.length;
-  };
-  
-  const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
-  }, [students]);
-
-  return (
-      <Card>
-          <CardHeader>
-              <div className="flex justify-between items-center">
-                  <CardTitle>{termKey === 'term1Grades' ? '1. Dönem Notları' : '2. Dönem Notları'}</CardTitle>
-                  <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
-              </div>
-          </CardHeader>
-          <CardContent>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead>No</TableHead>
-                          <TableHead>Öğrenci</TableHead>
-                          <TableHead className="text-center">1. Sınav</TableHead>
-                          <TableHead className="text-center">2. Sınav</TableHead>
-                          <TableHead className="text-center">1. Performans</TableHead>
-                          <TableHead className="text-center">2. Performans</TableHead>
-                          <TableHead className="text-center">Ortalama</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {sortedStudents.map(student => {
-                          const grades: any = student[termKey] || {};
-                          const average = calculateAverage(grades);
-                          return (
-                              <TableRow key={student.id}>
-                                  <TableCell>{student.number}</TableCell>
-                                  <TableCell className="font-medium">{student.name}</TableCell>
-                                  {(['exam1', 'exam2', 'perf1', 'perf2'] as GradeField[]).map(field => (
-                                       <TableCell key={field}>
-                                          <Input
-                                              type="number"
-                                              className="w-20 mx-auto text-center h-8"
-                                              value={grades[field] ?? ''}
-                                              onChange={e => handleStudentGradeChange(student.id, field, e.target.value === '' ? null : Number(e.target.value))}
-                                          />
-                                      </TableCell>
-                                  ))}
-                                  <TableCell className="text-center font-bold text-lg">{average.toFixed(2)}</TableCell>
-                              </TableRow>
-                          )
-                      })}
-                  </TableBody>
-              </Table>
-          </CardContent>
-      </Card>
-  )
-}
-
-function GradingTab({ students }: { students: Student[] }) {
     return (
-        <Tabs defaultValue="term1">
+        <Tabs defaultValue="term1" onValueChange={(val) => setActiveTab(val as TermKey)}>
             <TabsList>
-                <TabsTrigger value="term1">1. Dönem</TabsTrigger>
-                <TabsTrigger value="term2">2. Dönem</TabsTrigger>
+                <TabsTrigger value="term1Grades">1. Dönem</TabsTrigger>
+                <TabsTrigger value="term2Grades">2. Dönem</TabsTrigger>
             </TabsList>
-            <TabsContent value="term1" className="mt-4">
-                <TermGradingTable students={students} termKey="term1Grades" />
+            <TabsContent value="term1Grades" className="mt-4">
+                <TermGradingTable students={students} termKey="term1Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} isSecondTerm={false} />
             </TabsContent>
-            <TabsContent value="term2" className="mt-4">
-                <TermGradingTable students={students} termKey="term2Grades" />
+            <TabsContent value="term2Grades" className="mt-4">
+                <TermGradingTable students={students} termKey="term2Grades" onSave={handleSaveChanges} onStudentGradeChange={handleStudentGradeChange} isSecondTerm={true} />
             </TabsContent>
         </Tabs>
     )
@@ -563,7 +588,13 @@ interface StudentManagementTabProps {
   teacherProfile: TeacherProfile | null;
 }
 
-export function StudentManagementTab({ students, currentClass, teacherProfile }: StudentManagementTabProps) {
+export function StudentManagementTab({ students: initialStudents, currentClass, teacherProfile }: StudentManagementTabProps) {
+  const [students, setStudents] = useState<Student[]>(initialStudents);
+  
+  useEffect(() => {
+      setStudents(initialStudents);
+  }, [initialStudents]);
+  
   if (!currentClass) {
     return <Card><CardHeader><CardTitle>Lütfen bir sınıf seçin.</CardTitle></CardHeader></Card>;
   }
@@ -581,13 +612,13 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <TabsContent value="student-list" className="mt-4">
-        <StudentList classId={currentClass.id} students={students} currentClass={currentClass} teacherProfile={teacherProfile} />
+        <StudentList students={students} setStudents={setStudents} currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
        <TabsContent value="grading" className="mt-4">
         <GradingTab students={students} />
       </TabsContent>
       <TabsContent value="attendance" className="mt-4">
-        <AttendanceTab students={students} currentClass={currentClass} />
+        <AttendanceTab students={students} />
       </TabsContent>
       <TabsContent value="duty-roster" className="mt-4">
         <DutyRosterTab students={students} currentClass={currentClass} />
