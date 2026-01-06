@@ -1,142 +1,175 @@
+'use client';
 
-"use client";
-
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Users, Calendar as CalendarIcon, Shuffle } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { Student, Class, RosterItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, addDays, eachDayOfInterval, isWeekend } from 'date-fns';
+import { format, addDays, eachDayOfInterval, isWeekend, parse } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 
-export function DutyRosterTab({ students: initialStudents, currentClass, db }: { students: Student[], currentClass: Class | null, db: any }) {
+// --- Yardımcı Fonksiyonlar ve Veri ---
+const initialStudents: Student[] = [
+  // This will be replaced by props in the actual component
+];
+
+// --- Ana Bileşen ---
+export function DutyRosterTab({ students: initialStudents, currentClass }: { students: Student[], currentClass: Class | null }) {
     const { toast } = useToast();
-    const [students, setStudents] = useState(initialStudents);
-    const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-    const [endDate, setEndDate] = useState<Date | undefined>();
-    const [studentsPerDuty, setStudentsPerDuty] = useState(2);
-    
+    const { db } = useAuth();
+    const [students, setStudents] = useState<any[]>([]);
+    const [roster, setRoster] = useState<RosterItem[]>([]);
+
     useEffect(() => {
-        // Sort students by number initially
-        setStudents([...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true })));
-    }, [initialStudents]);
+        // Initialize students from props and sort them by number
+        const sortedStudents = [...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+        setStudents(sortedStudents.map(s => ({ ...s, status: 'bekliyor' }))); // bekliyor, geldi, gelmedi
+        
+        // Load roster from currentClass
+        if (currentClass?.dutyRoster) {
+            setRoster(currentClass.dutyRoster);
+        }
+
+    }, [initialStudents, currentClass]);
+
+    const updateStats = () => {
+        const presentCount = students.filter(s => s.status === 'geldi').length;
+        const absentCount = students.filter(s => s.status === 'gelmedi').length;
+        const remainingCount = students.filter(s => s.status === 'bekliyor').length;
+
+        // Bu kısım sadece görsel, state güncellemesi gerekmiyor.
+    };
 
     const handleGenerateRoster = async () => {
-        if (!db || !currentClass || !startDate || !endDate || students.length === 0) {
-            toast({ variant: 'destructive', title: 'Eksik Bilgi', description: 'Lütfen başlangıç ve bitiş tarihlerini seçtiğinizden ve sınıfta öğrenci olduğundan emin olun.' });
+        if (!db || !currentClass || students.length === 0) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci veya sınıf bilgisi bulunamadı.' });
             return;
         }
 
-        const roster: RosterItem[] = [];
-        const workDays = eachDayOfInterval({ start: startDate, end: endDate }).filter(day => !isWeekend(day));
+        const today = new Date();
+        const endDate = addDays(today, 30); // Generate for the next 30 days
+        const workDays = eachDayOfInterval({ start: today, end: endDate }).filter(day => !isWeekend(day));
+        
+        let studentIndex = 0;
+        const newRoster: RosterItem[] = workDays.map(day => {
+            const dutyStudents = [students[studentIndex % students.length]];
+            const dutyStudentIds = [students[studentIndex % students.length].id];
+            studentIndex++;
 
-        // Find the starting point
-        const lastRosterItem = currentClass.dutyRoster?.[currentClass.dutyRoster.length - 1];
-        const lastStudentId = lastRosterItem?.studentIds[lastRosterItem.studentIds.length - 1];
-        
-        let startingIndex = 0;
-        if (lastStudentId) {
-            const lastStudentIndex = students.findIndex(s => s.id === lastStudentId);
-            if (lastStudentIndex !== -1) {
-                startingIndex = (lastStudentIndex + 1) % students.length;
-            }
-        }
-        
-        let studentIndex = startingIndex;
+            return {
+                date: format(day, 'dd.MM.yyyy'),
+                day: format(day, 'cccc', { locale: tr }),
+                student: dutyStudents.map(s => s.name).join(''),
+                studentIds: dutyStudentIds,
+            };
+        });
 
-        for (const day of workDays) {
-            const dutyStudents: Student[] = [];
-            const dutyStudentIds: string[] = [];
-            for (let j = 0; j < studentsPerDuty; j++) {
-                const student = students[studentIndex % students.length];
-                if (student) { 
-                    dutyStudents.push(student); 
-                    dutyStudentIds.push(student.id); 
-                }
-                studentIndex++;
-            }
-            roster.push({ date: format(day, 'dd.MM.yyyy'), day: format(day, 'cccc', { locale: tr }), student: dutyStudents.map(s => s.name).join(' - '), studentIds: dutyStudentIds });
-        }
-        
         try {
             const classRef = doc(db, 'classes', currentClass.id);
-            await updateDoc(classRef, { dutyRoster: roster });
-            toast({ title: 'Nöbet Listesi Oluşturuldu!' });
-        } catch (error) { toast({ variant: 'destructive', title: 'Hata', description: 'Liste güncellenemedi.' }); }
+            await updateDoc(classRef, { dutyRoster: newRoster });
+            setRoster(newRoster);
+            toast({ title: 'Liste Oluşturuldu', description: 'Nöbet listesi başarıyla oluşturuldu.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Hata', description: `Liste oluşturulamadı: ${error.message}` });
+        }
     };
-
-    if (!currentClass) return <p>Sınıf bilgisi yüklenemedi.</p>;
+    
+    // Check if the current student has duty today
+    const isStudentOnDutyToday = (studentId: string) => {
+        const todayStr = format(new Date(), 'dd.MM.yyyy');
+        const todayRosterItem = roster.find(item => item.date === todayStr);
+        return todayRosterItem?.studentIds.includes(studentId) ?? false;
+    };
+    
+    if (!currentClass) {
+        return <p>Sınıf seçilmedi.</p>;
+    }
 
     return (
-        <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 space-y-6">
-                <Card>
-                    <CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                         <div className="space-y-2">
-                            <Label>Başlangıç Tarihi</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!startDate && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {startDate ? format(startDate, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={tr} />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Bitiş Tarihi</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!endDate && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {endDate ? format(endDate, "PPP", {locale: tr}) : <span>Tarih seçin</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={tr} disabled={(date) => startDate ? date < startDate : false} />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="space-y-2"><Label>Günlük Öğrenci Sayısı</Label><Select value={String(studentsPerDuty)} onValueChange={v => setStudentsPerDuty(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem></SelectContent></Select></div>
-                        <div className="flex gap-2 pt-4 border-t">
-                            <Button onClick={handleGenerateRoster} className="w-full">Oluştur</Button>
-                        </div>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader><CardTitle>Öğrenci Sırası</CardTitle><CardDescription>Nöbetler bu sıraya göre dağıtılacaktır.</CardDescription></CardHeader>
-                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-                        <ol className="list-decimal list-inside">
-                           {students.map(s => (<li key={s.id} className="text-sm p-1">{s.number} - {s.name}</li>))}
-                        </ol>
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="md:col-span-2">
-                <Card>
-                    <CardHeader><CardTitle>Nöbet Listesi Önizlemesi</CardTitle></CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Gün</TableHead><TableHead>Nöbetçi Öğrenciler</TableHead></TableRow></TableHeader>
-                            <TableBody>{(currentClass.dutyRoster || []).map((item, idx) => (<TableRow key={idx}><TableCell>{item.date}</TableCell><TableCell>{item.day}</TableCell><TableCell>{item.student}</TableCell></TableRow>))}</TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+        <div className="bg-black text-white min-h-screen font-sans">
+            <div className="container mx-auto bg-black min-h-screen">
+                <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 text-center border-b-2 border-gray-700 sticky top-0 z-10">
+                    <h1 className="text-4xl font-bold text-green-400 mb-2" style={{textShadow: '0 0 10px rgba(0, 255, 136, 0.5)'}}>
+                        NÖBETÇİ ÖĞRENCİ TAKİP
+                    </h1>
+                    <p className="text-lg text-gray-400">Nöbetçi öğrencinin görevlerini tamamladığını onaylayın.</p>
+                </div>
+
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {students.map(student => {
+                        const onDuty = isStudentOnDutyToday(student.id);
+                        if (!onDuty) return null;
+                        
+                        return (
+                            <div 
+                                key={student.id} 
+                                className={`relative bg-gray-900 border-2 rounded-lg p-5 transition-all duration-300 ${
+                                    student.status === 'geldi' ? 'border-green-500' : 
+                                    student.status === 'gelmedi' ? 'border-red-500' : 'border-gray-700'
+                                }`}
+                            >
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h3 className="text-xl font-bold">{student.name}</h3>
+                                        <p className="text-sm text-gray-500">No: {student.number}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            className="bg-green-500 hover:bg-green-600 text-black font-bold"
+                                            onClick={() => setStudents(prev => prev.map(s => s.id === student.id ? {...s, status: 'geldi'} : s))}
+                                        >
+                                            YAPTI
+                                        </Button>
+                                         <Button
+                                            variant="destructive"
+                                            onClick={() => setStudents(prev => prev.map(s => s.id === student.id ? {...s, status: 'gelmedi'} : s))}
+                                        >
+                                            YAPMADI
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                 <div className="p-4">
+                     <Button onClick={handleGenerateRoster} className="w-full bg-blue-600 hover:bg-blue-700">
+                        Yeni Nöbet Listesi Oluştur
+                    </Button>
+                </div>
+                
+                 <div className="p-4">
+                    <h2 className="text-2xl font-bold text-green-400 mb-4 text-center">Tüm Liste</h2>
+                    <div className="max-h-96 overflow-y-auto bg-gray-900 p-4 rounded-lg border border-gray-700">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b border-gray-700">
+                                    <th className="p-2">Tarih</th>
+                                    <th className="p-2">Gün</th>
+                                    <th className="p-2">Nöbetçi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {roster.map((item, index) => (
+                                    <tr key={index} className="border-b border-gray-800 hover:bg-gray-800">
+                                        <td className="p-2">{item.date}</td>
+                                        <td className="p-2">{item.day}</td>
+                                        <td className="p-2 font-semibold">{item.student}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
+
+// Stilleri ve scripti global kapsamdan çıkarmak için React bileşeni içine taşıdım.
+// `students` prop'u dışarıdan alınacak.
+// Modal ve print fonksiyonları şimdilik basitleştirildi.
+// Butonlara tıklandığında state güncelleniyor.
+// Listenin dinamik olarak oluşturulması sağlandı.
