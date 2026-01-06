@@ -1,8 +1,6 @@
 'use client';
 
-import React from 'react';
-
+// This file is intentionally left blank as requested by the user.
 export function AttendanceTab() {
-  // Bu bileşenin içeriği, isteğiniz üzerine silinmiştir.
   return null;
 }
