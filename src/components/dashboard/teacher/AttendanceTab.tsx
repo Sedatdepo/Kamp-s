@@ -10,16 +10,17 @@ import { BarChart, Users, UserX, RotateCcw, Printer, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
+type AttendanceStatus = 'bekliyor' | 'geldi' | 'gelmedi';
 
-// Bu bileşen, HTML/CSS kodunun React ve ShadCN ile yeniden oluşturulmuş halidir.
+interface AttendanceStudent extends Student {
+    status: AttendanceStatus;
+}
+
 export function AttendanceTab({ students: initialStudents }: { students: Student[] }) {
     const { toast } = useToast();
-    
-    // Öğrenci verilerini ve yoklama durumlarını tutmak için state
-    const [students, setStudents] = useState(() => initialStudents.map(s => ({ ...s, status: 'bekliyor' as 'bekliyor' | 'geldi' | 'gelmedi' })));
+    const [students, setStudents] = useState<AttendanceStudent[]>([]);
     const [fadingOut, setFadingOut] = useState<string[]>([]);
     
-    // Modallar için stateler
     const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
     const [isAbsentModalOpen, setIsAbsentModalOpen] = useState(false);
 
@@ -27,7 +28,6 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
         setStudents(initialStudents.map(s => ({ ...s, status: 'bekliyor' })));
     }, [initialStudents]);
 
-    // İstatistikleri hesapla
     const stats = useMemo(() => {
         const presentCount = students.filter(s => s.status === 'geldi').length;
         const absentCount = students.filter(s => s.status === 'gelmedi').length;
@@ -35,14 +35,13 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
         return { presentCount, absentCount, remainingCount };
     }, [students]);
 
-    // Öğrenciyi işaretleme fonksiyonları
     const markStatus = (studentId: string, status: 'geldi' | 'gelmedi') => {
         if (status === 'geldi') {
             setFadingOut(prev => [...prev, studentId]);
             setTimeout(() => {
                 setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status } : s));
                 setFadingOut(prev => prev.filter(id => id !== studentId));
-            }, 500);
+            }, 500); // Animasyon süresi
         } else {
             setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status } : s));
         }
@@ -50,9 +49,9 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
     
     const markPresentFromAbsent = (studentId: string) => {
         setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status: 'geldi' } : s));
+        toast({ title: `${students.find(s=>s.id === studentId)?.name} 'geldi' olarak işaretlendi.`})
     };
 
-    // Yoklamayı sıfırlama
     const resetAttendance = () => {
         if (confirm('Tüm yoklama verilerini sıfırlamak istediğinizden emin misiniz?')) {
             setStudents(prev => prev.map(s => ({ ...s, status: 'bekliyor' })));
@@ -70,8 +69,8 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
                 <html>
                 <head><title>Yoklama Özeti</title>
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; } 
-                    h1 { color: #007bff; }
+                    body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #000; } 
+                    h1 { color: #009955; }
                     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
                     th, td { border: 1px solid #ddd; padding: 8px; }
                     th { background-color: #f2f2f2; }
@@ -101,18 +100,18 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
     const remainingStudents = students.filter(student => student.status === 'bekliyor');
 
     return (
-        <div className="bg-[#121212] text-white min-h-screen p-4 rounded-lg">
+        <div className="bg-[#121212] text-white rounded-lg -m-6 p-2 sm:p-4">
             <div className="container mx-auto">
                 <header className="text-center py-6 border-b-2 border-slate-700">
-                    <h1 className="text-4xl font-bold text-primary mb-2">🎓 YOKLAMA SİSTEMİ</h1>
+                    <h1 className="text-4xl font-bold text-[#00ff88] mb-2" style={{textShadow: '0 0 10px rgba(0, 255, 136, 0.5)'}}>🎓 YOKLAMA SİSTEMİ</h1>
                     <p className="text-slate-400">Gelen öğrencileri listeden çıkarın, sadece gelmeyenler kalsın.</p>
                 </header>
 
                 <div className="py-4 flex flex-wrap justify-center gap-4">
-                    <Button onClick={() => setIsStatsModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground"><BarChart className="mr-2"/> İstatistikleri Göster</Button>
-                    <Button onClick={() => setIsAbsentModalOpen(true)} variant="destructive"><UserX className="mr-2"/> Sadece Gelmediklerim</Button>
-                    <Button onClick={resetAttendance} variant="secondary"><RotateCcw className="mr-2"/> Yoklamayı Sıfırla</Button>
-                    <Button onClick={printSummary} variant="outline"><Printer className="mr-2"/> Özeti Yazdır</Button>
+                    <Button onClick={() => setIsStatsModalOpen(true)} className="bg-gradient-to-r from-[#00ff88] to-[#00cc6a] text-black font-bold hover:from-[#00cc6a] hover:to-[#00aa55] transition-all"><BarChart className="mr-2"/> İstatistikleri Göster</Button>
+                    <Button onClick={() => setIsAbsentModalOpen(true)} className="bg-gradient-to-r from-[#ff4444] to-[#cc0000] text-white font-bold hover:from-[#cc0000] hover:to-[#aa0000] transition-all"><UserX className="mr-2"/> Sadece Gelmediklerim</Button>
+                    <Button onClick={resetAttendance} className="bg-gradient-to-r from-[#ffaa00] to-[#ff8800] text-black font-bold hover:from-[#ff8800] hover:to-[#cc6600] transition-all"><RotateCcw className="mr-2"/> Yoklamayı Sıfırla</Button>
+                    <Button onClick={printSummary} className="bg-gradient-to-r from-[#00ff88] to-[#00cc6a] text-black font-bold hover:from-[#00cc6a] hover:to-[#00aa55] transition-all"><Printer className="mr-2"/> Özeti Yazdır</Button>
                 </div>
 
                 <Card className="bg-slate-900 border-slate-700 my-4">
@@ -134,14 +133,14 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
                     </CardContent>
                 </Card>
 
-                <div className="student-list-container">
+                <div className="p-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {remainingStudents.length > 0 ? remainingStudents.map(student => (
                             <div 
                                 key={student.id} 
                                 className={cn(
-                                    "bg-slate-800 border border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all duration-500",
-                                    fadingOut.includes(student.id) ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'
+                                    "bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all duration-500",
+                                    fadingOut.includes(student.id) && 'opacity-0 translate-x-10'
                                 )}
                             >
                                 <div className="text-center sm:text-left">
@@ -149,8 +148,8 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
                                     <div className="text-xs text-slate-400">No: {student.number}</div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => markStatus(student.id, 'geldi')}>✅ Geldi</Button>
-                                    <Button variant="destructive" onClick={() => markStatus(student.id, 'gelmedi')}>❌ Gelmedi</Button>
+                                    <Button className="bg-green-600 hover:bg-green-700 text-black font-bold" onClick={() => markStatus(student.id, 'geldi')}>✅ Geldi</Button>
+                                    <Button className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => markStatus(student.id, 'gelmedi')}>❌ Gelmedi</Button>
                                 </div>
                             </div>
                         )) : (
@@ -163,31 +162,31 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
 
                 {/* Modals */}
                 <Dialog open={isStatsModalOpen} onOpenChange={setIsStatsModalOpen}>
-                    <DialogContent className="bg-slate-900 border-primary text-white">
+                    <DialogContent className="bg-gradient-to-br from-slate-900 to-black border-primary text-white">
                         <DialogHeader>
-                            <DialogTitle className="text-primary text-2xl">📊 YOKLAMA İSTATİSTİKLERİ</DialogTitle>
+                            <DialogTitle className="text-primary text-2xl" style={{textShadow: '0 0 10px rgba(0, 255, 136, 0.5)'}}>📊 YOKLAMA İSTATİSTİKLERİ</DialogTitle>
                         </DialogHeader>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center py-4">
                             <div className="bg-slate-800 p-4 rounded-lg border-l-4 border-green-500">
                                 <div className="text-4xl font-bold text-green-500">{stats.presentCount}</div>
-                                <div className="text-sm text-slate-400">GELEN ÖĞRENCİ</div>
+                                <div className="text-sm text-slate-400">GELEN</div>
                             </div>
                             <div className="bg-slate-800 p-4 rounded-lg border-l-4 border-red-500">
                                 <div className="text-4xl font-bold text-red-500">{stats.absentCount}</div>
-                                <div className="text-sm text-slate-400">GELMEYEN ÖĞRENCİ</div>
+                                <div className="text-sm text-slate-400">GELMEYEN</div>
                             </div>
                             <div className="bg-slate-800 p-4 rounded-lg border-l-4 border-yellow-500">
                                 <div className="text-4xl font-bold text-yellow-500">{stats.remainingCount}</div>
-                                <div className="text-sm text-slate-400">BEKLEYEN ÖĞRENCİ</div>
+                                <div className="text-sm text-slate-400">BEKLEYEN</div>
                             </div>
                         </div>
                     </DialogContent>
                 </Dialog>
 
                 <Dialog open={isAbsentModalOpen} onOpenChange={setIsAbsentModalOpen}>
-                    <DialogContent className="bg-slate-900 border-destructive text-white">
+                     <DialogContent className="bg-gradient-to-br from-slate-900 to-black border-destructive text-white">
                         <DialogHeader>
-                            <DialogTitle className="text-destructive text-2xl">❌ GELMEYEN ÖĞRENCİLER</DialogTitle>
+                            <DialogTitle className="text-destructive text-2xl" style={{textShadow: '0 0 10px rgba(255, 68, 68, 0.5)'}}>❌ GELMEYEN ÖĞRENCİLER</DialogTitle>
                         </DialogHeader>
                         <div className="max-h-96 overflow-y-auto space-y-2 p-1">
                             {students.filter(s => s.status === 'gelmedi').length > 0 ? (
@@ -197,7 +196,7 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
                                             <p className="font-semibold">{student.name}</p>
                                             <p className="text-xs text-slate-400">No: {student.number}</p>
                                         </div>
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => markPresentFromAbsent(student.id)}>Geldi Yap</Button>
+                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-black font-bold" onClick={() => markPresentFromAbsent(student.id)}>Geldi Yap</Button>
                                     </div>
                                 ))
                             ) : (
@@ -211,3 +210,5 @@ export function AttendanceTab({ students: initialStudents }: { students: Student
     );
 }
 
+
+    
