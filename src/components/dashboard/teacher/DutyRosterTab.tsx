@@ -1,175 +1,344 @@
+
 'use client';
+export const dynamic = 'force-dynamic';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Calendar, Download, Users, RotateCcw, School, Upload } from 'lucide-react';
+import { useDatabase } from '@/hooks/use-database';
 import { Button } from '@/components/ui/button';
-import { Student, Class, RosterItem } from '@/lib/types';
-import { useAuth } from '@/hooks/useAuth';
-import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { format, addDays, eachDayOfInterval, isWeekend, parse } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import type { Student as DutyStudent } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// --- Yardımcı Fonksiyonlar ve Veri ---
-const initialStudents: Student[] = [
-  // This will be replaced by props in the actual component
-];
 
-// --- Ana Bileşen ---
-export function DutyRosterTab({ students: initialStudents, currentClass }: { students: Student[], currentClass: Class | null }) {
-    const { toast } = useToast();
-    const { db } = useAuth();
-    const [students, setStudents] = useState<any[]>([]);
-    const [roster, setRoster] = useState<RosterItem[]>([]);
+export default function NobetciListesi() {
+  // --- STATE TANIMLARI ---
+  const { db, loading } = useDatabase();
+  const { schoolInfo, classes } = db;
+  const { toast } = useToast();
 
-    useEffect(() => {
-        // Initialize students from props and sort them by number
-        const sortedStudents = [...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
-        setStudents(sortedStudents.map(s => ({ ...s, status: 'bekliyor' }))); // bekliyor, geldi, gelmedi
-        
-        // Load roster from currentClass
-        if (currentClass?.dutyRoster) {
-            setRoster(currentClass.dutyRoster);
-        }
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState("");
+  const [startIndex, setStartIndex] = useState(1);
+  const [roster, setRoster] = useState<any[]>([]);
+  const [nextStartInfo, setNextStartInfo] = useState<any>(null);
 
-    }, [initialStudents, currentClass]);
+  const students = useMemo(() => {
+    if (!selectedClassId) return [];
+    const selectedClass = classes.find(c => c.id === selectedClassId);
+    return selectedClass?.students.map(s => ({ id: s.id, name: s.name, no: s.no })) || [];
+  }, [selectedClassId, classes]);
 
-    const updateStats = () => {
-        const presentCount = students.filter(s => s.status === 'geldi').length;
-        const absentCount = students.filter(s => s.status === 'gelmedi').length;
-        const remainingCount = students.filter(s => s.status === 'bekliyor').length;
+  const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
-        // Bu kısım sadece görsel, state güncellemesi gerekmiyor.
-    };
-
-    const handleGenerateRoster = async () => {
-        if (!db || !currentClass || students.length === 0) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci veya sınıf bilgisi bulunamadı.' });
-            return;
-        }
-
-        const today = new Date();
-        const endDate = addDays(today, 30); // Generate for the next 30 days
-        const workDays = eachDayOfInterval({ start: today, end: endDate }).filter(day => !isWeekend(day));
-        
-        let studentIndex = 0;
-        const newRoster: RosterItem[] = workDays.map(day => {
-            const dutyStudents = [students[studentIndex % students.length]];
-            const dutyStudentIds = [students[studentIndex % students.length].id];
-            studentIndex++;
-
-            return {
-                date: format(day, 'dd.MM.yyyy'),
-                day: format(day, 'cccc', { locale: tr }),
-                student: dutyStudents.map(s => s.name).join(''),
-                studentIds: dutyStudentIds,
-            };
-        });
-
-        try {
-            const classRef = doc(db, 'classes', currentClass.id);
-            await updateDoc(classRef, { dutyRoster: newRoster });
-            setRoster(newRoster);
-            toast({ title: 'Liste Oluşturuldu', description: 'Nöbet listesi başarıyla oluşturuldu.' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Hata', description: `Liste oluşturulamadı: ${error.message}` });
-        }
-    };
-    
-    // Check if the current student has duty today
-    const isStudentOnDutyToday = (studentId: string) => {
-        const todayStr = format(new Date(), 'dd.MM.yyyy');
-        const todayRosterItem = roster.find(item => item.date === todayStr);
-        return todayRosterItem?.studentIds.includes(studentId) ?? false;
-    };
-    
-    if (!currentClass) {
-        return <p>Sınıf seçilmedi.</p>;
+  // --- LİSTE OLUŞTURMA MANTIĞI ---
+  const generateRoster = () => {
+    if (students.length === 0) {
+      toast({ title: "Hata", description: "Lütfen önce öğrenci listesi olan bir sınıf seçin.", variant: "destructive" });
+      return;
+    }
+    if (!startDate || !endDate) {
+      toast({ title: "Hata", description: "Lütfen başlangıç ve bitiş tarihlerini seçin.", variant: "destructive" });
+      return;
     }
 
-    return (
-        <div className="bg-black text-white min-h-screen font-sans">
-            <div className="container mx-auto bg-black min-h-screen">
-                <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 text-center border-b-2 border-gray-700 sticky top-0 z-10">
-                    <h1 className="text-4xl font-bold text-green-400 mb-2" style={{textShadow: '0 0 10px rgba(0, 255, 136, 0.5)'}}>
-                        NÖBETÇİ ÖĞRENCİ TAKİP
-                    </h1>
-                    <p className="text-lg text-gray-400">Nöbetçi öğrencinin görevlerini tamamladığını onaylayın.</p>
-                </div>
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    start.setHours(12, 0, 0, 0);
+    end.setHours(12, 0, 0, 0);
 
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {students.map(student => {
-                        const onDuty = isStudentOnDutyToday(student.id);
-                        if (!onDuty) return null;
-                        
-                        return (
-                            <div 
-                                key={student.id} 
-                                className={`relative bg-gray-900 border-2 rounded-lg p-5 transition-all duration-300 ${
-                                    student.status === 'geldi' ? 'border-green-500' : 
-                                    student.status === 'gelmedi' ? 'border-red-500' : 'border-gray-700'
-                                }`}
-                            >
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h3 className="text-xl font-bold">{student.name}</h3>
-                                        <p className="text-sm text-gray-500">No: {student.number}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            className="bg-green-500 hover:bg-green-600 text-black font-bold"
-                                            onClick={() => setStudents(prev => prev.map(s => s.id === student.id ? {...s, status: 'geldi'} : s))}
-                                        >
-                                            YAPTI
-                                        </Button>
-                                         <Button
-                                            variant="destructive"
-                                            onClick={() => setStudents(prev => prev.map(s => s.id === student.id ? {...s, status: 'gelmedi'} : s))}
-                                        >
-                                            YAPMADI
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
+    if (start > end) {
+      toast({ title: "Hata", description: "Bitiş tarihi başlangıç tarihinden önce olamaz.", variant: "destructive" });
+      return;
+    }
 
-                 <div className="p-4">
-                     <Button onClick={handleGenerateRoster} className="w-full bg-blue-600 hover:bg-blue-700">
-                        Yeni Nöbet Listesi Oluştur
-                    </Button>
-                </div>
-                
-                 <div className="p-4">
-                    <h2 className="text-2xl font-bold text-green-400 mb-4 text-center">Tüm Liste</h2>
-                    <div className="max-h-96 overflow-y-auto bg-gray-900 p-4 rounded-lg border border-gray-700">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="border-b border-gray-700">
-                                    <th className="p-2">Tarih</th>
-                                    <th className="p-2">Gün</th>
-                                    <th className="p-2">Nöbetçi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {roster.map((item, index) => (
-                                    <tr key={index} className="border-b border-gray-800 hover:bg-gray-800">
-                                        <td className="p-2">{item.date}</td>
-                                        <td className="p-2">{item.day}</td>
-                                        <td className="p-2 font-semibold">{item.student}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+    let tempRoster: any[] = [];
+    let currentStudentIndex = (startIndex - 1);
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const dayOfWeek = currentDate.getDay();
+
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const student1 = students[currentStudentIndex % students.length];
+        currentStudentIndex++;
+        
+        const student2 = students[currentStudentIndex % students.length];
+        currentStudentIndex++;
+        
+        const studentNames = `${student1.name} - ${student2.name}`;
+        
+        tempRoster.push({
+          date: currentDate.toLocaleDateString('tr-TR'),
+          day: daysMap[dayOfWeek],
+          student: studentNames
+        });
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    setRoster(tempRoster);
+    
+    const nextIndex = (currentStudentIndex % students.length) + 1;
+    setNextStartInfo({
+      index: nextIndex,
+      name: students[nextIndex - 1]?.name
+    });
+    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu." });
+  };
+
+  // --- WORD ÇIKTISI ALMA ---
+  const exportToWord = () => {
+    if (roster.length === 0) {
+      toast({ title: "Hata", description: "Lütfen önce listeyi oluşturun.", variant: "destructive" });
+      return;
+    }
+    const selectedClass = classes.find(c => c.id === selectedClassId);
+
+    const header = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>${selectedClass?.name || schoolInfo?.className} Nöbetçi Listesi</title>
+        <style>
+          body { font-family: 'Times New Roman', serif; }
+          table { width: 100%; border-collapse: collapse; }
+          td, th { border: 1px solid black; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+          .title-area { text-align: center; margin-bottom: 20px; }
+          .school-name { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
+          .list-name { font-size: 14pt; font-weight: bold; margin-top: 5px; }
+          .signature-table { margin-top: 50px; width: 100%; border: none; }
+          .signature-table td { border: none; text-align: center; padding-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <div class="title-area">
+          <div class="school-name">${schoolInfo?.schoolName || ''}</div>
+          <div class="list-name">${selectedClass?.name || schoolInfo?.className || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</div>
+        </div>
+    `;
+    
+    const tableHTML = document.getElementById("roster-table")?.outerHTML || '';
+    
+    const signatureHTML = `
+      <table class="signature-table">
+        <tr>
+          <td>
+            <strong>${schoolInfo?.classTeacherName || ''}</strong><br>
+            Sınıf Rehber Öğretmeni
+          </td>
+          <td>
+            <strong>${schoolInfo?.schoolPrincipalName || ''}</strong><br>
+            Okul Müdürü
+          </td>
+        </tr>
+      </table>
+    `;
+
+    const footer = "</body></html>";
+    
+    const sourceHTML = header + tableHTML + signatureHTML + footer;
+    
+    const blob = new Blob([sourceHTML], { type: 'application/vnd.ms-word' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    document.body.appendChild(link);
+    link.href = url;
+    link.download = `${selectedClass?.name || 'sinif'}_Nobetci_Listesi.doc`;
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  
+    if (loading) {
+        return <div className="flex items-center justify-center h-screen">Yükleniyor...</div>
+    }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-800">
+        <header className="max-w-6xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center">
+            <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                 <Button asChild variant="outline">
+                    <Link href="/rehberlik">
+                        <Home className="mr-2 h-4 w-4" /> Rehberlik Menüsü
+                    </Link>
+                </Button>
+                <h1 className="text-xl md:text-2xl font-bold">Aylık Nöbetçi Listesi</h1>
+            </div>
+      </header>
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* --- SOL PANEL: AYARLAR --- */}
+        <div className="md:col-span-1 space-y-6">
+          
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-4 text-indigo-700">
+              <School size={20} />
+              Okul Bilgileri
+            </h2>
+            <div className="space-y-2 text-sm text-gray-600">
+              <p><strong>Okul:</strong> {schoolInfo?.schoolName}</p>
+              <p><strong>Öğretmen:</strong> {schoolInfo?.classTeacherName}</p>
+              <p><strong>Müdür:</strong> {schoolInfo?.schoolPrincipalName}</p>
+               <Button variant="link" asChild className="p-0 h-auto">
+                    <Link href="/bilgi-girisi">Bilgileri Düzenle</Link>
+                </Button>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-4 text-indigo-700">
+              <Users size={20} />
+              Liste ve Tarihler
+            </h2>
+            
+            <div className="mb-4">
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Nöbet Listesi Oluşturulacak Sınıf</label>
+                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Sınıf Seçin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {classes.map(cls => (
+                            <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                 </Select>
+                 <div className="text-xs text-gray-500 mt-1 text-right">
+                    {students.length} Öğrenci
                 </div>
             </div>
-        </div>
-    );
-}
 
-// Stilleri ve scripti global kapsamdan çıkarmak için React bileşeni içine taşıdım.
-// `students` prop'u dışarıdan alınacak.
-// Modal ve print fonksiyonları şimdilik basitleştirildi.
-// Butonlara tıklandığında state güncelleniyor.
-// Listenin dinamik olarak oluşturulması sağlandı.
+
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">BAŞLANGIÇ</label>
+                <input 
+                  type="date" 
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">BİTİŞ</label>
+                <input 
+                  type="date" 
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mb-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+              <label className="block text-xs font-bold text-yellow-800 mb-1 flex items-center gap-2">
+                <RotateCcw size={14}/>
+                KAÇINCIDAN BAŞLASIN?
+              </label>
+              <input 
+                type="number" 
+                min="1"
+                className="w-full p-2 border border-yellow-300 rounded-lg text-sm"
+                value={startIndex}
+                onChange={(e) => setStartIndex(parseInt(e.target.value) || 1)}
+              />
+            </div>
+
+            <button 
+              onClick={generateRoster}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <Calendar size={20} />
+              Listeyi Oluştur
+            </button>
+          </div>
+        </div>
+
+        {/* --- SAĞ PANEL: ÖNİZLEME VE ÇIKTI --- */}
+        <div className="md:col-span-2 space-y-4">
+          
+          {nextStartInfo && (
+            <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between shadow-sm gap-4">
+              <div>
+                <h3 className="font-bold text-green-800">Liste Hazır!</h3>
+                <p className="text-sm text-green-700">
+                  Gelecek ay <strong>{nextStartInfo.index}</strong> numaralı kişiden (<strong>{nextStartInfo.name}</strong>) başlamalısınız.
+                </p>
+              </div>
+              <button 
+                onClick={exportToWord}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-transform active:scale-95 w-full sm:w-auto"
+              >
+                <Download size={18} />
+                Word İndir
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 min-h-[600px] relative overflow-x-auto">
+            {roster.length > 0 ? (
+              <div className="w-full">
+                <div className="text-center mb-8 border-b pb-4">
+                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">${schoolInfo?.schoolName}</h1>
+                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
+                </div>
+                
+                <table id="roster-table" className="w-full border-collapse text-left text-sm mb-12">
+                  <thead>
+                    <tr className="bg-gray-100 border-b-2 border-gray-300">
+                      <th className="p-3 font-bold border border-gray-300 w-1/4">Tarih</th>
+                      <th className="p-3 font-bold border border-gray-300 w-1/4">Gün</th>
+                      <th className="p-3 font-bold border border-gray-300 w-1/2">Nöbetçi Öğrenciler</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roster.map((item, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        <td className="p-3 border border-gray-300">{item.date}</td>
+                        <td className={`p-3 border border-gray-300 font-medium ${item.day === 'Pazartesi' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          {item.day}
+                        </td>
+                        <td className="p-3 border border-gray-300 font-bold text-gray-800">
+                          {item.student}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center px-10 mt-10 space-y-8 sm:space-y-0">
+                  <div className="text-center">
+                    <p className="font-bold text-gray-900 text-lg mb-1">${schoolInfo?.classTeacherName}</p>
+                    <p className="text-gray-600">Sınıf Rehber Öğretmeni</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-gray-900 text-lg mb-1">${schoolInfo?.schoolPrincipalName}</p>
+                    <p className="text-gray-600">Okul Müdürü</p>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-70 mt-20">
+                <School size={64} className="mb-4" />
+                <p className="text-lg text-center">
+                  Sol taraftan bir sınıf seçin, tarih aralığı belirleyin<br/>
+                  ve "Listeyi Oluştur" butonuna basın.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
