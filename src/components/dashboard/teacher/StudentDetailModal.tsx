@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2 } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 
 
 interface StudentDetailModalProps {
@@ -84,12 +85,12 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
     const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
-    const homeworksQuery = useMemo(() => {
+    const homeworksQuery = useMemoFirebase(() => {
       if (!db || !currentClass) return null;
       return query(collection(db, 'classes', currentClass.id, 'homeworks'));
     }, [db, currentClass]);
 
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`homeworks-for-class-${currentClass?.id}`, homeworksQuery);
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
     useEffect(() => {
         const fetchSubmissions = async () => {
@@ -227,11 +228,11 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const { disciplineRecords = [] } = localDb;
 
     // Data fetching for the report
-    const { data: infoForm } = useFirestore<InfoForm | null>(`infoform-${student.id}`, doc(db, 'infoForms', student.id));
-    const { data: riskFactors } = useFirestore<RiskFactor[]>(`risk-factors`, query(collection(db, 'riskFactors')));
-    const { data: homeworks } = useFirestore<Homework[]>(`homeworks-${student.classId}`, query(collection(db, 'classes', student.classId, 'homeworks')));
-    const { data: submissions } = useFirestore<Submission[]>(`submissions-${student.id}`, query(collection(db, `classes/${student.classId}/homeworks`), where('studentId', '==', student.id)));
-    const { data: lessons } = useFirestore<Lesson[]>(`lessons-teacher-${teacherProfile.id}`, query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)));
+    const { data: infoForm } = useDoc<InfoForm | null>(useMemoFirebase(() => db ? doc(db, 'infoForms', student.id) : null, [db, student.id]));
+    const { data: riskFactors } = useCollection<RiskFactor>(useMemoFirebase(() => db ? query(collection(db, 'riskFactors')) : null, [db]));
+    const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db ? query(collection(db, 'classes', student.classId, 'homeworks')) : null, [db, student.classId]));
+    const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => db ? query(collection(db, `classes/${student.classId}/homeworks`), where('studentId', '==', student.id)) : null, [db, student.classId, student.id]));
+    const { data: lessons } = useCollection<Lesson>(useMemoFirebase(() => db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
 
 
     const handleExportReport = () => {

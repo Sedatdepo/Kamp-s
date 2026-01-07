@@ -22,13 +22,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 interface CommunicationTabProps {
   classId: string;
@@ -153,15 +153,15 @@ function MessagesPanel({ classId }: { classId: string }) {
     const [newMessage, setNewMessage] = useState('');
     const { toast } = useToast();
 
-    const studentsQuery = useMemo(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
-    const { data: students } = useFirestore<Student[]>(`students-for-chat-${classId}`, studentsQuery);
+    const studentsQuery = useMemoFirebase(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
+    const { data: students } = useCollection<Student>(studentsQuery);
 
-    const messagesQuery = useMemo(() => {
+    const messagesQuery = useMemoFirebase(() => {
         if (!db || !teacherId) return null;
         return query(collection(db, 'messages'), where('participants', 'array-contains', teacherId));
     }, [db, teacherId]);
 
-    const { data: allMessages } = useFirestore<Message[]>(`all-messages-for-teacher-${teacherId}`, messagesQuery);
+    const { data: allMessages } = useCollection<Message>(messagesQuery);
 
     const unreadMessagesCount = useMemo(() => {
         const counts = new Map<string, number>();

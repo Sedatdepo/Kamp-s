@@ -3,10 +3,9 @@
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
-import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile, RiskMapDocument } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { exportRiskMapToRtf } from '@/lib/word-export';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -452,4 +451,3 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     
 
     
-

@@ -4,11 +4,11 @@
 
 import { useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Bell, Clock } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
 
 export function StudentCommunicationTab() {
   const { appUser, db } = useAuth();

@@ -1,8 +1,8 @@
 
+
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
@@ -23,24 +23,28 @@ interface DistributionAssignmentTabProps {
   classId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
-  students: Student[];
+  classes: Class[];
 }
 
-export function DistributionAssignmentTab({ classId, teacherProfile, currentClass, students }: DistributionAssignmentTabProps) {
+export function DistributionAssignmentTab({ classId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
   const { db } = useAuth();
   const { toast } = useToast();
 
   const lessonsQuery = useMemoFirebase(() => (teacherProfile?.id && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null), [teacherProfile?.id, db]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
+  
+  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+
 
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
   const [filterLessonId, setFilterLessonId] = useState<string>('all');
 
-  useState(() => {
+  useEffect(() => {
     if (students) {
       setLocalStudents(students);
     }
-  });
+  }, [students]);
 
   const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
     // If "unassigned" is selected, treat it as clearing the value.
@@ -51,7 +55,7 @@ export function DistributionAssignmentTab({ classId, teacherProfile, currentClas
   };
   
   const handleSaveChanges = async () => {
-    if (!db) return;
+    if (!db || !students) return;
     const batch = writeBatch(db);
     localStudents.forEach(student => {
       const originalStudent = students.find(s => s.id === student.id);
@@ -95,7 +99,7 @@ export function DistributionAssignmentTab({ classId, teacherProfile, currentClas
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
   }, [localStudents, filterLessonId]);
 
-  const isLoading = lessonsLoading;
+  const isLoading = lessonsLoading || studentsLoading;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -114,7 +118,7 @@ export function DistributionAssignmentTab({ classId, teacherProfile, currentClas
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {teacherProfile && <LessonManager teacherId={teacherProfile.id} students={students} />}
+                    {teacherProfile && students && <LessonManager teacherId={teacherProfile.id} students={students} />}
                 </CardContent>
             </Card>
         </div>

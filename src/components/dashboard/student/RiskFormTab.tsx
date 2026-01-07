@@ -1,9 +1,9 @@
 
+
 "use client";
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { RiskFactor, Class } from '@/lib/types';
 import { collection, doc, updateDoc, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 export function RiskFormTab() {
   const { appUser, db } = useAuth();

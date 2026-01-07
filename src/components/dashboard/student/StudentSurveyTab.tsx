@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Survey, SurveyResponse, Question } from '@/lib/types';
 import { collection, query, where, addDoc, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Send, FileText, CheckSquare, Circle, ChevronDown, Star, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {Check} from 'lucide-react';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 
 export function StudentSurveyTab() {
@@ -22,19 +22,19 @@ export function StudentSurveyTab() {
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
 
-  const surveysQuery = useMemo(() => {
+  const surveysQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
   }, [db, classId]);
 
-  const { data: activeSurveys, loading: surveysLoading } = useFirestore<Survey[]>(`active-surveys-${classId}`, surveysQuery);
+  const { data: activeSurveys, isLoading: surveysLoading } = useCollection<Survey>(surveysQuery);
 
-  const responsesQuery = useMemo(() => {
+  const responsesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
   }, [db, studentId]);
 
-  const { data: userResponses, loading: responsesLoading } = useFirestore<SurveyResponse[]>(`user-responses-${studentId}`, responsesQuery);
+  const { data: userResponses, isLoading: responsesLoading } = useCollection<SurveyResponse>(responsesQuery);
 
   const unansweredSurveys = useMemo(() => {
     if (!activeSurveys || !userResponses) return [];

@@ -1,9 +1,9 @@
 
+
 "use client";
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Candidate, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Vote, CheckCircle, Crown, UserCheck, Building, ShieldCheck as HonorIcon } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
 

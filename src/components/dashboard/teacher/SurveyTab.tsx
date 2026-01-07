@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -5,7 +6,6 @@ import { Student, Class, TeacherProfile, Survey, Question, SurveyResponse } from
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck } from 'lucide-react';
-import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useMemo } from 'react';
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 
 interface SurveyTabProps {
@@ -83,12 +84,12 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<any[]>([]);
 
-  const surveysQuery = useMemo(() => {
+  const surveysQuery = useMemoFirebase(() => {
     if (!db || !currentClass?.id) return null;
     return query(collection(db, 'surveys'), where('classId', '==', currentClass.id));
   }, [db, currentClass?.id]);
 
-  const { data: surveys, loading } = useFirestore<Survey[]>(`surveys-${currentClass?.id}`, surveysQuery);
+  const { data: surveys, isLoading: loading } = useCollection<Survey>(surveysQuery);
 
   const startNewSurvey = () => {
     setSelectedSurvey(null);

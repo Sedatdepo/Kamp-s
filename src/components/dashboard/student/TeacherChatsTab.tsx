@@ -4,7 +4,6 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCollection, useMemoFirebase } from '@/firebase';
 import { Message, TeacherProfile, Student } from '@/lib/types';
 import { collection, query, where, writeBatch, doc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 function getInitials(name: string = '') {
     return name.split(' ').map((n) => n[0]).slice(0, 2).join('');

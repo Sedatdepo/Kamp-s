@@ -1,13 +1,14 @@
 
+
 "use client";
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student } from '@/lib/types';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Grid } from 'lucide-react';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 export function SeatingPlanTab() {
   const { appUser, db } = useAuth();

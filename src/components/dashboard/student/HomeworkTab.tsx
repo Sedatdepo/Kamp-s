@@ -1,9 +1,9 @@
 
+
 "use client";
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, Submission, Criterion } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, ClipboardList, CheckCircle } from 'lucide-react';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
@@ -22,12 +23,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     const [submissionText, setSubmissionText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const submissionsQuery = useMemo(() => {
+    const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
     }, [db, classId, homework.id]);
 
-    const { data: submissions } = useFirestore<Submission[]>(`submissions-for-homework-${homework.id}`, submissionsQuery);
+    const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.find(s => s.studentId === student.id);
@@ -102,13 +103,13 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
 function HomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
-    const homeworksQuery = useMemo(() => {
+    const homeworksQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
       // Only get homeworks that have a rubric, which identifies them as performance homework
       return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`performance-homeworks-for-class-${classId}`, homeworksQuery);
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
     const sortedHomeworks = useMemo(() => {
         if (!homeworks) return [];

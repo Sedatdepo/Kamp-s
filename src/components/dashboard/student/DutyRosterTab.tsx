@@ -3,12 +3,12 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class, RosterItem } from '@/lib/types';
-import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Users } from 'lucide-react';
+import { doc } from 'firebase/firestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
 
 export function DutyRosterTab() {
   const { appUser, db } = useAuth();

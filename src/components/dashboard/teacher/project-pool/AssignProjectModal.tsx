@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dialog } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -111,13 +112,13 @@ export const AssignProjectModal = ({ isOpen, onClose, project, onConfirm, classe
                 {selectedClassIds.length > 0 ? (
                     (classes || []).filter((c:Class) => selectedClassIds.includes(c.id)).map((cls:Class) => {
                          const studentsInThisClass = students.filter((s: Student) => s.classId === cls.id);
-                         const areAllInClassSelected = studentsInThisClass.every((s: Student) => selectedStudentIds.includes(s.id));
+                         const areAllSelected = studentsInThisClass.every((s: Student) => selectedStudentIds.includes(s.id));
                          return (
                             <div key={cls.id} className="mb-4">
                                 <div className="flex items-center gap-2 p-2 bg-gray-200 rounded-t-md">
                                     <Checkbox
                                         id={`select-all-${cls.id}`}
-                                        checked={areAllInClassSelected}
+                                        checked={areAllSelected}
                                         onCheckedChange={() => handleSelectAllInClass(cls.id)}
                                     />
                                     <label htmlFor={`select-all-${cls.id}`} className="font-bold text-sm cursor-pointer">{cls.name} (Tümünü Seç)</label>

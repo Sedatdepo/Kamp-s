@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -5,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { Student, Lesson } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Trash2, Edit, Save, X, ChevronsUpDown, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
