@@ -109,7 +109,7 @@ export const AssignProjectModal = ({ isOpen, onClose, project, onConfirm, classe
                 </label>
                 <ScrollArea className="h-64 border rounded-lg p-2 bg-gray-50">
                 {selectedClassIds.length > 0 ? (
-                    (classes || []).filter(c => selectedClassIds.includes(c.id)).map(cls => {
+                    (classes || []).filter((c:Class) => selectedClassIds.includes(c.id)).map((cls:Class) => {
                          const studentsInThisClass = students.filter((s: Student) => s.classId === cls.id);
                          const areAllInClassSelected = studentsInThisClass.every((s: Student) => selectedStudentIds.includes(s.id));
                          return (
