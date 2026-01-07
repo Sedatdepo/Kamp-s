@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where } from 'firebase/firestore';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Homework, TeacherProfile, Student, Submission, HomeworkDocument } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +33,7 @@ import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '../RecordManager';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
@@ -48,12 +48,12 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-    const liveHomeworksQuery = useMemo(() => {
+    const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
-    const { data: liveHomeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`live-homeworks-${classId}`, liveHomeworksQuery);
+    const { data: liveHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(liveHomeworksQuery);
 
     const displayedHomeworks = useMemo(() => {
         if (selectedRecordId) {

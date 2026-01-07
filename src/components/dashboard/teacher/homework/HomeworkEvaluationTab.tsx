@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Student, Class, TeacherProfile, Submission } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete }: any) => {
@@ -223,12 +223,12 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
     const { db } = useAuth();
     const { toast } = useToast();
 
-    const homeworksQuery = useMemo(() => {
+    const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
-    const { data: homeworks, loading: homeworksLoading } = useFirestore<any[]>(`performance-homeworks-${classId}`, homeworksQuery);
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<any>(homeworksQuery);
 
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);

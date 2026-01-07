@@ -3,7 +3,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Class, Lesson, Homework } from '@/lib/types';
 import {
   collection,
@@ -20,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 
 
 function ProjectDetailView({ projectHomework, onBack }: { projectHomework: Homework, onBack: () => void }) {
@@ -157,18 +157,16 @@ export function ProjectTab() {
   const classId = appUser.data.classId;
   const assignedLessonId = appUser.data.assignedLesson;
 
-  const { data: studentClass, loading: classLoading } = useFirestore<Class>(
-    `class-${classId}`,
-    useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db])
-  );
+  const studentClassQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, isLoading: classLoading } = useDoc<Class>(studentClassQuery);
   
-  const lessonsQuery = useMemo(() => {
+  const lessonsQuery = useMemoFirebase(() => {
     if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
   }, [studentClass?.teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>('lessons', lessonsQuery);
+  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
-  const homeworksQuery = useMemo(() => {
+  const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId || !assignedLessonId) return null;
     // Find the homework document associated with the project ID
     const projectHomeworkId = assignedLessonId.replace('project_', '');
@@ -177,10 +175,7 @@ export function ProjectTab() {
     return query(collection(db, `classes/${classId}/homeworks`), where("text", "==", assignmentsData.find(p => p.id.toString() === projectHomeworkId)?.title));
   }, [db, classId, assignedLessonId]);
 
-  const { data: projectHomeworks, loading: homeworksLoading } = useFirestore<Homework[]>(
-    `project-homework-${assignedLessonId}`,
-    homeworksQuery
-  );
+  const { data: projectHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
   const projectHomework = useMemo(() => projectHomeworks?.[0], [projectHomeworks]);
 

@@ -1,12 +1,11 @@
 
-
 'use client';
 
 import React, { useMemo } from 'react';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { LiveHomeworkManagement } from './LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
@@ -19,17 +18,14 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     
     const { db } = useAuth();
     
-    const allStudentsForTeacherQuery = useMemo(() => {
+    const allStudentsForTeacherQuery = useMemoFirebase(() => {
         if (!teacherProfile?.id || !db) return null;
         const classIds = classes.map(c => c.id);
         if (classIds.length === 0) return null;
         return query(collection(db, 'students'), where('classId', 'in', classIds));
     }, [teacherProfile?.id, db, classes]);
 
-    const { data: allStudents } = useFirestore<Student[]>(
-        `all-students-for-teacher-${teacherProfile?.id}`,
-        allStudentsForTeacherQuery
-    );
+    const { data: allStudents } = useCollection<Student>(allStudentsForTeacherQuery);
 
     return (
         <Tabs defaultValue="live">

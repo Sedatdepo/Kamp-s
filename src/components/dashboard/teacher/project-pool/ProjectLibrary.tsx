@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Class, Student, TeacherProfile } from '@/lib/types';
+import { Class, Student, TeacherProfile, Homework } from '@/lib/types';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -97,11 +97,11 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             }
             
             // Also add a record in homeworks to track this.
-             const newHomeworkDoc = {
+             const newHomeworkDoc: Partial<Homework> = {
                 classId: classId,
                 text: selectedProject.title,
                 assignedDate: new Date().toISOString(),
-                dueDate: details.date ? new Date(details.date).toISOString() : null,
+                dueDate: details.date ? new Date(details.date).toISOString() : undefined,
                 teacherName: teacherProfile?.name,
                 lessonName: teacherProfile?.branch,
                 rubric: rubric.items, 

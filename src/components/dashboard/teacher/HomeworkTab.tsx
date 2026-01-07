@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { LiveHomeworkManagement } from './homework/LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './homework/HomeworkEvaluationTab';
@@ -17,23 +18,21 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     
     const { db } = useAuth();
     
-    const allStudentsForTeacherQuery = useMemo(() => {
+    const allStudentsForTeacherQuery = useMemoFirebase(() => {
         if (!teacherProfile?.id || !db) return null;
         const classIds = classes.map(c => c.id);
         if (classIds.length === 0) return null;
         return query(collection(db, 'students'), where('classId', 'in', classIds));
     }, [teacherProfile?.id, db, classes]);
 
-    const { data: allStudents } = useFirestore<Student[]>(
-        `all-students-for-teacher-${teacherProfile?.id}`,
-        allStudentsForTeacherQuery
-    );
+    const { data: allStudents } = useCollection<Student>(allStudentsForTeacherQuery);
 
     return (
         <Tabs defaultValue="live">
             <ScrollArea className="w-full whitespace-nowrap rounded-lg">
                 <TabsList className="w-full justify-start">
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
+                    <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
@@ -44,6 +43,14 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     currentClass={currentClass}
                     teacherProfile={teacherProfile}
                     students={students}
+                />
+            </TabsContent>
+            <TabsContent value="evaluation" className="mt-4">
+                <HomeworkEvaluationTab
+                    classId={classId}
+                    students={students}
+                    currentClass={currentClass}
+                    teacherProfile={teacherProfile}
                 />
             </TabsContent>
             <TabsContent value="library" className="mt-4">
