@@ -22,7 +22,7 @@ import KazanımlarTab from './KazanımlarTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2, Upload, QrCode, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
@@ -367,12 +367,12 @@ export function TeacherDashboard() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
-  const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
+  const teacherQuery = useMemoFirebase(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
+  const { data: teacherData, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
   const teacherProfile = teacherData ?? null;
 
-  const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
-  const { data: classes, loading: classesLoading } = useFirestore<Class[]>('classes', classesQuery);
+  const classesQuery = useMemoFirebase(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
+  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
@@ -429,13 +429,13 @@ export function TeacherDashboard() {
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
   // Fetch ALL students for a teacher ONCE.
-  const allStudentsForTeacherQuery = useMemo(() => {
+  const allStudentsForTeacherQuery = useMemoFirebase(() => {
     if (!teacherId || !db || !classes || classes.length === 0) return null;
     const classIds = classes.map(c => c.id);
     return query(collection(db, 'students'), where('classId', 'in', classIds));
   }, [teacherId, db, classes]);
   
-  const { data: allStudents, loading: allStudentsLoading } = useFirestore<Student[]>('all-students-for-teacher', allStudentsForTeacherQuery);
+  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsForTeacherQuery);
 
   // Filter students for the selected class from the already fetched list.
   const studentsForSelectedClass = useMemo(() => {
@@ -696,6 +696,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
                 <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
