@@ -10,13 +10,13 @@ import { LibraryHeader } from './LibraryHeader';
 import { StatsCards } from './StatsCards';
 import { FilterBar } from './FilterBar';
 import { EmptyState } from './EmptyState';
-import { ProjectCard } from './ProjectCard';
-import { AssignProjectModal } from './AssignProjectModal';
+import { AssignmentCard } from './AssignmentCard';
+import { AssignSettingsModal } from './AssignSettingsModal';
 import { SuccessModal } from './SuccessModal';
 import { RubricModal } from './RubricModal';
 import { AddRubricModal } from './AddRubricModal';
-import { EditProjectModal } from './EditProjectModal';
-import { CreateProjectModal } from './CreateProjectModal';
+import { EditAssignmentModal } from './EditAssignmentModal';
+import { CreateAssignmentModal } from './CreateAssignmentModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
 
 export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
@@ -30,12 +30,12 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
     const [successModalOpen, setSuccessModalOpen] = useState(false);
     const [rubricModalOpen, setRubricModalOpen] = useState(false);
     const [addRubricModalOpen, setAddRubricModalOpen] = useState(false);
-    const [editProjectModalOpen, setEditProjectModalOpen] = useState(false);
-    const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+    const [editAssignmentModalOpen, setEditAssignmentModalOpen] = useState(false);
+    const [createAssignmentModalOpen, setCreateAssignmentModalOpen] = useState(false);
     const [assignSettingsModalOpen, setAssignSettingsModalOpen] = useState(false);
     const [printModalOpen, setPrintModalOpen] = useState(false);
     
-    const [selectedProject, setSelectedProject] = useState<any>(null);
+    const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
     const [assignDetails, setAssignDetails] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [favorites, setFavorites] = useState<number[]>([]);

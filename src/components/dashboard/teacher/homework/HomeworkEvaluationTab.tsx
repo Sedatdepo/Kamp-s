@@ -6,22 +6,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Submission } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Edit, Trash2, Calendar, Users, Save, X } from 'lucide-react';
+import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X } from 'lucide-react';
 import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { exportHomeworkEvaluationToRtf } from '@/lib/word-export';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarPicker } from "@/components/ui/calendar"
-import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from '../RecordManager';
+import { Calendar } from "@/components/ui/calendar"
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,12 +120,12 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                             size="sm"
                                             className={cn("w-[200px] justify-start text-left font-normal h-8", !editingHomework.dueDate && "text-muted-foreground")}
                                         >
-                                            <Calendar className="mr-2 h-4 w-4" />
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             {editingHomework.dueDate ? format(new Date(editingHomework.dueDate), "PPP", { locale: tr }) : <span>Tarih seç</span>}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
-                                        <CalendarPicker
+                                        <Calendar
                                             mode="single"
                                             selected={editingHomework.dueDate ? new Date(editingHomework.dueDate) : undefined}
                                             onSelect={(date) => setEditingHomework({ ...editingHomework, dueDate: date?.toISOString() })}
@@ -138,7 +134,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                     </PopoverContent>
                                 </Popover>
                              ) : (
-                                <span className="flex items-center gap-1.5"><Calendar size={14}/> Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', {locale: tr}) : 'Belirtilmemiş'}</span>
+                                <span className="flex items-center gap-1.5"><CalendarIcon size={14}/> Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', {locale: tr}) : 'Belirtilmemiş'}</span>
                              )}
                             <span className="flex items-center gap-1.5"><Users size={14}/> {submittedCount} / {assignedStudents.length} Teslim</span>
                         </CardDescription>
@@ -243,9 +239,9 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
             const subsByHomework: { [homeworkId: string]: Submission[] } = {};
             for (const hw of homeworks) {
                 const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
-                const snapshot = await getDocs(subsQuery);
+                const querySnapshot = await getDocs(subsQuery);
                 const subs: Submission[] = [];
-                snapshot.forEach(doc => {
+                querySnapshot.forEach(doc => {
                     subs.push({ id: doc.id, ...doc.data() } as Submission);
                 });
                 subsByHomework[hw.id] = subs;
