@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class, RosterItem } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +17,8 @@ export function DutyRosterTab() {
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-duty-roster-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   const dutyRoster = useMemo(() => currentClass?.dutyRoster || [], [currentClass]);
 
   if (classLoading) {

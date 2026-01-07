@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class, TeacherProfile, GradingScores, Criterion } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,13 +63,11 @@ export function GradesTab() {
   if (appUser?.type !== 'student') return null;
 
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const { data: studentClass, loading: classLoading } = useFirestore<Class>(
-    `class-${classId}`,
-    useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db])
-  );
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
-  const teacherQuery = useMemo(() => (studentClass?.teacherId && db ? doc(db, 'teachers', studentClass.teacherId) : null), [studentClass?.teacherId, db]);
-  const { data: teacherProfile, loading: teacherLoading } = useFirestore<TeacherProfile>(`teacher-for-student-${studentClass?.teacherId}`, teacherQuery);
+  const teacherQuery = useMemoFirebase(() => (studentClass?.teacherId && db ? doc(db, 'teachers', studentClass.teacherId) : null), [studentClass?.teacherId, db]);
+  const { data: teacherProfile, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
   
   const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;

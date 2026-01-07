@@ -3,11 +3,11 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Candidate, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Vote, CheckCircle, Crown, UserCheck, Building, ShieldCheck as HonorIcon } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,10 +24,12 @@ export function ElectionVoteTab() {
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: currentClass, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
-  const studentsQuery = useMemo(() => (classId && db ? doc(db, 'students', classId) : null), [classId, db]);
-  const { data: students } = useFirestore<Student[]>(`class-election-students-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
+  
+  const studentsQuery = useMemoFirebase(() => (classId && db ? collection(db, 'classes', classId, 'students') : null), [classId, db]);
+  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+
 
   const hasVoted = useMemo(() => {
     return currentClass?.election?.votedStudentIds.includes(studentId) ?? false;
@@ -91,7 +93,7 @@ export function ElectionVoteTab() {
     toast({ title: 'Oyunuz başarıyla kaydedildi!', description: 'Katılımınız için teşekkürler.' });
   }
 
-  if (classLoading) {
+  if (classLoading || studentsLoading) {
     return <Card><CardContent className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>;
   }
 

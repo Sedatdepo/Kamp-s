@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 
 const highSchoolLessons = [
@@ -40,8 +41,8 @@ const highSchoolLessons = [
 export function LessonManager({ teacherId, students }: { teacherId: string, students: Student[] }) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const lessonsQuery = useMemo(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherId}`, lessonsQuery);
+  const lessonsQuery = useMemoFirebase(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
+  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');

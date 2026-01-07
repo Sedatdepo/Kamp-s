@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -63,8 +64,8 @@ interface RiskMapTabProps {
 function RiskFactorManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
-  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor[]>(`risk-factors`, riskFactorsQuery);
+  const riskFactorsQuery = useMemoFirebase(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
+  const { data: riskFactors, isLoading: riskFactorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
@@ -224,11 +225,11 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: liveStudents, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
+  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  const { data: liveStudents, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
-  const riskFactorsQuery = useMemo(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
-  const { data: riskFactors, loading: factorsLoading } = useFirestore<RiskFactor[]>(`risk-factors`, riskFactorsQuery);
+  const riskFactorsQuery = useMemoFirebase(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
+  const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const displayedStudents = useMemo(() => {
     if (!liveStudents) return [];
@@ -451,3 +452,4 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     
 
     
+

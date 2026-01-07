@@ -4,7 +4,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Message, TeacherProfile, Student } from '@/lib/types';
 import { collection, query, where, writeBatch, doc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,12 +30,12 @@ export function TeacherChatsTab() {
     const studentId = appUser?.type === 'student' ? appUser.data.id : null;
     if (!studentId) return null;
 
-    const messagesQuery = useMemo(() => {
+    const messagesQuery = useMemoFirebase(() => {
         if (!db) return null;
         return query(collection(db, 'messages'), where('participants', 'array-contains', studentId));
     }, [studentId, db]);
 
-    const { data: allMessages, loading: messagesLoading } = useFirestore<Message[]>('studentMessages', messagesQuery);
+    const { data: allMessages, isLoading: messagesLoading } = useCollection<Message>(messagesQuery);
 
     const teacherIds = useMemo(() => {
         const ids = new Set<string>();
@@ -48,8 +48,8 @@ export function TeacherChatsTab() {
         return Array.from(ids);
     }, [allMessages, studentId]);
 
-    const teachersQuery = useMemo(() => (teacherIds.length > 0 && db) ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null, [teacherIds, db]);
-    const { data: teacherProfiles, loading: teachersLoading } = useFirestore<TeacherProfile[]>('teacherProfilesForChats', teachersQuery);
+    const teachersQuery = useMemoFirebase(() => (teacherIds.length > 0 && db) ? query(collection(db, 'teachers'), where('__name__', 'in', teacherIds)) : null, [teacherIds, db]);
+    const { data: teacherProfiles, isLoading: teachersLoading } = useCollection<TeacherProfile>(teachersQuery);
 
     const unreadMessagesCount = useMemo(() => {
         const counts = new Map<string, number>();

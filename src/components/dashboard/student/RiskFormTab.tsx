@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { RiskFactor, Class } from '@/lib/types';
 import { collection, doc, updateDoc, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,14 +19,14 @@ export function RiskFormTab() {
   if (appUser?.type !== 'student') return null;
 
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: studentClass, loading: classLoading } = useFirestore<Class>(`class-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
-  const riskFactorsQuery = useMemo(() => {
+  const riskFactorsQuery = useMemoFirebase(() => {
     if (!studentClass?.teacherId || !db) return null;
     return query(collection(db, 'riskFactors'));
   }, [studentClass?.teacherId, db]);
-  const { data: riskFactors, loading: riskFactorsLoading } = useFirestore<RiskFactor[]>('riskFactors', riskFactorsQuery);
+  const { data: riskFactors, isLoading: riskFactorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const studentRisks = appUser.data.risks || [];
 

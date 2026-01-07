@@ -4,7 +4,7 @@
 
 import { useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Bell, Clock } from 'lucide-react';
@@ -17,8 +17,8 @@ export function StudentCommunicationTab() {
   const studentId = appUser.data.id;
   const classId = appUser.data.classId;
 
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: studentClass, loading: classLoading } = useFirestore<Class>(`class-for-comm-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: studentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
   useEffect(() => {
     if (db && studentClass && studentClass.announcements && studentId) {
