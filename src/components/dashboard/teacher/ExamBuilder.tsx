@@ -207,13 +207,13 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       
       {/* SOL PANEL - Ayarlar ve Soru Listesi */}
       <div className="w-full md:w-96 flex flex-col gap-4">
-        <Card>
+        <Card className="flex flex-col">
             <CardHeader className='pb-2'>
                 <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
                 <CardDescription>Soru üretmek için kazanım seçin.</CardDescription>
             </CardHeader>
-            <CardContent className='space-y-3'>
-                <ScrollArea className='h-40'>
+            <CardContent className='space-y-3 flex-1 flex flex-col'>
+                <ScrollArea className="flex-1">
                     <div className='space-y-1 pr-2'>
                         {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
                         {kazanımlar?.map(k => (
