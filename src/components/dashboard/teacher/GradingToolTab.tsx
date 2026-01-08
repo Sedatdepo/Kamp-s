@@ -17,11 +17,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Settings } from 'lucide-react';
+import { Save, Settings, Sheet } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 
 
 interface GradingToolTabProps {
@@ -133,6 +134,7 @@ export function GradingToolTab({
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   
   const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
+  const [isBulkEntryOpen, setBulkEntryOpen] = useState(false);
 
   useEffect(() => {
     setStudents(initialStudents);
@@ -235,6 +237,9 @@ export function GradingToolTab({
                     </SelectContent>
                 </Select>
             </div>
+            <Button variant="outline" onClick={() => setBulkEntryOpen(true)}>
+                <Sheet className="mr-2 h-4 w-4" /> Toplu Not Girişi
+            </Button>
             <Button variant="outline" onClick={() => setGradingSettingsOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" /> Kriter Ayarları
             </Button>
@@ -289,6 +294,14 @@ export function GradingToolTab({
             />
         </TabsContent>
       </Tabs>
+      
+      <BulkGradeEntryDialog
+        isOpen={isBulkEntryOpen}
+        setIsOpen={setBulkEntryOpen}
+        students={students}
+        activeTerm={activeTerm}
+        onBulkUpdate={(updatedStudents) => setStudents(updatedStudents)}
+      />
 
       {teacherProfile && (
         <GradingSettingsDialog 
