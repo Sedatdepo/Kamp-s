@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -35,7 +36,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
-                    <TabsTrigger value="exam-builder">Sınav Hazırlama (AI)</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -63,13 +63,8 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     students={allStudents || []}
                 />
             </TabsContent>
-            <TabsContent value="exam-builder" className="mt-4">
-                <ExamBuilder 
-                    classes={classes}
-                    students={allStudents || []}
-                    teacherProfile={teacherProfile}
-                />
-            </TabsContent>
         </Tabs>
     );
 }
+
+    

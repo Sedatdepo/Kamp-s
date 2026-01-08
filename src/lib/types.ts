@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Announcement {
@@ -423,3 +424,5 @@ export type ExamTheme = 'classic' | 'modern' | 'minimalist';
 export interface ExamDocument extends Archivable {
     data: Exam;
 }
+
+    
