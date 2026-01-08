@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle } from 'lucide-react';
+import { TeacherProfile, Class } from '@/lib/types';
 
 // --- YARDIMCI FONKSİYONLAR ---
 
-const turkishToRTF = (text) => {
+const turkishToRTF = (text: any) => {
   if (!text) return "";
   return text.toString()
     .replace(/ğ/g, "\\'f0")
@@ -23,7 +24,7 @@ const turkishToRTF = (text) => {
     .replace(/\n/g, "\\par ");
 };
 
-const downloadDailyPlan = (weekData, grade) => {
+const downloadDailyPlan = (weekData: any, grade: number) => {
   const processText = weekData.processComponents 
     ? turkishToRTF(weekData.processComponents) 
     : "Konu ile ilgili temel kavramlar a\\'e7\\'fdklan\\'fdr. \\'d6rnek soru \\'e7\\'f6z\\'fcmleri yap\\'fdl\\'fdr.";
@@ -253,8 +254,8 @@ const plan10 = [
   { id: "10-41", month: "HAZİRAN", monthId: "haziran", week: "38. Hafta", dates: "22-26 Haziran", hours: 0, unit: "SOSYAL ETKİNLİK", topic: "Sosyal Etkinlik", unitType: "sosyal" }
 ];
 
-export default function PhysicsPlanApp() {
-  const [activeGrade, setActiveGrade] = useState(9);
+export function AnnualPlanTab({ teacherProfile, currentClass }) {
+  const [activeGrade, setActiveGrade] = useState(parseInt(currentClass?.name?.match(/\d+/)?.[0] || '9', 10));
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeMonth, setActiveMonth] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -285,6 +286,7 @@ export default function PhysicsPlanApp() {
     const currentData = activeGrade === 9 ? plan9 : plan10;
     const totalWeeks = currentData.filter(w => !w.isBreak).length;
     const completedCount = currentData.filter(w => !w.isBreak && completedWeeks.includes(w.id)).length;
+    if (totalWeeks === 0) return 0;
     return Math.round((completedCount / totalWeeks) * 100);
   };
 
@@ -612,4 +614,3 @@ export default function PhysicsPlanApp() {
     </div>
   );
 }
-
