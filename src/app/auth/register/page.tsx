@@ -1,25 +1,29 @@
-import { RegisterForm } from '@/components/auth/RegisterForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/icons/Logo';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-lg">
-        <div className="flex flex-col items-center text-center mb-6">
+      <div className="w-full max-w-lg text-center">
+        <div className="flex flex-col items-center mb-6">
           <Logo className="h-12 w-12 text-primary" />
-          <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
-            Öğretmen Hesabı Oluştur
-          </h1>
-          <p className="text-muted-foreground">İTO KAMPÜS'e katılın ve sınıflarınızı kolayca yönetin.</p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Kayıt Ol</CardTitle>
-            <CardDescription>Hesabınızı oluşturmak için aşağıdaki bilgileri doldurun.</CardDescription>
+            <CardTitle className="font-headline text-3xl">Kayıtlar Kapalı</CardTitle>
+            <CardDescription className="text-lg">
+              Bu platformda yeni öğretmen kaydı oluşturma işlemi devre dışı bırakılmıştır.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <RegisterForm />
+            <p className="text-muted-foreground mb-4">
+              Eğer bir hesabınız varsa, giriş sayfasına dönebilirsiniz.
+            </p>
+            <Button asChild>
+              <Link href="/">Giriş Sayfasına Dön</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

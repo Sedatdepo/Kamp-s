@@ -91,12 +91,6 @@ export function TeacherLoginForm() {
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Giriş Yap
         </Button>
-        <p className="text-center text-sm text-muted-foreground">
-          Hesabınız yok mu?{' '}
-          <Link href="/auth/register" className="font-medium text-primary hover:underline">
-            Kayıt Ol
-          </Link>
-        </p>
       </form>
     </Form>
   );
