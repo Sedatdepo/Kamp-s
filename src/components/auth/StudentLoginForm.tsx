@@ -16,10 +16,12 @@ import { useSearchParams } from 'next/navigation';
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
+  password: z.string().optional(),
 });
 
 export function StudentLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const { signInStudent } = useAuth();
   const searchParams = useSearchParams();
@@ -30,6 +32,7 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
+      password: '',
     },
   });
 
@@ -43,14 +46,23 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
       // No toast on success, redirection is handled by AuthContext
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Giriş Başarısız',
-        description: error.message || 'Girdiğiniz bilgiler hatalı.',
-      });
+      if (error.message.includes("şifre gereklidir")) {
+        setShowPassword(true);
+        toast({
+          variant: 'default',
+          title: 'Şifre Gerekli',
+          description: error.message,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Giriş Başarısız',
+          description: error.message || 'Girdiğiniz bilgiler hatalı.',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +102,21 @@ export function StudentLoginForm() {
             </FormItem>
           )}
         />
+        {showPassword && (
+           <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Şifreniz</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="••••••••" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Giriş Yap

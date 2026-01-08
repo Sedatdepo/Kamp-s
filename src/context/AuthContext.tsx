@@ -17,7 +17,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string) => Promise<void>;
+  signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -89,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 localStorage.removeItem('appUser');
                 setProfileLoading(false);
             } else {
-                // If not a teacher, check if it's a student with authUid
                  const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
                  const studentSnapshot = await getDocs(studentQuery);
                  if (!studentSnapshot.empty) {
@@ -99,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      setAppUser(studentUser);
                      localStorage.setItem('appUser', JSON.stringify(studentUser));
                  } else {
-                     // Not a teacher and not found as a student, sign out
                      await signOut();
                  }
                 setProfileLoading(false);
@@ -107,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return () => unsubscribe();
     } else {
-        // Handle anonymous student session from localStorage
         const storedUser = localStorage.getItem('appUser');
         if (storedUser) {
             try {
@@ -132,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let unsubscribeStudent: () => void = () => {};
-        if (studentId && db && !user) { // Only attach this listener for non-auth students
+        if (studentId && db && !user) { 
             const studentDocRef = doc(db, 'students', studentId);
             unsubscribeStudent = onSnapshot(studentDocRef, (doc) => {
                 if (doc.exists()) {
@@ -167,8 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loading, appUser, pathname, router]);
 
-  const signInStudent = async (classCode: string, studentNumber: string) => {
-    if (!db) throw new Error("Veritabanı başlatılamadı.");
+  const signInStudent = async (classCode: string, studentNumber: string, password?: string) => {
+    if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
 
     setProfileLoading(true);
     try {
@@ -188,15 +185,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentDoc = studentSnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
-        if (studentData.authUid && auth) {
-             const studentCredential = await getDoc(doc(db, "studentCredentials", studentData.authUid));
-             if(studentCredential.exists()){
-                const { email, password } = studentCredential.data();
-                await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged will handle setting the user and navigation.
-             } else {
-                 throw new Error("Öğrenci kimlik bilgileri bulunamadı.");
-             }
+        if (studentData.authUid) {
+            if (!password) {
+                 const studentUser: AppUser = { type: 'student', data: studentData };
+                 setAppUser(studentUser);
+                 localStorage.setItem('appUser', JSON.stringify(studentUser));
+                 window.dispatchEvent(new CustomEvent('open-student-settings'));
+                 throw new Error("Bu öğrenci hesabı için şifre gereklidir. Şifrenizi unuttuysanız öğretmeninizle görüşün.");
+            }
+             const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
+             await signInWithEmailAndPassword(auth, email, password);
+             // onAuthStateChanged will handle setting the user and navigation.
         } else {
             // No authUid, this is a guest-like session for the student
             const studentUser: AppUser = { type: 'student', data: studentData };
@@ -209,6 +208,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Öğrenci girişi hatası:", error);
         localStorage.removeItem('appUser');
         setAppUser(null);
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            throw new Error('Girdiğiniz şifre hatalı.');
+        }
         throw error;
     } finally {
         setProfileLoading(false);

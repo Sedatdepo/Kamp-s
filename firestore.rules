@@ -1,19 +1,86 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    match /classes/{classId} {
+      allow read, write: if isTeacher();
+      
+      // Öğrenciler sadece kendi sınıflarının bilgilerini okuyabilir.
+      allow get: if request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 2, 7);
+      match /students/{studentId} {
+        allow read, write: if isTeacher();
+        // Öğrenci kendi bilgilerini okuyabilir/güncelleyebilir
+        allow get, update: if isOwner(studentId);
+      }
+
+      match /homeworks/{homeworkId} {
+        allow read, write: if isTeacher();
+        allow read: if request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
+
+        match /submissions/{submissionId} {
+          allow read, write: if isTeacher();
+          allow create: if isOwner(request.resource.data.studentId);
+          allow read, update: if isOwner(submissionId);
+        }
+      }
+    }
+    
+    match /students/{studentId} {
+      allow get, update: if isOwner(studentId) || isTeacher();
+      allow read, write: if isTeacher();
+    }
+
+    match /teachers/{teacherId} {
+        allow read: if request.auth != null;
+        allow write: if isOwner(teacherId);
+    }
+
+    match /infoForms/{formId} {
+      allow read, write: if isTeacher();
+      allow read, create, update: if isOwner(formId);
+    }
+    
+    match /riskFactors/{factorId} {
+      allow read, write: if isTeacher();
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if isTeacher();
+    }
+    
+    match /messages/{messageId} {
+      allow read, write: if request.auth.uid in resource.data.participants;
+    }
+    
+    match /roles_teacher/{uid} {
+        allow read, write: if false;
+    }
+
+    // This collection is no longer needed
+    // match /studentCredentials/{uid} {
+    //     allow read, write: if false; // Should only be accessible by backend/admin
+    // }
+
+     match /surveys/{surveyId} {
+        allow get, list: if request.auth != null;
+        allow create, update, delete: if isTeacher();
+    }
+    match /surveyResponses/{responseId} {
+        allow create: if request.auth != null;
+        allow read, list: if isTeacher();
+        allow update, delete: if isTeacher();
     }
   }
 }

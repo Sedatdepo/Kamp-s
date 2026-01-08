@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, BellOff, Bell } from 'lucide-react';
 import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Separator } from '@/components/ui/separator';
 
@@ -88,7 +88,6 @@ export function AccountSettingsTab() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, "studentCredentials", user.uid), { email, password });
       await updateDoc(doc(db, 'students', student.id), { authUid: user.uid });
 
       toast({ title: 'Hesap ve Şifre Başarıyla Oluşturuldu!', description: 'Artık hesabınıza bu şifre ile giriş yapabilirsiniz.' });
@@ -109,7 +108,6 @@ export function AccountSettingsTab() {
       setIsLoading(true);
       try {
           await updatePassword(auth.currentUser, password);
-          await updateDoc(doc(db, "studentCredentials", appUser.data.authUid!), { password });
           toast({ title: 'Şifre Başarıyla Güncellendi!' });
       } catch (error: any) {
           toast({ variant: 'destructive', title: 'Şifre Güncelleme Hatası', description: error.message });
