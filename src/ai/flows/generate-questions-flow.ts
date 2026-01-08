@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
   type: z.enum(["multiple-choice", "true-false", "open-ended", "matching"]).describe('Üretilecek sorunun tipi.'),
+  photoDataUri: z.string().optional().describe("A photo to base the question on, as a data URI."),
 });
 export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
 
@@ -44,10 +45,14 @@ export async function generateQuestion(input: GenerateQuestionInput): Promise<Qu
             input: { schema: GenerateQuestionInputSchema },
             output: { schema: QuestionOutputSchema },
             prompt: `Sen bir eğitim teknolojileri uzmanısın ve MEB müfredatına hakim, yaratıcı bir soru yazarsın.
-Aşağıda verilen KAZANIM ve SORU TİPİ'ne uygun bir sınav sorusu oluştur.
+Aşağıda verilen KAZANIM, SORU TİPİ ve (varsa) GÖRSEL'e uygun bir sınav sorusu oluştur.
+Eğer bir görsel verilmişse, soru DOĞRUDAN bu görselle ilgili olmalıdır. Örneğin "Yukarıdaki şekilde..." veya "Bu grafiğe göre..." gibi ifadeler kullanmalısın.
 
 KAZANIM: {{{kazanim}}}
 SORU TİPİ: {{{type}}}
+{{#if photoDataUri}}
+GÖRSEL: {{media url=photoDataUri}}
+{{/if}}
 
 Kurallar:
 - Soru metni, kazanımı doğrudan ölçmeli ve öğrencinin anlama, yorumlama veya uygulama becerisini test etmelidir.

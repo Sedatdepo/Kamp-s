@@ -53,6 +53,11 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
   
   const [selectedKazanımId, setSelectedKazanımId] = useState<string | null>(null);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
+  
+  // State for the image to be used for AI generation
+  const [imageForAi, setImageForAi] = useState<string | null>(null);
+  const imageForAiRef = useRef<HTMLInputElement>(null);
+
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
@@ -183,25 +188,50 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
       }
   };
   
-  const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended" | "matching") => {
-    const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
-    if (!selectedKazanım) {
-        toast({ variant: 'destructive', title: "Kazanım Seçilmedi", description: "Lütfen soru üretmek için bir kazanım seçin." });
-        return;
-    }
-    
-    setIsGeneratingQuestion(true);
-    try {
-        const generatedQuestion = await generateQuestion({ kazanim: selectedKazanım.text, type });
-        addQuestion(type, generatedQuestion);
-        toast({ title: "Yapay Zeka Soru Üretti!", description: "Yeni soru listenin sonuna eklendi." });
-    } catch(err) {
-        console.error("AI question generation error:", err);
-        toast({ variant: 'destructive', title: "Yapay Zeka Hatası", description: "Soru üretilemedi. Lütfen tekrar deneyin." });
-    } finally {
-        setIsGeneratingQuestion(false);
-    }
-  };
+    const handleImageForAiUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImageForAi(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended" | "matching") => {
+        const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
+        if (!selectedKazanım) {
+            toast({ variant: 'destructive', title: "Kazanım Seçilmedi", description: "Lütfen soru üretmek için bir kazanım seçin." });
+            return;
+        }
+
+        setIsGeneratingQuestion(true);
+        try {
+            const generatedQuestion = await generateQuestion({ 
+                kazanim: selectedKazanım.text, 
+                type,
+                photoDataUri: imageForAi || undefined
+            });
+
+            // If an image was used for AI, also attach it to the created question
+            if (imageForAi && storage && appUser) {
+                const imageRef = storageRef(storage, `exam_images/${appUser.data.uid}/${Date.now()}_ai_image.png`);
+                await uploadString(imageRef, imageForAi, 'data_url');
+                const downloadUrl = await getDownloadURL(imageRef);
+                addQuestion(type, {...generatedQuestion, image: downloadUrl});
+                setImageForAi(null); // Clear the image after use
+            } else {
+                addQuestion(type, generatedQuestion);
+            }
+
+            toast({ title: "Yapay Zeka Soru Üretti!", description: "Yeni soru listenin sonuna eklendi." });
+        } catch(err) {
+            console.error("AI question generation error:", err);
+            toast({ variant: 'destructive', title: "Yapay Zeka Hatası", description: "Soru üretilemedi. Lütfen tekrar deneyin." });
+        } finally {
+            setIsGeneratingQuestion(false);
+        }
+    };
 
 
   const totalPoints = currentExam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
@@ -242,9 +272,20 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
         <Card className="flex-1 flex flex-col">
             <CardHeader className='pb-2'>
                 <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
-                <CardDescription>Soru üretmek için bir kazanım seçin.</CardDescription>
+                <CardDescription>Soru üretmek için bir kazanım ve (isteğe bağlı) bir resim seçin.</CardDescription>
             </CardHeader>
             <CardContent className='flex-1 flex flex-col space-y-3'>
+                 <input type="file" ref={imageForAiRef} onChange={handleImageForAiUpload} className="hidden" accept="image/*" />
+                 {imageForAi ? (
+                    <div className="relative group">
+                        <img src={imageForAi} alt="AI için resim" className="rounded-md border max-h-32 w-full object-cover" />
+                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => setImageForAi(null)}><X size={16}/></Button>
+                    </div>
+                 ) : (
+                    <Button variant="outline" onClick={() => imageForAiRef.current?.click()} className="w-full border-dashed">
+                        <ImageIcon className="mr-2 h-4 w-4"/> AI İçin Resim Yükle
+                    </Button>
+                 )}
                 <ScrollArea className="flex-1">
                     <div className='space-y-1 pr-2'>
                         {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
