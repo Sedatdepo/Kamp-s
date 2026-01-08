@@ -82,11 +82,11 @@ const TELAFI_SECENEKLERI = [
   { key: 'dyk', label: 'DYK Çalışmaları' }
 ];
 
-function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void }) {
+function KazanımSelector({ onSelect, teacherId }: { onSelect: (kazanim: string) => void, teacherId: string }) {
     const { db } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     
-    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims')) : null, [db]);
+    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims'), where('teacherId', '==', teacherId)) : null, [db, teacherId]);
     const { data: kazanımlar, isLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
     const filteredKazanims = useMemo(() => {
@@ -442,7 +442,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
                                         {item.konu || <span className="text-muted-foreground">Kazanım seçmek için tıklayın...</span>}
                                     </Button>
                                 </DialogTrigger>
-                                <KazanımSelector onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} />
+                                <KazanımSelector onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} teacherId={teacherProfile?.id || ''}/>
                           </Dialog>
                       </div>
                       <div className="col-span-6 space-y-1">
