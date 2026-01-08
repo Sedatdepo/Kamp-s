@@ -32,31 +32,13 @@ service cloud.firestore {
     // Öğrenci, giriş yapabilmek için sınıf kodunu ve kendi numarasını sorgulayabilmeli.
     // Bu kurallar, kimliği doğrulanmamış kullanıcıların giriş yapabilmesi için gereklidir.
     match /classes/{classId} {
-      allow list: if true; // Öğrencinin sınıf kodunu sorgulamasına izin ver
-    }
-    match /students/{studentId} {
-      // Öğrenci giriş sorgusu için bu koleksiyona erişim izni.
-      // DİKKAT: Bu kural, tüm öğrenci verilerinin listelenebileceği anlamına gelir, 
-      // ancak istemci tarafındaki sorgu (where clause) bunu kısıtlar.
-      allow list: if true; 
-      
-      // Öğrenci giriş yaptıktan sonra kendi profilini okuyabilir ve güncelleyebilir.
-      allow get, update: if isOwner(studentId);
-    }
-    
-    // --- ÖĞRETMEN YÖNETİMİ ---
-    match /teachers/{teacherId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(teacherId);
-    }
-    
-    // --- SINIF İÇİ KURALLAR ---
-    match /classes/{classId} {
       // Öğretmen kendi sınıfını okuyabilir, yazabilir, güncelleyebilir, silebilir.
       allow get, update, delete: if isClassOwner(classId);
       // Öğretmen yeni sınıf oluşturabilir.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      
+      // Öğrencinin sınıf kodunu sorgulamasına ve öğretmenlerin listelemesine izin ver
+      allow list: if true;
+
       match /students/{studentId} {
         // Öğretmen, kendi sınıfındaki öğrencileri yönetebilir.
         allow read, write: if isClassOwner(classId);
@@ -78,6 +60,20 @@ service cloud.firestore {
             allow get, update: if isSignedIn() && resource.data.studentId == request.auth.uid;
         }
       }
+    }
+    
+    match /students/{studentId} {
+      // Öğrenci giriş sorgusu için bu koleksiyona erişim izni.
+      allow list: if true; 
+      
+      // Öğrenci giriş yaptıktan sonra kendi profilini okuyabilir ve güncelleyebilir.
+      allow get, update: if isOwner(studentId);
+    }
+    
+    // --- ÖĞRETMEN YÖNETİMİ ---
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId);
     }
     
     match /infoForms/{formId} {
