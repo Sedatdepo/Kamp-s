@@ -3,13 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion, Sparkles
 } from 'lucide-react';
-import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
+import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile, Kazanım } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
+import { doc, collection, addDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { AssignExamModal } from './AssignExamModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ExamPaper } from './ExamPaper';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { generateQuestion } from '@/ai/flows/generate-questions-flow';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
@@ -45,7 +47,15 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  const [newKazanımText, setNewKazanımText] = useState("");
+  const [selectedKazanımId, setSelectedKazanımId] = useState<string | null>(null);
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
 
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+
+  const kazanımlarQuery = useMemoFirebase(() => db && teacherId ? collection(db, 'kazanims') : null, [db, teacherId]);
+  const { data: kazanımlar, isLoading: kazanımlarLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
   const activeQuestion = currentExam.questions.find(q => q.id === selectedQuestionId);
 
@@ -53,7 +63,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
     setCurrentExam(prev => ({ ...prev, examInfo: { ...prev.examInfo, [field]: value }}));
   };
 
-  const addQuestion = (type: QuestionType) => {
+  const addQuestion = (type: QuestionType, questionData?: Partial<ExamQuestion>) => {
     const newQuestion: ExamQuestion = {
       id: `q_${Date.now()}`,
       text: '',
@@ -62,6 +72,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       correctAnswer: null,
       points: 10,
       image: null,
+      ...questionData,
     };
     setCurrentExam(prev => ({...prev, questions: [...prev.questions, newQuestion]}));
     setSelectedQuestionId(newQuestion.id);
@@ -113,7 +124,6 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
         updateQuestion(activeQuestion.id, 'image', null);
         toast({title: "Resim Silindi"});
     } catch(error) {
-        // If image not in storage, just remove link
         if ((error as any).code === 'storage/object-not-found') {
              updateQuestion(activeQuestion.id, 'image', null);
         } else {
@@ -168,48 +178,110 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       }
   };
 
+  const handleAddKazanım = async () => {
+    if (!newKazanımText.trim() || !db || !teacherId) return;
+    await addDoc(collection(db, "kazanims"), {
+        text: newKazanımText,
+        teacherId: teacherId
+    });
+    setNewKazanımText("");
+    toast({ title: "Kazanım eklendi." });
+  };
+  
+  const handleDeleteKazanım = async (id: string) => {
+      if (!db) return;
+      await deleteDoc(doc(db, "kazanims", id));
+      toast({ title: "Kazanım silindi." });
+  }
+
+  const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended") => {
+    const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
+    if (!selectedKazanım) {
+        toast({ variant: 'destructive', title: "Kazanım Seçilmedi", description: "Lütfen soru üretmek için bir kazanım seçin." });
+        return;
+    }
+    
+    setIsGeneratingQuestion(true);
+    try {
+        const generatedQuestion = await generateQuestion({ kazanim: selectedKazanım.text, type });
+        addQuestion(type, generatedQuestion);
+        toast({ title: "Yapay Zeka Soru Üretti!", description: "Yeni soru listenin sonuna eklendi." });
+    } catch(err) {
+        console.error("AI question generation error:", err);
+        toast({ variant: 'destructive', title: "Yapay Zeka Hatası", description: "Soru üretilemedi. Lütfen tekrar deneyin." });
+    } finally {
+        setIsGeneratingQuestion(false);
+    }
+  };
+
 
   const totalPoints = currentExam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-100px)] bg-gray-50">
-      {/* SOL PANEL - Soru Listesi ve Sınav Ayarları */}
-      <div className="w-full md:w-80 border-r bg-white p-4 flex flex-col space-y-4 overflow-y-auto">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] bg-gray-50 gap-4">
+      
+      {/* SOL PANEL - Ayarlar ve Soru Listesi */}
+      <div className="w-full md:w-96 flex flex-col gap-4">
         <Card>
             <CardHeader className='pb-2'>
-                <CardTitle className='text-base'>Sınav Bilgileri</CardTitle>
+                <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
+                <CardDescription>Soru üretmek için kazanım seçin.</CardDescription>
             </CardHeader>
-            <CardContent className='space-y-2'>
-                <Input placeholder="Sınav Başlığı" value={currentExam.examInfo.title} onChange={e => updateExamInfo('title', e.target.value)} />
-                <div className='text-sm font-bold text-center p-2 bg-slate-100 rounded-md'>Toplam Puan: {totalPoints}</div>
+            <CardContent className='space-y-3'>
+                <div className='space-y-1 max-h-32 overflow-y-auto pr-2'>
+                    {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
+                    {kazanımlar?.map(k => (
+                        <div key={k.id} onClick={() => setSelectedKazanımId(k.id)} className={`text-xs p-2 rounded-md cursor-pointer flex justify-between items-center ${selectedKazanımId === k.id ? 'bg-blue-100' : 'hover:bg-gray-100'}`}>
+                           <span>{k.text}</span>
+                           <Trash2 onClick={(e) => {e.stopPropagation(); handleDeleteKazanım(k.id)}} className="h-3 w-3 text-red-400 hover:text-red-600 shrink-0"/>
+                        </div>
+                    ))}
+                </div>
+                 <div className='flex gap-2 border-t pt-3'>
+                    <Input value={newKazanımText} onChange={e => setNewKazanımText(e.target.value)} placeholder="Yeni kazanım ekle..." className="h-9 text-xs"/>
+                    <Button onClick={handleAddKazanım} size="sm" className="h-9">Ekle</Button>
+                </div>
+                 <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli Üret</Button>
+                    <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu Üret</Button>
+                    {isGeneratingQuestion && <Loader2 className="h-4 w-4 animate-spin"/>}
+                </div>
             </CardContent>
         </Card>
-        
-        <div className='flex-1 space-y-2 overflow-y-auto'>
-            {currentExam.questions.map((q, index) => (
-                 <div key={q.id} onClick={() => setSelectedQuestionId(q.id)} className={`p-2 border rounded-md cursor-pointer ${selectedQuestionId === q.id ? 'bg-blue-100 border-blue-400' : 'bg-white hover:bg-slate-50'}`}>
-                    <div className='flex justify-between items-center'>
-                        <span className='text-sm font-semibold'>Soru {index + 1} ({q.points || 0} Puan)</span>
-                        <Trash2 className='h-4 w-4 text-red-500 hover:text-red-700' onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id)}}/>
-                    </div>
-                     <p className='text-xs text-gray-500 truncate'>{q.image ? "[Resimli Soru]" : (q.text || "Boş soru...")}</p>
+        <Card className="flex-1 flex flex-col">
+            <CardHeader className='pb-2 flex-row justify-between items-center'>
+                <CardTitle className='text-lg'>Sınav Bilgileri</CardTitle>
+                 <div className='text-sm font-bold text-center p-2 bg-slate-100 rounded-md'>Puan: {totalPoints}</div>
+            </CardHeader>
+            <CardContent className='space-y-2 flex-1 flex flex-col'>
+                <Input placeholder="Sınav Başlığı" value={currentExam.examInfo.title} onChange={e => updateExamInfo('title', e.target.value)} />
+                 <div className='flex-1 space-y-2 overflow-y-auto pr-2 mt-2'>
+                    {currentExam.questions.map((q, index) => (
+                        <div key={q.id} onClick={() => setSelectedQuestionId(q.id)} className={`p-2 border rounded-md cursor-pointer ${selectedQuestionId === q.id ? 'bg-blue-100 border-blue-400' : 'bg-white hover:bg-slate-50'}`}>
+                            <div className='flex justify-between items-center'>
+                                <span className='text-sm font-semibold'>Soru {index + 1} ({q.points || 0} Puan)</span>
+                                <Trash2 className='h-4 w-4 text-red-500 hover:text-red-700' onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id)}}/>
+                            </div>
+                            <p className='text-xs text-gray-500 truncate'>{q.image ? "[Resimli Soru]" : (q.text || "Boş soru...")}</p>
+                        </div>
+                    ))}
                 </div>
-            ))}
-        </div>
-        <div className='flex gap-2'>
-            <Button variant="outline" onClick={() => addQuestion('multiple-choice')} className='flex-1'><CheckSquare className='mr-2'/>Test</Button>
-            <Button variant="outline" onClick={() => addQuestion('short-answer')} className='flex-1'><AlignLeft className='mr-2'/>Kısa Cevap</Button>
-        </div>
-        <div className="flex gap-2">
-            <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="flex-1"><Eye className='mr-2'/>Önizleme</Button>
-            <Button onClick={() => setIsAssignModalOpen(true)} className="flex-1"><Send className='mr-2'/>Ata & Yayınla</Button>
-        </div>
+                <div className='flex gap-2 pt-2 border-t'>
+                    <Button variant="outline" onClick={() => addQuestion('multiple-choice')} className='flex-1'><CheckSquare className='mr-2'/>Test</Button>
+                    <Button variant="outline" onClick={() => addQuestion('open-ended')} className='flex-1'><AlignLeft className='mr-2'/>Açık Uçlu</Button>
+                </div>
+                <div className="flex gap-2">
+                    <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="flex-1"><Eye className='mr-2'/>Önizleme</Button>
+                    <Button onClick={() => setIsAssignModalOpen(true)} className="flex-1"><Send className='mr-2'/>Ata & Yayınla</Button>
+                </div>
+            </CardContent>
+        </Card>
       </div>
 
       {/* SAĞ PANEL - Soru Editörü */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-0 overflow-y-auto">
         {activeQuestion ? (
-          <div className="bg-white p-6 rounded-lg shadow-sm border space-y-6 max-w-3xl mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-sm border space-y-6 h-full">
             <div>
               <Label htmlFor="questionText" className="text-lg font-semibold">Soru Metni</Label>
               <div className="flex gap-2 items-center mt-2 mb-4">
@@ -241,7 +313,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                                     newOptions[i] = e.target.value;
                                     updateQuestion(activeQuestion.id, 'options', newOptions);
                                 }}/>
-                                <RadioGroup value={activeQuestion.correctAnswer === i ? 'correct' : ''} onValueChange={() => updateQuestion(activeQuestion.id, 'correctAnswer', i)}>
+                                <RadioGroup value={activeQuestion.correctAnswer === opt ? 'correct' : ''} onValueChange={() => updateQuestion(activeQuestion.id, 'correctAnswer', opt)}>
                                     <RadioGroupItem value="correct" id={`correct-${i}`}/>
                                 </RadioGroup>
                              </div>
@@ -260,7 +332,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                 </div>
             )}
 
-            {activeQuestion.type === 'short-answer' && (
+            {(activeQuestion.type === 'short-answer' || activeQuestion.type === 'open-ended') && (
                 <div>
                     <Label className="text-lg font-semibold">Cevap Anahtarı (Opsiyonel)</Label>
                     <Textarea value={activeQuestion.correctAnswer as string || ''} onChange={e => updateQuestion(activeQuestion.id, 'correctAnswer', e.target.value)} rows={2} className="mt-2" placeholder='İdeal cevabı veya anahtar kelimeleri yazın...'/>
@@ -275,14 +347,14 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
           </div>
         ) : (
           <div className='flex items-center justify-center h-full text-gray-500'>
-            <Card className='p-8 text-center'>
+            <Card className='p-8 text-center border-dashed'>
                 <CardHeader>
                     <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
                         <FileQuestion className="h-10 w-10 text-primary" />
                     </div>
                     <CardTitle>Soru Bankası ve Sınav Oluşturucu</CardTitle>
                     <CardDescription>
-                        Soldaki menüden soru ekleyin veya mevcut sorularınızı düzenleyin.
+                        Soldaki menüden kazanım seçip soru üretin veya manuel olarak yeni soru ekleyin.
                     </CardDescription>
                 </CardHeader>
             </Card>
