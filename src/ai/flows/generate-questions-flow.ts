@@ -12,13 +12,12 @@ import {z} from 'genkit';
 // Define the input and output schemas inside the function scope
 // to avoid exporting them from a 'use server' file.
 
-export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
 const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
   type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe('Üretilecek sorunun tipi.'),
 });
+export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
 
-export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
 const QuestionOutputSchema = z.object({
     text: z.string().describe("Sorunun ana metni."),
     type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe("Sorunun tipi."),
@@ -26,6 +25,8 @@ const QuestionOutputSchema = z.object({
     correctAnswer: z.any().optional().describe("Doğru cevap. Çoktan seçmeli için seçenek metni, doğru/yanlış için boolean, açık uçlu için örnek cevap."),
     points: z.number().default(10).describe("Sorunun varsayılan puanı."),
 });
+export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
+
 
 export async function generateQuestion(input: GenerateQuestionInput): Promise<QuestionOutput> {
   const generateQuestionFlow = ai.defineFlow(
