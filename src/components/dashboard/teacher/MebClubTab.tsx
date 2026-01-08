@@ -3,15 +3,15 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Drama } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 export default function MebClubTab() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="font-headline flex items-center gap-2">
-          <Drama />
-          MEB Öğrenci Kulübü
+          <Trophy />
+          Öğrenci Kulübü
         </CardTitle>
         <CardDescription>
           Sosyal etkinlik ve öğrenci kulübü yönetimi modülü.
