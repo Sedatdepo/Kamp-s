@@ -9,7 +9,7 @@ import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, Exam
 import { useDatabase } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, collection, addDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, writeBatch, deleteDoc, query } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { AssignExamModal } from './AssignExamModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ExamPaper } from './ExamPaper';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { generateQuestion } from '@/ai/flows/generate-questions-flow';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
@@ -48,13 +49,12 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  const [newKazanımText, setNewKazanımText] = useState("");
   const [selectedKazanımId, setSelectedKazanımId] = useState<string | null>(null);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-  const kazanımlarQuery = useMemoFirebase(() => db && teacherId ? collection(db, 'kazanims') : null, [db, teacherId]);
+  const kazanımlarQuery = useMemoFirebase(() => db && teacherId ? query(collection(db, 'kazanims')) : null, [db, teacherId]);
   const { data: kazanımlar, isLoading: kazanımlarLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
   const activeQuestion = currentExam.questions.find(q => q.id === selectedQuestionId);
@@ -72,6 +72,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       correctAnswer: null,
       points: 10,
       image: null,
+      kazanimId: selectedKazanımId || undefined,
       ...questionData,
     };
     setCurrentExam(prev => ({...prev, questions: [...prev.questions, newQuestion]}));
@@ -177,23 +178,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
           toast({ variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.' });
       }
   };
-
-  const handleAddKazanım = async () => {
-    if (!newKazanımText.trim() || !db || !teacherId) return;
-    await addDoc(collection(db, "kazanims"), {
-        text: newKazanımText,
-        teacherId: teacherId
-    });
-    setNewKazanımText("");
-    toast({ title: "Kazanım eklendi." });
-  };
   
-  const handleDeleteKazanım = async (id: string) => {
-      if (!db) return;
-      await deleteDoc(doc(db, "kazanims", id));
-      toast({ title: "Kazanım silindi." });
-  }
-
   const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended") => {
     const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
     if (!selectedKazanım) {
@@ -228,20 +213,17 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                 <CardDescription>Soru üretmek için kazanım seçin.</CardDescription>
             </CardHeader>
             <CardContent className='space-y-3'>
-                <div className='space-y-1 max-h-32 overflow-y-auto pr-2'>
-                    {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
-                    {kazanımlar?.map(k => (
-                        <div key={k.id} onClick={() => setSelectedKazanımId(k.id)} className={`text-xs p-2 rounded-md cursor-pointer flex justify-between items-center ${selectedKazanımId === k.id ? 'bg-blue-100' : 'hover:bg-gray-100'}`}>
-                           <span>{k.text}</span>
-                           <Trash2 onClick={(e) => {e.stopPropagation(); handleDeleteKazanım(k.id)}} className="h-3 w-3 text-red-400 hover:text-red-600 shrink-0"/>
-                        </div>
-                    ))}
-                </div>
-                 <div className='flex gap-2 border-t pt-3'>
-                    <Input value={newKazanımText} onChange={e => setNewKazanımText(e.target.value)} placeholder="Yeni kazanım ekle..." className="h-9 text-xs"/>
-                    <Button onClick={handleAddKazanım} size="sm" className="h-9">Ekle</Button>
-                </div>
-                 <div className="flex flex-wrap gap-2">
+                <ScrollArea className='h-40'>
+                    <div className='space-y-1 pr-2'>
+                        {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
+                        {kazanımlar?.map(k => (
+                            <div key={k.id} onClick={() => setSelectedKazanımId(k.id)} className={`text-xs p-2 rounded-md cursor-pointer flex justify-between items-center ${selectedKazanımId === k.id ? 'bg-blue-100' : 'hover:bg-gray-100'}`}>
+                               <span>{k.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                 <div className="flex flex-wrap gap-2 border-t pt-3">
                     <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli Üret</Button>
                     <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu Üret</Button>
                     {isGeneratingQuestion && <Loader2 className="h-4 w-4 animate-spin"/>}
