@@ -8,21 +8,24 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-// Define the input and output schemas inside the function scope
-// to avoid exporting them from a 'use server' file.
+import { v4 as uuidv4 } from 'uuid';
 
 const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
-  type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe('Üretilecek sorunun tipi.'),
+  type: z.enum(["multiple-choice", "true-false", "open-ended", "matching"]).describe('Üretilecek sorunun tipi.'),
 });
 export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
 
 const QuestionOutputSchema = z.object({
-    text: z.string().describe("Sorunun ana metni."),
-    type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe("Sorunun tipi."),
+    text: z.string().describe("Sorunun ana metni veya başlığı."),
+    type: z.enum(["multiple-choice", "true-false", "open-ended", "matching"]).describe("Sorunun tipi."),
     options: z.array(z.string()).optional().describe("Çoktan seçmeli soru için seçenekler. Diğer türler için boş bırakılmalıdır."),
-    correctAnswer: z.any().optional().describe("Doğru cevap. Çoktan seçmeli için seçenek metni, doğru/yanlış için boolean, açık uçlu için örnek cevap."),
+    correctAnswer: z.any().optional().describe("Doğru cevap. Çoktan seçmeli için seçenek metni, doğru/yanlış için boolean, açık uçlu için örnek cevap. Eşleştirme için boş bırakılır."),
+    matchingPairs: z.array(z.object({
+        id: z.string().default(() => uuidv4()),
+        question: z.string(),
+        answer: z.string()
+    })).optional().describe("Eşleştirme soruları için kullanılır. Bir yanda kavramlar (question), diğer yanda tanımlar (answer) yer alır."),
     points: z.number().default(10).describe("Sorunun varsayılan puanı."),
 });
 export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
@@ -57,6 +60,11 @@ Kurallar:
 - 'open-ended' (açık uçlu) tipi için:
   - 'options' dizisini boş bırak.
   - 'correctAnswer' alanına örnek bir cevap veya değerlendirme kriteri yaz.
+- 'matching' (eşleştirme) tipi için:
+  - Soru metni (text) olarak "Aşağıdaki kavramları açıklamalarıyla doğru bir şekilde eşleştiriniz." gibi bir başlık kullan.
+  - 'matchingPairs' dizisini doldur. En az 4 çift oluştur.
+  - Her bir çiftte, 'question' alanına bir kavram, 'answer' alanına ise o kavramın tanımını yaz.
+  - 'options' ve 'correctAnswer' alanlarını boş bırak.
 - Üretilen soru nesnesi, belirtilen JSON formatına tam olarak uymalıdır.
 `,
         });

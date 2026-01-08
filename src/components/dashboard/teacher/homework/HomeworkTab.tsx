@@ -36,6 +36,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
+                    <TabsTrigger value="exam-builder">Sınav Hazırlama</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -59,6 +60,12 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                 <HomeworkLibrary 
                     classId={classId}
                     teacherProfile={teacherProfile}
+                    classes={classes}
+                    students={allStudents || []}
+                />
+            </TabsContent>
+             <TabsContent value="exam-builder" className="mt-4">
+                <ExamBuilder 
                     classes={classes}
                     students={allStudents || []}
                 />

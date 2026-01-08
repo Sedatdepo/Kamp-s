@@ -1,11 +1,12 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion, Sparkles
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion, Sparkles, Binary
 } from 'lucide-react';
-import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile, Kazanım } from '@/lib/types';
+import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile, Kazanım, MatchingPair } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +23,7 @@ import { ExamPaper } from './ExamPaper';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { generateQuestion } from '@/ai/flows/generate-questions-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { v4 as uuidv4 } from 'uuid';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students }: { classes: Class[], students: Student[] }) {
@@ -70,6 +72,7 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
       text: '',
       type,
       options: type === 'multiple-choice' ? Array(4).fill('') : undefined,
+      matchingPairs: type === 'matching' ? [{id: uuidv4(), question: '', answer: ''}, {id: uuidv4(), question: '', answer: ''}] : undefined,
       correctAnswer: null,
       points: 10,
       image: null,
@@ -180,7 +183,7 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
       }
   };
   
-  const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended") => {
+  const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended" | "matching") => {
     const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
     if (!selectedKazanım) {
         toast({ variant: 'destructive', title: "Kazanım Seçilmedi", description: "Lütfen soru üretmek için bir kazanım seçin." });
@@ -202,6 +205,34 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
 
 
   const totalPoints = currentExam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+
+  const MatchingPairEditor = ({ pair, index, onUpdate, onRemove }: { pair: MatchingPair, index: number, onUpdate: (index: number, field: 'question' | 'answer', value: string) => void, onRemove: (index: number) => void }) => (
+    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+        <span className="text-sm font-semibold">{index + 1}.</span>
+        <Input placeholder="Kavram" value={pair.question} onChange={(e) => onUpdate(index, 'question', e.target.value)} />
+        <Input placeholder="Açıklama" value={pair.answer} onChange={(e) => onUpdate(index, 'answer', e.target.value)} />
+        <Button size="icon" variant="ghost" className="text-red-500" onClick={() => onRemove(index)}><Trash2 className="h-4 w-4" /></Button>
+    </div>
+  );
+
+  const handleUpdateMatchingPair = (index: number, field: 'question' | 'answer', value: string) => {
+    if (!activeQuestion || activeQuestion.type !== 'matching') return;
+    const newPairs = [...(activeQuestion.matchingPairs || [])];
+    newPairs[index] = { ...newPairs[index], [field]: value };
+    updateQuestion(activeQuestion.id, 'matchingPairs', newPairs);
+  };
+
+  const handleAddMatchingPair = () => {
+    if (!activeQuestion || activeQuestion.type !== 'matching') return;
+    const newPairs = [...(activeQuestion.matchingPairs || []), { id: uuidv4(), question: '', answer: '' }];
+    updateQuestion(activeQuestion.id, 'matchingPairs', newPairs);
+  };
+
+  const handleRemoveMatchingPair = (index: number) => {
+    if (!activeQuestion || activeQuestion.type !== 'matching') return;
+    const newPairs = (activeQuestion.matchingPairs || []).filter((_, i) => i !== index);
+    updateQuestion(activeQuestion.id, 'matchingPairs', newPairs);
+  };
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] bg-gray-50 gap-4">
@@ -225,8 +256,9 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                     </div>
                 </ScrollArea>
                  <div className="flex flex-wrap gap-2 border-t pt-3">
-                    <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli Üret</Button>
-                    <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu Üret</Button>
+                    <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli</Button>
+                    <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu</Button>
+                    <Button onClick={() => handleGenerateQuestion('matching')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Eşleştirme</Button>
                     {isGeneratingQuestion && <Loader2 className="h-4 w-4 animate-spin"/>}
                 </div>
             </CardContent>
@@ -249,9 +281,11 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                         </div>
                     ))}
                 </div>
-                <div className='flex gap-2 pt-2 border-t'>
-                    <Button variant="outline" onClick={() => addQuestion('multiple-choice')} className='flex-1'><CheckSquare className='mr-2'/>Test</Button>
-                    <Button variant="outline" onClick={() => addQuestion('open-ended')} className='flex-1'><AlignLeft className='mr-2'/>Açık Uçlu</Button>
+                <div className='grid grid-cols-2 gap-2 pt-2 border-t'>
+                    <Button variant="outline" onClick={() => addQuestion('multiple-choice')}><CheckSquare className='mr-2'/>Test</Button>
+                    <Button variant="outline" onClick={() => addQuestion('open-ended')}><AlignLeft className='mr-2'/>Açık Uçlu</Button>
+                    <Button variant="outline" onClick={() => addQuestion('true-false')}><Binary className='mr-2'/>D/Y</Button>
+                    <Button variant="outline" onClick={() => addQuestion('matching')}><Shuffle className='mr-2'/>Eşleştirme</Button>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="flex-1"><Eye className='mr-2'/>Önizleme</Button>
@@ -312,6 +346,18 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                         <div className="flex items-center space-x-2"><RadioGroupItem value="true" id="true-opt" /><Label htmlFor="true-opt">Doğru</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="false" id="false-opt" /><Label htmlFor="false-opt">Yanlış</Label></div>
                     </RadioGroup>
+                </div>
+            )}
+
+            {activeQuestion.type === 'matching' && (
+                <div>
+                    <Label className="text-lg font-semibold">Eşleştirme Çiftleri</Label>
+                    <div className='mt-2 space-y-2'>
+                        {(activeQuestion.matchingPairs || []).map((pair, i) => (
+                           <MatchingPairEditor key={pair.id} pair={pair} index={i} onUpdate={handleUpdateMatchingPair} onRemove={handleRemoveMatchingPair} />
+                        ))}
+                         <Button variant="outline" size="sm" onClick={handleAddMatchingPair} className="mt-2"><Plus className="mr-2 h-4 w-4"/>Çift Ekle</Button>
+                    </div>
                 </div>
             )}
 
