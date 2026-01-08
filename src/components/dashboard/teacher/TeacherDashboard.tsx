@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
@@ -267,6 +266,7 @@ function ClassSelectionScreen({
                                                         variant="ghost" 
                                                         size="icon" 
                                                         className="h-8 w-8" 
+                                                        onClick={() => setEditingClass(cls)}
                                                     >
                                                         <Edit className="h-4 w-4"/>
                                                     </Button>
@@ -281,21 +281,19 @@ function ClassSelectionScreen({
                                             </Dialog>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                            disabled={deletingClassId === cls.id}
-                                                        >
-                                                            {deletingClassId === cls.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin"/> 
-                                                            ) : (
-                                                                <Trash2 className="h-4 w-4"/>
-                                                            )}
-                                                        </Button>
-                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                        disabled={deletingClassId === cls.id}
+                                                    >
+                                                        {deletingClassId === cls.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin"/> 
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4"/>
+                                                        )}
+                                                    </Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
@@ -400,24 +398,16 @@ export function TeacherDashboard() {
   }, [teacherId]);
 
   useEffect(() => {
-    // Automatically create a class if the teacher has none
     if (!classesLoading && teacherId && db && classes && classes.length === 0) {
       const createInitialClass = async () => {
         try {
           await addDoc(collection(db, 'classes'), {
             name: '10-A',
             teacherId: teacherId,
-            isProjectSelectionActive: false,
-            isRiskFormActive: false,
-            isInfoFormActive: false,
-            isElectionActive: false,
-            code: generateClassCode(),
-            announcements: [],
-            homeworks: [],
+            isProjectSelectionActive: false, isRiskFormActive: false, isInfoFormActive: false, isElectionActive: false,
+            code: generateClassCode(), announcements: [], homeworks: [],
           });
-        } catch (error) {
-          console.error("Failed to create initial class:", error);
-        }
+        } catch (error) { console.error("Failed to create initial class:", error); }
       };
       createInitialClass();
     }
@@ -425,7 +415,6 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
-  // Fetch ALL students for a teacher ONCE.
   const allStudentsForTeacherQuery = useMemoFirebase(() => {
     if (!teacherId || !db || !classes || classes.length === 0) return null;
     const classIds = classes.map(c => c.id);
@@ -434,7 +423,6 @@ export function TeacherDashboard() {
   
   const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsForTeacherQuery);
 
-  // Filter students for the selected class from the already fetched list.
   const studentsForSelectedClass = useMemo(() => {
     if (!selectedClassId || !allStudents) return [];
     return allStudents.filter(s => s.classId === selectedClassId);
@@ -442,157 +430,52 @@ export function TeacherDashboard() {
 
   const isLoading = teacherLoading || classesLoading || allStudentsLoading;
   
-  const renderContent = () => {
-    if (isLoading && activeTab !== 'dashboard') {
-      return (
-        <div className="flex justify-center items-center h-full p-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
-    }
-    
-    const handleBackToDashboard = () => {
-        setSelectedClassId(null);
-        setActiveTab('dashboard');
-    }
+  const handleBackToDashboard = () => {
+    setActiveTab("dashboard");
+  };
 
-    if (activeTab !== 'dashboard' && activeTab !== 'dilekce' && activeTab !== 'zumre' && activeTab !== 'bep' && activeTab !== 'veli-toplantisi' && activeTab !== 'sok' && activeTab !== 'kazanimlar' && !selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
-    }
-    
-    if (activeTab !== "dashboard" && selectedClassId) {
+  const handleSelectClass = (classId: string | null) => {
+    setSelectedClassId(classId);
+    setActiveTab("dashboard");
+  };
+
+  const renderContent = () => {
+    if (!selectedClassId) {
+      // Standalone tabs (no class selected)
+      const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar'];
+      if (fullPageTabs.includes(activeTab)) {
         let tabContent;
         switch(activeTab) {
-            case 'students':
-                tabContent = <StudentManagementTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
-                break;
-            case 'grading':
-                tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />;
-                break;
-            case 'planning':
-                tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
-                break;
-            case 'election':
-                tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />;
-                break;
-            case 'projects':
-                tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />;
-                break;
-            case 'homework':
-                tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>;
-                break;
-            case 'risks':
-                tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
-                break;
-            case 'forms':
-                tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
-                break;
-            case 'communication':
-                tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />;
-                break;
-            case 'surveys':
-                tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>;
-                break;
-             case 'discipline':
-                tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
-                break;
-            default:
-                tabContent = null;
+          case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
+          case 'zumre': tabContent = <ZumreTab />; break;
+          case 'bep': tabContent = <BepTab />; break;
+          case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
+          case 'sok': tabContent = <SokTab />; break;
+          case 'kazanimlar': tabContent = <KazanımlarTab setActiveTab={setActiveTab} />; break;
+          default: tabContent = null;
         }
-
-      return (
-        <div>
-           <div className="mb-6 flex justify-between items-center">
-             <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
-              {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
-              {TABS_CONFIG[activeTab]?.label}
-            </h2>
-            <div className="flex items-center gap-2">
-               <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      {currentClass?.name}
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Sınıf Seçimine Dön
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {(orderedClasses || []).map((cls: Class) => (
-                        <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
-                            {cls.name}
-                        </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" onClick={handleBackToDashboard}>
-                <Home className="mr-2 h-4 w-4" /> Panele Dön
+        return (
+          <div>
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
+                {TABS_CONFIG[activeTab]?.label}
+              </h2>
+              <Button variant="outline" onClick={() => handleSelectClass(null)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
               </Button>
             </div>
+            {tabContent}
           </div>
-          {tabContent}
-        </div>
-      );
+        );
+      }
+      // Class selection screen
+      return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
     }
-
-    const renderFullPageTab = (tab: ActiveTab) => {
-        let tabContent;
-         switch(tab) {
-               case 'dilekce':
-                   tabContent = <DilekceTab teacherProfile={teacherProfile} />;
-                   break;
-                case 'zumre':
-                   tabContent = <ZumreTab />;
-                   break;
-               case 'bep':
-                   tabContent = <BepTab />;
-                   break;
-               case 'veli-toplantisi':
-                   tabContent = <VeliToplantisiTab />;
-                   break;
-               case 'sok':
-                   tabContent = <SokTab />;
-                   break;
-                case 'kazanimlar':
-                    return <KazanımlarTab setActiveTab={setActiveTab} />;
-               default:
-                   return null;
-         }
-   
-         return (
-           <div>
-              <div className="mb-6 flex justify-between items-center">
-                <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
-                 {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
-                 {TABS_CONFIG[activeTab]?.label}
-               </h2>
-               <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
-                   <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
-               </Button>
-             </div>
-             {tabContent}
-           </div>
-         );
-    }
-   
-    if (activeTab !== 'dashboard' && !selectedClassId) {
-        const fullPageContent = renderFullPageTab(activeTab);
-        if(fullPageContent) {
-            return (
-              <div className="flex flex-col min-h-screen w-full bg-muted/40">
-                  <main className="flex-1 p-4 sm:p-6">
-                      {fullPageContent}
-                  </main>
-              </div>
-            );
-        }
-    }
-
-    // Dashboard view
-    return (
+    
+    // Class-specific views
+    if (activeTab === 'dashboard') {
+      return (
         <div className="grid gap-6">
             <Card>
                 <CardHeader>
@@ -606,13 +489,13 @@ export function TeacherDashboard() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                              <DropdownMenuItem onSelect={() => handleSelectClass(null)}>
                                   <ArrowLeft className="mr-2 h-4 w-4" />
                                   Sınıf Seçimine Dön
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {(orderedClasses || []).map((cls: Class) => (
-                                  <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                                  <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
                                       {cls.name}
                                   </DropdownMenuItem>
                               ))}
@@ -625,7 +508,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
+                <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
                 <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
@@ -637,23 +520,79 @@ export function TeacherDashboard() {
                 <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
         </div>
-    );
-  }
+      );
+    }
+    
+    // Individual tab view
+    let tabContent;
+    switch(activeTab) {
+        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
+        case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
+        case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
+        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />; break;
+        case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
+        case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+        case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+        case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
+        case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
+        case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        default: tabContent = <div>Bilinmeyen sekme</div>;
+    }
 
+    return (
+      <div>
+        <div className="mb-6 flex justify-between items-center">
+           <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+            {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
+            {TABS_CONFIG[activeTab]?.label}
+          </h2>
+          <div className="flex items-center gap-2">
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    {currentClass?.name}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => handleSelectClass(null)}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Sınıf Seçimine Dön
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {(orderedClasses || []).map((cls: Class) => (
+                      <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
+                          {cls.name}
+                      </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" onClick={handleBackToDashboard}>
+              <Home className="mr-2 h-4 w-4" /> Sınıf Paneline Dön
+            </Button>
+          </div>
+        </div>
+        {tabContent}
+      </div>
+    );
+  };
 
   return (
-      <div className="flex flex-col min-h-screen w-full bg-muted/40">
-          <Header />
-          <main className="flex-1 p-4 sm:p-6">
-            {renderContent()}
-          </main>
-            {teacherProfile && (
-                <ProfileDialog
-                    isOpen={isProfileOpen}
-                    setIsOpen={setIsProfileOpen}
-                    teacherProfile={teacherProfile}
-                />
-            )}
-      </div>
+    <div className="flex flex-col min-h-screen w-full bg-muted/40">
+      <Header />
+      <main className="flex-1 p-4 sm:p-6">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : renderContent()}
+      </main>
+      {teacherProfile && (
+          <ProfileDialog
+              isOpen={isProfileOpen}
+              setIsOpen={setIsProfileOpen}
+              teacherProfile={teacherProfile}
+          />
+      )}
+    </div>
   );
 }
