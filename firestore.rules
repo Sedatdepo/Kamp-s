@@ -15,47 +15,69 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    // Öğrenci giriş yaparken sınıf kodunu sorgulayabilmeli
+
+    // --- GENEL GİRİŞ İZİNLERİ ---
+    // Henüz giriş yapmamış kullanıcıların sınıf kodu ve öğrenci numarası ile sorgu yapmasına izin ver.
+    // Bu, öğrenci giriş ekranı için kritiktir.
     match /classes/{classId} {
-      allow list: if !isSignedIn(); // Sadece classCode ile sorgulama için
+        allow list: if !isSignedIn(); // Sınıf kodu sorgusu için
+    }
+     match /students/{studentId} {
+      allow list: if !isSignedIn(); // Öğrenci numarası sorgusu için
+    }
+
+    // --- SINIF BAZLI KURALLAR ---
+    match /classes/{classId} {
+      // Öğretmenler sınıflar üzerinde tam yetkiye sahiptir.
       allow read, write: if isTeacher();
       
-      // Öğrenci kendi sınıf bilgilerini okuyabilir (giriş yaptıktan sonra)
+      // Giriş yapmış öğrenciler, kendi kayıtlı oldukları sınıfın detaylarını okuyabilir.
+      // `get()` kullanarak öğrencinin kendi belgesinden sınıf ID'sini kontrol eder.
       allow get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
 
+      // Sınıfın altındaki öğrenciler koleksiyonu
       match /students/{studentId} {
+        // Öğretmenler, sınıftaki tüm öğrencileri okuyabilir ve yazabilir.
         allow read, write: if isTeacher();
-        allow get, update: if isOwner(studentId);
+        // Bir öğrenci, aynı sınıftaki diğer öğrencilerin listesini (isim, numara vb.) görebilir.
+        allow list, get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
       }
 
+      // Sınıfın altındaki ödevler koleksiyonu
       match /homeworks/{homeworkId} {
         allow read, write: if isTeacher();
-        allow read: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
+        // Öğrenciler kendi sınıflarındaki ödevleri okuyabilir.
+        allow list, get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
 
+        // Ödevlere yapılan teslimler
         match /submissions/{submissionId} {
           allow read, write: if isTeacher();
+          // Öğrenci sadece kendi adına teslimat oluşturabilir.
           allow create: if isOwner(request.resource.data.studentId);
-          allow read, update: if isOwner(submissionId);
+          // Öğrenci sadece kendi teslimatını okuyabilir/güncelleyebilir.
+          allow read, update: if isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)/homeworks/$(homeworkId)/submissions/$(submissionId)).data.studentId == request.auth.uid;
         }
       }
     }
     
-    // Öğrenci giriş yaparken öğrenci numarasını sorgulayabilmeli
+    // --- GENEL ÖĞRENCİ KURALLARI ---
     match /students/{studentId} {
-      allow list: if !isSignedIn(); // classId ve studentNumber ile sorgulama için
+      // Bir öğrenci sadece kendi verisini okuyabilir veya güncelleyebilir.
+      // Öğretmenler tüm öğrencileri okuyabilir ve güncelleyebilir.
       allow get, update: if isOwner(studentId) || isTeacher();
-      allow read, write: if isTeacher();
+      // Sadece öğretmenler öğrenci silebilir veya yeni öğrenci (normalde olmaz ama kural olarak) oluşturabilir.
+      allow create, delete: if isTeacher();
     }
 
+    // --- DİĞER KOLEKSİYONLAR ---
     match /teachers/{teacherId} {
-        allow read: if request.auth != null;
+        allow read: if isSignedIn();
         allow write: if isOwner(teacherId);
     }
 
     match /infoForms/{formId} {
-      allow read, write: if isTeacher();
-      allow read, create, update: if isOwner(formId);
+      allow write: if isTeacher(); // Öğretmenler yazabilir (örn: formu sıfırlamak)
+      allow read, create, update: if isOwner(formId) || isTeacher(); // Öğrenci kendi formunu okur/yazar, öğretmen de okur.
     }
     
     match /riskFactors/{factorId} {
@@ -63,20 +85,20 @@ service cloud.firestore {
     }
 
     match /lessons/{lessonId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if isTeacher();
     }
     
     match /messages/{messageId} {
-      allow read, write: if request.auth.uid in resource.data.participants;
+      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participants;
     }
     
     match /roles_teacher/{uid} {
-        allow read, write: if false;
+        allow read, write: if false; // Bu koleksiyona istemci tarafından asla yazılmamalı.
     }
 
     match /kazanims/{kazanimId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
     }
 
@@ -86,11 +108,11 @@ service cloud.firestore {
     }
     
     match /surveys/{surveyId} {
-       allow get, list: if request.auth != null;
+       allow get, list: if isSignedIn();
        allow create, update, delete: if isTeacher();
     }
     match /surveyResponses/{responseId} {
-        allow create: if request.auth != null;
+        allow create: if isSignedIn();
         allow read, list: if isTeacher();
         allow update, delete: if isTeacher();
     }
