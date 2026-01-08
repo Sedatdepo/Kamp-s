@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import KazanımlarTab from './KazanımlarTab';
@@ -83,6 +84,7 @@ function ClassSelectionScreen({
     loading,
     setOrderedClasses,
     setActiveTab,
+    initialTab = 'classes',
 }: { 
     onSelectClass: (id: string | null) => void;
     classes: Class[];
@@ -90,6 +92,7 @@ function ClassSelectionScreen({
     loading: boolean;
     setOrderedClasses: React.Dispatch<React.SetStateAction<Class[]>>;
     setActiveTab: (tab: ActiveTab) => void;
+    initialTab?: 'classes' | 'documents';
 }) {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
@@ -199,7 +202,7 @@ function ClassSelectionScreen({
     }
     
     return (
-        <Tabs defaultValue="classes">
+        <Tabs defaultValue={initialTab}>
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="classes"><School className="mr-2"/>Sınıflarınız</TabsTrigger>
                 <TabsTrigger value="documents"><FolderKanban className="mr-2"/>Evraklar</TabsTrigger>
@@ -361,6 +364,7 @@ export function TeacherDashboard() {
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [initialMainTab, setInitialMainTab] = useState<'classes' | 'documents'>('classes');
 
   const teacherQuery = useMemoFirebase(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
@@ -437,13 +441,19 @@ export function TeacherDashboard() {
   const handleSelectClass = (classId: string | null) => {
     setSelectedClassId(classId);
     setActiveTab("dashboard");
+    setInitialMainTab('classes');
+  };
+  
+  const handleBackToDocuments = () => {
+    setSelectedClassId(null);
+    setActiveTab('dashboard'); // This will trigger ClassSelectionScreen
+    setInitialMainTab('documents');
   };
 
   const renderContent = () => {
-    if (!selectedClassId) {
-      // Standalone tabs (no class selected)
-      const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar'];
-      if (fullPageTabs.includes(activeTab)) {
+    // Standalone document tabs (no class selected)
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar'];
+    if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         let tabContent;
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
@@ -461,19 +471,24 @@ export function TeacherDashboard() {
                 {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
                 {TABS_CONFIG[activeTab]?.label}
               </h2>
-              <Button variant="outline" onClick={() => handleSelectClass(null)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+              <Button variant="outline" onClick={handleBackToDocuments}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Evraklar Modülüne Dön
               </Button>
             </div>
             {tabContent}
           </div>
         );
-      }
-      // Class selection screen
-      return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
+    }
+    
+    if (!selectedClassId) {
+        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} initialTab={initialMainTab} />;
     }
     
     // Class-specific views
+    if (isLoading) {
+        return <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
+    
     if (activeTab === 'dashboard') {
       return (
         <div className="grid gap-6">
