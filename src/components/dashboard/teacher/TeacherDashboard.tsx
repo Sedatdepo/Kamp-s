@@ -465,7 +465,7 @@ export function TeacherDashboard() {
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
           case 'sok': tabContent = <SokTab />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab setActiveTab={setActiveTab} />; break;
-          case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} teacherProfile={teacherProfile} />; break;
+          case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
           default: tabContent = null;
         }
         return (

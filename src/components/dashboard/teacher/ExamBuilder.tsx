@@ -24,7 +24,7 @@ import { generateQuestion } from '@/ai/flows/generate-questions-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // --- ANA BİLEŞEN ---
-export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
+export default function ExamBuilder({ classes, students }: { classes: Class[], students: Student[] }) {
   const { appUser, storage, db } = useAuth();
   const { toast } = useToast();
 
@@ -53,6 +53,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+  const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
 
   const kazanımlarQuery = useMemoFirebase(() => db && teacherId ? query(collection(db, 'kazanims')) : null, [db, teacherId]);
   const { data: kazanımlar, isLoading: kazanımlarLoading } = useCollection<Kazanım>(kazanımlarQuery);
@@ -207,12 +208,12 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
       
       {/* SOL PANEL - Ayarlar ve Soru Listesi */}
       <div className="w-full md:w-96 flex flex-col gap-4">
-        <Card className="flex flex-col">
+        <Card className="flex-1 flex flex-col">
             <CardHeader className='pb-2'>
                 <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
                 <CardDescription>Soru üretmek için kazanım seçin.</CardDescription>
             </CardHeader>
-            <CardContent className='space-y-3 flex-1 flex flex-col'>
+            <CardContent className='flex-1 flex flex-col space-y-3'>
                 <ScrollArea className="flex-1">
                     <div className='space-y-1 pr-2'>
                         {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
