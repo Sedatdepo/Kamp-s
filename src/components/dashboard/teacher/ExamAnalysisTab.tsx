@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquare, Square, BookOpen, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -115,14 +115,14 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
                 <div className="p-2 space-y-1">
                     {isLoading ? <p>Yükleniyor...</p> : filteredKazanims.length > 0 ? (
                         filteredKazanims.map(item => (
-                            <Dialog.Close asChild key={item.id}>
+                            <DialogClose asChild key={item.id}>
                                 <div
                                     onClick={() => onSelect(item.text)}
                                     className="p-3 text-sm rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
                                 >
                                     {item.text}
                                 </div>
-                            </Dialog.Close>
+                            </DialogClose>
                         ))
                     ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
@@ -606,3 +606,4 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     </div>
   );
 }
+
