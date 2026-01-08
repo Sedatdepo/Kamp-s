@@ -36,8 +36,6 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 ---
 **ÖNEMLİ NOT:** Her cevabından önce bu kuralları dahili olarak tekrar oku ve buna göre hareket et.
 
-**RESET PROTOKOLÜ:** Eğer **"RESET PROTOKOLÜNÜ BAŞLAT"** dersem, mevcut görevi iptal etmeli, son stabil duruma dönmek için bir plan sunmalı ve gerekirse temel yapılandırmayı yeniden kurmalısın.
-
 ---
 ## PROJE KAYIT NOKTALARI
 
