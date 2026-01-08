@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
@@ -710,4 +711,4 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
             </div>
         </div>
     );
-};
+}
