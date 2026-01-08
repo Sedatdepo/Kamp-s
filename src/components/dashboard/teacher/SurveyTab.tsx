@@ -25,15 +25,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { exportSurveyResultsToRtf } from '@/lib/word-export';
 
-
-interface SurveyTabProps {
-  students: Student[];
-  currentClass: Class | null;
-  teacherProfile: TeacherProfile | null;
-}
 
 const ResultsView = ({ survey, students, teacherProfile, currentClass, onBack }: { survey: Survey, students: Student[], teacherProfile: TeacherProfile | null, currentClass: Class | null, onBack: () => void }) => {
     const { db } = useAuth();
@@ -45,6 +39,11 @@ const ResultsView = ({ survey, students, teacherProfile, currentClass, onBack }:
     const { data: responses, isLoading: responsesLoading } = useCollection<SurveyResponse>(responsesQuery);
 
     const answeredStudentIds = useMemo(() => new Set(responses?.map(r => r.studentId)), [responses]);
+    
+    const notAnsweredStudents = useMemo(() => {
+        return students.filter(s => !answeredStudentIds.has(s.id));
+    }, [students, answeredStudentIds]);
+
 
     if (responsesLoading) {
         return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -74,44 +73,61 @@ const ResultsView = ({ survey, students, teacherProfile, currentClass, onBack }:
                 {survey.questions.map((q, index) => {
                     const questionResponses = responses?.map(r => {
                         const answerObj = r.answers.find(a => a.questionId === q.id);
-                        return answerObj ? answerObj.answer : null;
-                    }).filter(Boolean);
+                        return { answer: answerObj ? answerObj.answer : null, studentId: r.studentId };
+                    }).filter(res => res.answer);
 
                     let content;
-                    if (q.type === 'multiple' || q.type === 'dropdown') {
-                        const voteCounts = q.options?.map(opt => ({
+                    if (q.type === 'multiple' || q.type === 'dropdown' || q.type === 'linear') {
+                        const options = q.type === 'linear' ? ['1','2','3','4','5'] : q.options || [];
+                        const voteCounts = options.map(opt => ({
                             option: opt,
-                            count: questionResponses?.filter(r => r === opt).length || 0,
+                            count: questionResponses?.filter(r => r.answer === opt).length || 0,
                         }));
 
                         content = (
-                            <div className="h-[200px]">
+                            <div className="h-[250px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={voteCounts}>
-                                        <XAxis dataKey="option" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
-                                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} label={{ position: 'top', fill: 'hsl(var(--foreground))' }} />
-                                    </BarChart>
+                                    <RechartsBarChart data={voteCounts} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                        <XAxis type="number" allowDecimals={false} />
+                                        <YAxis dataKey="option" type="category" width={150} />
+                                        <Tooltip cursor={{fill: 'rgba(230,230,230,0.5)'}}/>
+                                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30} label={{ position: 'right', fill: 'hsl(var(--foreground))' }} />
+                                    </RechartsBarChart>
                                 </ResponsiveContainer>
                             </div>
                         );
-                    } else {
+                    } else { // text, paragraph
                         content = (
                             <ul className="list-disc pl-5 space-y-2 max-h-48 overflow-y-auto bg-slate-50 p-3 rounded-md">
-                                {questionResponses?.map((res, i) => (
-                                    <li key={i} className="text-sm text-slate-700">{Array.isArray(res) ? res.join(', ') : res}</li>
-                                ))}
+                                {questionResponses?.map((res, i) => {
+                                    const student = students.find(s => s.id === res.studentId);
+                                    return (
+                                        <li key={i} className="text-sm text-slate-700">
+                                            <span className="font-semibold">{student?.name || 'Bilinmeyen Öğrenci'}:</span> {Array.isArray(res.answer) ? res.answer.join(', ') : res.answer}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         );
                     }
 
                     return (
-                        <div key={q.id} className="p-4 border rounded-lg">
+                        <div key={q.id} className="p-4 border rounded-lg bg-white shadow-sm">
                             <h4 className="font-semibold">{index + 1}. {q.text}</h4>
                             <div className="mt-4">{content}</div>
                         </div>
                     );
                 })}
+                 <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Ankete Katılmayan Öğrenciler ({notAnsweredStudents.length})</h4>
+                     <div className="flex flex-wrap gap-2">
+                        {notAnsweredStudents.length > 0 ? (
+                            notAnsweredStudents.map(s => <span key={s.id} className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">{s.name}</span>)
+                        ) : (
+                            <p className="text-sm text-green-600">Tüm öğrenciler ankete katıldı.</p>
+                        )}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
@@ -158,7 +174,7 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const { toast } = useToast();
 
-  const [view, setView] = useState<'list' | 'builder' | 'preview' | 'results'>('list'); 
+  const [view, setView] = useState<'list' | 'builder' | 'results'>('list'); 
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
 
   const [formTitle, setFormTitle] = useState('Yeni Anket');
@@ -515,7 +531,10 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
                                     {survey.isActive ? 'Aktif' : 'Pasif'}
                                 </Label>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => viewResults(survey)}>Sonuçları Gör</Button>
+                            <Button variant="outline" size="sm" onClick={() => viewResults(survey)}>
+                                <BarChart2 className="mr-2 h-4 w-4" />
+                                Sonuçları Gör
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
