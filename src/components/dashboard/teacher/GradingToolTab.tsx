@@ -17,9 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, FileDown, ClipboardPaste, Settings } from 'lucide-react';
-import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
-import { exportTermGradesToRtf } from '@/lib/word-export';
+import { Save, Settings } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -297,7 +295,6 @@ export function GradingToolTab({
             isOpen={isGradingSettingsOpen}
             setIsOpen={setGradingSettingsOpen}
             teacherProfile={teacherProfile}
-            updateTeacherProfile={updateTeacherProfile}
         />
       )}
     </>

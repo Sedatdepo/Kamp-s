@@ -4,13 +4,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, TeacherProfile, Submission } from '@/lib/types';
+import { Student, Class, TeacherProfile, Submission, Homework } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X } from 'lucide-react';
 import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { exportHomeworkEvaluationToRtf } from '@/lib/word-export';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -225,7 +224,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<any>(homeworksQuery);
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);

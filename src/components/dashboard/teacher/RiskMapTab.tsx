@@ -1,6 +1,5 @@
 
-
-"use client";
+'use client';
 
 import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -447,7 +446,3 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
     </div>
   );
 }
-
-    
-
-    
