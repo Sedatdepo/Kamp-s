@@ -3,7 +3,6 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import { useFirestore } from '@/hooks/useFirestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, InfoForm, TeacherProfile } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, getDocs } from 'firebase/firestore';
@@ -16,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, FileDown, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 interface InfoFormsTabProps {
   classId: string;
@@ -26,49 +26,18 @@ interface InfoFormsTabProps {
 export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
   const { appUser, db } = useAuth();
   const { toast } = useToast();
-  const [infoForms, setInfoForms] = useState<InfoForm[]>([]);
-  const [formsLoading, setFormsLoading] = useState(true);
+  
+  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+  
+  const studentIds = useMemo(() => students?.map(s => s.id) || [], [students]);
 
-  const studentsQuery = useMemo(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, loading: studentsLoading } = useFirestore<Student[]>(`students-in-class-${classId}`, studentsQuery);
+  const infoFormsQuery = useMemoFirebase(() => {
+    if (!db || studentIds.length === 0) return null;
+    return query(collection(db, 'infoForms'), where('studentId', 'in', studentIds));
+  }, [db, studentIds]);
 
-  useEffect(() => {
-    const fetchForms = async () => {
-        if (!db || !students || students.length === 0) {
-            setInfoForms([]);
-            setFormsLoading(false);
-            return;
-        }
-        setFormsLoading(true);
-        try {
-            const studentIds = students.map(s => s.id);
-            const forms: InfoForm[] = [];
-            
-            // Firestore 'in' query supports up to 30 comparison values.
-            // We chunk the studentIds array into subarrays of 30.
-            for (let i = 0; i < studentIds.length; i += 30) {
-                const chunk = studentIds.slice(i, i + 30);
-                if (chunk.length > 0) {
-                    const formsQuery = query(collection(db, 'infoForms'), where('studentId', 'in', chunk));
-                    const querySnapshot = await getDocs(formsQuery);
-                    querySnapshot.forEach((doc) => {
-                        forms.push({ id: doc.id, ...doc.data() } as InfoForm);
-                    });
-                }
-            }
-            setInfoForms(forms);
-        } catch (error) {
-            console.error("Error fetching info forms: ", error);
-            toast({ variant: 'destructive', title: 'Hata', description: 'Bilgi formları yüklenirken bir sorun oluştu.'});
-        } finally {
-            setFormsLoading(false);
-        }
-    };
-
-    if (!studentsLoading && classId) {
-        fetchForms();
-    }
-  }, [students, studentsLoading, classId, toast, db]);
+  const { data: infoForms, isLoading: formsLoading } = useCollection<InfoForm>(infoFormsQuery);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -92,7 +61,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
     if (currentClass && students) {
         exportInfoFormsStatusToRtf({
             students,
-            infoForms,
+            infoForms: infoForms || [],
             currentClass,
             teacherProfile
         })
@@ -102,7 +71,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
   };
 
   const handleExportSingle = (student: Student) => {
-    const formData = infoForms.find(f => f.studentId === student.id);
+    const formData = infoForms?.find(f => f.studentId === student.id);
     if (appUser?.type === 'teacher' && teacherProfile && formData) {
       exportStudentInfoToRtf(student, formData, teacherProfile);
     } else {
@@ -157,7 +126,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
             </TableHeader>
             <TableBody>
               {students && students.length > 0 ? students.map(student => {
-                const form = infoForms.find(f => f.studentId === student.id);
+                const form = infoForms?.find(f => f.studentId === student.id);
                 const submitted = form?.submitted || false;
 
                 return (
@@ -195,6 +164,3 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
     </Card>
   );
 }
-
-
-
