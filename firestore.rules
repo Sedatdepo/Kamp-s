@@ -11,22 +11,28 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
     
     match /classes/{classId} {
+      // Allow unauthenticated users to query for classes by code for login
+      allow list: if !isSignedIn();
       allow read, write: if isTeacher();
       
-      // Öğrenciler sadece kendi sınıflarının bilgilerini okuyabilir.
-      allow get: if request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
+      // Students can read their own class info
+      allow get: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
 
       match /students/{studentId} {
         allow read, write: if isTeacher();
-        // Öğrenci kendi bilgilerini okuyabilir/güncelleyebilir
+        // Student can read/update their own info
         allow get, update: if isOwner(studentId);
       }
 
       match /homeworks/{homeworkId} {
         allow read, write: if isTeacher();
-        allow read: if request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
 
         match /submissions/{submissionId} {
           allow read, write: if isTeacher();
@@ -36,7 +42,9 @@ service cloud.firestore {
       }
     }
     
+    // Allow unauthenticated users to query for students by classId and number for login
     match /students/{studentId} {
+      allow list: if !isSignedIn();
       allow get, update: if isOwner(studentId) || isTeacher();
       allow read, write: if isTeacher();
     }
