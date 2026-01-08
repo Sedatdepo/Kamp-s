@@ -8,7 +8,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { Question } } from '@/lib/types';
+import { Question } from '@/lib/types';
 
 export const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
