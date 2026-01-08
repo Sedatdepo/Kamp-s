@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion
 } from 'lucide-react';
 import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
@@ -22,7 +22,7 @@ import { ExamPaper } from './ExamPaper';
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) {
-  const { appUser, storage } = useAuth();
+  const { appUser, storage, db } = useAuth();
   const { toast } = useToast();
 
   const createNewExam = (): Exam => ({
@@ -235,7 +235,7 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
                     <div className='mt-2 space-y-3'>
                         {(activeQuestion.options || []).map((opt, i) => (
                              <div key={i} className="flex items-center gap-2">
-                                <Label htmlFor={`option-${i}`} className='p-2 bg-slate-100 rounded-md'>{String.fromCharCode(65 + i)}</Label>
+                                <Label htmlFor={`option-${i}`} className='p-2 bg-slate-100 rounded-md'>{String.fromCharCode(65 + i)})</Label>
                                 <Input id={`option-${i}`} value={opt} onChange={e => {
                                     const newOptions = [...(activeQuestion.options || [])];
                                     newOptions[i] = e.target.value;
@@ -276,8 +276,15 @@ export default function ExamBuilder({ classes, students, teacherProfile }: { cla
         ) : (
           <div className='flex items-center justify-center h-full text-gray-500'>
             <Card className='p-8 text-center'>
-                <CardTitle>Soru Seçin veya Ekleyin</CardTitle>
-                <CardDescription>Başlamak için soldaki listeden bir soru seçin veya yeni bir soru ekleyin.</CardDescription>
+                <CardHeader>
+                    <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
+                        <FileQuestion className="h-10 w-10 text-primary" />
+                    </div>
+                    <CardTitle>Soru Bankası ve Sınav Oluşturucu</CardTitle>
+                    <CardDescription>
+                        Soldaki menüden soru ekleyin veya mevcut sorularınızı düzenleyin.
+                    </CardDescription>
+                </CardHeader>
             </Card>
           </div>
         )}

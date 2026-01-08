@@ -11,6 +11,7 @@ import { LiveHomeworkManagement } from './LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
 import { HomeworkLibrary } from './HomeworkLibrary';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import ExamBuilder from '../ExamBuilder';
 
 
 // --- MAIN EXPORTED COMPONENT ---
@@ -34,6 +35,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
+                    <TabsTrigger value="exam-builder">Sınav Hazırlama (AI)</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -59,6 +61,13 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     teacherProfile={teacherProfile}
                     classes={classes}
                     students={allStudents || []}
+                />
+            </TabsContent>
+            <TabsContent value="exam-builder" className="mt-4">
+                <ExamBuilder 
+                    classes={classes}
+                    students={allStudents || []}
+                    teacherProfile={teacherProfile}
                 />
             </TabsContent>
         </Tabs>

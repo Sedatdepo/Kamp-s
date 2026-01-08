@@ -21,7 +21,7 @@ import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -43,9 +43,10 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ZumreTab from './ZumreTab';
 import { ProfileDialog } from './ProfileDialog';
+import ExamBuilder from './ExamBuilder';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -329,6 +330,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => setActiveTab('veli-toplantisi')} />
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
+                    <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
                 </div>
             </TabsContent>
         </Tabs>
@@ -354,6 +356,7 @@ const TABS_CONFIG = {
   "veli-toplantisi": { label: "Veli Toplantısı Tutanağı", icon: BookText },
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
   "kazanimlar": { label: "Kazanımlar", icon: Target },
+  "exam-builder": { label: "Soru Bankası", icon: FileQuestion },
 } as const;
 
 
@@ -452,7 +455,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     // Standalone document tabs (no class selected)
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         let tabContent;
         switch(activeTab) {
@@ -462,6 +465,7 @@ export function TeacherDashboard() {
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
           case 'sok': tabContent = <SokTab />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab setActiveTab={setActiveTab} />; break;
+          case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} teacherProfile={teacherProfile} />; break;
           default: tabContent = null;
         }
         return (
