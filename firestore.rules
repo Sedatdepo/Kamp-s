@@ -17,9 +17,12 @@ service cloud.firestore {
     }
     
     // Not: Öğrencinin giriş yapabilmesi için, kimliği doğrulanmamış kullanıcının
-    // 'students' koleksiyonunu sorgulamasına izin vermemiz gerekiyor.
+    // 'students' ve 'classes' koleksiyonlarını sorgulamasına izin vermemiz gerekiyor.
     match /students/{studentId} {
       allow list: if true;
+    }
+    match /classes/{classId} {
+        allow list: if true;
     }
   }
 }
