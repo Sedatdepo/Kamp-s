@@ -1,714 +1,615 @@
 
-'use client';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle } from 'lucide-react';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { 
-  Plus, Trash2, Save, X, ArrowDown, Download, Upload,
-  PlusCircle, FileText, Settings, Calendar, Eraser, List, BookOpen, RefreshCw, Check, ArrowLeft, MoreVertical
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useDatabase } from '@/hooks/use-database';
-import type { AnnualPlan, AnnualPlanEntry, DailyPlan, TeacherProfile, Class } from '@/lib/types';
-import { MOCK_CURRICULUM } from '@/lib/mock-curriculum';
-import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
-import { exportDailyPlanToRtf, exportAnnualPlanToRtf } from '@/lib/word-export';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+// --- YARDIMCI FONKSİYONLAR ---
 
-
-// --- YARDIMCI BİLEŞENLER ---
-const AutoResizingTextarea = ({ value, onChange, className, minHeight = "40px", ...props }: any) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-    useEffect(() => {
-        if (textareaRef.current) {
-              textareaRef.current.style.height = 'auto';
-                    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-                        }
-                          }, [value]);
-                            return <textarea ref={textareaRef} value={value} onChange={onChange} className={`${className} overflow-hidden resize-none`} style={{ minHeight: minHeight }} {...props} />;
-                            };
-
-const QuickAddButtons = ({ items, onAdd }: any) => {
-  return (
-      <div className="flex flex-wrap gap-1 mt-1 print:hidden">
-            <span className="text-[10px] text-gray-400 font-bold mr-1 self-center">HIZLI EKLE:</span>
-                  {items.map((item: string, idx: number) => (
-                          <button key={idx} onClick={() => onAdd(item)} className="text-[10px] px-2 py-0.5 bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-700 rounded border border-gray-200 transition flex items-center gap-1">
-                                    <PlusCircle size={10} /> {item}
-                                            </button>
-                                                  ))}
-                                                      </div>
-                                                        );
-                                                        };
-
-// --- KONTROL PANELİ MODALI ---
-const ControlPanelModal = ({
-    isOpen, onClose, stats, activePlan,
-    onAddSpecialRow, onInsertEmptyRow, onResetProgress, onOpenDailyPlan,
-    onImportCurriculum, onDistributeDates
-}: any) => {
-    if (!isOpen || !activePlan) return null;
-
-    const [selectedCurriculum, setSelectedCurriculum] = useState("Fizik 9. Sınıf");
-    const [startDate, setStartDate] = useState("2025-09-08"); // Varsayılan Pazartesi
-    const [keepHolidays, setKeepHolidays] = useState(false);
-
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-white sticky top-0 z-10">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            <Settings className="text-blue-600" /> Plan Yönetim Merkezi
-                        </h2>
-                        <p className="text-gray-500 text-sm mt-1">Müfredat yükleme, tarih güncelleme ve plan takibi</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition">
-                        <X size={24} className="text-gray-500" />
-                    </button>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* SOL SÜTUN: OTOMASYON VE YENİ YIL AYARLARI */}
-                    <div className="lg:col-span-1 space-y-6">
-                        {/* TARİH ROBOTU (YENİ YIL UYARLAMA) */}
-                        <div className="bg-orange-50 p-5 rounded-xl border border-orange-100 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-10"><RefreshCw size={64} className="text-orange-500" /></div>
-                            <h3 className="text-sm font-bold text-orange-800 uppercase tracking-wider mb-4 flex items-center gap-2 relative z-10">
-                                <RefreshCw size={16} /> Yılı Güncelle
-                            </h3>
-                            <p className="text-[10px] text-orange-700 mb-3 relative z-10">
-                                Planı seneye mi taşıyacaksınız? Yeni eğitim yılı başlangıcını seçin, konuları koruyup tarihleri yeniden dağıtalım.
-                            </p>
-                            <div className="mb-3 relative z-10">
-                                <label className="text-[10px] font-bold text-orange-600 block mb-1">Yeni Başlangıç Tarihi</label>
-                                <input
-                                    type="date"
-                                    className="w-full p-2 text-sm border border-orange-200 rounded bg-white focus:ring-2 focus:ring-orange-300 outline-none"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="mb-4 relative z-10 flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="keepHolidays"
-                                    className="rounded text-orange-600 focus:ring-orange-500"
-                                    checked={keepHolidays}
-                                    onChange={(e) => setKeepHolidays(e.target.checked)}
-                                />
-                                <label htmlFor="keepHolidays" className="text-[10px] text-orange-700 font-medium cursor-pointer">
-                                    Eski tatil satırlarını koru (Tarihleri kayar)
-                                </label>
-                            </div>
-                            <button
-                                onClick={() => { onDistributeDates(startDate, keepHolidays); onClose(); }}
-                                className="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-bold transition shadow-sm relative z-10"
-                            >
-                                Tarihleri Yeniden Hesapla
-                            </button>
-                        </div>
-                        {/* MÜFREDAT SİHİRBAZI */}
-                        <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100">
-                            <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                <BookOpen size={16} /> Müfredat Sihirbazı
-                            </h3>
-                            <p className="text-[10px] text-indigo-600 mb-3">Ders seçin, konular otomatik gelsin.</p>
-                            <select
-                                className="w-full p-2 mb-3 text-sm border border-indigo-200 rounded bg-white"
-                                value={selectedCurriculum}
-                                onChange={(e) => setSelectedCurriculum(e.target.value)}
-                            >
-                                {Object.keys(MOCK_CURRICULUM).map(name => (
-                                    <option key={name} value={name}>{name}</option>
-                                ))}
-                            </select>
-                            <button
-                                onClick={() => { onImportCurriculum(selectedCurriculum); onClose(); }}
-                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-bold transition shadow-sm"
-                            >
-                                Seçili Müfredatı Ekle
-                            </button>
-                        </div>
-                        {/* HIZLI EKLEME ARAÇLARI */}
-                        <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-                            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <Calendar size={16} /> Tatil Ekle
-                            </h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => onAddSpecialRow('ARA TATİL', '1. ARA TATİL')} className="p-2 bg-white border hover:bg-yellow-50 text-xs font-medium rounded text-left">1. Ara Tatil</button>
-                                <button onClick={() => onAddSpecialRow('YARIYIL', 'YARIYIL TATİLİ')} className="p-2 bg-white border hover:bg-blue-50 text-xs font-medium rounded text-left">Yarıyıl Tatili</button>
-                                <button onClick={() => onAddSpecialRow('ARA TATİL', '2. ARA TATİL')} className="p-2 bg-white border hover:bg-yellow-50 text-xs font-medium rounded text-left">2. Ara Tatil</button>
-                                <button onClick={() => onAddSpecialRow('RESMİ TATİL', 'RESMİ TATİL')} className="p-2 bg-white border hover:bg-red-50 text-xs font-medium rounded text-left">Resmi Tatil</button>
-                            </div>
-                            <div className="mt-2 pt-2 border-t border-gray-200 space-y-2">
-                                <button onClick={onInsertEmptyRow} className="w-full p-2 bg-white border hover:bg-gray-100 text-xs font-medium rounded text-left flex items-center gap-2">
-                                    <ArrowDown size={14} /> Boş Hafta Ekle
-                                </button>
-                                <button onClick={onResetProgress} className="w-full p-2 bg-white border hover:bg-red-50 text-xs font-medium rounded text-left flex items-center gap-2 text-red-600">
-                                    <Eraser size={14} /> İlerlemeyi Sıfırla
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SAĞ SÜTUN: HAFTALIK PLAN LİSTESİ */}
-                    <div className="lg:col-span-3">
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                        <List size={18} className="text-teal-600" /> Haftalık Plan Arşivi
-                                    </h3>
-                                    <div className="flex gap-2">
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">{stats.totalWeeks} Hafta</span>
-                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">%{stats.percentage} Tamamlandı</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="overflow-y-auto max-h-[600px] p-0">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-gray-50 text-gray-500 text-xs font-bold uppercase sticky top-0 z-10 shadow-sm">
-                                        <tr>
-                                            <th className="p-3 border-b">Hafta / Tarih</th>
-                                            <th className="p-3 border-b">Konu & Kazanım</th>
-                                            <th className="p-3 border-b text-right">İşlem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 text-sm">
-                                        {activePlan.rows.map((row: any, index: number) => (
-                                            <tr key={row.id} className={`hover:bg-teal-50 transition group ${row.isSpecial ? 'bg-orange-50/50' : ''}`}>
-                                                <td className="p-3 align-top w-[20%]">
-                                                    <div className="font-bold text-gray-700 whitespace-pre-line">{row.hafta || "Tarih Bekleniyor"}</div>
-                                                    <div className="text-xs text-gray-400 mt-1">{index + 1}. Hafta</div>
-                                                </td>
-                                                <td className="p-3 align-top w-[60%]">
-                                                    <div className="font-bold text-teal-700 mb-1">{row.unite}</div>
-                                                    <div className="text-gray-800 font-medium mb-1">{row.konu || "Konu Girilmemiş"}</div>
-                                                    <div className="text-xs text-gray-500 line-clamp-2">{row.cikti || "Kazanım Girilmemiş"}</div>
-                                                </td>
-                                                <td className="p-3 align-middle text-right w-[20%]">
-                                                    <button
-                                                        onClick={() => { onOpenDailyPlan(row); onClose(); }}
-                                                        className="inline-flex items-center gap-1 px-4 py-2 bg-white border border-teal-200 text-teal-700 rounded-lg hover:bg-teal-600 hover:text-white transition shadow-sm text-xs font-bold"
-                                                    >
-                                                        <FileText size={14} /> Planı Aç
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {activePlan.rows.length === 0 && (
-                                            <tr>
-                                                <td colSpan={3} className="p-8 text-center text-gray-400">Henüz plan satırı yok. Müfredat Sihirbazı ile veri yükleyin.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+const turkishToRTF = (text) => {
+  if (!text) return "";
+  return text.toString()
+    .replace(/ğ/g, "\\'f0")
+    .replace(/Ğ/g, "\\'d0")
+    .replace(/ü/g, "\\'fc")
+    .replace(/Ü/g, "\\'dc")
+    .replace(/ş/g, "\\'fe")
+    .replace(/Ş/g, "\\'de")
+    .replace(/ı/g, "\\'fd")
+    .replace(/İ/g, "\\'dd")
+    .replace(/ö/g, "\\'f6")
+    .replace(/Ö/g, "\\'d6")
+    .replace(/ç/g, "\\'e7")
+    .replace(/Ç/g, "\\'c7")
+    .replace(/<br>/g, "\\par ")
+    .replace(/\n/g, "\\par ");
 };
 
-const DailyPlanEditor = ({ row, plan, onSave, onBack, onExport }: { row: AnnualPlanEntry, plan: AnnualPlan, onSave: Function, onBack: Function, onExport: Function }) => {
-    const { toast } = useToast();
-    const [dailyPlan, setDailyPlan] = useState<DailyPlan>(row.dailyPlan || {
-        id: `dp-${row.id}`,
-        date: row.hafta,
-        konu: row.konu,
-        kazanim: row.cikti,
-        materyal: plan.rows.find(r => r.id === row.id)?.arac || 'Ders Kitabı, EBA',
-        plan: {
-            giris: 'Giriş Bölümü',
-            gelisme: 'Gelişme Bölümü',
-            sonuc: 'Sonuç Bölümü'
-        },
-        degerlendirme: plan.rows.find(r => r.id === row.id)?.degerlendirme || 'Soru-cevap'
+const downloadDailyPlan = (weekData, grade) => {
+  const processText = weekData.processComponents 
+    ? turkishToRTF(weekData.processComponents) 
+    : "Konu ile ilgili temel kavramlar a\\'e7\\'fdklan\\'fdr. \\'d6rnek soru \\'e7\\'f6z\\'fcmleri yap\\'fdl\\'fdr.";
+
+  const rtfContent = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
+{\\fonttbl{\\f0\\fnil\\fcharset162 Times New Roman;}{\\f1\\fnil\\fcharset162 Arial;}{\\f2\\fnil\\fcharset162 Calibri;}}
+{\\colortbl ;\\red0\\green0\\blue0;\\red255\\green0\\blue0;}
+\\viewkind4\\uc1 
+\\pard\\sa200\\sl276\\slmult1\\qc\\b\\f0\\fs24 T.C.\\par
+M\\'ddLL\\'ce E\\'d0\\'ddT\\'ddM BAKANLI\\'d0I\\par
+........................................... L\\'ddSES\\'dd\\par
+2025-2026 E\\'d0\\'ddT\\'ddM \\'d6\\'d0RET\\'ddM YILI\\par
+G\\'dcNL\\'dcK DERS PLANI\\par
+\\pard\\sa200\\sl276\\slmult1\\b0\\fs22\\par
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl\\b\\f1\\fs20 B\\'d6L\\'dcM I: DERS K\\'dcML\\'dd\\'d0\\'dd\\b0\\f0\\fs22\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Dersin Ad\\'fd\\cell F\\'ddZ\\'ddK\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl S\\'fdn\\'fdf / \\'deube\\cell ${grade}. SINIF\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Tarih / Hafta\\cell ${turkishToRTF(weekData.dates)} / ${turkishToRTF(weekData.week)}\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl \\'dcni\\'fete Ad\\'fd\\cell ${turkishToRTF(weekData.unit || "Genel Tekrar")}\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Konu\\cell ${turkishToRTF(weekData.topic || "Belirtilmemis")}\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl \\'d6nerilen S\\'fcre\\cell ${weekData.hours} Ders Saati (40 + 40 Dakika)\\cell\\row
+\\pard\\par
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl\\b\\f1\\fs20 B\\'d6L\\'dcM II: E\\'d0\\'ddT\\'ddM - \\'d6\\'d0RET\\'ddM S\\'dcREC\\'dd\\b0\\f0\\fs22\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Kazan\\'fdm (\\'d6\\'f0renme \\'c7\\'fdkt\\'fds\\'fd)\\cell ${turkishToRTF(weekData.learningOutcome || "Belirtilmemis")}\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Y\\'f6ntem ve Teknikler\\cell Anlat\\'fdm, Soru-Cevap, Tart\\'fd\\'fea, G\\'f6sterip Yapt\\'fdrma, Problem \\'c7\\'f6zme, Beyin F\\'fdrta\\'fdnas\\'fd, Deney/G\\'f6zlem\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl Ara\\'e7, Gere\\'e7 ve Materyaller\\cell Ders Kitab\\'fd, Etkile\\'feimli Tahta, EBA, OGM Materyal, Deney Malzemeleri, \\'c7al\\'fd\\'fea Ka\\'f0\\'fdtlar\\'fd\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl K\\'fclt\\'fcr ve De\\'f0erler\\cell Bilimsellik, Sorumluluk, Sab\\'fdr, Do\\'f0ruluk, D\\'fcr\\'fcstl\\'fck, Vatanseverlik, Estetik\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl G\\'fcvenlik \\'d6nlemleri\\cell Laboratuvar kullan\\'fdm\\'fd s\\'fdras\\'fdnda elektrik ve cam malzeme g\\'fcvenli\\'f0ine dikkat edilecektir. S\\'fdn\\'fdf i\\'e7i hareketlerde fiziksel mesafeye \\'f6zen g\\'f6sterilecektir.\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl \\b DERSE HAZIRLIK VE G\\'ddR\\'dd\\'de\\b0\\par
+\\pard\\li100 1. S\\'fdn\\'fdfa selam verilerek girilir, \\'f6\\'f0rencilerin hal ve hat\\'fdrlar\\'fd sorulur. Yoklama al\\'fdn\\'fdr.\\par
+2. S\\'fdn\\'fdf\\'fdn fiziksel ortam\\'fd (\\'fd\\'fe\\'fdk, s\\'fdcakl\\'fdk vb.) derse haz\\'fdr hale getirilir.\\par
+3. \\'d6nceki derste i\\'felenen konular k\\'fdsaca soru-cevap y\\'f6ntemiyle hat\\'fdrla\\'fdt\\'fdl\\'fdr.\\par
+4. \\'d6\\'f0rencilere "Bug\\'fcn ne \\'f6\\'f0renece\\'f0iz?" sorusu y\\'f6neltilerek dersin kazan\\'fdm\\'fd tahtaya yaz\\'ffl\\'fdr.\\par
+5. G\\'fcnl\\'fck hayattan konuyla ilgili bir \\'f6rnek veya problem durumu payla\\'fe\\'fdlarak \\'f6\\'f0rencilerin dikkati \\'e7ekilir ve motivasyonlar\\'fd sa\\'f0lan\\'fdr.\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl \\b GEL\\'dd\\'deME (KONU \\'dd\\'deLEN\\'dd\\'de\\'dd)\\b0\\par
+\\pard\\li100 Bu b\\'f6l\\'fcmde T\\'fcrkiye Y\\'fczy\\'fdl\\'fd Maarif Modeli \\'e7er\\'e7evesinde a\\'fea\\'f0\\'fddaki s\\'fcre\\'e7 bile\\'feenleri takip edilecektir:\\par
+\\par
+${processText}\\par
+\\par
+1. Konunun temel kavramlar\\'fd etkile\\'feimli tahta veya sunum arac\\'fdl\\'fd\\'f0\\'fdyla g\\'f6rsellerle desteklenerek a\\'e7\\'fdklan\\'fdr.\\par
+2. Varsa form\\'fcller ve matematiksel modeller t\\'fcretilir, birim analizleri yap\\'fdl\\'fdr.\\par
+3. Anla\\'fe\\'fdlmay\\'fd kolayla\\'fet\\'fdrmak i\\'e7in analojiler ve modeller kullan\\'fdl\\'fdr.\\par
+4. Konuyla ilgili \\'f6rnek sorular \\'f6nce \\'f6\\'f0retmen taraf\\'fdndan, sonra \\'f6\\'f0rencilerle birlikte \\'e7\\'f6z\\'fcl\\'fcr.\\par
+5. Anla\\'fe\\'fdlmayan noktalar i\\'e7in \\'f6\\'f0rencilere s\\'f6z hakk\\'fd verilir ve geri bildirim sa\\'f0lan\\'fdr.\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl \\b SONU\\'c7 VE DE\\'d0ERLEND\\'ddRME\\b0\\par
+\\pard\\li100 1. Dersin sonunda konu k\\'fdsaca \\'f6zetlenir.\\par
+2. Kazan\\'fdm\\'fdn ger\\'e7ekle\\'feip ger\\'e7ekle\\'femedi\\'f0ini anlamak i\\'e7in s\\'fdn\\'fdfa 2-3 adet k\\'fdsa cevapl\\'fd soru sorulur.\\par
+3. Gelecek derste i\\'felecek konu hakk\\'fdnda k\\'fdsa bilgi verilerek derse haz\\'fdrl\\'fdkl\\'fd gelmeleri istenir.\\par
+4. Varsa ders kitab\\'fdndan ilgili b\\'f6l\\'fcmdeki sorular \\'f6dev olarak verilir.\\cell\\row
+\\pard\\par
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl\\b\\f1\\fs20 B\\'d6L\\'dcM III: ONAMA\\b0\\f0\\fs22\\cell\\row
+\\trowd\\trgaph108\\trleft-108
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx4750
+\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
+\\pard\\intbl\\qc DERS \\'d6\\'d0RETMEN\\'dd\\par
+\\par
+\\par
+(\\'ddmza)\\cell OKUL M\\'dcD\\'dcR\\'dc\\par
+\\par
+\\par
+(\\'ddmza)\\cell\\row
+\\pard\\par
+}`;
+
+  const blob = new Blob([rtfContent], { type: 'application/rtf' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Fizik_${grade}_Sinif_Gunluk_Plan_${weekData.week.replace(/\s/g, "_")}.rtf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// --- VERİ SETLERİ ---
+
+const plan9 = [
+  // EYLÜL
+  { id: "9-1", month: "EYLÜL", monthId: "eylul", week: "1. Hafta", dates: "8-12 Eylül", hours: 2, unit: "FİZİK BİLİMİ", topic: "Fizik Bilimi", learningOutcome: "FİZ.9.1.1. Fizik biliminin tanımına yönelik tümevarımsal akıl yürütebilme", unitType: "fizik-bilimi", specialDays: "15 Temmuz Demokrasi ve Milli Birlik Günü", processComponents: "a) Fizik biliminin diğer disiplinlerle arasındaki ilişkileri belirler.<br>b) Fizik bilimini belirlediği ilişkilerden yararlanarak tanımlar." },
+  { id: "9-2", month: "EYLÜL", monthId: "eylul", week: "2. Hafta", dates: "15-19 Eylül", hours: 2, unit: "FİZİK BİLİMİ", topic: "Fizik Biliminin Alt Dalları", learningOutcome: "FİZ.9.1.2. Fizik biliminin alt dallarını sınıflandırabilme", unitType: "fizik-bilimi" },
+  { id: "9-3", month: "EYLÜL", monthId: "eylul", week: "3. Hafta", dates: "22-26 Eylül", hours: 2, unit: "FİZİK BİLİMİ", topic: "Fizik Bilimine Yön Verenler", learningOutcome: "FİZ.9.1.3. Fizik bilimine katkıda bulunmuş bilim insanlarının deneyimlerini yansıtabilme", unitType: "fizik-bilimi" },
+  // EKİM
+  { id: "9-4", month: "EKİM", monthId: "ekim", week: "4. Hafta", dates: "29 Eylül-3 Ekim", hours: 2, unit: "FİZİK BİLİMİ", topic: "Kariyer Keşfi", learningOutcome: "FİZ.9.1.4. Bilim ve teknoloji alanında fizik bilimi ile ilişkili kariyer olanaklarını sorgulayabilme", unitType: "fizik-bilimi" },
+  { id: "9-5", month: "EKİM", monthId: "ekim", week: "5. Hafta", dates: "5-9 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Temel ve Türetilmiş Nicelikler", learningOutcome: "FİZ.9.2.1. Temel ve türetilmiş nicelikleri sınıflandırabilme", unitType: "kuvvet-hareket" },
+  { id: "9-6", month: "EKİM", monthId: "ekim", week: "6. Hafta", dates: "13-17 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Skaler ve Vektörel Nicelikler", learningOutcome: "FİZ.9.2.2. Skaler ve vektörel nicelikleri karşılaştırabilme", unitType: "kuvvet-hareket" },
+  { id: "9-7", month: "EKİM", monthId: "ekim", week: "7. Hafta", dates: "20-24 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Vektörler", learningOutcome: "FİZ.9.2.3. Aynı doğrultu üzerindeki vektörlere yönelik çıkarım yapabilme", unitType: "kuvvet-hareket" },
+  // KASIM
+  { id: "9-8", month: "KASIM", monthId: "kasim", week: "8. Hafta", dates: "27-31 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Vektörlerin Toplanması", learningOutcome: "FİZ.9.2.4. Vektörlerin toplanması işlemine ilişkin tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket", specialDays: "29 Ekim Cumhuriyet Bayramı" },
+  { id: "9-9", month: "KASIM", monthId: "kasim", week: "9. Hafta", dates: "3-7 Kasım", hours: 2, unit: "KUVVET VE HAREKET", topic: "Vektörlerin Toplanması", learningOutcome: "FİZ.9.2.4. Devamı...", unitType: "kuvvet-hareket", specialDays: "Atatürk Haftası" },
+  { id: "9-10", month: "KASIM", monthId: "kasim", week: "1. DÖNEM ARA TATİLİ", dates: "10-14 Kasım", hours: 0, isBreak: true, unitType: "break" },
+  { id: "9-11", month: "KASIM", monthId: "kasim", week: "10. Hafta", dates: "17-21 Kasım", hours: 2, unit: "KUVVET VE HAREKET", topic: "Vektörler", learningOutcome: "FİZ.9.2.4. Devamı...", unitType: "kuvvet-hareket", specialDays: "24 Kasım Öğretmenler Günü" },
+  { id: "9-12", month: "KASIM", monthId: "kasim", week: "11. Hafta", dates: "24-28 Kasım", hours: 2, unit: "KUVVET VE HAREKET", topic: "Doğadaki Temel Kuvvetler", learningOutcome: "FİZ.9.2.5. Doğadaki temel kuvvetleri karşılaştırabilme", unitType: "kuvvet-hareket" },
+  // ARALIK
+  { id: "9-13", month: "ARALIK", monthId: "aralik", week: "12. Hafta", dates: "1-5 Aralık", hours: 2, unit: "KUVVET VE HAREKET", topic: "Hareket ve Hareket Türleri", learningOutcome: "FİZ.9.2.6. Hareketin temel kavramlarına yönelik akıl yürütebilme", unitType: "kuvvet-hareket", specialDays: "3 Aralık Dünya Engelliler Günü" },
+  { id: "9-14", month: "ARALIK", monthId: "aralik", week: "13. Hafta", dates: "8-12 Aralık", hours: 2, unit: "KUVVET VE HAREKET", topic: "Hareket ve Hareket Türleri", learningOutcome: "FİZ.9.2.6. Devamı...", unitType: "kuvvet-hareket" },
+  { id: "9-15", month: "ARALIK", monthId: "aralik", week: "14. Hafta", dates: "15-19 Aralık", hours: 2, unit: "KUVVET VE HAREKET", topic: "Hareket ve Hareket Türleri", learningOutcome: "FİZ.9.2.6. Devamı...", unitType: "kuvvet-hareket" },
+  { id: "9-16", month: "ARALIK", monthId: "aralik", week: "15. Hafta", dates: "22-26 Aralık", hours: 2, unit: "KUVVET VE HAREKET", topic: "Hareket ve Hareket Türleri", learningOutcome: "FİZ.9.2.7. Hareket türlerini sınıflandırabilme", unitType: "kuvvet-hareket" },
+  // OCAK
+  { id: "9-17", month: "OCAK", monthId: "ocak", week: "16. Hafta", dates: "29 Aralık-2 Ocak", hours: 2, unit: "KUVVET VE HAREKET", topic: "Hareket ve Hareket Türleri", learningOutcome: "FİZ.9.2.7. Devamı...", unitType: "kuvvet-hareket" },
+  { id: "9-18", month: "OCAK", monthId: "ocak", week: "17. Hafta", dates: "5-9 Ocak", hours: 2, unit: "AKIŞKANLAR", topic: "Basınç", learningOutcome: "FİZ.9.3.1. Basınca yönelik çıkarımlarda bulunabilme", unitType: "akiskanlar" },
+  { id: "9-19", month: "OCAK", monthId: "ocak", week: "18. Hafta", dates: "12-16 Ocak", hours: 2, unit: "OKUL TEMELLİ PLANLAMA", topic: "Okul Temelli Planlama", unitType: "okul-temelli" },
+  { id: "9-20", month: "OCAK", monthId: "ocak", week: "YARIYIL TATİLİ", dates: "19 Ocak - 30 Ocak 2026", hours: 0, isBreak: true, unitType: "break" },
+  // ŞUBAT
+  { id: "9-21", month: "ŞUBAT", monthId: "subat", week: "19. Hafta", dates: "2-5 Şubat", hours: 2, unit: "AKIŞKANLAR", topic: "Sıvılarda Basınç", learningOutcome: "FİZ.9.3.2. Durgun sıvılarda basınca yönelik çıkarımlarda bulunabilme", unitType: "akiskanlar" },
+  { id: "9-22", month: "ŞUBAT", monthId: "subat", week: "20. Hafta", dates: "9-13 Şubat", hours: 2, unit: "AKIŞKANLAR", topic: "Sıvılarda Basınç (Günlük Hayat)", learningOutcome: "FİZ.9.3.3. Sıvılarda basıncın kullanıldığı örnekleri sorgulayabilme", unitType: "akiskanlar" },
+  { id: "9-23", month: "ŞUBAT", monthId: "subat", week: "21. Hafta", dates: "16-20 Şubat", hours: 2, unit: "AKIŞKANLAR", topic: "Açık Hava Basıncı", learningOutcome: "FİZ.9.3.4. Açık hava basıncına ilişkin çıkarım yapabilme", unitType: "akiskanlar" },
+  { id: "9-24", month: "ŞUBAT", monthId: "subat", week: "22. Hafta", dates: "23-27 Şubat", hours: 2, unit: "AKIŞKANLAR", topic: "Açık Hava Basıncı", learningOutcome: "FİZ.9.3.4. Devamı...", unitType: "akiskanlar" },
+  // MART
+  { id: "9-25", month: "MART", monthId: "mart", week: "23. Hafta", dates: "2-6 Mart", hours: 2, unit: "AKIŞKANLAR", topic: "Kaldırma Kuvveti", learningOutcome: "FİZ.9.3.5. Kaldırma kuvvetini etkileyen değişkenleri belirlemeye yönelik deney yapabilme", unitType: "akiskanlar" },
+  { id: "9-26", month: "MART", monthId: "mart", week: "24. Hafta", dates: "10-14 Mart", hours: 2, unit: "AKIŞKANLAR", topic: "Kaldırma Kuvveti", learningOutcome: "FİZ.9.3.6. Kaldırma kuvveti ile basınç kuvveti ilişkisi", unitType: "akiskanlar", specialDays: "12 Mart İstiklâl Marşı, 18 Mart Çanakkale Zaferi" },
+  { id: "9-27", month: "MART", monthId: "mart", week: "2. DÖNEM ARA TATİLİ", dates: "16-20 Mart", hours: 0, isBreak: true, unitType: "break" },
+  { id: "9-28", month: "MART", monthId: "mart", week: "25. Hafta", dates: "23-27 Mart", hours: 2, unit: "AKIŞKANLAR", topic: "Bernoulli İlkesi", learningOutcome: "FİZ.9.3.7. Akışkanın hızı ve basıncı arasındaki ilişki", unitType: "akiskanlar" },
+  { id: "9-29", month: "MART", monthId: "mart", week: "26. Hafta", dates: "30 Mart-3 Nisan", hours: 2, unit: "AKIŞKANLAR", topic: "Bernoulli İlkesi", learningOutcome: "FİZ.9.3.7. Devamı...", unitType: "akiskanlar" },
+  // NİSAN
+  { id: "9-30", month: "NİSAN", monthId: "nisan", week: "27. Hafta", dates: "6-10 Nisan", hours: 2, unit: "ENERJİ", topic: "İç Enerji, Isı ve Sıcaklık", learningOutcome: "FİZ.9.4.1. İç enerjinin ısı ve sıcaklık ile ilişkisi", unitType: "enerji" },
+  { id: "9-31", month: "NİSAN", monthId: "nisan", week: "28. Hafta", dates: "13-17 Nisan", hours: 2, unit: "ENERJİ", topic: "Isı, Öz Isı, Isı Sığası", learningOutcome: "FİZ.9.4.2. Isı, öz ısı, ısı sığası ve sıcaklık farkı ilişkisi", unitType: "enerji" },
+  { id: "9-32", month: "NİSAN", monthId: "nisan", week: "29. Hafta", dates: "20-24 Nisan", hours: 2, unit: "ENERJİ", topic: "Isı, Öz Isı, Isı Sığası", learningOutcome: "FİZ.9.4.2. Devamı...", unitType: "enerji", specialDays: "23 Nisan Ulusal Egemenlik" },
+  { id: "9-33", month: "NİSAN", monthId: "nisan", week: "30. Hafta", dates: "27 Nisan-1 Mayıs", hours: 2, unit: "ENERJİ", topic: "Hâl Değişimi", learningOutcome: "FİZ.9.4.3. Hâl değişimi için gereken ısı miktarı", unitType: "enerji" },
+  // MAYIS
+  { id: "9-34", month: "MAYIS", monthId: "mayis", week: "31. Hafta", dates: "4-8 Mayıs", hours: 2, unit: "ENERJİ", topic: "Hâl Değişimi", learningOutcome: "FİZ.9.4.3. Devamı...", unitType: "enerji" },
+  { id: "9-35", month: "MAYIS", monthId: "mayis", week: "32. Hafta", dates: "11-15 Mayıs", hours: 2, unit: "ENERJİ", topic: "Isıl Denge", learningOutcome: "FİZ.9.4.4. Isıl denge durumu", unitType: "enerji" },
+  { id: "9-36", month: "MAYIS", monthId: "mayis", week: "33. Hafta", dates: "18-22 Mayıs", hours: 2, unit: "ENERJİ", topic: "Isı Aktarım Yolları", learningOutcome: "FİZ.9.4.5. Isı aktarım yollarını sınıflayabilme", unitType: "enerji", specialDays: "19 Mayıs Atatürk'ü Anma" },
+  { id: "9-37", month: "MAYIS", monthId: "mayis", week: "34. Hafta", dates: "25-29 Mayıs", hours: 2, unit: "ENERJİ", topic: "Isı Aktarım Yolları", learningOutcome: "FİZ.9.4.5. Devamı...", unitType: "enerji", specialDays: "29 Mayıs İstanbul'un Fethi" },
+  // HAZİRAN
+  { id: "9-38", month: "HAZİRAN", monthId: "haziran", week: "35. Hafta", dates: "1-5 Haziran", hours: 2, unit: "ENERJİ", topic: "Isı İletim Hızı", learningOutcome: "FİZ.9.4.6. Isı iletim hızını etkileyen etmenler", unitType: "enerji" },
+  { id: "9-39", month: "HAZİRAN", monthId: "haziran", week: "36. Hafta", dates: "8-12 Haziran", hours: 0, unit: "", topic: "", learningOutcome: "", unitType: "" },
+  { id: "9-40", month: "HAZİRAN", monthId: "haziran", week: "37. Hafta", dates: "15-19 Haziran", hours: 2, unit: "OKUL TEMELLİ PLANLAMA", topic: "Okul Temelli Planlama", unitType: "okul-temelli" },
+  { id: "9-41", month: "HAZİRAN", monthId: "haziran", week: "38. Hafta", dates: "22-26 Haziran", hours: 0, unit: "SOSYAL ETKİNLİK", topic: "Sosyal Etkinlik", unitType: "sosyal" }
+];
+
+const plan10 = [
+  // EYLÜL
+  { id: "10-1", month: "EYLÜL", monthId: "eylul", week: "1. Hafta", dates: "8-12 Eylül", hours: 2, unit: "KUVVET VE HAREKET", topic: "Sabit Hızlı Hareket", learningOutcome: "FİZ.10.1.1. Yatay doğrultuda sabit hızlı hareket ile ilgili tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket", processComponents: "a) Yatay doğrultuda sabit hızlı hareket eden cisimlerin konum, yer değiştirme, hız ve zaman değişkenlerini deney yaparak gözlemler.<br>b) Hareket grafiklerinden yararlanarak matematiksel modeli bulur." },
+  { id: "10-2", month: "EYLÜL", monthId: "eylul", week: "2. Hafta", dates: "15-19 Eylül", hours: 2, unit: "KUVVET VE HAREKET", topic: "Sabit Hızlı Hareket", learningOutcome: "FİZ.10.1.1. Yatay doğrultuda sabit hızlı hareket ile ilgili tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket" },
+  { id: "10-3", month: "EYLÜL", monthId: "eylul", week: "3. Hafta", dates: "22-26 Eylül", hours: 2, unit: "KUVVET VE HAREKET", topic: "Bir Boyutta Sabit İvmeli Hareket", learningOutcome: "FİZ.10.1.2. İvme ve hız değişimi arasındaki ilişkiye yönelik tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket" },
+  // EKİM
+  { id: "10-4", month: "EKİM", monthId: "ekim", week: "4. Hafta", dates: "29 Eylül-3 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Bir Boyutta Sabit İvmeli Hareket", learningOutcome: "FİZ.10.1.3. Hareket grafiklerinden elde edilen matematiksel modelleri yorumlayabilme", unitType: "kuvvet-hareket" },
+  { id: "10-5", month: "EKİM", monthId: "ekim", week: "5. Hafta", dates: "6-10 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Serbest Düşme", learningOutcome: "FİZ.10.1.4. Serbest düşme hareketi yapan cisimlerin ivmesine yönelik tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket" },
+  { id: "10-6", month: "EKİM", monthId: "ekim", week: "6. Hafta", dates: "13-17 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "Serbest Düşme", learningOutcome: "FİZ.10.1.5. Serbest düşme hareketi ile ilgili kanıt kullanabilme", unitType: "kuvvet-hareket" },
+  { id: "10-7", month: "EKİM", monthId: "ekim", week: "7. Hafta", dates: "20-24 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "İki Boyutta Sabit İvmeli Hareket", learningOutcome: "FİZ.10.1.6. İki boyutta sabit ivmeli hareket ile ilgili tümevarımsal akıl yürütebilme", unitType: "kuvvet-hareket" },
+  { id: "10-8", month: "EKİM", monthId: "ekim", week: "8. Hafta", dates: "27-31 Ekim", hours: 2, unit: "KUVVET VE HAREKET", topic: "İki Boyutta Sabit İvmeli Hareket", learningOutcome: "FİZ.10.1.6. Devamı...", unitType: "kuvvet-hareket", specialDays: "29 Ekim Cumhuriyet Bayramı" },
+  // KASIM
+  { id: "10-9", month: "KASIM", monthId: "kasim", week: "9. Hafta", dates: "3-7 Kasım", hours: 2, unit: "ENERJİ", topic: "İş, Enerji ve Güç", learningOutcome: "FİZ.10.2.1. Kuvvet-yer değiştirme grafiği kullanılarak iş ile ilgili tümevarımsal akıl yürütebilme", unitType: "enerji", specialDays: "Atatürk Haftası" },
+  { id: "10-10", month: "KASIM", monthId: "kasim", week: "1. DÖNEM ARA TATİLİ", dates: "10-14 Kasım", hours: 0, isBreak: true, unitType: "break" },
+  { id: "10-11", month: "KASIM", monthId: "kasim", week: "10. Hafta", dates: "17-21 Kasım", hours: 2, unit: "ENERJİ", topic: "İş, Enerji ve Güç", learningOutcome: "FİZ.10.2.2. İş, enerji ve güç kavramlarına ilişkin çıkarım yapabilme", unitType: "enerji" },
+  { id: "10-12", month: "KASIM", monthId: "kasim", week: "11. Hafta", dates: "24-28 Kasım", hours: 2, unit: "ENERJİ", topic: "Enerji Biçimleri", learningOutcome: "FİZ.10.2.3. Enerji biçimlerini karşılaştırabilme", unitType: "enerji" },
+  // ARALIK
+  { id: "10-13", month: "ARALIK", monthId: "aralik", week: "12. Hafta", dates: "1-5 Aralık", hours: 2, unit: "ENERJİ", topic: "Enerji Biçimleri", learningOutcome: "FİZ.10.2.3. Devamı...", unitType: "enerji" },
+  { id: "10-14", month: "ARALIK", monthId: "aralik", week: "13. Hafta", dates: "8-12 Aralık", hours: 2, unit: "ENERJİ", topic: "Mekanik Enerji", learningOutcome: "FİZ.10.2.4. Mekanik enerjiyi çözümleyebilme", unitType: "enerji" },
+  { id: "10-15", month: "ARALIK", monthId: "aralik", week: "14. Hafta", dates: "15-19 Aralık", hours: 2, unit: "ENERJİ", topic: "Mekanik Enerji", learningOutcome: "FİZ.10.2.4. Devamı...", unitType: "enerji" },
+  { id: "10-16", month: "ARALIK", monthId: "aralik", week: "15. Hafta", dates: "22-26 Aralık", hours: 2, unit: "ENERJİ", topic: "Enerji Kaynakları", learningOutcome: "FİZ.10.2.5. Yenilenebilen ve yenilenemeyen enerji kaynaklarını karşılaştırabilme", unitType: "enerji" },
+  // OCAK
+  { id: "10-17", month: "OCAK", monthId: "ocak", week: "16. Hafta", dates: "29 Aralık-2 Ocak", hours: 2, unit: "ELEKTRİK", topic: "Basit Elektrik Devreleri", learningOutcome: "FİZ.10.3.1. Potansiyel fark, akım ve direnç kavramlarına ilişkin analojik akıl yürütebilme", unitType: "elektrik" },
+  { id: "10-18", month: "OCAK", monthId: "ocak", week: "17. Hafta", dates: "5-9 Ocak", hours: 2, unit: "ELEKTRİK", topic: "Basit Elektrik Devreleri", learningOutcome: "FİZ.10.3.1. Devamı...", unitType: "elektrik" },
+  { id: "10-19", month: "OCAK", monthId: "ocak", week: "18. Hafta", dates: "12-16 Ocak", hours: 2, unit: "OKUL TEMELLİ PLANLAMA", topic: "Okul Temelli Planlama", unitType: "okul-temelli" },
+  { id: "10-20", month: "OCAK", monthId: "ocak", week: "YARIYIL TATİLİ", dates: "19 Ocak - 30 Ocak 2026", hours: 0, isBreak: true, unitType: "break" },
+  // ŞUBAT
+  { id: "10-21", month: "ŞUBAT", monthId: "subat", week: "19. Hafta", dates: "2-6 Şubat", hours: 2, unit: "ELEKTRİK", topic: "Elektrik Akımı", learningOutcome: "FİZ.10.3.2. Elektrik akımı kavramını çözümleyebilme", unitType: "elektrik" },
+  { id: "10-22", month: "ŞUBAT", monthId: "subat", week: "20. Hafta", dates: "9-13 Şubat", hours: 2, unit: "ELEKTRİK", topic: "Ohm Yasası", learningOutcome: "FİZ.10.3.3. Ohm Yasası ile ilgili tümevarımsal akıl yürütebilme", unitType: "elektrik" },
+  { id: "10-23", month: "ŞUBAT", monthId: "subat", week: "21. Hafta", dates: "16-20 Şubat", hours: 2, unit: "ELEKTRİK", topic: "Dirençlerin Bağlanması", learningOutcome: "FİZ.10.3.4. Eşdeğer direncin büyüklüğüne ilişkin bilimsel çıkarım yapabilme", unitType: "elektrik" },
+  { id: "10-24", month: "ŞUBAT", monthId: "subat", week: "22. Hafta", dates: "23-27 Şubat", hours: 2, unit: "ELEKTRİK", topic: "Dirençlerin Bağlanması", learningOutcome: "FİZ.10.3.4. Devamı...", unitType: "elektrik" },
+  // MART
+  { id: "10-25", month: "MART", monthId: "mart", week: "23. Hafta", dates: "2-6 Mart", hours: 2, unit: "ELEKTRİK", topic: "Üreteçlerin Bağlanması", learningOutcome: "FİZ.10.3.5. Üreteçlerin bağlanma türüne göre potansiyel fark çıkarımı", unitType: "elektrik" },
+  { id: "10-26", month: "MART", monthId: "mart", week: "24. Hafta", dates: "9-13 Mart", hours: 2, unit: "ELEKTRİK", topic: "Üreteçlerin Bağlanması", learningOutcome: "FİZ.10.3.5. Devamı...", unitType: "elektrik" },
+  { id: "10-27", month: "MART", monthId: "mart", week: "2. DÖNEM ARA TATİLİ", dates: "16-20 Mart", hours: 0, isBreak: true, unitType: "break" },
+  { id: "10-28", month: "MART", monthId: "mart", week: "25. Hafta", dates: "23-27 Mart", hours: 2, unit: "ELEKTRİK", topic: "Elektrik Tehlikeleri", learningOutcome: "FİZ.10.3.6. Elektrik akımının oluşturabileceği tehlikelere karşı önlemler", unitType: "elektrik" },
+  { id: "10-29", month: "MART", monthId: "mart", week: "26. Hafta", dates: "30 Mart-3 Nisan", hours: 2, unit: "ELEKTRİK", topic: "Topraklama", learningOutcome: "FİZ.10.3.7. Topraklama olayının önemini sorgulayabilme", unitType: "elektrik" },
+  // NİSAN
+  { id: "10-30", month: "NİSAN", monthId: "nisan", week: "27. Hafta", dates: "6-10 Nisan", hours: 2, unit: "DALGALAR", topic: "Dalgaların Temel Kavramları", learningOutcome: "FİZ.10.4.1. Dalgaların temel kavramlarına ilişkin operasyonel tanımlama yapabilme", unitType: "dalgalar" },
+  { id: "10-31", month: "NİSAN", monthId: "nisan", week: "28. Hafta", dates: "13-17 Nisan", hours: 2, unit: "DALGALAR", topic: "Dalgaların Temel Kavramları", learningOutcome: "FİZ.10.4.1. Devamı...", unitType: "dalgalar" },
+  { id: "10-32", month: "NİSAN", monthId: "nisan", week: "29. Hafta", dates: "20-24 Nisan", hours: 2, unit: "DALGALAR", topic: "Yayılma Sürati", learningOutcome: "FİZ.10.4.2. Sınıflandırma / FİZ.10.4.3. Yayılma süratini etkileyen etmenler", unitType: "dalgalar" },
+  { id: "10-33", month: "NİSAN", monthId: "nisan", week: "30. Hafta", dates: "27 Nisan-1 Mayıs", hours: 2, unit: "DALGALAR", topic: "Yayılma Sürati", learningOutcome: "FİZ.10.4.3. Devamı...", unitType: "dalgalar" },
+  // MAYIS
+  { id: "10-34", month: "MAYIS", monthId: "mayis", week: "31. Hafta", dates: "4-8 Mayıs", hours: 2, unit: "DALGALAR", topic: "Periyodik Hareketler", learningOutcome: "FİZ.10.4.4. Periyodik hareketlere ilişkin deneyimlerini yansıtabilme", unitType: "dalgalar" },
+  { id: "10-35", month: "MAYIS", monthId: "mayis", week: "32. Hafta", dates: "11-15 Mayıs", hours: 2, unit: "DALGALAR", topic: "Su Dalgalarında Yansıma ve Kırılma", learningOutcome: "FİZ.10.4.5. Su dalgalarında yansıma ve kırılma ile ilgili tümevarımsal akıl yürütebilme", unitType: "dalgalar" },
+  { id: "10-36", month: "MAYIS", monthId: "mayis", week: "33. Hafta", dates: "18-22 Mayıs", hours: 2, unit: "DALGALAR", topic: "Su Dalgalarında Yansıma ve Kırılma", learningOutcome: "FİZ.10.4.5. Devamı...", unitType: "dalgalar" },
+  { id: "10-37", month: "MAYIS", monthId: "mayis", week: "34. Hafta", dates: "25-29 Mayıs", hours: 2, unit: "DALGALAR", topic: "Su Dalgalarında Yansıma ve Kırılma", learningOutcome: "FİZ.10.4.5. Devamı...", unitType: "dalgalar" },
+  // HAZİRAN
+  { id: "10-38", month: "HAZİRAN", monthId: "haziran", week: "35. Hafta", dates: "1-5 Haziran", hours: 2, unit: "DALGALAR", topic: "Rezonans ve Deprem", learningOutcome: "FİZ.10.4.6. Rezonans ve depreme ilişkin kavramlar üzerinden depremi sorgulayabilme", unitType: "dalgalar" },
+  { id: "10-39", month: "HAZİRAN", monthId: "haziran", week: "36. Hafta", dates: "8-12 Haziran", hours: 2, unit: "DALGALAR", topic: "Deprem Modeli", learningOutcome: "FİZ.10.4.7. Depremle ilgili bilimsel model oluşturabilme", unitType: "dalgalar" },
+  { id: "10-40", month: "HAZİRAN", monthId: "haziran", week: "37. Hafta", dates: "15-19 Haziran", hours: 2, unit: "OKUL TEMELLİ PLANLAMA", topic: "Okul Temelli Planlama", unitType: "okul-temelli" },
+  { id: "10-41", month: "HAZİRAN", monthId: "haziran", week: "38. Hafta", dates: "22-26 Haziran", hours: 0, unit: "SOSYAL ETKİNLİK", topic: "Sosyal Etkinlik", unitType: "sosyal" }
+];
+
+export default function PhysicsPlanApp() {
+  const [activeGrade, setActiveGrade] = useState(9);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeMonth, setActiveMonth] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // İlerleme Durumu State'i
+  const [completedWeeks, setCompletedWeeks] = useState([]);
+
+  // LocalStorage'dan veri çekme
+  useEffect(() => {
+    const saved = localStorage.getItem('physicsPlanCompleted');
+    if (saved) {
+      setCompletedWeeks(JSON.parse(saved));
+    }
+  }, []);
+
+  // Tamamlandı durumunu değiştirme
+  const toggleCompletion = (weekId) => {
+    const newCompleted = completedWeeks.includes(weekId)
+      ? completedWeeks.filter(id => id !== weekId)
+      : [...completedWeeks, weekId];
+    
+    setCompletedWeeks(newCompleted);
+    localStorage.setItem('physicsPlanCompleted', JSON.stringify(newCompleted));
+  };
+
+  // İlerleme Yüzdesi Hesaplama
+  const calculateProgress = () => {
+    const currentData = activeGrade === 9 ? plan9 : plan10;
+    const totalWeeks = currentData.filter(w => !w.isBreak).length;
+    const completedCount = currentData.filter(w => !w.isBreak && completedWeeks.includes(w.id)).length;
+    return Math.round((completedCount / totalWeeks) * 100);
+  };
+
+  const progress = calculateProgress();
+
+  // Sınıf bazlı filtre konfigürasyonu
+  const gradeConfig = {
+    9: {
+      data: plan9,
+      filters: [
+        { id: 'all', label: 'Tümü' },
+        { id: 'fizik-bilimi', label: 'Fizik Bilimi' },
+        { id: 'kuvvet-hareket', label: 'Kuvvet ve Hareket' },
+        { id: 'akiskanlar', label: 'Akışkanlar' },
+        { id: 'enerji', label: 'Enerji' }
+      ]
+    },
+    10: {
+      data: plan10,
+      filters: [
+        { id: 'all', label: 'Tümü' },
+        { id: 'kuvvet-hareket', label: 'Kuvvet' },
+        { id: 'enerji', label: 'Enerji' },
+        { id: 'elektrik', label: 'Elektrik' },
+        { id: 'dalgalar', label: 'Dalgalar' }
+      ]
+    }
+  };
+
+  // Filtreleme Mantığı
+  const filteredWeeks = useMemo(() => {
+    const currentData = gradeConfig[activeGrade].data;
+    
+    return currentData.filter(week => {
+      // 1. Ay Filtresi
+      if (activeMonth !== 'all' && week.monthId !== activeMonth) return false;
+      
+      // 2. Konu Filtresi
+      if (activeFilter !== 'all' 
+          && week.unitType !== activeFilter 
+          && week.unitType !== 'break' 
+          && week.unitType !== 'okul-temelli' 
+          && week.unitType !== 'sosyal') return false;
+
+      // 3. Arama Filtresi
+      if (searchTerm) {
+        const text = `
+          ${week.unit || ''} 
+          ${week.topic || ''} 
+          ${week.learningOutcome || ''} 
+          ${week.processComponents || ''} 
+          ${week.specialDays || ''}
+          ${week.week || ''}
+        `.toLowerCase();
+        
+        if (!text.includes(searchTerm.toLowerCase())) return false;
+      }
+      return true;
     });
+  }, [activeGrade, activeFilter, activeMonth, searchTerm]);
 
-    const updateField = (field: keyof DailyPlan, value: string) => {
-        setDailyPlan(prev => ({...prev, [field]: value}));
-    };
-    
-    const updatePlanPart = (part: keyof DailyPlan['plan'], value: string) => {
-        setDailyPlan(prev => ({...prev, plan: {...prev.plan, [part]: value}}));
-    };
-
-    const addQuickText = (field: 'materyal' | 'degerlendirme' | 'plan.giris' | 'plan.gelisme' | 'plan.sonuc', text: string) => {
-        if (field.startsWith('plan.')) {
-            const part = field.split('.')[1] as keyof DailyPlan['plan'];
-            setDailyPlan(prev => ({ ...prev, plan: { ...prev.plan, [part]: prev.plan[part] ? `${prev.plan[part]}, ${text}` : text } }));
-        } else {
-            setDailyPlan(prev => ({ ...prev, [field]: prev[field] ? `${prev[field]}, ${text}` : text }));
-        }
-    };
-    
-    const handleExport = () => {
-        if (!plan.dailyPlanSettings.okul || !plan.dailyPlanSettings.mudur) {
-            toast({variant: 'destructive', title: 'Lütfen önce Yıllık Plan Ayarlarından okul ve müdür adını girin.'});
-            return;
-        }
-        onExport(dailyPlan);
+  // Yardımcı fonksiyon: Ünite tipine göre renk döndür
+  const getAccentColor = (unitType) => {
+    switch(unitType) {
+      case 'fizik-bilimi': return 'border-amber-500';
+      case 'kuvvet-hareket': return 'border-red-500';
+      case 'akiskanlar': return 'border-sky-500';
+      case 'enerji': return 'border-emerald-500';
+      case 'elektrik': return 'border-blue-500';
+      case 'dalgalar': return 'border-purple-500';
+      case 'okul-temelli': return 'border-violet-500';
+      case 'sosyal': return 'border-pink-500';
+      case 'break': return 'border-yellow-400';
+      default: return 'border-slate-300';
     }
+  };
 
-    return (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <Button onClick={() => onBack()} variant="ghost" className="mb-6 md:mb-0">
-                    <ArrowLeft className="mr-2" /> Yıllık Plana Geri Dön
-                </Button>
-                <div className="flex gap-2">
-                    <Button onClick={() => handleExport()}>
-                        <Download className="mr-2"/> Word Olarak İndir
-                    </Button>
-                    <Button onClick={() => onSave(dailyPlan)}>
-                        <Save className="mr-2"/> Günlük Planı Kaydet
-                    </Button>
-                </div>
-            </div>
-            
-             <div className="mt-6 border-b pb-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Günlük Plan Detayları</h2>
-                <p className="text-gray-500 text-sm">Hafta: {row.hafta} | Ünite: {row.unite}</p>
-            </div>
-            
-            <div className="mt-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="font-bold text-gray-600">Konu</label>
-                        <AutoResizingTextarea value={dailyPlan.konu} onChange={(e: any) => updateField('konu', e.target.value)} className="w-full p-2 border rounded mt-1 bg-gray-50"/>
-                    </div>
-                    <div>
-                        <label className="font-bold text-gray-600">Kazanımlar</label>
-                        <AutoResizingTextarea value={dailyPlan.kazanim} onChange={(e: any) => updateField('kazanim', e.target.value)} className="w-full p-2 border rounded mt-1 bg-gray-50"/>
-                    </div>
-                </div>
-                <div>
-                    <label className="font-bold text-gray-600">Giriş Bölümü (İlgi Çekme, Güdüleme)</label>
-                    <AutoResizingTextarea value={dailyPlan.plan.giris} onChange={(e: any) => updatePlanPart('giris', e.target.value)} className="w-full p-2 border rounded mt-1"/>
-                    <QuickAddButtons items={['Önceki dersin tekrarı', 'Beyin fırtınası', 'Soru-cevap']} onAdd={(text: string) => addQuickText('plan.giris', text)} />
-                </div>
-                 <div>
-                    <label className="font-bold text-gray-600">Gelişme Bölümü (Konu Anlatımı, Etkinlikler)</label>
-                    <AutoResizingTextarea value={dailyPlan.plan.gelisme} onChange={(e: any) => updatePlanPart('gelisme', e.target.value)} className="w-full p-2 border rounded mt-1"/>
-                    <QuickAddButtons items={['Anlatım', 'Gösteri', 'Problem çözme', 'Grup çalışması']} onAdd={(text: string) => addQuickText('plan.gelisme', text)} />
-                </div>
-                 <div>
-                    <label className="font-bold text-gray-600">Sonuç Bölümü (Özet, Tekrar)</label>
-                    <AutoResizingTextarea value={dailyPlan.plan.sonuc} onChange={(e: any) => updatePlanPart('sonuc', e.target.value)} className="w-full p-2 border rounded mt-1"/>
-                     <QuickAddButtons items={['Özet', 'Değerlendirme', 'Gelecek konuya hazırlık']} onAdd={(text: string) => addQuickText('plan.sonuc', text)} />
-                </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="font-bold text-gray-600">Materyal & Araç-Gereç</label>
-                        <AutoResizingTextarea value={dailyPlan.materyal} onChange={(e: any) => updateField('materyal', e.target.value)} className="w-full p-2 border rounded mt-1"/>
-                         <QuickAddButtons items={['Ders Kitabı', 'EBA', 'Akıllı Tahta', 'Çalışma Kağıdı']} onAdd={(text: string) => addQuickText('materyal', text)} />
-                    </div>
-                    <div>
-                        <label className="font-bold text-gray-600">Ölçme & Değerlendirme</label>
-                        <AutoResizingTextarea value={dailyPlan.degerlendirme} onChange={(e: any) => updateField('degerlendirme', e.target.value)} className="w-full p-2 border rounded mt-1"/>
-                         <QuickAddButtons items={['Soru-Cevap', 'Çalışma Kağıdı', 'Gözlem Formu', 'Kısa Sınav']} onAdd={(text: string) => addQuickText('degerlendirme', text)} />
-                    </div>
-                </div>
-            </div>
+  const getBadgeColor = (unitType) => {
+    switch(unitType) {
+      case 'fizik-bilimi': return 'bg-amber-500';
+      case 'kuvvet-hareket': return 'bg-red-500';
+      case 'akiskanlar': return 'bg-sky-500';
+      case 'enerji': return 'bg-emerald-500';
+      case 'elektrik': return 'bg-blue-500';
+      case 'dalgalar': return 'bg-purple-500';
+      case 'okul-temelli': return 'bg-violet-500';
+      case 'sosyal': return 'bg-pink-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
+  const getBackgroundColor = (unitType, isBreak) => {
+    if (isBreak) return 'bg-yellow-50';
+    if (unitType === 'okul-temelli') return 'bg-violet-50';
+    if (unitType === 'sosyal') return 'bg-pink-50';
+    return 'bg-white';
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
+      <div className="max-w-full mx-auto">
+        
+        {/* Header */}
+        <header className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-indigo-950 mb-2 tracking-tight">
+            Fizik Dersi Yıllık Planı
+          </h1>
+          <div className="inline-block bg-white px-6 py-2 rounded-full shadow-sm border border-slate-200 text-slate-600 font-medium">
+            2025-2026 Eğitim-Öğretim Yılı
+          </div>
+        </header>
+
+        {/* Grade Switcher */}
+        <div className="flex justify-center gap-4 mb-8">
+          {[9, 10].map((grade) => (
+            <button
+              key={grade}
+              onClick={() => {
+                setActiveGrade(grade);
+                setActiveFilter('all'); // Sınıf değişince filtreyi sıfırla
+              }}
+              className={`px-8 py-3 rounded-xl font-bold transition-all shadow-sm border-2 ${
+                activeGrade === grade 
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform -translate-y-0.5' 
+                  : 'bg-white text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50'
+              }`}
+            >
+              {grade}. Sınıf
+            </button>
+          ))}
         </div>
-    );
-};
 
+        {/* Progress Bar */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 max-w-2xl mx-auto">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-bold text-slate-600">Yıllık İlerleme Durumu</span>
+            <span className="text-sm font-bold text-indigo-600">%{progress} Tamamlandı</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-2.5">
+            <div 
+              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
 
-export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
-    const { db, setDb, loading } = useDatabase();
-    const { toast } = useToast();
-    const [isPanelOpen, setIsPanelOpen] = useState(false);
-    
-    const [activePlanId, setActivePlanId] = useState<number | null>(null);
-    const [activeRow, setActiveRow] = useState<AnnualPlanEntry | null>(null);
+        {/* Controls */}
+        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 sticky top-4 z-10">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            {/* Dynamic Filters */}
+            <div className="flex flex-wrap justify-center md:justify-start gap-2">
+              {gradeConfig[activeGrade].filters.map((filter) => (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                    activeFilter === filter.id
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-transparent text-slate-500 border-slate-200 hover:border-indigo-500 hover:text-indigo-600'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
 
-    const searchParams = useSearchParams();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (!loading && db.annualPlans.length > 0) {
-            const planIdFromUrl = searchParams.get('planId');
-            if (planIdFromUrl && db.annualPlans.find(p => p.id === parseInt(planIdFromUrl))) {
-                setActivePlanId(parseInt(planIdFromUrl));
-            } else if (!activePlanId) {
-                setActivePlanId(db.annualPlans[0].id);
-            }
-        }
-    }, [db.annualPlans, loading, activePlanId, searchParams]);
-
-    const activePlan = useMemo(() => {
-        if (!activePlanId) return null;
-        return db.annualPlans.find(p => p.id === activePlanId);
-    }, [activePlanId, db.annualPlans]);
-
-    const updatePlan = (updatedPlan: AnnualPlan) => {
-        setDb(prevDb => ({
-            ...prevDb,
-            annualPlans: prevDb.annualPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p)
-        }));
-    };
-
-    const updateRow = useCallback((rowId: string, updatedFields: Partial<AnnualPlanEntry>) => {
-        if (!activePlan) return;
-        const newRows = activePlan.rows.map(r => r.id === rowId ? { ...r, ...updatedFields } : r);
-        updatePlan({ ...activePlan, rows: newRows });
-    }, [activePlan, updatePlan]);
-    
-    const stats = useMemo(() => {
-        if (!activePlan) return { totalWeeks: 0, completedWeeks: 0, percentage: 0 };
-        const total = activePlan.rows.filter(r => !r.isSpecial).length;
-        if (total === 0) return { totalWeeks: 0, completedWeeks: 0, percentage: 0 };
-        const completed = activePlan.rows.filter(r => r.isDone && !r.isSpecial).length;
-        const percentage = Math.round((completed / total) * 100);
-        return {
-            totalWeeks: total,
-            completedWeeks: completed,
-            percentage: isNaN(percentage) ? 0 : percentage
-        };
-    }, [activePlan]);
-
-    const addPlan = (title: string) => {
-        const newPlan: AnnualPlan = {
-            id: Date.now(),
-            title: title || 'Yeni Yıllık Plan',
-            rows: [],
-            dailyPlanSettings: {
-                okul: teacherProfile?.schoolName || "Okul Adı",
-                mudur: teacherProfile?.principalName || "Müdür Adı",
-                ogretmen: teacherProfile?.name || "Öğretmen Adı",
-                ders: teacherProfile?.branch || "Ders Adı",
-            }
-        };
-        setDb(prev => ({ ...prev, annualPlans: [...prev.annualPlans, newPlan] }));
-        setActivePlanId(newPlan.id);
-    };
-
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (!activePlan) return;
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                const newRows: AnnualPlanEntry[] = json.slice(1).map((row, index) => ({
-                    id: `${activePlan.id}-${Date.now()}-${index}`,
-                    hafta: String(row[0] || ''),
-                    saat: String(row[1] || '2'),
-                    unite: String(row[2] || ''),
-                    konu: String(row[3] || ''),
-                    cikti: String(row[4] || ''),
-                    yontem: String(row[5] || ''),
-                    arac: String(row[6] || ''),
-                    degerlendirme: String(row[7] || ''),
-                    isDone: false,
-                    isSpecial: false,
-                    dailyPlan: null,
-                }));
-                
-                const updatedPlan = { ...activePlan, rows: [...activePlan.rows, ...newRows] };
-                updatePlan(updatedPlan);
-                toast({ title: 'Plan İçe Aktarıldı', description: `${newRows.length} hafta başarıyla eklendi.` });
-
-            } catch (error) {
-                console.error("Error parsing file:", error);
-                toast({ variant: 'destructive', title: 'Dosya Okuma Hatası', description: 'Seçilen dosya geçerli bir formatta değil.' });
-            }
-        };
-        reader.readAsArrayBuffer(file);
-        event.target.value = '';
-    };
-
-    const handleExportPlan = () => {
-        if (!activePlan || !currentClass || !teacherProfile) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Dışa aktarılacak aktif bir plan veya sınıf yok.' });
-            return;
-        }
-        exportAnnualPlanToRtf({
-            annualPlan: activePlan,
-            currentClass: currentClass,
-            teacherProfile: teacherProfile
-        });
-    };
-    
-    const onOpenDailyPlan = (row: AnnualPlanEntry) => {
-        setActiveRow(row);
-    };
-
-    const handleSaveDailyPlan = (dailyPlan: DailyPlan) => {
-        if (!activePlan || !activeRow) return;
-        const updatedRows = activePlan.rows.map(r => r.id === activeRow.id ? {...r, dailyPlan: dailyPlan, konu: dailyPlan.konu, cikti: dailyPlan.kazanim, arac: dailyPlan.materyal, degerlendirme: dailyPlan.degerlendirme } : r);
-        updatePlan({...activePlan, rows: updatedRows});
-        toast({title: 'Günlük plan kaydedildi!'});
-    };
-
-    const handleExportDailyPlan = (dailyPlan: DailyPlan) => {
-        if (!activePlan || !activeRow || !currentClass || !teacherProfile) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.' });
-            return;
-        }
-        exportDailyPlanToRtf({
-            dailyPlan,
-            annualPlanEntry: activeRow,
-            currentClass: currentClass,
-            teacherProfile: teacherProfile,
-        });
-    }
-    
-    const onImportCurriculum = (curriculumName: keyof typeof MOCK_CURRICULUM) => {
-        if (!activePlan) return;
-        const curriculum = MOCK_CURRICULUM[curriculumName];
-        const newRows = curriculum.map((item, index) => ({
-            id: `${activePlan.id}-${Date.now()}-${index}`,
-            hafta: '',
-            saat: item.saat,
-            unite: item.unite,
-            konu: item.konu,
-            cikti: item.kazanim,
-            yontem: '',
-            arac: '',
-            degerlendirme: '',
-            isDone: false,
-            isSpecial: false,
-            dailyPlan: null,
-        }));
-        const updatedPlan = { ...activePlan, rows: [...activePlan.rows, ...newRows] };
-        updatePlan(updatedPlan);
-        toast({ title: 'Müfredat Eklendi', description: `${newRows.length} konu ve kazanım plana eklendi.` });
-    };
-
-    const onDistributeDates = (startDateStr: string, keepHolidays: boolean) => {
-        if (!activePlan) return;
-
-        let currentDate = new Date(startDateStr);
-        // Haftanın ilk günü Pazartesi değilse, bir sonraki Pazartesi'ye git
-        while (currentDate.getDay() !== 1) { 
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        const newRows = activePlan.rows.map(row => {
-            if (row.isSpecial && !keepHolidays) {
-                return null; // Tatilleri koruma seçeneği kapalıysa tatilleri sil
-            }
-            return { ...row, hafta: '' }; // Tüm tarihleri sıfırla
-        }).filter(Boolean) as AnnualPlanEntry[];
-
-
-        let weekIndex = 0;
-        for (let i = 0; i < newRows.length; i++) {
-            const row = newRows[i];
-            if (row.isSpecial) continue; // Tatil satırlarını atla
-
-            const weekStart = new Date(currentDate);
-            weekStart.setDate(weekStart.getDate() + (weekIndex * 7));
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 4);
-
-            row.hafta = `${weekStart.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`;
-            weekIndex++;
-        }
-
-        const updatedPlan = { ...activePlan, rows: newRows };
-        updatePlan(updatedPlan);
-        toast({ title: 'Tarihler Yenilendi', description: 'Tüm haftaların tarihleri güncellendi.' });
-    };
-
-    const onAddSpecialRow = (type: string, content: string) => {
-        if (!activePlan) return;
-        const newRow: AnnualPlanEntry = {
-            id: `special-${Date.now()}`,
-            isSpecial: true,
-            isDone: true,
-            hafta: type,
-            unite: content,
-            konu: '', cikti: '', saat: '', yontem: '', arac: '', degerlendirme: '', dailyPlan: null
-        };
-        const updatedPlan = { ...activePlan, rows: [...activePlan.rows, newRow] };
-        updatePlan(updatedPlan);
-    };
-
-    const onInsertEmptyRow = (index?: number) => {
-        if (!activePlan) return;
-        const newRow: AnnualPlanEntry = {
-            id: `empty-${Date.now()}`,
-            isSpecial: false, isDone: false, hafta: '', saat: '2', unite: 'Ekstra Hafta',
-            konu: '', cikti: '', yontem: '', arac: '', degerlendirme: '', dailyPlan: null
-        };
-        const newRows = [...activePlan.rows];
-        newRows.splice(index !== undefined ? index : newRows.length, 0, newRow);
-        updatePlan({ ...activePlan, rows: newRows });
-    };
-
-    const onResetProgress = () => {
-        if (!activePlan) return;
-        const newRows = activePlan.rows.map(row => ({ ...row, isDone: false }));
-        updatePlan({ ...activePlan, rows: newRows });
-    };
-
-    if (loading) {
-        return <div className="flex h-screen items-center justify-center">Yükleniyor...</div>;
-    }
-
-    if (!activePlan) {
-        if (db.annualPlans.length === 0) {
-            return (
-                <div className="flex h-screen items-center justify-center text-center p-8">
-                    <div className="bg-white p-12 rounded-2xl shadow-lg border border-gray-100 max-w-lg">
-                        <List size={48} className="mx-auto text-blue-500 mb-6" />
-                        <h1 className="text-3xl font-bold text-gray-800">Yıllık Plan Oluşturucuya Hoş Geldiniz</h1>
-                        <p className="text-gray-500 mt-4 mb-8">
-                            Ders planlarınızı kolayca oluşturun, yönetin ve dışa aktarın. Başlamak için ilk yıllık planınızı oluşturun.
-                        </p>
-                        <Button size="lg" onClick={() => addPlan('Yeni Yıllık Plan')}>
-                            <PlusCircle className="mr-2" /> İlk Planını Oluştur
-                        </Button>
-                    </div>
+            {/* Month & Search */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative">
+                <select
+                  value={activeMonth}
+                  onChange={(e) => setActiveMonth(e.target.value)}
+                  className="w-full sm:w-auto appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2.5 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
+                >
+                  <option value="all">Tüm Aylar</option>
+                  <option value="eylul">Eylül</option>
+                  <option value="ekim">Ekim</option>
+                  <option value="kasim">Kasım</option>
+                  <option value="aralik">Aralık</option>
+                  <option value="ocak">Ocak</option>
+                  <option value="subat">Şubat</option>
+                  <option value="mart">Mart</option>
+                  <option value="nisan">Nisan</option>
+                  <option value="mayis">Mayıs</option>
+                  <option value="haziran">Haziran</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                  <Filter size={16} />
                 </div>
-            )
-        }
-        return <div className="flex h-screen items-center justify-center">Aktif plan bulunamadı. Lütfen bir plan seçin veya oluşturun.</div>
-    }
+              </div>
 
-    if (activeRow) {
-        return <DailyPlanEditor 
-            row={activeRow} 
-            plan={activePlan} 
-            onSave={handleSaveDailyPlan} 
-            onBack={() => setActiveRow(null)}
-            onExport={handleExportDailyPlan}
-        />;
-    }
-
-    return (
-        <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-            <Suspense fallback={<div>Yükleniyor...</div>}>
-                <ControlPanelModal
-                    isOpen={isPanelOpen}
-                    onClose={() => setIsPanelOpen(false)}
-                    stats={stats}
-                    activePlan={activePlan}
-                    onAddSpecialRow={onAddSpecialRow}
-                    onInsertEmptyRow={onInsertEmptyRow}
-                    onResetProgress={onResetProgress}
-                    onOpenDailyPlan={onOpenDailyPlan}
-                    onImportCurriculum={onImportCurriculum}
-                    onDistributeDates={onDistributeDates}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Ara..."
+                  className="w-full sm:w-48 bg-slate-50 border border-slate-200 text-slate-700 py-2.5 pl-10 pr-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
                 />
-            </Suspense>
-             <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-                accept=".xlsx, .xls"
-            />
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Yıllık Plan: {activePlan?.title}</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Ders planlarınızı düzenleyin ve takip edin.</p>
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-slate-400">
+                  <Search size={18} />
                 </div>
-                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => setIsPanelOpen(true)}>
-                        <Settings className="mr-2" />
-                        Yönetim Paneli
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
-                                <MoreVertical className="mr-2" /> İşlemler
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={handleExportPlan}>
-                                <Download className="mr-2" /> Planı İndir (RTF)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={handleImportClick}>
-                                <Upload className="mr-2" /> İçe Aktar (.xlsx)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+              </div>
             </div>
-
-            {/* Plan Tablosu */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th className="p-4 w-12 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Hafta</th>
-                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Ünite</th>
-                                <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Konu & Kazanım</th>
-                                <th className="p-4 w-32 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                            {activePlan.rows.length > 0 ? activePlan.rows.map((row, index) => (
-                                <tr key={row.id} className={`group ${row.isSpecial ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                    <td className="p-4 text-center">
-                                        {!row.isSpecial && (
-                                            <Checkbox
-                                                checked={row.isDone}
-                                                onCheckedChange={(checked) => updateRow(row.id, { isDone: !!checked })}
-                                                aria-label="Haftayı tamamlandı olarak işaretle"
-                                            />
-                                        )}
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <AutoResizingTextarea value={row.hafta} onChange={(e: any) => updateRow(row.id, { hafta: e.target.value })} className="w-full bg-transparent p-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Tarih aralığı"/>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <AutoResizingTextarea value={row.unite} onChange={(e: any) => updateRow(row.id, { unite: e.target.value })} className="w-full bg-transparent p-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Ünite Adı"/>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <AutoResizingTextarea value={row.konu} onChange={(e: any) => updateRow(row.id, { konu: e.target.value })} className="w-full bg-transparent p-1 font-semibold focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Konu Adı"/>
-                                        <AutoResizingTextarea value={row.cikti} onChange={(e: any) => updateRow(row.id, { cikti: e.target.value })} className="w-full bg-transparent p-1 text-sm text-gray-500 mt-1 focus:bg-white focus:ring-1 ring-blue-400 rounded" placeholder="Kazanımlar"/>
-                                    </td>
-                                    <td className="p-4 text-center align-middle">
-                                        {!row.isSpecial && (
-                                            <Button variant="outline" size="sm" onClick={() => onOpenDailyPlan(row)}>
-                                                <FileText className="mr-2 h-4 w-4"/> Aç
-                                            </Button>
-                                        )}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={5} className="p-8 text-center text-gray-500">
-                                        Yıllık plan tablosu burada görünecek. Başlamak için "Yönetim Paneli" üzerinden müfredat yükleyin.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+          </div>
         </div>
-    );
+
+        {/* Content List - Horizontal Scrolling */}
+        <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory">
+          {filteredWeeks.length > 0 ? (
+            filteredWeeks.map((week, index) => {
+              const isCompleted = completedWeeks.includes(week.id);
+              
+              return (
+              <div 
+                key={index}
+                className={`flex-none w-[90vw] md:w-[400px] snap-center relative rounded-xl p-6 shadow-sm border transition-all hover:-translate-y-1 hover:shadow-lg border-l-4 ${getAccentColor(week.unitType)} ${isCompleted ? 'bg-slate-50 opacity-75' : getBackgroundColor(week.unitType, week.isBreak)} ${isCompleted ? 'border-slate-300' : 'border-slate-200'}`}
+              >
+                {/* Completion Toggle */}
+                {!week.isBreak && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCompletion(week.id);
+                    }}
+                    className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-10 ${isCompleted ? 'text-emerald-500 bg-emerald-50' : 'text-slate-300 hover:text-emerald-500 hover:bg-slate-50'}`}
+                    title={isCompleted ? "Tamamlandı olarak işaretlendi" : "Tamamlandı olarak işaretle"}
+                  >
+                    {isCompleted ? <CheckCircle size={24} fill="currentColor" className="text-emerald-500" /> : <Circle size={24} />}
+                  </button>
+                )}
+
+                {/* Month Tag */}
+                <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded mb-3 border border-slate-200">
+                  {week.month}
+                </span>
+
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className={`text-xl font-bold ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{week.week}</h3>
+                    <div className="flex items-center gap-2 text-slate-500 mt-1 font-medium text-sm">
+                      <Calendar size={14} />
+                      {week.dates}
+                    </div>
+                  </div>
+                  {week.hours > 0 && (
+                    <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wide flex items-center gap-1">
+                      <Clock size={12} />
+                      {week.hours} Saat
+                    </span>
+                  )}
+                </div>
+
+                {/* Body */}
+                <div className="space-y-4">
+                  {(week.unit || week.topic) && (
+                    <div>
+                      {week.unit && (
+                        <span className={`inline-block px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wide text-white mb-2 ${getBadgeColor(week.unitType)}`}>
+                          {week.unit}
+                        </span>
+                      )}
+                      {week.topic && (
+                        <div className={`text-lg font-semibold leading-tight ${isCompleted ? 'text-slate-500' : 'text-slate-800'}`}>
+                          {week.topic}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {week.learningOutcome && (
+                    <div className="bg-white/50 border border-slate-200 p-4 rounded-lg">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Kazanım</span>
+                      <p className="text-slate-700 text-sm leading-relaxed">{week.learningOutcome}</p>
+                    </div>
+                  )}
+
+                  {week.processComponents && (
+                    <div className="pt-2 border-t border-dashed border-slate-200">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Süreç Bileşenleri</span>
+                      <div 
+                        className="text-slate-600 text-sm leading-relaxed space-y-1"
+                        dangerouslySetInnerHTML={{ __html: week.processComponents }}
+                      />
+                    </div>
+                  )}
+
+                  {week.specialDays && (
+                    <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-100 mt-2">
+                      <BookOpen size={12} />
+                      {week.specialDays}
+                    </div>
+                  )}
+                  
+                  {/* Download Button */}
+                  <button 
+                    onClick={() => downloadDailyPlan(week, activeGrade)}
+                    className="w-full mt-4 pt-4 border-t border-slate-100 text-center text-indigo-600 text-sm font-semibold hover:text-indigo-800 transition-colors flex items-center justify-center gap-2 group"
+                  >
+                    <Download size={16} className="group-hover:scale-110 transition-transform" /> 
+                    Günlük Planı İndir (.rtf)
+                  </button>
+                </div>
+              </div>
+            )})
+          ) : (
+            <div className="flex-1 text-center py-16 bg-white rounded-xl border border-slate-200 text-slate-400">
+              <p className="text-lg font-medium">Aradığınız kriterlere uygun sonuç bulunamadı.</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Scroll Hint */}
+        <div className="text-center text-slate-400 text-xs font-medium mt-2 flex items-center justify-center gap-2 md:hidden animate-pulse">
+          Kaydır <ArrowRight size={12} />
+        </div>
+
+        <footer className="mt-12 text-center text-slate-400 text-sm border-t border-slate-200 pt-6 pb-8">
+          <p>Türkiye Yüzyılı Maarif Modeli Çerçevesinde Hazırlanmıştır</p>
+          <p>© 2025-2026 Eğitim-Öğretim Yılı</p>
+        </footer>
+      </div>
+    </div>
+  );
 }
+
