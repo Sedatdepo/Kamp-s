@@ -17,12 +17,12 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // Sınıfın sahibi olan öğretmen mi?
+    // Sınıfın sahibi olan öğretmen mi? (Tekil get/update işlemleri için)
     function isClassOwner(classId) {
       return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
     }
     
-    // Öğrenci kendi sınıfında mı işlem yapıyor?
+    // Öğrenci kendi sınıfında mı işlem yapıyor? (Tekil get/update işlemleri için)
     function isStudentInClass(classId) {
         return isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
     }
