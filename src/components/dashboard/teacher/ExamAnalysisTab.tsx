@@ -38,7 +38,7 @@ import { saveAs } from 'file-saver';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 
 
 interface ExamAnalysisTabProps {
@@ -606,4 +606,5 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     </div>
   );
 }
+
 
