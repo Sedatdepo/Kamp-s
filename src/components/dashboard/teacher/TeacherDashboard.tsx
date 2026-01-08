@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
@@ -252,70 +253,71 @@ function ClassSelectionScreen({
                                     draggedClassId === cls.id ? 'opacity-50' : 'opacity-100'
                                 )}
                             >
-                                <Card className="flex flex-col hover:shadow-lg transition-shadow h-full cursor-grab active:cursor-grabbing">
-                                    <div className="flex-1 p-6" onClick={() => onSelectClass(cls.id)}>
+                                <Card className="flex flex-col hover:shadow-lg transition-shadow h-full">
+                                    <div className="flex-1 p-6 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
                                         <CardTitle>{cls.name}</CardTitle>
                                         <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
                                     </div>
-                                    <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
-                                        <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
-                                        <div className="flex items-center">
-                                            <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
-                                                <DialogTrigger asChild>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8" 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setEditingClass(cls);
-                                                        }}
-                                                    >
-                                                        <Edit className="h-4 w-4"/>
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent>
-                                                    <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
-                                                    <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : null)}/>
-                                                    <DialogClose asChild>
-                                                        <Button onClick={handleUpdateClass}>Kaydet</Button>
-                                                    </DialogClose>
-                                                </DialogContent>
-                                            </Dialog>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <div onClick={(e) => e.stopPropagation()}>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                            disabled={deletingClassId === cls.id}
+                                    <CardContent className="border-t pt-4">
+                                        <div className="flex justify-between items-center text-sm text-muted-foreground mb-4">
+                                            <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
+                                            <div className="flex items-center">
+                                                <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
+                                                    <DialogTrigger asChild>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8" 
                                                         >
-                                                            {deletingClassId === cls.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin"/> 
-                                                            ) : (
-                                                                <Trash2 className="h-4 w-4"/>
-                                                            )}
+                                                            <Edit className="h-4 w-4"/>
                                                         </Button>
-                                                    </div>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteClass(cls.id)} className="bg-destructive hover:bg-destructive/90">
-                                                            Sil
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
+                                                        <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : { ...cls, name: e.target.value })}/>
+                                                        <DialogClose asChild>
+                                                            <Button onClick={handleUpdateClass}>Kaydet</Button>
+                                                        </DialogClose>
+                                                    </DialogContent>
+                                                </Dialog>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                                disabled={deletingClassId === cls.id}
+                                                            >
+                                                                {deletingClassId === cls.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin"/> 
+                                                                ) : (
+                                                                    <Trash2 className="h-4 w-4"/>
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteClass(cls.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                Sil
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
                                         </div>
+                                         <Button onClick={() => onSelectClass(null)} variant="outline" className="w-full">
+                                            <ArrowLeft className="mr-2 h-4 w-4" /> Ana Panele Dön
+                                        </Button>
                                     </CardContent>
                                 </Card>
                             </div>
