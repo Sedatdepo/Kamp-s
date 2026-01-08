@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Exam } from '@/lib/types';
+import { Exam, Question as ExamQuestion } from '@/lib/types'; // ExamQuestion olarak import ettim
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
@@ -13,8 +13,15 @@ interface ExamPaperProps {
 export const ExamPaper = ({ exam, showAnswerKey = false }: ExamPaperProps) => {
   const { examInfo, questions } = exam;
 
-  const renderQuestion = (q: any, index: number) => {
-    const isCorrect = (optionIndex: number) => showAnswerKey && q.correctAnswer === optionIndex;
+  const renderQuestion = (q: ExamQuestion, index: number) => {
+    // Cevap anahtarı için doğru seçeneğin harfini bulma
+    let correctAnswerLetter = '';
+    if (showAnswerKey && q.type === 'multiple-choice' && q.options) {
+      const correctIndex = q.options.findIndex(opt => opt === q.correctAnswer);
+      if (correctIndex !== -1) {
+        correctAnswerLetter = String.fromCharCode(65 + correctIndex);
+      }
+    }
 
     return (
       <div key={q.id || index} className="mb-8 break-inside-avoid">
@@ -27,7 +34,7 @@ export const ExamPaper = ({ exam, showAnswerKey = false }: ExamPaperProps) => {
         {q.type === 'multiple-choice' && q.options && (
           <div className="space-y-2">
             {q.options.map((opt: string, i: number) => (
-              <div key={i} className={`flex items-center space-x-2 p-2 rounded-md ${isCorrect(i) ? 'bg-green-100 border border-green-300' : ''}`}>
+              <div key={i} className={`flex items-center space-x-2 p-2 rounded-md ${showAnswerKey && q.correctAnswer === opt ? 'bg-green-100 border border-green-300' : ''}`}>
                 <span className="font-semibold">{String.fromCharCode(65 + i)})</span>
                 <span>{opt}</span>
               </div>
@@ -65,16 +72,23 @@ export const ExamPaper = ({ exam, showAnswerKey = false }: ExamPaperProps) => {
         <div className="mt-10 pt-6 border-t-2 border-dashed border-black break-before-page">
           <h2 className="text-xl font-bold text-center mb-6">CEVAP ANAHTARI</h2>
           <ol className="columns-4 gap-4 text-sm">
-            {questions.map((q, index) => (
-              <li key={`ans-${q.id}`} className="mb-2 font-mono">
-                <strong>{index + 1}.</strong> {String.fromCharCode(65 + (q.correctAnswer as number))}
-              </li>
-            ))}
+            {questions.map((q, index) => {
+               let correctAnswerDisplay = '';
+               if (q.type === 'multiple-choice' && q.options) {
+                  const correctIndex = q.options.findIndex(opt => opt === q.correctAnswer);
+                  if (correctIndex !== -1) {
+                    correctAnswerDisplay = String.fromCharCode(65 + correctIndex);
+                  }
+               }
+               return (
+                  <li key={`ans-${q.id}`} className="mb-2 font-mono">
+                    <strong>{index + 1}.</strong> {correctAnswerDisplay}
+                  </li>
+               )
+            })}
           </ol>
         </div>
       )}
     </div>
   );
 };
-
-    
