@@ -1,4 +1,3 @@
-
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +27,7 @@ export default function NobetciListesi() {
   const [nextStartInfo, setNextStartInfo] = useState<any>(null);
 
   const students = useMemo(() => {
-    if (!selectedClassId) return [];
+    if (!selectedClassId || !classes) return [];
     const selectedClass = classes.find(c => c.id === selectedClassId);
     return selectedClass?.students.map(s => ({ id: s.id, name: s.name, no: s.no })) || [];
   }, [selectedClassId, classes]);
@@ -207,7 +206,7 @@ export default function NobetciListesi() {
                         <SelectValue placeholder="Sınıf Seçin..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {classes.map(cls => (
+                        {classes && classes.map(cls => (
                             <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -289,7 +288,7 @@ export default function NobetciListesi() {
               <div className="w-full">
                 <div className="text-center mb-8 border-b pb-4">
                   <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">${schoolInfo?.schoolName}</h1>
-                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
+                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes && classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
                 </div>
                 
                 <table id="roster-table" className="w-full border-collapse text-left text-sm mb-12">
@@ -342,4 +341,3 @@ export default function NobetciListesi() {
     </div>
   );
 }
-
