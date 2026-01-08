@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2 } from 'lucide-react';
+import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2 } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { generateStudentReport, StudentReportInput, StudentReportOutput } from '@/ai/flows/generate-student-report-flow';
 
 
 interface StudentDetailModalProps {
@@ -220,12 +220,65 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
     );
 };
 
+const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentReportOutput | null, onRegenerate: () => void, isLoading: boolean }) => {
+    if (isLoading) {
+        return (
+            <Card className="flex flex-col items-center justify-center p-10 text-center bg-blue-50/50 border-blue-200 border-dashed">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
+                <p className="text-blue-700 font-semibold">Yapay zeka öğrenciyi analiz ediyor...</p>
+                <p className="text-blue-600 text-sm">Bu işlem 15-20 saniye sürebilir.</p>
+            </Card>
+        );
+    }
+    if (!report) return null;
+
+    return (
+        <Card className="border-blue-200 bg-blue-50/20">
+             <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="font-headline text-blue-800 flex items-center gap-2"><Wand2 /> Yapay Zeka Gelişim Raporu</CardTitle>
+                     <Button onClick={onRegenerate} variant="ghost" size="sm"><Loader2 className="mr-2 h-4 w-4" /> Yeniden Oluştur</Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Akademik Durum</h4>
+                    <p className="text-sm text-slate-600 leading-relaxed">{report.academicStatus}</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Sosyal ve Davranışsal Durum</h4>
+                    <p className="text-sm text-slate-600 leading-relaxed">{report.socialAndBehavioralStatus}</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Risk Analizi</h4>
+                    <p className="text-sm text-slate-600 leading-relaxed bg-amber-50 p-3 rounded-md border border-amber-200">{report.riskAnalysis}</p>
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Öne Çıkan Güçlü Yönler</h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
+                       {report.strengths.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Öğretmene Tavsiyeler</h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
+                       {report.recommendations.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
+                    </ul>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
     const { db } = useAuth();
     const { toast } = useToast();
     const { db: localDb } = useDatabase();
     const { disciplineRecords = [] } = localDb;
+    
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [aiReport, setAiReport] = useState<StudentReportOutput | null>(null);
 
     // Data fetching for the report
     const { data: infoForm } = useDoc<InfoForm | null>(useMemoFirebase(() => db ? doc(db, 'infoForms', student.id) : null, [db, student.id]));
@@ -233,7 +286,6 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db ? query(collection(db, 'classes', student.classId, 'homeworks')) : null, [db, student.classId]));
     const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => db ? query(collection(db, `classes/${student.classId}/homeworks`), where('studentId', '==', student.id)) : null, [db, student.classId, student.id]));
     const { data: lessons } = useCollection<Lesson>(useMemoFirebase(() => db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
-
 
     const handleExportReport = () => {
         if (!currentClass || !riskFactors || !homeworks || !submissions || !lessons) {
@@ -281,6 +333,34 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const term1Avg = calculateTermAverage(student.term1Grades);
     const term2Avg = calculateTermAverage(student.term2Grades);
     const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+    
+    const handleGenerateAIReport = async () => {
+        if (!riskFactors || !currentClass) return;
+
+        setIsGeneratingReport(true);
+        setAiReport(null);
+
+        const input: StudentReportInput = {
+            studentName: student.name,
+            classInfo: currentClass.name,
+            finalAverage: finalAverage,
+            term1Average: term1Avg,
+            term2Average: term2Avg,
+            attendanceCount: student.attendance?.filter(a => a.status === 'absent').length || 0,
+            behaviorScore: student.behaviorScore,
+            riskFactors: student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label || 'Bilinmeyen Risk'),
+            infoFormData: infoForm ? `Anne: ${infoForm.motherStatus}, Baba: ${infoForm.fatherStatus}, Kardeşler: ${infoForm.siblingsInfo}, Ekonomik Durum: ${infoForm.economicStatus}` : "Doldurulmamış",
+        };
+        try {
+            const report = await generateStudentReport(input);
+            setAiReport(report);
+        } catch(e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Rapor oluşturulamadı', description: 'Yapay zeka ile iletişim kurulamadı.'});
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    };
 
 
   return (
@@ -297,13 +377,20 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                 <DialogDescription>Okul No: {student.number}</DialogDescription>
                 </div>
             </div>
-            <Button onClick={handleExportReport} variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Gelişim Raporu İndir
-            </Button>
+            <div className="flex items-center gap-2">
+                 <Button onClick={handleGenerateAIReport} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                    <Wand2 className="mr-2 h-4 w-4" /> Yapay Zeka ile Rapor Oluştur
+                </Button>
+                <Button onClick={handleExportReport} variant="outline">
+                    <Download className="mr-2 h-4 w-4" /> Gelişim Raporu İndir
+                </Button>
+            </div>
           </div>
         </DialogHeader>
-        <div className="p-6 pt-0 bg-muted/50">
+        <div className="p-6 pt-0 bg-muted/50 max-h-[80vh] overflow-y-auto">
+             <div className="my-4">
+                 <AIReportDisplay report={aiReport} onRegenerate={handleGenerateAIReport} isLoading={isGeneratingReport} />
+             </div>
              <Tabs defaultValue="overview">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
