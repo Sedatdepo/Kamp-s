@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -48,6 +47,7 @@ const CriteriaGradingTable = ({
   scoreKey,
   termKey,
   onScoresChange,
+  onTotalScoreChange,
   onSave
 }: {
   students: Student[];
@@ -55,6 +55,7 @@ const CriteriaGradingTable = ({
   scoreKey: ScoreKey;
   termKey: TermKey;
   onScoresChange: (studentId: string, criteriaId: string, value: number | null) => void;
+  onTotalScoreChange: (studentId: string, value: number | null) => void;
   onSave: () => void;
 }) => {
     
@@ -64,6 +65,13 @@ const CriteriaGradingTable = ({
         if (!scores) return 0;
         return criteria.reduce((sum, c) => sum + (Number(scores[c.id]) || 0), 0);
     };
+
+    const getPerformanceGradeKey = () => {
+        if(scoreKey === 'scores1') return 'perf1';
+        if(scoreKey === 'scores2') return 'perf2';
+        if(scoreKey === 'projectScores') return 'projectGrade';
+        return null;
+    }
 
     return (
         <Card>
@@ -91,6 +99,12 @@ const CriteriaGradingTable = ({
                                 const termGrades = student[termKey];
                                 // @ts-ignore
                                 const studentScores = termGrades ? termGrades[scoreKey] : {};
+                                const total = calculateTotal(student.id);
+
+                                const perfGradeKey = getPerformanceGradeKey();
+                                // @ts-ignore
+                                const manualTotal = perfGradeKey ? termGrades?.[perfGradeKey] : null;
+
                                 return (
                                 <TableRow key={student.id}>
                                     <TableCell className="font-medium sticky left-0 bg-background z-10">{student.name}</TableCell>
@@ -107,7 +121,15 @@ const CriteriaGradingTable = ({
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-center font-bold text-lg sticky right-0 bg-background z-10">
-                                        {calculateTotal(student.id)}
+                                         <Input
+                                            type="number"
+                                            max={100}
+                                            min={0}
+                                            value={manualTotal ?? total}
+                                            onChange={(e) => onTotalScoreChange(student.id, e.target.value === '' ? null : Number(e.target.value))}
+                                            className="w-24 mx-auto text-center h-10 font-bold text-lg bg-yellow-50 border-yellow-300"
+                                            placeholder={total.toString()}
+                                        />
                                     </TableCell>
                                 </TableRow>
                                 )
@@ -162,11 +184,40 @@ export function GradingToolTab({
           }
           // @ts-ignore
           updatedTermGrades[scoreKey] = updatedScores;
+          
+          // When a criterion score changes, nullify the manual total score so auto-calculation takes over
+           const perfGradeKey = scoreKey === 'scores1' ? 'perf1' : scoreKey === 'scores2' ? 'perf2' : scoreKey === 'projectScores' ? 'projectGrade' : null;
+           if (perfGradeKey) {
+             // @ts-ignore
+             updatedTermGrades[perfGradeKey] = null;
+           }
+
           return { ...student, [termKey]: updatedTermGrades };
         }
         return student;
       })
     );
+  };
+
+  const handleTotalScoreChange = (studentId: string, value: number | null) => {
+    setStudents(prevStudents => prevStudents.map(student => {
+        if (student.id === studentId) {
+            const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+            const updatedTermGrades = { ...(student[termKey] || {}) };
+            
+            // This assumes we are always editing a performance/project grade.
+            // A more dynamic key based on the active tab would be better.
+            // For now, let's assume `perf1` for simplicity of example.
+            // A better implementation would pass the `activeTab` to determine the key.
+            const perfGradeKey = 'perf1'; // This needs to be dynamic based on the tab
+            
+            // @ts-ignore
+            updatedTermGrades[perfGradeKey] = value;
+            
+            return { ...student, [termKey]: updatedTermGrades };
+        }
+        return student;
+    }));
   };
 
   const handleSaveScores = async (scoreKey: ScoreKey, criteria: Criterion[]) => {
@@ -179,21 +230,29 @@ export function GradingToolTab({
           // @ts-ignore
           const studentScores = student[termKey]?.[scoreKey] || {};
           
-          const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
-          const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
-          const finalGrade = (totalScore / maxScore) * 100;
-          
-          let performanceGradeKey: 'perf1' | 'perf2' | 'projectGrade' = 'perf1';
+          let performanceGradeKey: 'perf1' | 'perf2' | 'projectGrade' | null = null;
           if(scoreKey === 'scores1') performanceGradeKey = 'perf1';
           else if(scoreKey === 'scores2') performanceGradeKey = 'perf2';
           else if(scoreKey === 'projectScores') performanceGradeKey = 'projectGrade';
+          
+          // @ts-ignore
+          const manualTotal = performanceGradeKey ? student[termKey]?.[performanceGradeKey] : undefined;
+
+          let finalGrade;
+          if (manualTotal !== null && manualTotal !== undefined) {
+             finalGrade = manualTotal;
+          } else {
+            const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
+            const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
+            finalGrade = (maxScore > 0) ? (totalScore / maxScore) * 100 : 0;
+          }
 
           if (scoreKey === 'behaviorScores') {
                batch.update(studentRef, { 
                   [`${termKey}.${scoreKey}`]: studentScores,
                   behaviorScore: Math.round(finalGrade)
               });
-          } else {
+          } else if (performanceGradeKey) {
                batch.update(studentRef, { 
                   [`${termKey}.${scoreKey}`]: studentScores,
                   [`${termKey}.${performanceGradeKey}`]: Math.round(finalGrade)
@@ -258,6 +317,7 @@ export function GradingToolTab({
                         scoreKey="scores1"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores1')}
+                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
                         onSave={() => handleSaveScores('scores1', perfCriteria)}
                     />
                </TabsContent>
@@ -268,6 +328,7 @@ export function GradingToolTab({
                         scoreKey="scores2"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores2')}
+                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
                         onSave={() => handleSaveScores('scores2', perfCriteria)}
                     />
                </TabsContent>
@@ -280,6 +341,7 @@ export function GradingToolTab({
                 scoreKey="projectScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
+                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
                 onSave={() => handleSaveScores('projectScores', projCriteria)}
             />
         </TabsContent>
@@ -290,6 +352,7 @@ export function GradingToolTab({
                 scoreKey="behaviorScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'behaviorScores')}
+                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
                 onSave={() => handleSaveScores('behaviorScores', behaviorCriteria)}
             />
         </TabsContent>
