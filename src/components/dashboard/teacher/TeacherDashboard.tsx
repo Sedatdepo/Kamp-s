@@ -555,7 +555,7 @@ export function TeacherDashboard() {
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />; break;
+        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />; break;
         case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
         case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
         case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;

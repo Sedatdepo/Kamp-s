@@ -1,6 +1,5 @@
 
-
-'use client';
+"use client";
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,12 +20,13 @@ import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 interface DistributionAssignmentTabProps {
   classId: string;
+  teacherId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
   classes: Class[];
 }
 
-export function DistributionAssignmentTab({ classId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
+export function ProjectDistributionTab({ classId, teacherId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
   const { db } = useAuth();
   const { toast } = useToast();
 
@@ -95,7 +95,7 @@ export function DistributionAssignmentTab({ classId, teacherProfile, currentClas
   };
 
   const filteredStudents = useMemo(() => {
-    if (filterLessonId === 'all') return localStudents;
+    if (filterLessonId === 'all' || !localStudents) return localStudents;
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
   }, [localStudents, filterLessonId]);
 
