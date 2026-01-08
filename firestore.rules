@@ -16,23 +16,22 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Öğrenci giriş yaparken sınıf kodunu sorgulayabilmeli
     match /classes/{classId} {
-      // Allow unauthenticated users to query for classes by code for login
-      allow list: if !isSignedIn();
+      allow list: if !isSignedIn(); // Sadece classCode ile sorgulama için
       allow read, write: if isTeacher();
       
-      // Students can read their own class info
-      allow get: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
+      // Öğrenci kendi sınıf bilgilerini okuyabilir (giriş yaptıktan sonra)
+      allow get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
 
       match /students/{studentId} {
         allow read, write: if isTeacher();
-        // Student can read/update their own info
         allow get, update: if isOwner(studentId);
       }
 
       match /homeworks/{homeworkId} {
         allow read, write: if isTeacher();
-        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classIds;
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
 
         match /submissions/{submissionId} {
           allow read, write: if isTeacher();
@@ -42,9 +41,9 @@ service cloud.firestore {
       }
     }
     
-    // Allow unauthenticated users to query for students by classId and number for login
+    // Öğrenci giriş yaparken öğrenci numarasını sorgulayabilmeli
     match /students/{studentId} {
-      allow list: if !isSignedIn();
+      allow list: if !isSignedIn(); // classId ve studentNumber ile sorgulama için
       allow get, update: if isOwner(studentId) || isTeacher();
       allow read, write: if isTeacher();
     }
