@@ -70,6 +70,7 @@ const CriteriaGradingTable = ({
         if(scoreKey === 'scores1') return 'perf1';
         if(scoreKey === 'scores2') return 'perf2';
         if(scoreKey === 'projectScores') return 'projectGrade';
+        // behaviorScores için özel bir anahtar yok, genel notu etkileyecek
         return null;
     }
 
@@ -103,7 +104,7 @@ const CriteriaGradingTable = ({
 
                                 const perfGradeKey = getPerformanceGradeKey();
                                 // @ts-ignore
-                                const manualTotal = perfGradeKey ? termGrades?.[perfGradeKey] : null;
+                                const manualTotal = (perfGradeKey && termGrades) ? termGrades[perfGradeKey] : null;
 
                                 return (
                                 <TableRow key={student.id}>
@@ -185,8 +186,7 @@ export function GradingToolTab({
           // @ts-ignore
           updatedTermGrades[scoreKey] = updatedScores;
           
-          // When a criterion score changes, nullify the manual total score so auto-calculation takes over
-           const perfGradeKey = scoreKey === 'scores1' ? 'perf1' : scoreKey === 'scores2' ? 'perf2' : scoreKey === 'projectScores' ? 'projectGrade' : null;
+          const perfGradeKey = scoreKey === 'scores1' ? 'perf1' : scoreKey === 'scores2' ? 'perf2' : scoreKey === 'projectScores' ? 'projectGrade' : null;
            if (perfGradeKey) {
              // @ts-ignore
              updatedTermGrades[perfGradeKey] = null;
@@ -199,25 +199,48 @@ export function GradingToolTab({
     );
   };
 
-  const handleTotalScoreChange = (studentId: string, value: number | null) => {
-    setStudents(prevStudents => prevStudents.map(student => {
-        if (student.id === studentId) {
-            const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
-            const updatedTermGrades = { ...(student[termKey] || {}) };
-            
-            // This assumes we are always editing a performance/project grade.
-            // A more dynamic key based on the active tab would be better.
-            // For now, let's assume `perf1` for simplicity of example.
-            // A better implementation would pass the `activeTab` to determine the key.
-            const perfGradeKey = 'perf1'; // This needs to be dynamic based on the tab
-            
-            // @ts-ignore
-            updatedTermGrades[perfGradeKey] = value;
-            
-            return { ...student, [termKey]: updatedTermGrades };
-        }
-        return student;
-    }));
+  const handleTotalScoreChange = (studentId: string, value: number | null, scoreKey: ScoreKey, criteria: Criterion[]) => {
+      const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+      
+      let perfGradeKey: 'perf1' | 'perf2' | 'projectGrade' | null = null;
+      if (scoreKey === 'scores1') perfGradeKey = 'perf1';
+      else if (scoreKey === 'scores2') perfGradeKey = 'perf2';
+      else if (scoreKey === 'projectScores') perfGradeKey = 'projectGrade';
+  
+      setStudents(prevStudents =>
+          prevStudents.map(student => {
+              if (student.id === studentId) {
+                  const updatedTermGrades = { ...(student[termKey] || {}) };
+                  const newScores: { [key: string]: number } = {};
+  
+                  if (value !== null && value >= 0) {
+                      const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
+                      if (totalMax > 0) {
+                          criteria.forEach(c => {
+                              const proportion = (c.max || 0) / totalMax;
+                              newScores[c.id] = Math.round(value * proportion);
+                          });
+                      }
+                      // @ts-ignore
+                      if (perfGradeKey) updatedTermGrades[perfGradeKey] = value;
+                      // @ts-ignore
+                      if (scoreKey === 'behaviorScores') student.behaviorScore = value;
+
+                  } else { // value is null, clear scores
+                      // @ts-ignore
+                      if (perfGradeKey) updatedTermGrades[perfGradeKey] = null;
+                      // @ts-ignore
+                      if (scoreKey === 'behaviorScores') student.behaviorScore = 100; // Or default
+                  }
+                  
+                  // @ts-ignore
+                  updatedTermGrades[scoreKey] = newScores;
+  
+                  return { ...student, [termKey]: updatedTermGrades };
+              }
+              return student;
+          })
+      );
   };
 
   const handleSaveScores = async (scoreKey: ScoreKey, criteria: Criterion[]) => {
@@ -317,7 +340,7 @@ export function GradingToolTab({
                         scoreKey="scores1"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores1')}
-                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
+                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores1', perfCriteria)}
                         onSave={() => handleSaveScores('scores1', perfCriteria)}
                     />
                </TabsContent>
@@ -328,7 +351,7 @@ export function GradingToolTab({
                         scoreKey="scores2"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores2')}
-                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
+                        onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores2', perfCriteria)}
                         onSave={() => handleSaveScores('scores2', perfCriteria)}
                     />
                </TabsContent>
@@ -341,7 +364,7 @@ export function GradingToolTab({
                 scoreKey="projectScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
-                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
+                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'projectScores', projCriteria)}
                 onSave={() => handleSaveScores('projectScores', projCriteria)}
             />
         </TabsContent>
@@ -352,7 +375,7 @@ export function GradingToolTab({
                 scoreKey="behaviorScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'behaviorScores')}
-                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value)}
+                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'behaviorScores', behaviorCriteria)}
                 onSave={() => handleSaveScores('behaviorScores', behaviorCriteria)}
             />
         </TabsContent>
