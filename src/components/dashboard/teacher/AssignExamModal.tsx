@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
@@ -21,7 +22,7 @@ import SokTab from './SokTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, Calendar, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, FileQuestion, Target, FolderKanban, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -365,12 +366,12 @@ export function TeacherDashboard() {
   const { appUser, db } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
-  const teacherQuery = useMemo(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
-  const { data: teacherData, loading: teacherLoading } = useFirestore<TeacherProfile>(`teachers/${teacherId}`, teacherQuery);
+  const teacherQuery = useMemoFirebase(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
+  const { data: teacherData, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
   const teacherProfile = teacherData ?? null;
 
-  const classesQuery = useMemo(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
-  const { data: classes, loading: classesLoading } = useFirestore<Class[]>('classes', classesQuery);
+  const classesQuery = useMemoFirebase(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
+  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
@@ -426,16 +427,16 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
-  const studentsQuery = useMemo(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
-  const { data: students } = useFirestore<Student[]>('students-in-class', studentsQuery);
+  const studentsQuery = useMemoFirebase(() => (selectedClassId && db ? query(collection(db, 'students'), where('classId', '==', selectedClassId)) : null), [selectedClassId, db]);
+  const { data: students } = useCollection<Student>(studentsQuery);
 
-  const allStudentsForTeacherQuery = useMemo(() => {
+  const allStudentsForTeacherQuery = useMemoFirebase(() => {
     if (!teacherId || !db) return null;
     const classIds = (classes || []).map(c => c.id);
     if (classIds.length === 0) return null;
     return query(collection(db, 'students'), where('classId', 'in', classIds));
   }, [teacherId, db, classes]);
-  const { data: allStudents } = useFirestore<Student[]>('all-students-for-count', allStudentsForTeacherQuery);
+  const { data: allStudents } = useCollection<Student>(allStudentsForTeacherQuery);
 
   const isLoading = teacherLoading || (selectedClassId && classesLoading);
   
@@ -695,3 +696,7 @@ export function TeacherDashboard() {
       </div>
   );
 }
+
+    
+
+    
