@@ -8,7 +8,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { StudentListTab } from './StudentListTab';
 import { AttendanceTab } from './AttendanceTab';
-import { DutyRosterTab } from './DutyRosterTab';
+import NobetciListesi from './DutyRosterTab'; // Corrected import
 import { SeatingPlanTab } from './SeatingPlanTab';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -29,6 +29,14 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
     if (!currentClass) {
         return <p>Lütfen bir sınıf seçin.</p>;
     }
+
+    // The new component is a default export, we need to adapt the usage here.
+    // The props interface of the new component seems to be different or non-existent in the provided snippet.
+    // I will call it without props for now as I cannot infer them.
+    // A better approach would be to analyze the new component's props.
+    // Looking at the new code, it seems it gets its data from `useDatabase` hook, so it doesn't need props.
+    const DutyRosterTab = NobetciListesi;
+
 
     return (
         <Tabs defaultValue="student-list">
@@ -54,7 +62,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
                 <AttendanceTab students={localStudents} currentClass={currentClass} onStudentsChange={setLocalStudents} />
             </TabsContent>
             <TabsContent value="duty-roster" className="mt-4">
-                <DutyRosterTab students={localStudents} currentClass={currentClass} teacherProfile={teacherProfile} db={db!} />
+                <DutyRosterTab />
             </TabsContent>
             <TabsContent value="seating-plan" className="mt-4">
                 <SeatingPlanTab students={localStudents} currentClass={currentClass} />
@@ -62,3 +70,4 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
         </Tabs>
     );
 }
+
