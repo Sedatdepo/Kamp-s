@@ -8,17 +8,17 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { Question } from '@/lib/types';
 
+// Define the input and output schemas inside the function scope
+// to avoid exporting them from a 'use server' file.
+
+export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
 export const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
   type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe('Üretilecek sorunun tipi.'),
 });
 
-export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
-
-// We can't directly use the Question type from lib/types.ts as it's not a Zod schema.
-// We'll define a Zod schema that matches the structure.
+export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
 export const QuestionOutputSchema = z.object({
     text: z.string().describe("Sorunun ana metni."),
     type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe("Sorunun tipi."),
@@ -27,16 +27,19 @@ export const QuestionOutputSchema = z.object({
     points: z.number().default(10).describe("Sorunun varsayılan puanı."),
 });
 
-
-export async function generateQuestion(input: GenerateQuestionInput): Promise<z.infer<typeof QuestionOutputSchema>> {
-  return generateQuestionFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateQuestionPrompt',
-  input: { schema: GenerateQuestionInputSchema },
-  output: { schema: QuestionOutputSchema },
-  prompt: `Sen bir eğitim teknolojileri uzmanısın ve MEB müfredatına hakim, yaratıcı bir soru yazarsın.
+export async function generateQuestion(input: GenerateQuestionInput): Promise<QuestionOutput> {
+  const generateQuestionFlow = ai.defineFlow(
+    {
+      name: 'generateQuestionFlow',
+      inputSchema: GenerateQuestionInputSchema,
+      outputSchema: QuestionOutputSchema,
+    },
+    async (input) => {
+        const prompt = ai.definePrompt({
+            name: 'generateQuestionPrompt',
+            input: { schema: GenerateQuestionInputSchema },
+            output: { schema: QuestionOutputSchema },
+            prompt: `Sen bir eğitim teknolojileri uzmanısın ve MEB müfredatına hakim, yaratıcı bir soru yazarsın.
 Aşağıda verilen KAZANIM ve SORU TİPİ'ne uygun bir sınav sorusu oluştur.
 
 KAZANIM: {{{kazanim}}}
@@ -55,16 +58,12 @@ Kurallar:
   - 'correctAnswer' alanına örnek bir cevap veya değerlendirme kriteri yaz.
 - Üretilen soru nesnesi, belirtilen JSON formatına tam olarak uymalıdır.
 `,
-});
+        });
 
-const generateQuestionFlow = ai.defineFlow(
-  {
-    name: 'generateQuestionFlow',
-    inputSchema: GenerateQuestionInputSchema,
-    outputSchema: QuestionOutputSchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);
+        const { output } = await prompt(input);
+        return output!;
+    }
+  );
+
+  return await generateQuestionFlow(input);
+}
