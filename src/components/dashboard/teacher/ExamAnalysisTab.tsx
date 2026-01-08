@@ -6,7 +6,7 @@ import {
   Student,
   Class,
   TeacherProfile,
-  AnnualPlan,
+  Kazanım,
 } from '@/lib/types';
 import {
   Card,
@@ -35,8 +35,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquare, Square, BookOpen, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { saveAs } from 'file-saver';
-import { useDatabase } from '@/hooks/use-database';
+import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 
 
 interface ExamAnalysisTabProps {
@@ -80,37 +82,30 @@ const TELAFI_SECENEKLERI = [
   { key: 'dyk', label: 'DYK Çalışmaları' }
 ];
 
-function KazanımSelector({ annualPlans, onSelect }: { annualPlans: AnnualPlan[], onSelect: (kazanim: string) => void }) {
+function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void }) {
+    const { db } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
-
-    const allKazanims = useMemo(() => {
-        return annualPlans.flatMap(plan =>
-            plan.rows
-                .filter(row => !row.isSpecial && row.cikti)
-                .map(row => ({
-                    id: row.id,
-                    kazanim: row.cikti,
-                    fullText: `${row.unite} ${row.konu} ${row.cikti}`.toLowerCase()
-                }))
-        );
-    }, [annualPlans]);
+    
+    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims')) : null, [db]);
+    const { data: kazanımlar, isLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
     const filteredKazanims = useMemo(() => {
-        if (!searchTerm) return allKazanims;
+        if (!kazanımlar) return [];
+        if (!searchTerm) return kazanımlar;
         const lowercasedFilter = searchTerm.toLowerCase();
-        return allKazanims.filter(item => item.fullText.includes(lowercasedFilter));
-    }, [searchTerm, allKazanims]);
+        return kazanımlar.filter(item => item.text.toLowerCase().includes(lowercasedFilter));
+    }, [searchTerm, kazanımlar]);
 
     return (
         <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Kazanım Seç</DialogTitle>
-                <DialogDescription>Yıllık planlarınızdan telafisi yapılacak kazanımı seçin veya arayın.</DialogDescription>
+                <DialogDescription>Telafisi yapılacak kazanımı seçin veya arayın.</DialogDescription>
             </DialogHeader>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Ünite, konu veya kazanım ara..."
+                    placeholder="Kazanım metni ara..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -118,15 +113,16 @@ function KazanımSelector({ annualPlans, onSelect }: { annualPlans: AnnualPlan[]
             </div>
             <ScrollArea className="flex-1 mt-4 border rounded-md">
                 <div className="p-2 space-y-1">
-                    {filteredKazanims.length > 0 ? (
+                    {isLoading ? <p>Yükleniyor...</p> : filteredKazanims.length > 0 ? (
                         filteredKazanims.map(item => (
-                            <div
-                                key={item.id}
-                                onClick={() => onSelect(item.kazanim)}
-                                className="p-3 text-sm rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                            >
-                                {item.kazanim}
-                            </div>
+                            <Dialog.Close asChild key={item.id}>
+                                <div
+                                    onClick={() => onSelect(item.text)}
+                                    className="p-3 text-sm rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    {item.text}
+                                </div>
+                            </Dialog.Close>
                         ))
                     ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
@@ -146,9 +142,6 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
     selectedTerm: TermKey,
     selectedExam: ExamKey
 }) {
-  const { db: localDb, loading: dbLoading } = useDatabase();
-  const { annualPlans = [] } = localDb;
-    
   const [formData, setFormData] = useState({
     il: "İstanbul",
     ilce: "Şişli",
@@ -445,11 +438,11 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
                           <span className="mr-2 font-bold">{item.id}.</span>
                           <Dialog>
                                 <DialogTrigger asChild>
-                                    <div className="w-full p-1 border rounded h-24 cursor-pointer hover:bg-muted">
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal h-24">
                                         {item.konu || <span className="text-muted-foreground">Kazanım seçmek için tıklayın...</span>}
-                                    </div>
+                                    </Button>
                                 </DialogTrigger>
-                                <KazanımSelector annualPlans={annualPlans} onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} />
+                                <KazanımSelector onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} />
                           </Dialog>
                       </div>
                       <div className="col-span-6 space-y-1">
@@ -516,7 +509,6 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     const termGradesKey = term === 'term1' ? 'term1Grades' : 'term2Grades';
     return students
       .map(student => {
-        // Ensure grades object and specific exam grade exist, default to -1 if not
         const grades = student[termGradesKey] as any;
         const grade = grades?.[exam] ?? -1;
         return { student, grade };
