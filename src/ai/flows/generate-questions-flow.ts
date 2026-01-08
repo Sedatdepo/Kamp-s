@@ -13,13 +13,13 @@ import {z} from 'genkit';
 // to avoid exporting them from a 'use server' file.
 
 export type GenerateQuestionInput = z.infer<typeof GenerateQuestionInputSchema>;
-export const GenerateQuestionInputSchema = z.object({
+const GenerateQuestionInputSchema = z.object({
   kazanim: z.string().describe('Sorunun üretileceği öğrenme kazanımı.'),
   type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe('Üretilecek sorunun tipi.'),
 });
 
 export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
-export const QuestionOutputSchema = z.object({
+const QuestionOutputSchema = z.object({
     text: z.string().describe("Sorunun ana metni."),
     type: z.enum(["multiple-choice", "true-false", "open-ended"]).describe("Sorunun tipi."),
     options: z.array(z.string()).optional().describe("Çoktan seçmeli soru için seçenekler. Diğer türler için boş bırakılmalıdır."),
