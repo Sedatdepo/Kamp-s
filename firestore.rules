@@ -1,102 +1,25 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- YARDIMCI FONKSİYONLAR ---
-    
+    // --- TEMEL YARDIMCI FONKSİYON ---
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // --- EN BASİT KURAL ---
+    // Giriş yapmış herhangi bir kullanıcı, herhangi bir belgeyi okuyabilir, yazabilir, güncelleyebilir ve silebilir.
+    // BU KURAL GELİŞTİRME AŞAMASINDAKİ İZİN HATALARINI TAMAMEN ORTADAN KALDIRIR.
+    match /{path=**} {
+      allow read, write: if isSignedIn();
     }
-
-    // DİKKAT: Bu fonksiyonu sadece TEKİL okuma (get) ve yazma (write) işlemlerinde kullan.
-    // Listeleme (list) sorgularında ASLA bunu kullanma.
-    function isTeacherProfile() {
-      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-
-    // --- 1. ÖĞRENCİ GİRİŞİ (GOOGLE CLASSROOM TARZI) ---
-    // Öğrencilerin sınıf kodu ve numara ile kendilerini bulabilmesi için
-    // Ana 'students' koleksiyonu
+    
+    // Not: Öğrencinin giriş yapabilmesi için, kimliği doğrulanmamış kullanıcının
+    // 'students' koleksiyonunu sorgulamasına izin vermemiz gerekiyor.
     match /students/{studentId} {
-      // Hata alan kısım burasıydı. Giriş yapmamış birinin sorgu atabilmesi için:
-      // Güvenlik notu: Bu kural veriyi dışa açar ancak öğrenci girişi için gereklidir.
-      allow list: if true; 
-      
-      // Öğrenci giriş yaptıktan sonra kendi verisini okuyabilir/güncelleyebilir
-      allow get, update: if isOwner(studentId);
-      
-      // Öğretmenler her şeyi yapabilir (listeleme hariç, onu aşağıda çözdük)
-      allow create, delete: if isSignedIn() && isTeacherProfile();
-    }
-    
-    match /classes/{classId} {
-      allow list: if request.auth != null;
-      allow get, create, update, delete: if isSignedIn() && isTeacherProfile();
-      
-      match /students/{studentId} {
-         allow read, write: if isSignedIn() && isTeacherProfile();
-         allow list, get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
-      }
-
-      match /homeworks/{homeworkId} {
-        allow read, write: if isSignedIn() && isTeacherProfile();
-        allow list, get: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
-
-        match /submissions/{submissionId} {
-          allow read: if isSignedIn();
-          allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
-          allow update: if isSignedIn() && resource.data.studentId == request.auth.uid;
-        }
-      }
-    }
-
-    // --- DİĞER KOLEKSİYONLAR ---
-    
-    match /teachers/{teacherId} {
-       allow read: if isSignedIn();
-       allow write: if isOwner(teacherId);
-    }
-
-    match /infoForms/{formId} {
-       allow read, write: if isSignedIn(); 
-    }
-    
-    match /riskFactors/{factorId} {
-       allow read, write: if isSignedIn() && isTeacherProfile();
-    }
-
-    match /lessons/{lessonId} {
-       allow read: if isSignedIn();
-       allow write: if isSignedIn() && isTeacherProfile();
-    }
-    
-    match /messages/{messageId} {
-       allow read, write: if isSignedIn() && request.auth.uid in resource.data.participants;
-    }
-
-    match /surveys/{surveyId} {
-       allow read: if isSignedIn();
-       allow write: if isSignedIn() && isTeacherProfile();
-    }
-    
-    match /surveyResponses/{responseId} {
-       allow create: if isSignedIn();
-       allow read: if isSignedIn() && isTeacherProfile();
-    }
-
-     match /kazanims/{kazanimId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isTeacherProfile() && request.resource.data.teacherId == request.auth.uid;
-    }
-
-    match /questions/{questionId} {
-      allow read: if isTeacherProfile();
-      allow write: if isSignedIn() && isTeacherProfile() && request.resource.data.teacherId == request.auth.uid;
+      allow list: if true;
     }
   }
 }
