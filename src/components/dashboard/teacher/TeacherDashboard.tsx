@@ -260,6 +260,17 @@ function ClassSelectionScreen({
                                     <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
                                         <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
                                         <div className="flex items-center">
+                                             <Button 
+                                                variant="outline"
+                                                size="sm" 
+                                                className="h-8" 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onSelectClass('');
+                                                }}
+                                            >
+                                                <Home className="mr-2 h-4 w-4"/> Panele Dön
+                                            </Button>
                                             <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                                 <DialogTrigger asChild>
                                                     <Button 
