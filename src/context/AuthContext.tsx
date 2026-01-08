@@ -172,11 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
         const classSnapshot = await getDocs(classQuery);
         if (classSnapshot.empty) throw new Error('Bu koda sahip bir sınıf bulunamadı.');
-        const classData = { id: classSnapshot.docs[0].id, ...classSnapshot.docs[0].data() } as Class;
+        const classDoc = classSnapshot.docs[0];
+        const classData = { id: classDoc.id, ...classDoc.data() } as Class;
 
+        // Corrected Query: Use the classId to query the subcollection
         const studentQuery = query(
-            collection(db, 'students'),
-            where('classId', '==', classData.id),
+            collection(db, 'classes', classData.id, 'students'),
             where('number', '==', studentNumber)
         );
         const studentSnapshot = await getDocs(studentQuery);
