@@ -2,26 +2,13 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, Firestore, updateDoc } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { getApps, initializeApp } from 'firebase/app';
-import { getAuth }from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-
-// Define firebaseConfig directly here
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
+import { useFirebase, useUser } from '@/firebase';
 
 export type AppUser = 
   | { type: 'teacher'; data: User; profile: TeacherProfile | null }
@@ -70,18 +57,19 @@ async function seedDatabase(db: Firestore, teacherId: string) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { auth, firestore: db, storage } = useFirebase();
+  const { user, isUserLoading } = useUser();
+
   const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  
   const router = useRouter();
   const pathname = usePathname();
 
-  const { auth, db, storage } = useMemo(() => {
-    const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-    return { auth: getAuth(app), db: getFirestore(app), storage: getStorage(app) };
-  }, []);
+  const loading = isUserLoading || profileLoading;
   
   const signOut = useCallback(async () => {
-    if (auth && auth.currentUser) {
+    if (auth) {
         await firebaseSignOut(auth);
     }
     localStorage.removeItem('appUser');
@@ -90,97 +78,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth, router]);
 
   useEffect(() => {
-    if (!auth || !db) return;
-
-    const storedUser = localStorage.getItem('appUser');
-    if(storedUser) {
-        try {
-            const user = JSON.parse(storedUser);
-            if(user.type === 'student'){
-                setAppUser(user);
+    setProfileLoading(true);
+    if (user && db) {
+        const teacherProfileRef = doc(db, 'teachers', user.uid);
+        const unsubscribe = onSnapshot(teacherProfileRef, async (teacherProfileSnap) => {
+            if (teacherProfileSnap.exists()) {
+                await seedDatabase(db, user.uid);
+                const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
+                setAppUser({ type: 'teacher', data: user, profile });
+                localStorage.removeItem('appUser');
+                setProfileLoading(false);
+            } else {
+                // If not a teacher, check if it's a student with authUid
+                 const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
+                 const studentSnapshot = await getDocs(studentQuery);
+                 if (!studentSnapshot.empty) {
+                     const studentDoc = studentSnapshot.docs[0];
+                     const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+                     const studentUser = { type: 'student' as const, data: studentData };
+                     setAppUser(studentUser);
+                     localStorage.setItem('appUser', JSON.stringify(studentUser));
+                 } else {
+                     // Not a teacher and not found as a student, sign out
+                     await signOut();
+                 }
+                setProfileLoading(false);
             }
-        } catch {}
-    }
-    setLoading(false);
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
-      if (user) {
-          const teacherProfileRef = doc(db, 'teachers', user.uid);
-          const teacherProfileSnap = await getDoc(teacherProfileRef);
-
-          if (teacherProfileSnap.exists()) {
-              await seedDatabase(db, user.uid);
-              const profile = { id: teacherProfileSnap.id, ...teacherProfileSnap.data() } as TeacherProfile;
-              setAppUser({ type: 'teacher', data: user, profile });
-              localStorage.removeItem('appUser');
-          } else {
-             // If not a teacher, it must be a student login attempt.
-             // We will query for the student document linked to this authUid.
-             const studentQuery = query(collection(db, 'students'), where('authUid', '==', user.uid));
-             const studentSnapshot = await getDocs(studentQuery);
-             if (!studentSnapshot.empty) {
-                 const studentDoc = studentSnapshot.docs[0];
-                 const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-                 const studentUser = { type: 'student' as const, data: studentData };
-                 setAppUser(studentUser);
-                 localStorage.setItem('appUser', JSON.stringify(studentUser));
-             } else {
-                 await signOut();
-             }
-          }
-      } else {
+        });
+        return () => unsubscribe();
+    } else {
+        // Handle anonymous student session from localStorage
         const storedUser = localStorage.getItem('appUser');
-        if(storedUser) {
+        if (storedUser) {
             try {
-                const user = JSON.parse(storedUser);
-                if(user.type === 'student'){
-                    setAppUser(user);
+                const parsedUser = JSON.parse(storedUser);
+                if (parsedUser.type === 'student') {
+                    setAppUser(parsedUser);
                 } else {
                     setAppUser(null);
                 }
-            } catch {
+            } catch (e) {
                 setAppUser(null);
+                localStorage.removeItem('appUser');
             }
         } else {
             setAppUser(null);
         }
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [auth, db, signOut]);
-  
-
-  const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
-  const teacherUid = useMemo(() => appUser?.type === 'teacher' ? appUser.data.uid : null, [appUser]);
-
-  useEffect(() => {
-    let unsubscribe: () => void = () => {};
-    if (studentId && db) {
-        const studentDocRef = doc(db, 'students', studentId);
-        unsubscribe = onSnapshot(studentDocRef, (doc) => {
-            if (doc.exists()) {
-                const updatedStudent = { id: doc.id, ...doc.data() } as Student;
-                const newAppUser = { type: 'student' as const, data: updatedStudent };
-                setAppUser(newAppUser);
-                localStorage.setItem('appUser', JSON.stringify(newAppUser));
-            } else {
-                signOut();
-            }
-        });
-    } else if (teacherUid && db) {
-        const teacherDocRef = doc(db, 'teachers', teacherUid);
-        unsubscribe = onSnapshot(teacherDocRef, (doc) => {
-            if (doc.exists()) {
-                const updatedProfile = { id: doc.id, ...doc.data() } as TeacherProfile;
-                setAppUser(prev => (prev && prev.type === 'teacher') ? { ...prev, profile: updatedProfile } : prev);
-            }
-        });
+        setProfileLoading(false);
     }
-    return () => unsubscribe();
-  }, [studentId, teacherUid, db, signOut]);
+  }, [user, db, signOut]);
+  
+   const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
+
+    useEffect(() => {
+        let unsubscribeStudent: () => void = () => {};
+        if (studentId && db && !user) { // Only attach this listener for non-auth students
+            const studentDocRef = doc(db, 'students', studentId);
+            unsubscribeStudent = onSnapshot(studentDocRef, (doc) => {
+                if (doc.exists()) {
+                    const updatedStudent = { id: doc.id, ...doc.data() } as Student;
+                    const newAppUser = { type: 'student' as const, data: updatedStudent };
+                    setAppUser(newAppUser);
+                    localStorage.setItem('appUser', JSON.stringify(newAppUser));
+                } else {
+                    signOut();
+                }
+            });
+        }
+        return () => unsubscribeStudent();
+    }, [studentId, db, signOut, user]);
+
 
   useEffect(() => {
     if (loading) return;
@@ -203,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInStudent = async (classCode: string, studentNumber: string) => {
     if (!db) throw new Error("Veritabanı başlatılamadı.");
 
-    setLoading(true);
+    setProfileLoading(true);
     try {
         const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
         const classSnapshot = await getDocs(classQuery);
@@ -244,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAppUser(null);
         throw error;
     } finally {
-        setLoading(false);
+        setProfileLoading(false);
     }
   };
   
