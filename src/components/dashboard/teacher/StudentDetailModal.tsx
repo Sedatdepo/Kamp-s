@@ -379,7 +379,7 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
             </div>
             <div className="flex items-center gap-2">
                  <Button onClick={handleGenerateAIReport} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                    <Wand2 className="mr-2 h-4 w-4" /> Yapay Zeka ile Rapor Oluştur
+                    <Wand2 className="mr-2 h-4 w-4" /> Yapay Zeka ile Gelişim Raporu Oluştur
                 </Button>
                 <Button onClick={handleExportReport} variant="outline">
                     <Download className="mr-2 h-4 w-4" /> Gelişim Raporu İndir
