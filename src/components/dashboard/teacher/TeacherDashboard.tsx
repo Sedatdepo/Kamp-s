@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
+import KazanımlarTab from './KazanımlarTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
@@ -18,7 +19,6 @@ import { DisciplineTab } from './DisciplineTab';
 import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
-import KazanımlarTab from './KazanımlarTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -84,7 +84,7 @@ function ClassSelectionScreen({
     setOrderedClasses,
     setActiveTab,
 }: { 
-    onSelectClass: (id: string) => void;
+    onSelectClass: (id: string | null) => void;
     classes: Class[];
     students: Student[];
     loading: boolean;
@@ -136,11 +136,11 @@ function ClassSelectionScreen({
         if (!db) return;
         setDeletingClassId(classId);
         try {
-            const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+            const studentsQuery = query(collection(db, 'classes', classId, 'students'));
             const studentSnapshot = await getDocs(studentsQuery);
             const batch = writeBatch(db);
             studentSnapshot.forEach(studentDoc => {
-                batch.delete(doc(db, 'students', studentDoc.id));
+                batch.delete(doc(db, 'classes', classId, 'students', studentDoc.id));
             });
             batch.delete(doc(db, 'classes', classId));
             await batch.commit();
@@ -260,17 +260,6 @@ function ClassSelectionScreen({
                                     <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
                                         <span>{studentCounts.get(cls.id) || 0} Öğrenci</span>
                                         <div className="flex items-center">
-                                             <Button 
-                                                variant="outline"
-                                                size="sm" 
-                                                className="h-8" 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onSelectClass('');
-                                                }}
-                                            >
-                                                <Home className="mr-2 h-4 w-4"/> Panele Dön
-                                            </Button>
                                             <Dialog onOpenChange={(open) => !open && setEditingClass(null)}>
                                                 <DialogTrigger asChild>
                                                     <Button 
@@ -465,122 +454,54 @@ export function TeacherDashboard() {
       );
     }
     
+    const handleBackToDashboard = () => {
+        setSelectedClassId(null);
+        setActiveTab('dashboard');
+    }
+
     if (activeTab !== 'dashboard' && activeTab !== 'dilekce' && activeTab !== 'zumre' && activeTab !== 'bep' && activeTab !== 'veli-toplantisi' && activeTab !== 'sok' && activeTab !== 'kazanimlar' && !selectedClassId) {
         return <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />;
     }
     
-    switch(activeTab) {
-        case 'dashboard':
-            return !selectedClassId ?
-                <ClassSelectionScreen onSelectClass={setSelectedClassId} classes={orderedClasses || []} students={allStudents || []} loading={isLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} />
-                : <div className="grid gap-6">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                    <Button variant="outline">
-                                        {currentClass?.name}
-                                        <ChevronDown className="ml-2 h-4 w-4" />
-                                    </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
-                                        <ArrowLeft className="mr-2 h-4 w-4" />
-                                        Ana Sayfa
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    {(orderedClasses || []).map((cls: Class) => (
-                                        <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
-                                            {cls.name}
-                                        </DropdownMenuItem>
-                                    ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
-                        </CardHeader>
-                    </Card>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
-                        <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                        <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
-                        <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
-                        <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
-                        <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
-                        <MenuCard icon={<List />} title="Sınıf Risk Haritası" description="Risk haritası ve istatistiklerini görüntüleyin." onClick={() => setActiveTab('risks')} />
-                        <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
-                        <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
-                        <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
-                        <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
-                        <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
-                    </div>
-                </div>;
-
-        case 'students':
-            return <StudentManagementTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
-        case 'grading':
-            return <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />;
-        case 'planning':
-            return <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
-        case 'election':
-            return <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />;
-        case 'projects':
-            return <ProjectDistributionTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />;
-        case 'homework':
-            return <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>;
-        case 'risks':
-            return <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'forms':
-            return <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
-        case 'communication':
-            return <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />;
-        case 'dilekce':
-            return <DilekceTab teacherProfile={teacherProfile} />;
-        case 'surveys':
-            return <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>;
-        case 'discipline':
-            return <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
-        case 'bep':
-            return <BepTab />;
-        case 'zumre':
-            return <ZumreTab />;
-        case 'veli-toplantisi':
-            return <VeliToplantisiTab />;
-        case 'sok':
-            return <SokTab />;
-        case 'kazanimlar':
-            return <KazanımlarTab setActiveTab={setActiveTab} />;
-        default:
-            return <div>Bilinmeyen sekme</div>;
-    }
-  }
-
-  const renderFullPageTab = (tab: ActiveTab) => {
-     let tabContent;
-      switch(tab) {
-            case 'dilekce':
-                tabContent = <DilekceTab teacherProfile={teacherProfile} />;
+    if (activeTab !== "dashboard" && selectedClassId) {
+        let tabContent;
+        switch(activeTab) {
+            case 'students':
+                tabContent = <StudentManagementTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
-             case 'zumre':
-                tabContent = <ZumreTab />;
+            case 'grading':
+                tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />;
                 break;
-            case 'bep':
-                tabContent = <BepTab />;
+            case 'planning':
+                tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>;
                 break;
-            case 'veli-toplantisi':
-                tabContent = <VeliToplantisiTab />;
+            case 'election':
+                tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />;
                 break;
-            case 'sok':
-                tabContent = <SokTab />;
+            case 'projects':
+                tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />;
                 break;
-            case 'kazanimlar':
-                tabContent = <KazanımlarTab setActiveTab={setActiveTab} />;
+            case 'homework':
+                tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>;
+                break;
+            case 'risks':
+                tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                break;
+            case 'forms':
+                tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />;
+                break;
+            case 'communication':
+                tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />;
+                break;
+            case 'surveys':
+                tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>;
+                break;
+             case 'discipline':
+                tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />;
                 break;
             default:
-                return null;
-      }
+                tabContent = null;
+        }
 
       return (
         <div>
@@ -589,27 +510,142 @@ export function TeacherDashboard() {
               {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
               {TABS_CONFIG[activeTab]?.label}
             </h2>
-            <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
-            </Button>
+            <div className="flex items-center gap-2">
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      {currentClass?.name}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Sınıf Seçimine Dön
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {(orderedClasses || []).map((cls: Class) => (
+                        <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                            {cls.name}
+                        </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" onClick={handleBackToDashboard}>
+                <Home className="mr-2 h-4 w-4" /> Panele Dön
+              </Button>
+            </div>
           </div>
           {tabContent}
         </div>
       );
-  }
+    }
 
-  if (activeTab !== 'dashboard' && !selectedClassId) {
-      const fullPageContent = renderFullPageTab(activeTab);
-      if(fullPageContent) {
-          return (
-            <div className="flex flex-col min-h-screen w-full bg-muted/40">
-                <Header />
-                <main className="flex-1 p-4 sm:p-6">
-                    {fullPageContent}
-                </main>
+    const renderFullPageTab = (tab: ActiveTab) => {
+        let tabContent;
+         switch(tab) {
+               case 'dilekce':
+                   tabContent = <DilekceTab teacherProfile={teacherProfile} />;
+                   break;
+                case 'zumre':
+                   tabContent = <ZumreTab />;
+                   break;
+               case 'bep':
+                   tabContent = <BepTab />;
+                   break;
+               case 'veli-toplantisi':
+                   tabContent = <VeliToplantisiTab />;
+                   break;
+               case 'sok':
+                   tabContent = <SokTab />;
+                   break;
+                case 'kazanimlar':
+                    return <KazanımlarTab setActiveTab={setActiveTab} />;
+               default:
+                   return null;
+         }
+   
+         return (
+           <div>
+              <div className="mb-6 flex justify-between items-center">
+                <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
+                 {React.createElement(TABS_CONFIG[activeTab]?.icon || School, { className: "w-7 h-7 text-primary" })}
+                 {TABS_CONFIG[activeTab]?.label}
+               </h2>
+               <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                   <ArrowLeft className="mr-2 h-4 w-4" /> Ana Sayfaya Dön
+               </Button>
+             </div>
+             {tabContent}
+           </div>
+         );
+    }
+   
+    if (activeTab !== 'dashboard' && !selectedClassId) {
+        const fullPageContent = renderFullPageTab(activeTab);
+        if(fullPageContent) {
+            return (
+              <div className="flex flex-col min-h-screen w-full bg-muted/40">
+                  <main className="flex-1 p-4 sm:p-6">
+                      {fullPageContent}
+                  </main>
+              </div>
+            );
+        }
+    }
+
+    // Dashboard view
+    return (
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                         <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline">
+                                {currentClass?.name}
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => setSelectedClassId(null)}>
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Sınıf Seçimine Dön
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {(orderedClasses || []).map((cls: Class) => (
+                                  <DropdownMenuItem key={cls.id} onSelect={() => setSelectedClassId(cls.id)}>
+                                      {cls.name}
+                                  </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleBackToDashboard}>
+                       <Home className="mr-2 h-4 w-4" /> Ana Panele Dön
+                    </Button>
+                </CardContent>
+            </Card>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
+                <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                <MenuCard icon={<ClipboardList />} title="Planlama Araçları" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
+                <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
+                <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
+                <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
+                <MenuCard icon={<List />} title="Sınıf Risk Haritası" description="Risk haritası ve istatistiklerini görüntüleyin." onClick={() => setActiveTab('risks')} />
+                <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
+                <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
+                <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
+                <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
+                <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
-          );
-      }
+        </div>
+    );
   }
 
 
