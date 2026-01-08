@@ -20,8 +20,9 @@ import { DisciplineTab } from './DisciplineTab';
 import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
+import MebClubTab from './MebClubTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3 } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -47,7 +48,7 @@ import ExamBuilder from './ExamBuilder';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -359,6 +360,7 @@ const TABS_CONFIG = {
   "kazanimlar": { label: "Kazanımlar", icon: Target },
   "exam-builder": { label: "Soru Bankası", icon: FileQuestion },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
+  "meb-club": { label: "MEB Öğrenci Kulübü", icon: Drama },
 } as const;
 
 
@@ -466,7 +468,7 @@ export function TeacherDashboard() {
           case 'bep': tabContent = <BepTab />; break;
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
           case 'sok': tabContent = <SokTab />; break;
-          case 'kazanimlar': tabContent = <KazanımlarTab setActiveTab={setActiveTab} />; break;
+          case 'kazanimlar': tabContent = <KazanımlarTab />; break;
           case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
           default: tabContent = null;
         }
@@ -539,6 +541,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
+                <MenuCard icon={<Drama />} title="MEB Öğrenci Kulübü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                 <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
         </div>
@@ -560,6 +563,7 @@ export function TeacherDashboard() {
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        case 'meb-club': tabContent = <MebClubTab />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 
@@ -619,4 +623,3 @@ export function TeacherDashboard() {
     </div>
   );
 }
-
