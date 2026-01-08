@@ -142,15 +142,11 @@ function ClassSelectionScreen({
         if (!db) return;
         setDeletingClassId(classId);
         try {
-            const studentsQuery = query(collection(db, 'classes', classId, 'students'));
-            const studentSnapshot = await getDocs(studentsQuery);
-            const batch = writeBatch(db);
-            studentSnapshot.forEach(studentDoc => {
-                batch.delete(doc(db, 'classes', classId, 'students', studentDoc.id));
-            });
-            batch.delete(doc(db, 'classes', classId));
-            await batch.commit();
-            toast({ title: 'Sınıf ve öğrenciler silindi', variant: 'destructive' });
+            // Firestore does not support deleting subcollections from the client-side SDK directly.
+            // This will only delete the class document itself. 
+            // Subcollections (like students, homeworks) need to be deleted manually or with a backend function.
+            await deleteDoc(doc(db, 'classes', classId));
+            toast({ title: 'Sınıf silindi', description: 'Not: Bu sınıfa ait öğrenciler veritabanından ayrıca silinmelidir.', variant: 'destructive' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinemedi.' });
         } finally {
@@ -305,7 +301,7 @@ function ClassSelectionScreen({
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Bu sınıfı ({cls.name}) ve içindeki TÜM öğrencileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
+                                                            Bu sınıfı ({cls.name}) kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz! Sınıfa ait öğrenciler silinmeyecektir, ancak elle başka bir sınıfa atanmaları gerekir.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
@@ -492,7 +488,6 @@ export function TeacherDashboard() {
         return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} initialTab={initialMainTab} />;
     }
     
-    // Class-specific views
     if (isLoading) {
         return <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }

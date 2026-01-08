@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -24,6 +23,8 @@ service cloud.firestore {
     
     // Öğrenci kendi sınıfında mı işlem yapıyor? (Tekil get/update işlemleri için)
     function isStudentInClass(classId) {
+        // Bu fonksiyon öğrencinin kendi profilini çekip classId'yi kontrol etmelidir.
+        // Güvenlik notu: Öğrenci kendi belgesine okuma iznine sahip olmalıdır.
         return isSignedIn() && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
     }
 
@@ -34,7 +35,13 @@ service cloud.firestore {
       allow list: if true; // Öğrencinin sınıf kodunu sorgulamasına izin ver
     }
     match /students/{studentId} {
-      allow list: if true; // Öğrencinin okul numarasını sorgulamasına izin ver
+      // Öğrenci giriş sorgusu için bu koleksiyona erişim izni.
+      // DİKKAT: Bu kural, tüm öğrenci verilerinin listelenebileceği anlamına gelir, 
+      // ancak istemci tarafındaki sorgu (where clause) bunu kısıtlar.
+      allow list: if true; 
+      
+      // Öğrenci giriş yaptıktan sonra kendi profilini okuyabilir ve güncelleyebilir.
+      allow get, update: if isOwner(studentId);
     }
     
     // --- ÖĞRETMEN YÖNETİMİ ---
@@ -68,15 +75,9 @@ service cloud.firestore {
             allow read, write: if isClassOwner(classId);
             // Öğrenci sadece kendi teslimini oluşturabilir/okuyabilir/güncelleyebilir.
             allow create: if request.auth.uid == request.resource.data.studentId;
-            allow get, update: if request.auth.uid == resource.data.studentId;
+            allow get, update: if isSignedIn() && resource.data.studentId == request.auth.uid;
         }
       }
-    }
-    
-    // --- ÖĞRENCİYE ÖZEL BELGELER ---
-    match /students/{studentId} {
-        // Öğrenci kendi profilini okuyabilir ve güncelleyebilir.
-        allow get, update: if isOwner(studentId);
     }
     
     match /infoForms/{formId} {

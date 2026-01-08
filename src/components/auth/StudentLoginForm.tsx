@@ -46,9 +46,11 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      // The signInStudent function in AuthContext will handle all logic
       await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
       // No toast on success, redirection is handled by AuthContext
     } catch (error: any) {
+      // The error might be because a password is required
       if (error.message.includes("şifre gereklidir")) {
         setShowPassword(true);
         toast({
@@ -60,7 +62,7 @@ export function StudentLoginForm() {
         toast({
           variant: 'destructive',
           title: 'Giriş Başarısız',
-          description: error.message || 'Girdiğiniz bilgiler hatalı.',
+          description: error.message || 'Girdiğiniz bilgiler hatalı veya sınıf kodu bulunamadı.',
         });
       }
     } finally {
