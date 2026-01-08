@@ -211,7 +211,7 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
         <Card className="flex-1 flex flex-col">
             <CardHeader className='pb-2'>
                 <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
-                <CardDescription>Soru üretmek için kazanım seçin.</CardDescription>
+                <CardDescription>Soru üretmek için bir kazanım seçin.</CardDescription>
             </CardHeader>
             <CardContent className='flex-1 flex flex-col space-y-3'>
                 <ScrollArea className="flex-1">
