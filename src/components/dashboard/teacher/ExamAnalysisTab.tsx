@@ -86,7 +86,7 @@ function KazanımSelector({ onSelect, teacherId }: { onSelect: (kazanim: string)
     const { db } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     
-    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims'), where('teacherId', '==', teacherId)) : null, [db, teacherId]);
+    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims')) : null, [db]);
     const { data: kazanımlar, isLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
     const filteredKazanims = useMemo(() => {
@@ -100,7 +100,7 @@ function KazanımSelector({ onSelect, teacherId }: { onSelect: (kazanim: string)
         <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Kazanım Seç</DialogTitle>
-                <DialogDescription>Telafisi yapılacak kazanımı seçin veya arayın.</DialogDescription>
+                <DialogDescription>Telafisi yapılacak kazanımı kütüphanenizden seçin veya arayın.</DialogDescription>
             </DialogHeader>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -606,5 +606,3 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     </div>
   );
 }
-
-
