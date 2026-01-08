@@ -1,6 +1,5 @@
-
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -1221,7 +1220,7 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
     const footer = `}`;
 
     const rtfContent = `${header}${studentInfo}${questionContent}${optionsContent}${footer}`;
-
+    
     const blob = new Blob([rtfContent], { type: 'application/rtf' });
     saveAs(blob, `Soru_${question.id}.rtf`);
 }
@@ -1455,6 +1454,66 @@ export function exportTermGradesToRtf({ students, term, currentClass, teacherPro
     }).join('');
 
     const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
+// --- SURVEY RESULTS EXPORT ---
+interface ExportSurveyResultsArgs {
+    survey: Survey;
+    responses: SurveyResponse[];
+    students: Student[];
+    currentClass: Class;
+    teacherProfile: TeacherProfile | null;
+}
+
+export function exportSurveyResultsToRtf({ survey, responses, students, currentClass, teacherProfile }: ExportSurveyResultsArgs) {
+    const reportTitle = `ANKET SONUÇ RAPORU: ${survey.title}`;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${survey.title} Raporu`;
+    const participationRate = ((responses.length / students.length) * 100).toFixed(2);
+
+    let questionsHtml = survey.questions.map((q, index) => {
+        let answersHtml = '';
+        if (q.type === 'multiple' || q.type === 'dropdown' || q.type === 'linear') {
+            const counts: { [key: string]: number } = {};
+            responses.forEach(res => {
+                const answer = res.answers.find(a => a.questionId === q.id)?.answer;
+                if (typeof answer === 'string') {
+                    counts[answer] = (counts[answer] || 0) + 1;
+                }
+            });
+            answersHtml = (q.options || (q.type === 'linear' ? ['1','2','3','4','5'] : []))
+                .map(opt => `<li>${opt}: ${counts[opt] || 0} oy</li>`)
+                .join('');
+        } else {
+             answersHtml = responses.map(res => {
+                const answer = res.answers.find(a => a.questionId === q.id)?.answer;
+                if (!answer) return '';
+                const studentName = students.find(s => s.id === res.studentId)?.name || 'Bilinmeyen Öğrenci';
+                return `<li><b>${studentName}:</b> ${Array.isArray(answer) ? answer.join(', ') : answer}</li>`;
+             }).join('');
+        }
+
+        return `
+            <div style="margin-top: 20px; page-break-inside: avoid;">
+                <p class="bold">${index + 1}. ${q.text}</p>
+                <ul>${answersHtml}</ul>
+            </div>
+        `;
+    }).join('');
+
+    const content = `
+        ${header}
+        <p><b>Anket Açıklaması:</b> ${survey.description}</p>
+        <p><b>Katılım Oranı:</b> ${responses.length} / ${students.length} (%${participationRate})</p>
+        <hr>
+        ${questionsHtml}
+        ${footer}
+    `;
+
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }

@@ -1,14 +1,12 @@
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, Class, TeacherProfile, Survey, Question, SurveyResponse } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck } from 'lucide-react';
+import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck, ArrowLeft, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
-import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +25,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { exportSurveyResultsToRtf } from '@/lib/word-export';
 
 
 interface SurveyTabProps {
@@ -34,6 +34,88 @@ interface SurveyTabProps {
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
 }
+
+const ResultsView = ({ survey, students, teacherProfile, currentClass, onBack }: { survey: Survey, students: Student[], teacherProfile: TeacherProfile | null, currentClass: Class | null, onBack: () => void }) => {
+    const { db } = useAuth();
+    const responsesQuery = useMemoFirebase(() => {
+        if (!db) return null;
+        return query(collection(db, 'surveyResponses'), where('surveyId', '==', survey.id));
+    }, [db, survey.id]);
+
+    const { data: responses, isLoading: responsesLoading } = useCollection<SurveyResponse>(responsesQuery);
+
+    const answeredStudentIds = useMemo(() => new Set(responses?.map(r => r.studentId)), [responses]);
+
+    if (responsesLoading) {
+        return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    const handleExport = () => {
+      if (currentClass && teacherProfile && responses) {
+        exportSurveyResultsToRtf({ survey, responses, students, currentClass, teacherProfile });
+      }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>{survey.title} - Sonuç Analizi</CardTitle>
+                        <CardDescription>Katılım: {answeredStudentIds.size} / {students.length} öğrenci</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleExport}><Download className="mr-2 h-4 w-4"/> Raporu İndir</Button>
+                        <Button onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4"/> Geri Dön</Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {survey.questions.map((q, index) => {
+                    const questionResponses = responses?.map(r => {
+                        const answerObj = r.answers.find(a => a.questionId === q.id);
+                        return answerObj ? answerObj.answer : null;
+                    }).filter(Boolean);
+
+                    let content;
+                    if (q.type === 'multiple' || q.type === 'dropdown') {
+                        const voteCounts = q.options?.map(opt => ({
+                            option: opt,
+                            count: questionResponses?.filter(r => r === opt).length || 0,
+                        }));
+
+                        content = (
+                            <div className="h-[200px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={voteCounts}>
+                                        <XAxis dataKey="option" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} label={{ position: 'top', fill: 'hsl(var(--foreground))' }} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
+                    } else {
+                        content = (
+                            <ul className="list-disc pl-5 space-y-2 max-h-48 overflow-y-auto bg-slate-50 p-3 rounded-md">
+                                {questionResponses?.map((res, i) => (
+                                    <li key={i} className="text-sm text-slate-700">{Array.isArray(res) ? res.join(', ') : res}</li>
+                                ))}
+                            </ul>
+                        );
+                    }
+
+                    return (
+                        <div key={q.id} className="p-4 border rounded-lg">
+                            <h4 className="font-semibold">{index + 1}. {q.text}</h4>
+                            <div className="mt-4">{content}</div>
+                        </div>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+};
 
 
 // --- YARDIMCI BİLEŞENLER ---
@@ -106,6 +188,11 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     setQuestions(survey.questions);
     setView('builder');
   }
+
+  const viewResults = (survey: Survey) => {
+    setSelectedSurvey(survey);
+    setView('results');
+  };
 
   const handleSaveSurvey = async () => {
     if(!db || !currentClass) return;
@@ -243,6 +330,10 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
       toast({ variant: 'destructive', title: 'Hata', description: 'Anket silinirken bir sorun oluştu.' });
     }
   };
+
+  if (view === 'results' && selectedSurvey) {
+    return <ResultsView survey={selectedSurvey} students={students} teacherProfile={teacherProfile} currentClass={currentClass} onBack={() => setView('list')} />;
+  }
 
 
   if (view === 'builder') {
@@ -424,7 +515,7 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
                                     {survey.isActive ? 'Aktif' : 'Pasif'}
                                 </Label>
                             </div>
-                            <Button variant="outline" size="sm">Sonuçları Gör</Button>
+                            <Button variant="outline" size="sm" onClick={() => viewResults(survey)}>Sonuçları Gör</Button>
                             <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
