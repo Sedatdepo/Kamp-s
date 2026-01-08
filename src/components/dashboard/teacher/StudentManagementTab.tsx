@@ -16,9 +16,10 @@ interface StudentManagementTabProps {
   students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
+  classes: Class[];
 }
 
-export function StudentManagementTab({ students, currentClass, teacherProfile }: StudentManagementTabProps) {
+export function StudentManagementTab({ students, currentClass, teacherProfile, classes }: StudentManagementTabProps) {
     const { db } = useAuth();
     const [localStudents, setLocalStudents] = React.useState<Student[]>(students);
 
@@ -30,11 +31,6 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
         return <p>Lütfen bir sınıf seçin.</p>;
     }
 
-    // The new component is a default export, we need to adapt the usage here.
-    // The props interface of the new component seems to be different or non-existent in the provided snippet.
-    // I will call it without props for now as I cannot infer them.
-    // A better approach would be to analyze the new component's props.
-    // Looking at the new code, it seems it gets its data from `useDatabase` hook, so it doesn't need props.
     const DutyRosterTab = NobetciListesi;
 
 
@@ -62,7 +58,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile }:
                 <AttendanceTab students={localStudents} currentClass={currentClass} onStudentsChange={setLocalStudents} />
             </TabsContent>
             <TabsContent value="duty-roster" className="mt-4">
-                <DutyRosterTab />
+                <DutyRosterTab classes={classes} students={students} teacherProfile={teacherProfile} />
             </TabsContent>
             <TabsContent value="seating-plan" className="mt-4">
                 <SeatingPlanTab students={localStudents} currentClass={currentClass} />

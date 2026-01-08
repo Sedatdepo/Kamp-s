@@ -3,20 +3,17 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, Download, Users, RotateCcw, School, Upload } from 'lucide-react';
-import { useDatabase } from '@/hooks/use-database';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import type { Student as DutyStudent } from '@/lib/types';
+import type { Student as DutyStudent, Class, TeacherProfile } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
-export default function NobetciListesi() {
-  // --- STATE TANIMLARI ---
-  const { db, loading } = useDatabase();
-  const { schoolInfo, classes } = db;
+export default function NobetciListesi({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
   const { toast } = useToast();
 
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -27,10 +24,9 @@ export default function NobetciListesi() {
   const [nextStartInfo, setNextStartInfo] = useState<any>(null);
 
   const students = useMemo(() => {
-    if (!selectedClassId || !classes) return [];
-    const selectedClass = classes.find(c => c.id === selectedClassId);
-    return selectedClass?.students.map(s => ({ id: s.id, name: s.name, no: s.no })) || [];
-  }, [selectedClassId, classes]);
+    if (!selectedClassId) return [];
+    return allStudents.filter(s => s.classId === selectedClassId) || [];
+  }, [selectedClassId, allStudents]);
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
@@ -105,7 +101,7 @@ export default function NobetciListesi() {
             xmlns='http://www.w3.org/TR/REC-html40'>
       <head>
         <meta charset='utf-8'>
-        <title>${selectedClass?.name || schoolInfo?.className} Nöbetçi Listesi</title>
+        <title>${selectedClass?.name} Nöbetçi Listesi</title>
         <style>
           body { font-family: 'Times New Roman', serif; }
           table { width: 100%; border-collapse: collapse; }
@@ -120,8 +116,8 @@ export default function NobetciListesi() {
       </head>
       <body>
         <div class="title-area">
-          <div class="school-name">${schoolInfo?.schoolName || ''}</div>
-          <div class="list-name">${selectedClass?.name || schoolInfo?.className || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</div>
+          <div class="school-name">${teacherProfile?.schoolName || ''}</div>
+          <div class="list-name">${selectedClass?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</div>
         </div>
     `;
     
@@ -131,11 +127,11 @@ export default function NobetciListesi() {
       <table class="signature-table">
         <tr>
           <td>
-            <strong>${schoolInfo?.classTeacherName || ''}</strong><br>
+            <strong>${teacherProfile?.name || ''}</strong><br>
             Sınıf Rehber Öğretmeni
           </td>
           <td>
-            <strong>${schoolInfo?.schoolPrincipalName || ''}</strong><br>
+            <strong>${teacherProfile?.principalName || ''}</strong><br>
             Okul Müdürü
           </td>
         </tr>
@@ -157,22 +153,12 @@ export default function NobetciListesi() {
     URL.revokeObjectURL(url);
   };
   
-    if (loading) {
+    if (!teacherProfile || !classes) {
         return <div className="flex items-center justify-center h-screen">Yükleniyor...</div>
     }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-800">
-        <header className="max-w-6xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center">
-            <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                 <Button asChild variant="outline">
-                    <Link href="/rehberlik">
-                        <Home className="mr-2 h-4 w-4" /> Rehberlik Menüsü
-                    </Link>
-                </Button>
-                <h1 className="text-xl md:text-2xl font-bold">Aylık Nöbetçi Listesi</h1>
-            </div>
-      </header>
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* --- SOL PANEL: AYARLAR --- */}
@@ -184,12 +170,9 @@ export default function NobetciListesi() {
               Okul Bilgileri
             </h2>
             <div className="space-y-2 text-sm text-gray-600">
-              <p><strong>Okul:</strong> {schoolInfo?.schoolName}</p>
-              <p><strong>Öğretmen:</strong> {schoolInfo?.classTeacherName}</p>
-              <p><strong>Müdür:</strong> {schoolInfo?.schoolPrincipalName}</p>
-               <Button variant="link" asChild className="p-0 h-auto">
-                    <Link href="/bilgi-girisi">Bilgileri Düzenle</Link>
-                </Button>
+              <p><strong>Okul:</strong> {teacherProfile.schoolName}</p>
+              <p><strong>Öğretmen:</strong> {teacherProfile.name}</p>
+              <p><strong>Müdür:</strong> {teacherProfile.principalName}</p>
             </div>
           </div>
 
@@ -287,8 +270,8 @@ export default function NobetciListesi() {
             {roster.length > 0 ? (
               <div className="w-full">
                 <div className="text-center mb-8 border-b pb-4">
-                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">${schoolInfo?.schoolName}</h1>
-                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes && classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
+                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">${teacherProfile.schoolName}</h1>
+                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
                 </div>
                 
                 <table id="roster-table" className="w-full border-collapse text-left text-sm mb-12">
@@ -316,11 +299,11 @@ export default function NobetciListesi() {
 
                 <div className="flex flex-col sm:flex-row justify-between items-center px-10 mt-10 space-y-8 sm:space-y-0">
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">${schoolInfo?.classTeacherName}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">${teacherProfile.name}</p>
                     <p className="text-gray-600">Sınıf Rehber Öğretmeni</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">${schoolInfo?.schoolPrincipalName}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">${teacherProfile.principalName}</p>
                     <p className="text-gray-600">Okul Müdürü</p>
                   </div>
                 </div>

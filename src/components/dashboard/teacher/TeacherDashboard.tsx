@@ -548,7 +548,7 @@ export function TeacherDashboard() {
     // Individual tab view
     let tabContent;
     switch(activeTab) {
-        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
@@ -619,3 +619,4 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
