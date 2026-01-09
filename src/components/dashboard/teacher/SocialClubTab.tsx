@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -10,7 +9,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Trash2, Edit, Save, X, ChevronsUpDown, Check, Drama } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit, Save, X, ChevronsUpDown, Check, Drama, FileDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -37,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { exportClubDistributionToRtf, exportClubPetitionsToRtf } from '@/lib/word-export';
 
 
 const MEB_CLUBS = [
@@ -164,7 +164,8 @@ function ClubManager({ teacherId }: { teacherId: string }) {
 }
 
 export function SocialClubTab({ students, teacherId, currentClass }: { students: Student[], teacherId: string, currentClass: Class | null }) {
-    const { db } = useAuth();
+    const { appUser, db } = useAuth();
+    const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
     const { toast } = useToast();
     const [localStudents, setLocalStudents] = useState<Student[]>(students);
     
@@ -228,6 +229,16 @@ export function SocialClubTab({ students, teacherId, currentClass }: { students:
         }
     };
 
+    const handleExportDistribution = () => {
+        if (!currentClass || !teacherProfile || !students || !clubs) return;
+        exportClubDistributionToRtf({ students, clubs, currentClass, teacherProfile });
+    };
+
+    const handleExportPetitions = () => {
+        if (!currentClass || !teacherProfile || !students || !clubs) return;
+        exportClubPetitionsToRtf({ students, clubs, currentClass, teacherProfile });
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
@@ -251,9 +262,13 @@ export function SocialClubTab({ students, teacherId, currentClass }: { students:
             <div className="lg:col-span-2">
                 <Card>
                     <CardHeader>
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-wrap justify-between items-center gap-4">
                             <CardTitle className="font-headline flex items-center gap-2"><Drama/> Öğrenci Kulüp Atama</CardTitle>
-                            <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4" /> Atamaları Kaydet</Button>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={handleExportPetitions} variant="outline"><FileDown className="mr-2 h-4 w-4" /> Dilekçeleri İndir</Button>
+                                <Button onClick={handleExportDistribution} variant="outline"><FileDown className="mr-2 h-4 w-4" /> Atama Listesini İndir</Button>
+                                <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4" /> Atamaları Kaydet</Button>
+                            </div>
                         </div>
                         <CardDescription>Öğrencilerin tercihlerine göre kulüp atamalarını yapın.</CardDescription>
                     </CardHeader>
