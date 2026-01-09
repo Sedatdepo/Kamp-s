@@ -333,7 +333,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
-                    <MenuCard icon={<Trophy />} title="Kulüp Modülü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
+                    <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
                 </div>
             </TabsContent>
@@ -550,7 +550,7 @@ export function TeacherDashboard() {
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} />; break;
+        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 

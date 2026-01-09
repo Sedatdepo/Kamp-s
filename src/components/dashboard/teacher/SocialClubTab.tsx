@@ -5,18 +5,38 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { Student, Club } from '@/lib/types';
+import { Student, Club, Class } from '@/lib/types';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Trash2, Edit, Save, X, ChevronsUpDown, Check, Drama } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 
 const MEB_CLUBS = [
@@ -143,7 +163,7 @@ function ClubManager({ teacherId }: { teacherId: string }) {
     );
 }
 
-export function SocialClubTab({ students, teacherId }: { students: Student[], teacherId: string }) {
+export function SocialClubTab({ students, teacherId, currentClass }: { students: Student[], teacherId: string, currentClass: Class | null }) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [localStudents, setLocalStudents] = useState<Student[]>(students);
@@ -155,10 +175,19 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
         setLocalStudents(students);
     }, [students]);
 
-    const handleAssignmentChange = (studentId: string, clubId: string | null) => {
-        const finalClubId = clubId === 'unassigned' ? null : clubId;
+    const handleAssignmentChange = (studentId: string, clubId: string) => {
         setLocalStudents(prev => 
-          prev.map(s => s.id === studentId ? { ...s, assignedClubId: finalClubId || undefined } : s)
+          prev.map(s => {
+            if (s.id === studentId) {
+                const newAssignedClubIds = [...(s.assignedClubIds || [])];
+                if (newAssignedClubIds.includes(clubId)) {
+                    return {...s, assignedClubIds: newAssignedClubIds.filter(id => id !== clubId)}
+                } else {
+                    return {...s, assignedClubIds: [...newAssignedClubIds, clubId]}
+                }
+            }
+            return s;
+          })
         );
     };
 
@@ -167,9 +196,9 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
         const batch = writeBatch(db);
         localStudents.forEach(student => {
             const originalStudent = students.find(s => s.id === student.id);
-            if (student.assignedClubId !== originalStudent?.assignedClubId) {
+            if (JSON.stringify(student.assignedClubIds) !== JSON.stringify(originalStudent?.assignedClubIds)) {
                 const studentRef = doc(db, 'students', student.id);
-                batch.update(studentRef, { assignedClubId: student.assignedClubId || null });
+                batch.update(studentRef, { assignedClubIds: student.assignedClubIds || [] });
             }
         });
 
@@ -180,10 +209,43 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
             toast({ variant: 'destructive', title: 'Hata', description: 'Değişiklikler kaydedilemedi.' });
         }
     };
+    
+     const handleToggleChange = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', currentClass.id);
+        try {
+            await updateDoc(classRef, { isClubSelectionActive: checked });
+            toast({
+                title: 'Başarılı',
+                description: `Kulüp seçimi öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.`,
+            });
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Hata',
+                description: 'Güncelleme sırasında bir sorun oluştu.',
+            });
+        }
+    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-4">
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                         <CardTitle className="font-headline text-lg">Seçim Yönetimi</CardTitle>
+                         <Switch
+                            checked={currentClass?.isClubSelectionActive || false}
+                            onCheckedChange={handleToggleChange}
+                            disabled={!currentClass}
+                        />
+                    </CardHeader>
+                     <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Öğrencilerin kulüp tercihi yapabilmesi için bu ayarı aktif edin.
+                        </p>
+                    </CardContent>
+                </Card>
                 <ClubManager teacherId={teacherId} />
             </div>
             <div className="lg:col-span-2">
@@ -193,7 +255,7 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
                             <CardTitle className="font-headline flex items-center gap-2"><Drama/> Öğrenci Kulüp Atama</CardTitle>
                             <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4" /> Atamaları Kaydet</Button>
                         </div>
-                        <CardDescription>Öğrencileri oluşturduğunuz kulüplere atayın.</CardDescription>
+                        <CardDescription>Öğrencilerin tercihlerine göre kulüp atamalarını yapın.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {clubsLoading ? <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" /> : (
@@ -201,7 +263,8 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Öğrenci</TableHead>
-                                        <TableHead className="w-[250px]">Atanan Kulüp</TableHead>
+                                        <TableHead>Tercihleri</TableHead>
+                                        <TableHead className="w-[250px]">Atanan Kulüpler</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -209,17 +272,36 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
                                         <TableRow key={student.id}>
                                             <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
                                             <TableCell>
-                                                 <Select value={student.assignedClubId || 'unassigned'} onValueChange={(value) => handleAssignmentChange(student.id, value)}>
-                                                    <SelectTrigger className="h-8">
-                                                        <SelectValue placeholder="Kulüp atayın..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="unassigned">Yok</SelectItem>
+                                                 <ol className="list-decimal list-inside text-xs">
+                                                    {(student.clubPreferences || []).map(prefId => {
+                                                        const club = clubs?.find(l => l.id === prefId);
+                                                        return <li key={prefId}>{club ? club.name : 'Bilinmeyen Kulüp'}</li>
+                                                    })}
+                                                </ol>
+                                            </TableCell>
+                                            <TableCell>
+                                                 <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" className="w-full justify-start h-8">
+                                                            {student.assignedClubIds && student.assignedClubIds.length > 0 
+                                                                ? `${student.assignedClubIds.length} kulüp seçildi` 
+                                                                : "Kulüp ata..."}
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent className="w-64">
+                                                        <DropdownMenuLabel>Kulüp Seç</DropdownMenuLabel>
+                                                        <DropdownMenuSeparator />
                                                         {clubs?.map(club => (
-                                                            <SelectItem key={club.id} value={club.id}>{club.name}</SelectItem>
+                                                            <DropdownMenuCheckboxItem
+                                                                key={club.id}
+                                                                checked={(student.assignedClubIds || []).includes(club.id)}
+                                                                onCheckedChange={() => handleAssignmentChange(student.id, club.id)}
+                                                            >
+                                                                {club.name}
+                                                            </DropdownMenuCheckboxItem>
                                                         ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -232,4 +314,3 @@ export function SocialClubTab({ students, teacherId }: { students: Student[], te
         </div>
     );
 }
-

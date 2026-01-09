@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useContext } from 'react';
@@ -19,7 +18,7 @@ import { AccountSettingsTab } from './AccountSettingsTab';
 import { ProjectTab } from './ProjectTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -28,6 +27,7 @@ import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
+import { StudentClubTab } from './StudentClubTab'; 
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -97,6 +97,7 @@ export function StudentDashboard() {
           case 'seatingPlan': return <SeatingPlanTab />;
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
+          case 'club': return <StudentClubTab />;
           default: return null;
       }
   }
@@ -183,6 +184,15 @@ export function StudentDashboard() {
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
                     
                     <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
+                    
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Trophy />} 
+                        title="Kulüp" 
+                        description="Kulüp tercihi yap veya atamanı gör." 
+                        onClick={() => setActiveTab('club')} 
+                        isDisabled={false} // isDisabled logic is now inside StudentClubTab
+                    />
 
                     <MenuCard 
                         isLoading={classLoading}

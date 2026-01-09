@@ -161,6 +161,7 @@ export interface Class {
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
+  isClubSelectionActive?: boolean; // NEW
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -192,8 +193,9 @@ export interface Student {
   
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
+  clubPreferences?: string[]; // NEW: Array of club IDs
   assignedLesson: string | null; // lesson ID
-  assignedClubId?: string | null; // NEW: Club ID
+  assignedClubIds?: string[]; // NEW: Array of club IDs
   fcmTokens?: string[]; // For Push Notifications
   
   // Grading data separated by term
