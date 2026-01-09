@@ -420,23 +420,67 @@ export function exportStudentListToRtf({ students, currentClass, teacherProfile 
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
-// --- PROJECT DISTRIBUTION EXPORT ---
+// --- PROJECT DISTRIBUTION EXPORT (SUMMARY ONLY) ---
 interface ExportProjectDistributionArgs {
     students: Student[];
     lessons: Lesson[];
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
 }
-
 export function exportProjectDistributionToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectDistributionArgs) {
     const reportTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const title = `${currentClass.name} - ${reportTitle}`;
+    
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:35%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:35%;">Atanan Proje Ödevi</th>
+        </tr>
+    `;
+    const dataRows = students.map((s, index) => {
+        const assignedLesson = lessons.find(l => l.id === s.assignedLesson);
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
+                <td>${s.name}</td>
+                <td>${assignedLesson ? assignedLesson.name : 'Atanmadı'}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const content = `
+        ${header}
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- PROJECT PETITIONS EXPORT (DILEKCELER) ---
+interface ExportProjectPetitionsArgs {
+    students: Student[];
+    lessons: Lesson[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportProjectPetitionsToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectPetitionsArgs) {
+    const title = `${currentClass.name} - Proje Dilekçeleri`;
     const config = teacherProfile?.reportConfig;
     const school = config?.schoolName || "..........................................";
     const academicYear = config?.academicYear || "20....-20....";
 
     const generateDilekce = (student: Student) => {
-        // Tercih satırlarını oluştur
         const preferencesRows = Array.from({ length: 5 }).map((_, i) => {
             const prefId = student.projectPreferences?.[i];
             const lesson = prefId ? lessons.find(l => l.id === prefId) : null;
@@ -448,12 +492,9 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
             `;
         }).join('');
 
-        // Flexbox YERİNE %100 yükseklikli tablo yapısı kullanıyoruz.
-        // Bu yapı Word'de sayfa düzeninin bozulmasını engeller ve imzayı alta iter.
         return `
             <div style="page-break-after: always; width: 100%; height: 95%;">
                 <table class="no-border" style="width: 100%; height: 100%; border-collapse: collapse;">
-                    
                     <tr>
                         <td class="no-border" style="vertical-align: top;">
                             <div class="center bold" style="font-size: 14pt;">
@@ -482,13 +523,11 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
                             </table>
                         </td>
                     </tr>
-
                     <tr>
                         <td class="no-border" style="vertical-align: bottom; height: 100px;">
                             <table class="no-border" style="width: 100%;">
                                 <tr>
-                                    <td class="no-border" style="width: 60%;">
-                                        </td>
+                                    <td class="no-border" style="width: 60%;"></td>
                                     <td class="no-border" style="width: 40%; text-align: center;">
                                         <p style="margin: 0;">${new Date().toLocaleDateString('tr-TR')}</p>
                                         <br>
@@ -505,59 +544,8 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         `;
     };
 
-    const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
-    const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
-    const summaryTableHeader = `
-        <tr>
-            <th class="horizontal" style="width:10%;">S.No</th>
-            <th class="horizontal" style="width:20%;">Okul No</th>
-            <th class="horizontal" style="width:35%;">Adı Soyadı</th>
-            <th class="horizontal" style="width:35%;">Atanan Proje Ödevi</th>
-        </tr>
-    `;
-    const summaryDataRows = students.map((s, index) => {
-        const assignedLesson = lessons.find(l => l.id === s.assignedLesson);
-        return `
-            <tr>
-                <td class="center">${index + 1}</td>
-                <td class="center">${s.number}</td>
-                <td>${s.name}</td>
-                <td>${assignedLesson ? assignedLesson.name : 'Atanmadı'}</td>
-            </tr>
-        `;
-    }).join('');
-    
-    const summaryFooter = generateReportFooter(teacherProfile);
-    
-    let content;
-    
     const studentsWhoNeedPetition = students.filter(s => s.projectPreferences?.length > 0);
-    
-    if (studentsWhoNeedPetition.length > 0) {
-        const dilekcelerContent = studentsWhoNeedPetition.map(generateDilekce).join('');
-        const summaryContent = `
-            <div style="page-break-before: always;">
-                ${summaryHeader}
-                <table>
-                    <thead>${summaryTableHeader}</thead>
-                    <tbody>${summaryDataRows}</tbody>
-                </table>
-                ${summaryFooter}
-            </div>
-        `;
-        content = `${dilekcelerContent}${summaryContent}`;
-    } else {
-        content = `
-            <div>
-                ${summaryHeader}
-                <table>
-                    <thead>${summaryTableHeader}</thead>
-                    <tbody>${summaryDataRows}</tbody>
-                </table>
-                ${summaryFooter}
-            </div>
-        `;
-    }
+    const content = studentsWhoNeedPetition.map(generateDilekce).join('');
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);

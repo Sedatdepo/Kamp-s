@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { exportProjectDistributionToRtf } from '@/lib/word-export';
+import { exportProjectDistributionToRtf, exportProjectPetitionsToRtf } from '@/lib/word-export';
 
 interface DistributionAssignmentTabProps {
   classId: string;
@@ -94,7 +94,7 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
     }
   };
 
-  const handleExport = () => {
+  const handleExportDistribution = () => {
     if (!currentClass || !teacherProfile || !students || !lessons) {
         toast({
             variant: 'destructive',
@@ -104,6 +104,23 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
         return;
     }
     exportProjectDistributionToRtf({
+        students,
+        lessons,
+        currentClass,
+        teacherProfile,
+    });
+  };
+
+  const handleExportPetitions = () => {
+    if (!currentClass || !teacherProfile || !students || !lessons) {
+        toast({
+            variant: 'destructive',
+            title: 'Veri Eksik',
+            description: 'Dilekçeleri oluşturmak için gerekli tüm veriler yüklenemedi.'
+        });
+        return;
+    }
+    exportProjectPetitionsToRtf({
         students,
         lessons,
         currentClass,
@@ -148,8 +165,11 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
                             <CardDescription>Öğrenci tercihlerine göre proje dersi ataması yapın.</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button onClick={handleExport} variant="outline">
-                                <FileDown className="mr-2 h-4 w-4" /> Dağıtım Listesini İndir
+                             <Button onClick={handleExportPetitions} variant="outline">
+                                <FileDown className="mr-2 h-4 w-4" /> Dilekçeleri İndir
+                            </Button>
+                            <Button onClick={handleExportDistribution} variant="outline">
+                                <FileDown className="mr-2 h-4 w-4" /> Atama Listesini İndir
                             </Button>
                             <Button onClick={handleSaveChanges}>
                                 <Save className="mr-2 h-4 w-4" /> Atamaları Kaydet
