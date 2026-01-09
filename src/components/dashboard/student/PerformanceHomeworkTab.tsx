@@ -3,7 +3,6 @@
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useFirestore } from '@/hooks/useFirestore';
 import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
@@ -11,12 +10,10 @@ import { collection, doc, addDoc, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCollection, useMemoFirebase } from '@/firebase';
+
 
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
     return (
@@ -79,12 +76,12 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string }>({});
 
-    const submissionsQuery = useMemo(() => {
+    const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
     }, [db, classId, homework.id]);
 
-    const { data: submissions } = useFirestore<Submission[]>(`submissions-for-homework-${homework.id}`, submissionsQuery);
+    const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.find(s => s.studentId === student.id);
@@ -176,12 +173,12 @@ export function PerformanceHomeworkTab() {
 
   const classId = appUser.data.classId;
 
-  const homeworksQuery = useMemo(() => {
+  const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
   }, [db, classId]);
 
-  const { data: homeworks, loading: homeworksLoading } = useFirestore<Homework[]>(`performance-homeworks-for-class-${classId}`, homeworksQuery);
+  const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
   const sortedHomeworks = useMemo(() => {
     if (!homeworks) return [];
@@ -227,3 +224,5 @@ export function PerformanceHomeworkTab() {
     </Card>
   );
 }
+
+    

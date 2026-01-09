@@ -39,6 +39,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { KAZANIMLAR } from '@/lib/kazanimlar';
 
 
 interface ExamAnalysisTabProps {
@@ -82,53 +83,76 @@ const TELAFI_SECENEKLERI = [
   { key: 'dyk', label: 'DYK Çalışmaları' }
 ];
 
-function KazanımSelector({ onSelect, teacherId }: { onSelect: (kazanim: string) => void, teacherId: string }) {
-    const { db } = useAuth();
+function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void }) {
     const [searchTerm, setSearchTerm] = useState('');
-    
-    const kazanımlarQuery = useMemoFirebase(() => db ? query(collection(db, 'kazanims')) : null, [db]);
-    const { data: kazanımlar, isLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
     const filteredKazanims = useMemo(() => {
-        if (!kazanımlar) return [];
-        if (!searchTerm) return kazanımlar;
-        const lowercasedFilter = searchTerm.toLowerCase();
-        return kazanımlar.filter(item => item.text.toLowerCase().includes(lowercasedFilter));
-    }, [searchTerm, kazanımlar]);
+        const normalizedSearch = searchTerm.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
+        if (!normalizedSearch) return KAZANIMLAR;
+
+        const filtered: { [key: string]: any[] } = {};
+        for (const ders in KAZANIMLAR) {
+            const uniteler = (KAZANIMLAR[ders] as any[]).map(unite => {
+                const konular = unite.konular.map((konu: any) => {
+                    const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
+                        kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
+                    );
+                    return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
+                }).filter(Boolean);
+                return konular.length > 0 ? { ...unite, konular } : null;
+            }).filter(Boolean);
+            if (uniteler.length > 0) {
+                filtered[ders] = uniteler;
+            }
+        }
+        return filtered;
+    }, [searchTerm]);
 
     return (
-        <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Kazanım Seç</DialogTitle>
-                <DialogDescription>Telafisi yapılacak kazanımı kütüphanenizden seçin veya arayın.</DialogDescription>
+                <DialogDescription>Telafisi yapılacak kazanımı listeden seçin veya arayın.</DialogDescription>
             </DialogHeader>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Kazanım metni ara..."
+                    placeholder="Kazanım metni içinde ara..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <ScrollArea className="flex-1 mt-4 border rounded-md">
-                <div className="p-2 space-y-1">
-                    {isLoading ? <p>Yükleniyor...</p> : filteredKazanims.length > 0 ? (
-                        filteredKazanims.map(item => (
-                            <DialogClose asChild key={item.id}>
-                                <div
-                                    onClick={() => onSelect(item.text)}
-                                    className="p-3 text-sm rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                                >
-                                    {item.text}
-                                </div>
-                            </DialogClose>
-                        ))
-                    ) : (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                            Aramanızla eşleşen kazanım bulunamadı.
+            <ScrollArea className="flex-1 mt-4">
+                <div className="p-1">
+                    {Object.entries(filteredKazanims).map(([ders, uniteler]) => (
+                        <div key={ders} className="mb-4">
+                            <h3 className="text-lg font-bold text-primary px-2 py-1 bg-primary/10 rounded-md">{ders}</h3>
+                            <div className="pl-2">
+                                {(uniteler as any[]).map(unite => (
+                                    <div key={unite.unite} className="mt-2">
+                                        <h4 className="font-semibold text-gray-800">{unite.unite}</h4>
+                                        <div className="pl-4">
+                                            {(unite.konular as any[]).map((konu: any) => (
+                                                 <div key={konu.konu} className="mt-1">
+                                                    <p className="text-sm font-medium text-gray-600">{konu.konu}</p>
+                                                    <div className="pl-4 border-l-2 border-gray-200">
+                                                        {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                            <DialogClose asChild key={i}>
+                                                                <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                                    {kazanimText}
+                                                                </div>
+                                                            </DialogClose>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    )}
+                    ))}
                 </div>
             </ScrollArea>
         </DialogContent>
@@ -442,7 +466,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
                                         {item.konu || <span className="text-muted-foreground">Kazanım seçmek için tıklayın...</span>}
                                     </Button>
                                 </DialogTrigger>
-                                <KazanımSelector onSelect={(kazanim) => handleSelectKazanım(index, kazanim)} teacherId={teacherProfile?.id || ''}/>
+                                <KazanımSelector onSelect={(kazanim) => handleSelectKazanım(index, kazanim)}/>
                           </Dialog>
                       </div>
                       <div className="col-span-6 space-y-1">

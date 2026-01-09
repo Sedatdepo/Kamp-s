@@ -484,8 +484,8 @@ export const KAZANIMLAR: { [key: string]: any[] } = {
           kazanimlar: [
             "Faraday kafesi ve Faraday kafesinin kullanım alanları ile ilgili bilgiye ulaşmak için kullanacağı kaynakları belirler.",
             "Belirlediği kaynağı kullanarak Faraday kafesi ve Faraday kafesinin kullanım alanları ile ilgili bilgileri bulur.",
-            "Faraday kafesi ve Faraday kafesinin kullanım alanları ile ilgili ulaşılan bilgileri doğrular.",
-            "Faraday kafesi ve Faraday kafesinin kullanım alanları ile ilgili ulaşılan bilgileri kaydeder."
+            "Faraday kafesi ve Faraday kafesinin kullanım alanları hakkında ulaşılan bilgileri doğrular.",
+            "Faraday kafesi ve Faraday kafesinin kullanım alanları hakkında ulaşılan bilgileri kaydeder."
           ]
         },
         {
