@@ -404,22 +404,6 @@ export function TeacherDashboard() {
       localStorage.setItem(`classOrder_${teacherId}`, JSON.stringify(orderIds));
   }, [teacherId]);
 
-  useEffect(() => {
-    if (!classesLoading && teacherId && db && classes && classes.length === 0) {
-      const createInitialClass = async () => {
-        try {
-          await addDoc(collection(db, 'classes'), {
-            name: '10-A',
-            teacherId: teacherId,
-            isProjectSelectionActive: false, isRiskFormActive: false, isInfoFormActive: false, isElectionActive: false,
-            code: generateClassCode(), announcements: [], homeworks: [],
-          });
-        } catch (error) { console.error("Failed to create initial class:", error); }
-      };
-      createInitialClass();
-    }
-  }, [classesLoading, classes, teacherId, db]);
-
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
   const allStudentsForTeacherQuery = useMemoFirebase(() => {

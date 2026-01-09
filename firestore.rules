@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -18,17 +19,14 @@ service cloud.firestore {
       // Listeleme (list) sorgularında kullanılmamalıdır.
       return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
-
-    // --- GENEL GİRİŞ SORGULARI (KİMLİK DOĞRULANMAMIŞ) ---
-    // Öğrencinin, giriş yapabilmesi için sınıf ve öğrenci bilgilerini arayabilmesi gerekir.
-    // Bu kurallar, henüz giriş yapmamış bir kullanıcının bu iki koleksiyonda SADECE listeleme yapmasına izin verir.
-    // DİKKAT: Bu kurallar olmadan öğrenci girişi çalışmaz.
+    
+    // --- ÖĞRENCİ GİRİŞİ İÇİN GEREKLİ GENEL SORGULAR ---
+    // Bu kurallar, henüz giriş yapmamış bir kullanıcının sınıf kodunu ve numarasını
+    // kullanarak veritabanında kendini arayabilmesi için ZORUNLUDUR.
     match /classes/{classId} {
-        allow list: if true; // Öğrencinin sınıf kodunu sorgulamasına izin ver
+        allow list: if true; 
     }
     match /students/{studentId} {
-        // Bu kural hem öğrencinin kendi numarasını sorgulamasına hem de öğretmenin
-        // öğrenci listesini çekmesine olanak tanır. Daha detaylı kurallar aşağıdadır.
         allow list: if true;
     }
 
@@ -40,12 +38,13 @@ service cloud.firestore {
 
     // --- SINIFLAR VE ALT KOLEKSİYONLARI ---
     match /classes/{classId} {
-      // ÖĞRETMEN YETKİLERİ
       // Bir öğretmen, YALNIZCA kendi 'teacherId'sine sahip sınıfları listeleyebilir.
       // Bu kural, `where('teacherId', '==', request.auth.uid)` sorgusu ile çalışır.
       allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-      // Bir öğretmen, kendi sınıfına ait belgeleri okuyabilir (get), silebilir ve güncelleyebilir.
+      
+      // Bir öğretmen kendi sınıfına ait belgeleri okuyabilir, silebilir ve güncelleyebilir.
       allow get, update, delete: if isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      
       // Bir öğretmen yeni sınıf oluşturabilir.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
@@ -76,6 +75,7 @@ service cloud.firestore {
     // --- ÖĞRENCİYE ÖZEL BELGELER (ANA KOLEKSİYONLAR) ---
     match /students/{studentId} {
       // Bir öğrenci sadece kendi profilini okuyabilir ve güncelleyebilir.
+      // Bu kural yukarıdaki `allow list: if true` ile birleşince giriş problemini çözer.
       allow get, update: if isOwner(studentId);
     }
     
