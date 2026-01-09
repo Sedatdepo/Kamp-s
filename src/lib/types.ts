@@ -2,6 +2,14 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  dateAwarded: string;
+}
+
 export interface Announcement {
   id: number;
   text: string;
@@ -203,6 +211,8 @@ export interface Student {
   term2Grades: GradingScores;
   
   behaviorScore: number;
+  xp?: number; // Gamification experience points
+  badges?: Badge[]; // Gamification badges
 
   hasProject?: boolean;
   
