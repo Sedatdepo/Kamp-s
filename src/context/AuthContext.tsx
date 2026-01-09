@@ -18,6 +18,7 @@ interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<boolean>;
+  signInTeacher: (email: string, password: string) => Promise<void>; // Added for teacher login
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -154,42 +155,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (appUser) {
             const targetDashboard = `/dashboard/${appUser.type}`;
-            // If user is logged in but is on a public page (like login)
-            // or on the wrong dashboard, redirect them.
-            if (isPublic || (isAuthRoute && !pathname.startsWith(targetDashboard))) {
-                router.push(targetDashboard);
+            // If user is on a different page than their dashboard, redirect.
+            if (pathname !== targetDashboard && !pathname.startsWith(`${targetDashboard}/`)) {
+                 router.push(targetDashboard);
             }
         } else {
-            // If user is not logged in and is on a protected route,
-            // redirect them to the login page.
+            // If user is not logged in and on a protected route, redirect to login.
             if (isAuthRoute) {
                 router.push('/');
             }
         }
     }, [loading, appUser, pathname, router]);
 
-  const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
-    if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
+    const signInTeacher = async (email: string, password: string) => {
+        if (!auth) throw new Error("Kimlik doğrulama başlatılamadı.");
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle setting the user and navigation.
+    };
 
-    setProfileLoading(true);
-    try {
-        const classQuery = query(collection(db, 'classes'), where('code', '==', classCode.toUpperCase()));
-        const classSnapshot = await getDocs(classQuery);
-        if (classSnapshot.empty) throw new Error('Bu koda sahip bir sınıf bulunamadı.');
-        const classId = classSnapshot.docs[0].id;
-
-        const studentQuery = query(
-            collection(db, 'students'),
-            where('classId', '==', classId),
-            where('number', '==', studentNumber)
+    const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
+        if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
+        
+        // This is a single, efficient query to find the student directly.
+        const q = query(
+            collection(db, "students"), 
+            where("classCode", "==", classCode.toUpperCase()), 
+            where("number", "==", studentNumber)
         );
         
-        const studentSnapshot = await getDocs(studentQuery);
-        if (studentSnapshot.empty) throw new Error('Bu sınıfta bu numaraya sahip bir öğrenci bulunamadı.');
+        const querySnapshot = await getDocs(q);
 
-        const studentDoc = studentSnapshot.docs[0];
+        if (querySnapshot.empty) {
+            throw new Error("Sınıf kodu veya öğrenci numarası hatalı.");
+        }
+
+        const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-        
+
         if (studentData.authUid) {
             if (!password) {
                  const studentUser: AppUser = { type: 'student', data: studentData };
@@ -200,37 +202,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
              const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
              await signInWithEmailAndPassword(auth, email, password);
-             return true; // onAuthStateChanged will handle setting the user and navigation.
+             return true; 
         } else {
-            // No authUid, this is a guest-like session for the student
             const studentUser: AppUser = { type: 'student', data: studentData };
             setAppUser(studentUser);
             localStorage.setItem('appUser', JSON.stringify(studentUser));
             return true;
         }
-
-    } catch (error: any) {
-        console.error("Öğrenci girişi hatası:", error);
-        localStorage.removeItem('appUser');
-        setAppUser(null);
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            throw new Error('Girdiğiniz şifre hatalı.');
-        }
-        throw error;
-    } finally {
-        setProfileLoading(false);
-    }
-  };
+    };
   
   const contextValue = useMemo(() => ({ 
       appUser, 
       loading, 
       signInStudent, 
+      signInTeacher,
       signOut, 
       auth, 
       db, 
       storage 
-  }), [appUser, loading, signInStudent, signOut, auth, db, storage]);
+  }), [appUser, loading, signInStudent, signInTeacher, signOut, auth, db, storage]);
 
   return (
     <AuthContext.Provider value={contextValue}>

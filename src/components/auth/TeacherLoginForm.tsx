@@ -1,17 +1,15 @@
+
 "use client";
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
@@ -22,8 +20,7 @@ const formSchema = z.object({
 export function TeacherLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
-  const { auth } = useAuth();
+  const { signInTeacher } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,24 +31,27 @@ export function TeacherLoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) {
-        toast({ variant: 'destructive', title: 'Hata', description: 'Firebase bağlantısı kurulamadı.'});
-        return;
-    }
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await signInTeacher(values.email, values.password);
+      // Başarılı giriş sonrası yönlendirme AuthContext tarafından yapılacak.
+      // Burada sadece toast mesajı gösteriyoruz.
       toast({
         title: 'Giriş Başarılı',
-        description: "Tekrar hoş geldiniz! Yönlendiriliyorsunuz...",
+        description: "Yönlendiriliyorsunuz...",
       });
-      // The redirection will be handled by AuthContext
-      // router.push('/dashboard/teacher');
     } catch (error: any) {
+      let description = 'E-posta veya şifre hatalı.';
+      // Daha spesifik Firebase hata kodları
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = 'Girdiğiniz e-posta veya şifre yanlış.';
+      } else if (error.code === 'auth/too-many-requests') {
+        description = 'Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin.';
+      }
       toast({
         variant: 'destructive',
         title: 'Giriş Başarısız',
-        description: 'E-posta veya şifre hatalı.',
+        description,
       });
     } finally {
       setIsLoading(false);
