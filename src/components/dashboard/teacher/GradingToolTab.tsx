@@ -16,12 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Settings, Sheet } from 'lucide-react';
+import { Save, Settings, Sheet, FileDown } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
+import { exportGradingToRtf } from '@/lib/word-export';
 
 
 interface GradingToolTabProps {
@@ -155,6 +156,7 @@ export function GradingToolTab({
   const { db } = useAuth();
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
+  const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
   
   const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
   const [isBulkEntryOpen, setBulkEntryOpen] = useState(false);
@@ -297,9 +299,40 @@ export function GradingToolTab({
   const projCriteria = teacherProfile?.projCriteria || INITIAL_PROJ_CRITERIA;
   const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
 
+  const handleExport = () => {
+    if(!currentClass) return;
+
+    let currentCriteria;
+    let tab;
+    
+    // Determine active tab based on the outer Tabs component's value
+    const mainTabValue = document.querySelector('[data-state="active"]')?.getAttribute('data-value');
+
+    if(mainTabValue === 'project') {
+      tab = 3;
+      currentCriteria = projCriteria;
+    } else if (mainTabValue === 'behavior') {
+      tab = 4;
+      currentCriteria = behaviorCriteria;
+    } else { // performance
+      const perfTabValue = document.querySelector('[data-radix-collection-item][data-state="active"]')?.getAttribute('data-value');
+      tab = perfTabValue === 'perf2' ? 2 : 1;
+      currentCriteria = perfCriteria;
+    }
+
+    exportGradingToRtf({
+      activeTab: tab as ActiveGradingTab,
+      activeTerm,
+      students,
+      currentCriteria,
+      currentClass,
+      teacherProfile
+    });
+  };
+
   return (
     <>
-      <Tabs defaultValue="performance">
+      <Tabs defaultValue="performance" onValueChange={(value) => setActiveTab(value === 'performance' ? 1 : value === 'project' ? 3 : 4)}>
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="performance">Performans</TabsTrigger>
@@ -322,13 +355,16 @@ export function GradingToolTab({
             <Button variant="outline" onClick={() => setBulkEntryOpen(true)}>
                 <Sheet className="mr-2 h-4 w-4" /> Toplu Not Girişi
             </Button>
+            <Button variant="outline" onClick={handleExport}>
+                <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
+            </Button>
             <Button variant="outline" onClick={() => setGradingSettingsOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" /> Kriter Ayarları
             </Button>
           </div>
         </div>
         <TabsContent value="performance">
-          <Tabs defaultValue="perf1">
+          <Tabs defaultValue="perf1" onValueChange={(value) => setActiveTab(value === 'perf1' ? 1 : 2)}>
              <TabsList>
                 <TabsTrigger value="perf1">1. Performans Notu</TabsTrigger>
                 <TabsTrigger value="perf2">2. Performans Notu</TabsTrigger>
