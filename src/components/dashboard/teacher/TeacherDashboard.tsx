@@ -87,6 +87,7 @@ function ClassSelectionScreen({
     loading,
     setOrderedClasses,
     setActiveTab,
+    setIsProfileOpen,
     initialTab = 'classes',
 }: { 
     onSelectClass: (id: string | null) => void;
@@ -95,6 +96,7 @@ function ClassSelectionScreen({
     loading: boolean;
     setOrderedClasses: React.Dispatch<React.SetStateAction<Class[]>>;
     setActiveTab: (tab: ActiveTab) => void;
+    setIsProfileOpen: (isOpen: boolean) => void;
     initialTab?: 'classes' | 'documents';
 }) {
     const { appUser, db } = useAuth();
@@ -329,6 +331,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
+                    <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
                 </div>
             </TabsContent>
         </Tabs>
@@ -469,7 +472,7 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} initialTab={initialMainTab} />;
+        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
     }
     
     if (isLoading) {
@@ -602,3 +605,5 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
+    
