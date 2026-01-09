@@ -530,8 +530,8 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
     const summaryFooter = generateReportFooter(teacherProfile);
     
     let content;
-    // Dilekçeleri sadece tercih yapmış ama henüz atanmamış öğrenciler için oluştur
-    const studentsWhoNeedPetition = students.filter(s => s.projectPreferences?.length > 0 && !s.assignedLesson);
+    
+    const studentsWhoNeedPetition = students.filter(s => s.projectPreferences?.length > 0);
     
     if (studentsWhoNeedPetition.length > 0) {
         const dilekcelerContent = studentsWhoNeedPetition.map(generateDilekce).join('');
@@ -547,7 +547,6 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         `;
         content = `${dilekcelerContent}${summaryContent}`;
     } else {
-        // Eğer dilekçe gerektiren öğrenci yoksa, sadece özet listeyi göster
         content = `
             <div>
                 ${summaryHeader}
