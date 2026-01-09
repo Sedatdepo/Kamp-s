@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
@@ -19,12 +18,11 @@ import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode } from 'lucide-react';
 interface StudentListTabProps {
   classId: string;
   students: Student[];
-  onStudentsChange: (students: Student[]) => void;
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
 }
 
-export function StudentListTab({ classId, students, onStudentsChange, currentClass, teacherProfile }: StudentListTabProps) {
+export function StudentListTab({ classId, students, currentClass, teacherProfile }: StudentListTabProps) {
   const { db } = useAuth();
   const { toast } = useToast();
   const [newStudentName, setNewStudentName] = useState('');
@@ -54,8 +52,8 @@ export function StudentListTab({ classId, students, onStudentsChange, currentCla
         behaviorScore: 100,
         hasProject: false,
       };
-      const docRef = await addDoc(collection(db, 'students'), newStudentData);
-      onStudentsChange([...students, { id: docRef.id, ...newStudentData }]);
+      await addDoc(collection(db, 'students'), newStudentData);
+      // The useCollection hook in TeacherDashboard will automatically update the list.
       toast({ title: 'Öğrenci eklendi!' });
       setNewStudentName('');
       setNewStudentNumber('');
@@ -73,7 +71,7 @@ export function StudentListTab({ classId, students, onStudentsChange, currentCla
         number: editingStudent.number,
         hasProject: editingStudent.hasProject,
       });
-      onStudentsChange(students.map(s => s.id === editingStudent.id ? editingStudent : s));
+      // The useCollection hook will update the UI.
       toast({ title: 'Öğrenci güncellendi.' });
       setEditingStudent(null);
     } catch (error) {
@@ -86,13 +84,14 @@ export function StudentListTab({ classId, students, onStudentsChange, currentCla
     if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
       try {
         await deleteDoc(doc(db, 'students', studentId));
-        onStudentsChange(students.filter(s => s.id !== studentId));
+        // The useCollection hook in TeacherDashboard will automatically update the list.
         toast({ title: 'Öğrenci silindi.', variant: 'destructive' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci silinemedi.' });
       }
     }
   };
+
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -113,16 +112,14 @@ export function StudentListTab({ classId, students, onStudentsChange, currentCla
         })).filter(s => s.number && s.name);
 
         const batch = writeBatch(db);
-        const newStudentsForState: Student[] = [];
         studentsToAdd.forEach(student => {
           const newStudentRef = doc(collection(db, 'students'));
           const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
           batch.set(newStudentRef, newStudentData);
-          newStudentsForState.push({ id: newStudentRef.id, ...newStudentData });
         });
 
         await batch.commit();
-        onStudentsChange([...students, ...newStudentsForState]);
+        // The useCollection hook will update the UI
         toast({ title: `${studentsToAdd.length} öğrenci başarıyla eklendi!` });
 
       } catch (error) {

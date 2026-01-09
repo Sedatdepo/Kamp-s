@@ -7,7 +7,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { StudentListTab } from './StudentListTab';
 import { AttendanceTab } from './AttendanceTab';
-import NobetciListesi from './DutyRosterTab'; // Corrected import
+import NobetciListesi from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -16,10 +16,9 @@ interface StudentManagementTabProps {
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
   classes: Class[];
-  onStudentsChange: (students: Student[]) => void; // Add this prop
 }
 
-export function StudentManagementTab({ students, currentClass, teacherProfile, classes, onStudentsChange }: StudentManagementTabProps) {
+export function StudentManagementTab({ students, currentClass, teacherProfile, classes }: StudentManagementTabProps) {
     if (!currentClass) {
         return <p>Lütfen bir sınıf seçin.</p>;
     }
@@ -42,13 +41,12 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
                 <StudentListTab
                     classId={currentClass.id}
                     students={students}
-                    onStudentsChange={onStudentsChange} // Pass it down
                     currentClass={currentClass}
                     teacherProfile={teacherProfile}
                 />
             </TabsContent>
             <TabsContent value="attendance" className="mt-4">
-                <AttendanceTab students={students} currentClass={currentClass} onStudentsChange={onStudentsChange} />
+                <AttendanceTab students={students} currentClass={currentClass} onStudentsChange={() => {}} />
             </TabsContent>
             <TabsContent value="duty-roster" className="mt-4">
                 <DutyRosterTab classes={classes} students={students} teacherProfile={teacherProfile} />

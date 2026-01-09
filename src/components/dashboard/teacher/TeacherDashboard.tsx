@@ -385,7 +385,14 @@ export function TeacherDashboard() {
   
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
-  const [allStudentsState, setAllStudentsState] = useState<Student[] | null>(null);
+  const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
+
+  const allStudentsForTeacherQuery = useMemoFirebase(() => {
+    if (!teacherId || !db || classIds.length === 0) return null;
+    return query(collection(db, 'students'), where('classId', 'in', classIds));
+  }, [teacherId, db, classIds]);
+  
+  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsForTeacherQuery);
 
   useEffect(() => {
     if (classes) {
@@ -415,24 +422,10 @@ export function TeacherDashboard() {
 
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
 
-  const allStudentsForTeacherQuery = useMemoFirebase(() => {
-    if (!teacherId || !db || !classes || classes.length === 0) return null;
-    const classIds = classes.map(c => c.id);
-    return query(collection(db, 'students'), where('classId', 'in', classIds));
-  }, [teacherId, db, classes]);
-  
-  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsForTeacherQuery);
-
-  useEffect(() => {
-      if(allStudents) {
-          setAllStudentsState(allStudents);
-      }
-  }, [allStudents]);
-
   const studentsForSelectedClass = useMemo(() => {
-    if (!selectedClassId || !allStudentsState) return [];
-    return allStudentsState.filter(s => s.classId === selectedClassId);
-  }, [selectedClassId, allStudentsState]);
+    if (!selectedClassId || !allStudents) return [];
+    return allStudents.filter(s => s.classId === selectedClassId);
+  }, [selectedClassId, allStudents]);
 
   const isLoading = teacherLoading || classesLoading || allStudentsLoading;
   
@@ -464,8 +457,8 @@ export function TeacherDashboard() {
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
           case 'sok': tabContent = <SokTab />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
-          case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudentsState || []} />; break;
-          case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudentsState || []} teacherProfile={teacherProfile} />; break;
+          case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
+          case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           default: tabContent = null;
         }
         return (
@@ -485,7 +478,7 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudentsState || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
+        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
     }
     
     if (isLoading) {
@@ -546,7 +539,7 @@ export function TeacherDashboard() {
     // Individual tab view
     let tabContent;
     switch(activeTab) {
-        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} onStudentsChange={setAllStudentsState} />; break;
+        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
@@ -622,4 +615,5 @@ export function TeacherDashboard() {
     
 
     
+
 
