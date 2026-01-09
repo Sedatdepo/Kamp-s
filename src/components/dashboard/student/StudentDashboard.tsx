@@ -29,7 +29,6 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StudentClubTab } from './StudentClubTab'; 
-import { AchievementsTab } from './AchievementsTab';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -100,7 +99,6 @@ export function StudentDashboard() {
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
-          case 'achievements': return <AchievementsTab />;
           default: return null;
       }
   }
@@ -141,7 +139,6 @@ export function StudentDashboard() {
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
-                    <MenuCard icon={<Award />} title="Başarımlarım" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('achievements')} />
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
