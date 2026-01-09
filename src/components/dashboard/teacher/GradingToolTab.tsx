@@ -49,7 +49,8 @@ const CriteriaGradingTable = ({
   termKey,
   onScoresChange,
   onTotalScoreChange,
-  onSave
+  onSave,
+  onExport
 }: {
   students: Student[];
   criteria: Criterion[];
@@ -58,6 +59,7 @@ const CriteriaGradingTable = ({
   onScoresChange: (studentId: string, criteriaId: string, value: number | null) => void;
   onTotalScoreChange: (studentId: string, value: number | null) => void;
   onSave: () => void;
+  onExport: () => void;
 }) => {
     
     const calculateTotal = (studentId: string) => {
@@ -80,7 +82,10 @@ const CriteriaGradingTable = ({
             <CardHeader>
                  <div className="flex justify-between items-center">
                     <CardTitle>Kriter Bazlı Değerlendirme</CardTitle>
-                    <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Notları Kaydet</Button>
+                    <div className="flex items-center gap-2">
+                         <Button onClick={onExport} variant="outline"><FileDown className="mr-2 h-4 w-4"/> Çıktı Al (.rtf)</Button>
+                         <Button onClick={onSave}><Save className="mr-2 h-4 w-4"/> Notları Kaydet</Button>
+                    </div>
                  </div>
                  <CardDescription>Aşağıdaki tabloyu kullanarak her öğrenci için belirtilen kriterlere göre not girişi yapın.</CardDescription>
             </CardHeader>
@@ -299,29 +304,28 @@ export function GradingToolTab({
   const projCriteria = teacherProfile?.projCriteria || INITIAL_PROJ_CRITERIA;
   const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
 
-  const handleExport = () => {
-    if(!currentClass) return;
+  const handleExport = (activeTab: ActiveGradingTab) => {
+    if(!currentClass || !teacherProfile) return;
 
-    let currentCriteria;
-    let tab;
+    let currentCriteria: Criterion[];
     
-    // Determine active tab based on the outer Tabs component's value
-    const mainTabValue = document.querySelector('[data-state="active"]')?.getAttribute('data-value');
-
-    if(mainTabValue === 'project') {
-      tab = 3;
-      currentCriteria = projCriteria;
-    } else if (mainTabValue === 'behavior') {
-      tab = 4;
-      currentCriteria = behaviorCriteria;
-    } else { // performance
-      const perfTabValue = document.querySelector('[data-radix-collection-item][data-state="active"]')?.getAttribute('data-value');
-      tab = perfTabValue === 'perf2' ? 2 : 1;
-      currentCriteria = perfCriteria;
+    switch(activeTab) {
+        case 1:
+        case 2:
+            currentCriteria = perfCriteria;
+            break;
+        case 3:
+            currentCriteria = projCriteria;
+            break;
+        case 4:
+            currentCriteria = behaviorCriteria;
+            break;
+        default:
+            return;
     }
 
     exportGradingToRtf({
-      activeTab: tab as ActiveGradingTab,
+      activeTab: activeTab,
       activeTerm,
       students,
       currentCriteria,
@@ -355,9 +359,6 @@ export function GradingToolTab({
             <Button variant="outline" onClick={() => setBulkEntryOpen(true)}>
                 <Sheet className="mr-2 h-4 w-4" /> Toplu Not Girişi
             </Button>
-            <Button variant="outline" onClick={handleExport}>
-                <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
-            </Button>
             <Button variant="outline" onClick={() => setGradingSettingsOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" /> Kriter Ayarları
             </Button>
@@ -378,6 +379,7 @@ export function GradingToolTab({
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores1')}
                         onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores1', perfCriteria)}
                         onSave={() => handleSaveScores('scores1', perfCriteria)}
+                        onExport={() => handleExport(1)}
                     />
                </TabsContent>
                <TabsContent value="perf2" className="mt-4">
@@ -389,6 +391,7 @@ export function GradingToolTab({
                         onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores2')}
                         onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores2', perfCriteria)}
                         onSave={() => handleSaveScores('scores2', perfCriteria)}
+                        onExport={() => handleExport(2)}
                     />
                </TabsContent>
           </Tabs>
@@ -402,6 +405,7 @@ export function GradingToolTab({
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
                 onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'projectScores', projCriteria)}
                 onSave={() => handleSaveScores('projectScores', projCriteria)}
+                onExport={() => handleExport(3)}
             />
         </TabsContent>
         <TabsContent value="behavior">
@@ -413,6 +417,7 @@ export function GradingToolTab({
                 onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'behaviorScores')}
                 onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'behaviorScores', behaviorCriteria)}
                 onSave={() => handleSaveScores('behaviorScores', behaviorCriteria)}
+                onExport={() => handleExport(4)}
             />
         </TabsContent>
       </Tabs>
