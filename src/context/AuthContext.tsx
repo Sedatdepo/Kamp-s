@@ -155,12 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (appUser) {
             const targetDashboard = `/dashboard/${appUser.type}`;
-            // If user is on a different page than their dashboard, redirect.
-            if (pathname !== targetDashboard && !pathname.startsWith(`${targetDashboard}/`)) {
+            if (pathname !== targetDashboard && !isAuthRoute) {
                  router.push(targetDashboard);
             }
         } else {
-            // If user is not logged in and on a protected route, redirect to login.
             if (isAuthRoute) {
                 router.push('/');
             }
@@ -170,18 +168,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInTeacher = async (email: string, password: string) => {
         if (!auth) throw new Error("Kimlik doğrulama başlatılamadı.");
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle setting the user and navigation.
     };
 
     const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        // This is a single, efficient query to find the student directly.
-        const q = query(
-            collection(db, "students"), 
-            where("classCode", "==", classCode.toUpperCase()), 
-            where("number", "==", studentNumber)
-        );
+        const classesQuery = query(collection(db, "classes"), where("code", "==", classCode.toUpperCase()));
+        const classesSnapshot = await getDocs(classesQuery);
+    
+        if (classesSnapshot.empty) {
+            throw new Error("Sınıf kodu bulunamadı.");
+        }
+    
+        const classDoc = classesSnapshot.docs[0];
+        const classId = classDoc.id;
+
+        const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         
         const querySnapshot = await getDocs(q);
 

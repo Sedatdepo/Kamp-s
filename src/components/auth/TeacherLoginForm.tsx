@@ -35,14 +35,8 @@ export function TeacherLoginForm() {
     try {
       await signInTeacher(values.email, values.password);
       // Başarılı giriş sonrası yönlendirme AuthContext tarafından yapılacak.
-      // Burada sadece toast mesajı gösteriyoruz.
-      toast({
-        title: 'Giriş Başarılı',
-        description: "Yönlendiriliyorsunuz...",
-      });
     } catch (error: any) {
       let description = 'E-posta veya şifre hatalı.';
-      // Daha spesifik Firebase hata kodları
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         description = 'Girdiğiniz e-posta veya şifre yanlış.';
       } else if (error.code === 'auth/too-many-requests') {

@@ -47,13 +47,7 @@ export function StudentLoginForm() {
     setIsLoading(true);
     try {
       // The signInStudent function now returns a boolean indicating if navigation should happen
-      const shouldNavigate = await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
-      
-      if (!shouldNavigate) {
-          // If it shouldn't navigate (e.g. password required but not provided),
-          // the logic inside signInStudent will have thrown an error handled below.
-          // This keeps the student on the form.
-      }
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
       // On success, AuthContext will handle navigation, so no toast or router.push here.
 
     } catch (error: any) {
