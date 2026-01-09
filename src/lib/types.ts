@@ -445,5 +445,3 @@ export type ExamTheme = 'classic' | 'modern' | 'minimalist';
 export interface ExamDocument extends Archivable {
     data: Exam;
 }
-
-    
