@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
-  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion, Sparkles, Binary
+  LayoutTemplate, CheckSquare, Type, CheckCircle, GripVertical, Shuffle, RefreshCw, Palette, Settings, Archive, FolderOpen, Send, X, AlignLeft, CaseUpper, KeySquare, Loader2, FileQuestion, Sparkles, Binary, Search, BookOpen
 } from 'lucide-react';
 import { Exam, ExamInfo, Question as ExamQuestion, QuestionType, ExamTheme, ExamDocument, Class, Student, TeacherProfile, Kazanım, MatchingPair } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
@@ -24,6 +24,90 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { generateQuestion } from '@/ai/flows/generate-questions-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { v4 as uuidv4 } from 'uuid';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { KAZANIMLAR } from '@/lib/kazanimlar';
+
+const KazanımSelector = ({ onSelect }: { onSelect: (kazanim: string) => void }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredKazanims = useMemo(() => {
+        const normalizedSearch = searchTerm.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
+        if (!normalizedSearch) return KAZANIMLAR;
+
+        const filtered: { [key: string]: any[] } = {};
+        for (const ders in KAZANIMLAR) {
+            const uniteler = (KAZANIMLAR[ders] as any[]).map(unite => {
+                const konular = unite.konular.map((konu: any) => {
+                    const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
+                        kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
+                    );
+                    return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
+                }).filter(Boolean);
+                return konular.length > 0 ? { ...unite, konular } : null;
+            }).filter(Boolean);
+            if (uniteler.length > 0) {
+                filtered[ders] = uniteler;
+            }
+        }
+        return filtered;
+    }, [searchTerm]);
+
+    return (
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Kazanım Seç</DialogTitle>
+                <DialogDescription>Soru oluşturmak için bir kazanım seçin veya arayın.</DialogDescription>
+            </DialogHeader>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Kazanım metni içinde ara..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <ScrollArea className="flex-1 mt-4">
+                <div className="p-1">
+                    {Object.entries(filteredKazanims).map(([ders, uniteler]) => (
+                        <div key={ders} className="mb-4">
+                            <h3 className="text-lg font-bold text-primary px-2 py-1 bg-primary/10 rounded-md">{ders}</h3>
+                            <div className="pl-2">
+                                {(uniteler as any[]).map(unite => (
+                                    <Accordion type="single" collapsible key={unite.unite} className="w-full">
+                                        <AccordionItem value={unite.unite}>
+                                            <AccordionTrigger className="text-md font-semibold text-gray-800">
+                                                {unite.unite}
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                {(unite.konular as any[]).map((konu: any) => (
+                                                    <div key={konu.konu} className="ml-4 pl-4 border-l-2 my-2">
+                                                        <p className="text-sm font-medium text-gray-600">{konu.konu}</p>
+                                                        <div className="pl-2">
+                                                            {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                                <DialogClose asChild key={i}>
+                                                                    <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                                        {kazanimText}
+                                                                    </div>
+                                                                </DialogClose>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </ScrollArea>
+        </DialogContent>
+    );
+};
+
 
 // --- ANA BİLEŞEN ---
 export default function ExamBuilder({ classes, students }: { classes: Class[], students: Student[] }) {
@@ -51,19 +135,14 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  const [selectedKazanımId, setSelectedKazanımId] = useState<string | null>(null);
+  const [selectedKazanım, setSelectedKazanım] = useState<string | null>(null);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   
-  // State for the image to be used for AI generation
   const [imageForAi, setImageForAi] = useState<string | null>(null);
   const imageForAiRef = useRef<HTMLInputElement>(null);
 
-
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
-
-  const kazanımlarQuery = useMemoFirebase(() => db && teacherId ? query(collection(db, 'kazanims')) : null, [db, teacherId]);
-  const { data: kazanımlar, isLoading: kazanımlarLoading } = useCollection<Kazanım>(kazanımlarQuery);
 
   const activeQuestion = currentExam.questions.find(q => q.id === selectedQuestionId);
 
@@ -81,7 +160,7 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
       correctAnswer: null,
       points: 10,
       image: null,
-      kazanimId: selectedKazanımId || undefined,
+      kazanimId: selectedKazanım || undefined,
       ...questionData,
     };
     setCurrentExam(prev => ({...prev, questions: [...prev.questions, newQuestion]}));
@@ -199,7 +278,6 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
     };
 
     const handleGenerateQuestion = async (type: "multiple-choice" | "true-false" | "open-ended" | "matching") => {
-        const selectedKazanım = kazanımlar?.find(k => k.id === selectedKazanımId);
         if (!selectedKazanım) {
             toast({ variant: 'destructive', title: "Kazanım Seçilmedi", description: "Lütfen soru üretmek için bir kazanım seçin." });
             return;
@@ -208,18 +286,17 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
         setIsGeneratingQuestion(true);
         try {
             const generatedQuestion = await generateQuestion({ 
-                kazanim: selectedKazanım.text, 
+                kazanim: selectedKazanım, 
                 type,
                 photoDataUri: imageForAi || undefined
             });
 
-            // If an image was used for AI, also attach it to the created question
             if (imageForAi && storage && appUser) {
                 const imageRef = storageRef(storage, `exam_images/${appUser.data.uid}/${Date.now()}_ai_image.png`);
                 await uploadString(imageRef, imageForAi, 'data_url');
                 const downloadUrl = await getDownloadURL(imageRef);
                 addQuestion(type, {...generatedQuestion, image: downloadUrl});
-                setImageForAi(null); // Clear the image after use
+                setImageForAi(null);
             } else {
                 addQuestion(type, generatedQuestion);
             }
@@ -272,9 +349,21 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
         <Card className="flex-1 flex flex-col">
             <CardHeader className='pb-2'>
                 <CardTitle className='text-lg'>Kazanım ve Yapay Zeka</CardTitle>
-                <CardDescription>Soru üretmek için bir kazanım ve (isteğe bağlı) bir resim seçin.</CardDescription>
+                <CardDescription>Soru üretmek için kazanım ve (isteğe bağlı) resim seçin.</CardDescription>
             </CardHeader>
             <CardContent className='flex-1 flex flex-col space-y-3'>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal truncate">
+                            <BookOpen className="mr-2 h-4 w-4 flex-shrink-0"/>
+                            <span className="truncate">
+                                {selectedKazanım || "Kazanım seçmek için tıklayın..."}
+                            </span>
+                        </Button>
+                    </DialogTrigger>
+                    <KazanımSelector onSelect={setSelectedKazanım} />
+                </Dialog>
+
                  <input type="file" ref={imageForAiRef} onChange={handleImageForAiUpload} className="hidden" accept="image/*" />
                  {imageForAi ? (
                     <div className="relative group">
@@ -286,20 +375,11 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                         <ImageIcon className="mr-2 h-4 w-4"/> AI İçin Resim Yükle
                     </Button>
                  )}
-                <ScrollArea className="flex-1">
-                    <div className='space-y-1 pr-2'>
-                        {kazanımlarLoading && <p className='text-xs text-muted-foreground'>Kazanımlar yükleniyor...</p>}
-                        {kazanımlar?.map(k => (
-                            <div key={k.id} onClick={() => setSelectedKazanımId(k.id)} className={`text-xs p-2 rounded-md cursor-pointer flex justify-between items-center ${selectedKazanımId === k.id ? 'bg-blue-100' : 'hover:bg-gray-100'}`}>
-                               <span>{k.text}</span>
-                            </div>
-                        ))}
-                    </div>
-                </ScrollArea>
+                
                  <div className="flex flex-wrap gap-2 border-t pt-3">
-                    <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli</Button>
-                    <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu</Button>
-                    <Button onClick={() => handleGenerateQuestion('matching')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanımId}><Sparkles className="h-3 w-3 mr-1"/>Eşleştirme</Button>
+                    <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Çoktan Seçmeli</Button>
+                    <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu</Button>
+                    <Button onClick={() => handleGenerateQuestion('matching')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Eşleştirme</Button>
                     {isGeneratingQuestion && <Loader2 className="h-4 w-4 animate-spin"/>}
                 </div>
             </CardContent>
