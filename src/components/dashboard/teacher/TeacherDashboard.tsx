@@ -331,6 +331,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
+                    <MenuCard icon={<Trophy />} title="Öğrenci Kulübü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
                 </div>
             </TabsContent>
@@ -442,7 +443,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     // Standalone document tabs (no class selected)
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         let tabContent;
         switch(activeTab) {
@@ -453,6 +454,7 @@ export function TeacherDashboard() {
           case 'sok': tabContent = <SokTab />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
           case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
+          case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           default: tabContent = null;
         }
         return (
@@ -545,7 +547,7 @@ export function TeacherDashboard() {
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'meb-club': tabContent = <MebClubTab />; break;
+        case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 
@@ -605,5 +607,7 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
+    
 
     

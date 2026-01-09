@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { Home, FileText, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Download, Save, Wand2, Trash2, ArrowDownCircle } from 'lucide-react';
+import { Student, Class, TeacherProfile } from '@/lib/types';
+
 
 // --- MOCK DATA & UTILS ---
 const MEB_CLUBS = [
@@ -151,13 +153,13 @@ const TableCell = ({ children }: any) => <td className="p-4 align-middle [&:has(
 
 
 // --- MAIN APPLICATION COMPONENT ---
-const ClubManagementPage = () => {
+const ClubManagementPage = ({ classes, allStudents, teacherProfile }: { classes: Class[], allStudents: Student[], teacherProfile: TeacherProfile | null }) => {
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Ana Bilgiler
-    const [schoolName, setSchoolName] = useState('');
+    const [schoolName, setSchoolName] = useState(teacherProfile?.schoolName || '');
     const [academicYear, setAcademicYear] = useState('2025-2026');
-    const [teacherName, setTeacherName] = useState('');
+    const [teacherName, setTeacherName] = useState(teacherProfile?.name || '');
     const [clubSelection, setClubSelection] = useState(''); 
     const [manualClubName, setManualClubName] = useState(''); 
 
@@ -165,13 +167,15 @@ const ClubManagementPage = () => {
     const [annualPlan, setAnnualPlan] = useState(Array(10).fill("")); 
     
     // YENİ: Öğrenci Havuzu (Ad, No, Sınıf)
-    const [students, setStudents] = useState(Array(20).fill({ no: "", name: "", class: "", role: "" }));
+    const [students, setStudents] = useState<any[]>(Array(20).fill({ no: "", name: "", class: "", role: "" }));
     
     // YENİ: Bütçe Hesaplama
     const [budgetItems, setBudgetItems] = useState(Array(8).fill({ date: "", desc: "", docNo: "", income: "", expense: "" }));
 
     // Diğer listeler için geçici state (örn: Etkinlik Listesi)
-    const [participationList, setParticipationList] = useState(Array(15).fill({ name: "", classNo: "" }));
+    const [participationList, setParticipationList] = useState<any[]>(Array(15).fill({ name: "", classNo: "" }));
+    
+    const [classToImport, setClassToImport] = useState<string>('');
 
 
     // --- LOAD & SAVE ---
@@ -179,17 +183,20 @@ const ClubManagementPage = () => {
         const savedData = localStorage.getItem('clubApp_v2_3_settings');
         if (savedData) {
             const parsed = JSON.parse(savedData);
-            setSchoolName(parsed.schoolName || '');
+            setSchoolName(parsed.schoolName || teacherProfile?.schoolName || '');
             setAcademicYear(parsed.academicYear || '2025-2026');
-            setTeacherName(parsed.teacherName || '');
+            setTeacherName(parsed.teacherName || teacherProfile?.name || '');
             setClubSelection(parsed.clubSelection || '');
             setManualClubName(parsed.manualClubName || '');
             if(parsed.annualPlan) setAnnualPlan(parsed.annualPlan);
             if(parsed.students) setStudents(parsed.students);
             if(parsed.budgetItems) setBudgetItems(parsed.budgetItems);
+        } else {
+             setSchoolName(teacherProfile?.schoolName || '');
+             setTeacherName(teacherProfile?.name || '');
         }
         setIsLoaded(true);
-    }, []);
+    }, [teacherProfile]);
 
     useEffect(() => {
         if (isLoaded) {
@@ -220,6 +227,32 @@ const ClubManagementPage = () => {
         newStudents[index] = { ...newStudents[index], [field]: value };
         setStudents(newStudents);
     };
+
+    const importStudentsFromClass = () => {
+        if (!classToImport) {
+            alert("Lütfen öğrenci aktarılacak bir sınıf seçin.");
+            return;
+        }
+        const studentsFromSelectedClass = allStudents.filter(s => s.classId === classToImport);
+        if (studentsFromSelectedClass.length === 0) {
+            alert("Seçilen sınıfta öğrenci bulunmuyor.");
+            return;
+        }
+        const newClubStudents = studentsFromSelectedClass.map(s => ({
+            no: s.number,
+            name: s.name,
+            class: classes.find(c => c.id === s.classId)?.name || '',
+            role: ''
+        }));
+        
+        // Mevcut listeyi boşaltıp yenisini ekleyelim, ya da üzerine yazalım? Şimdilik üzerine yazalım.
+        const updatedList = [...newClubStudents, ...Array(Math.max(0, 20 - newClubStudents.length)).fill({ no: "", name: "", class: "", role: "" })];
+        setStudents(updatedList.slice(0, 20));
+
+        alert(`${newClubStudents.length} öğrenci kulüp listesine başarıyla aktarıldı.`);
+        setClassToImport('');
+    };
+
 
     // Kulüp listesinden diğer listelere aktarım
     const importStudentsToParticipation = () => {
@@ -294,7 +327,7 @@ const ClubManagementPage = () => {
             // State'ten okuma
             students.forEach((s, i) => {
                 // Eğer boşsa boş satır bas, doluysa doldur
-                if (i < 15) { // İlk 15 satırı alalım veya hepsi
+                if (i < 20) { 
                     content += `<tr>
                         <td style="text-align: center;">${i + 1}</td>
                         <td>${s.no || ''}</td>
@@ -366,7 +399,7 @@ const ClubManagementPage = () => {
                         <br><strong>${teacherName}</strong><br>Danışman Öğretmen
                     </td>
                     <td style="border: none; text-align: center; width: 50%;">
-                        <br><strong>Okul Müdürü</strong><br>Uygundur<br>..../..../20....<br>İmza / Mühür
+                        <br><strong>${teacherProfile?.principalName || 'Okul Müdürü'}</strong><br>Uygundur<br>..../..../20....<br>İmza / Mühür
                     </td>
                 </tr>
             </table>
@@ -503,6 +536,21 @@ const ClubManagementPage = () => {
                                 <DialogTitle className="text-2xl text-blue-800 border-b pb-4 mb-4 flex justify-between items-center pr-8">
                                     <span>{mod.title}</span>
                                     <div className="flex gap-2">
+                                        {mod.id === 'modal1' && (
+                                            <div className="flex gap-2">
+                                                <Select value={classToImport} onValueChange={setClassToImport}>
+                                                    <SelectTrigger className="w-[220px] h-9 text-sm">
+                                                        <SelectValue placeholder="Sınıf Seçerek Öğrenci Aktar..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <Button onClick={importStudentsFromClass} variant="secondary" size="sm" className="gap-2 bg-green-100 text-green-700 hover:bg-green-200 border-green-200 h-9">
+                                                    <ArrowDownCircle className="h-4 w-4" /> Aktar
+                                                </Button>
+                                            </div>
+                                        )}
                                         {mod.canImport && (
                                             <Button onClick={importStudentsToParticipation} variant="secondary" size="sm" className="gap-2 bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200">
                                                 <ArrowDownCircle className="h-4 w-4" /> Kulüp Listesinden Getir
@@ -831,3 +879,5 @@ const ClubManagementPage = () => {
 };
 
 export default ClubManagementPage;
+
+    
