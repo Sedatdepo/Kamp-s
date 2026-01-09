@@ -27,7 +27,7 @@ import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
-import MebClubTab from './teacher/MebClubTab'; // Re-use the simple "coming soon" tab
+import { StudentClubTab } from './student/StudentClubTab'; 
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -97,7 +97,7 @@ export function StudentDashboard() {
           case 'seatingPlan': return <SeatingPlanTab />;
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
-          case 'club': return <MebClubTab />;
+          case 'club': return <StudentClubTab />;
           default: return null;
       }
   }
