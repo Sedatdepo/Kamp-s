@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
@@ -21,6 +22,7 @@ import { BepTab } from './BepTab';
 import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import MebClubTab from './MebClubTab';
+import { SocialClubTab } from './SocialClubTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,7 +50,7 @@ import ExamBuilder from './ExamBuilder';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -331,7 +333,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
-                    <MenuCard icon={<Trophy />} title="Öğrenci Kulübü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
+                    <MenuCard icon={<Trophy />} title="Kulüp Modülü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
                 </div>
             </TabsContent>
@@ -360,7 +362,8 @@ const TABS_CONFIG = {
   "kazanimlar": { label: "Kazanımlar", icon: Target },
   "exam-builder": { label: "Soru Bankası", icon: FileQuestion },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
-  "meb-club": { label: "Öğrenci Kulübü", icon: Trophy },
+  "meb-club": { label: "Kulüp Evrak", icon: Trophy },
+  "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
 } as const;
 
 
@@ -523,9 +526,9 @@ export function TeacherDashboard() {
                 <MenuCard icon={<List />} title="Sınıf Risk Haritası" description="Risk haritası ve istatistiklerini görüntüleyin." onClick={() => setActiveTab('risks')} />
                 <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
+                <MenuCard icon={<Drama />} title="Sosyal Etkinlik Yönetimi" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
-                <MenuCard icon={<Trophy />} title="Öğrenci Kulübü" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                 <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
         </div>
@@ -547,7 +550,7 @@ export function TeacherDashboard() {
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
+        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 

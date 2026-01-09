@@ -193,6 +193,7 @@ export interface Student {
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
   assignedLesson: string | null; // lesson ID
+  assignedClubId?: string | null; // NEW: Club ID
   fcmTokens?: string[]; // For Push Notifications
   
   // Grading data separated by term
@@ -221,6 +222,14 @@ export interface Lesson {
   quota: number;
   teacherId: string;
 }
+
+// NEW: Club type
+export interface Club {
+  id: string;
+  name: string;
+  teacherId: string;
+}
+
 
 export interface RiskFactor {
   id: string;
