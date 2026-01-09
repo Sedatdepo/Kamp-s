@@ -1,6 +1,4 @@
-
-
-"use client";
+'use client';
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +7,7 @@ import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/f
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { exportProjectDistributionToRtf } from '@/lib/word-export';
 
 interface DistributionAssignmentTabProps {
   classId: string;
@@ -95,6 +94,23 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
     }
   };
 
+  const handleExport = () => {
+    if (!currentClass || !teacherProfile || !students || !lessons) {
+        toast({
+            variant: 'destructive',
+            title: 'Veri Eksik',
+            description: 'Raporu oluşturmak için gerekli tüm veriler yüklenemedi.'
+        });
+        return;
+    }
+    exportProjectDistributionToRtf({
+        students,
+        lessons,
+        currentClass,
+        teacherProfile,
+    });
+  };
+
   const filteredStudents = useMemo(() => {
     if (filterLessonId === 'all' || !localStudents) return localStudents;
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
@@ -126,14 +142,19 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap justify-between items-center gap-4">
                         <div>
                             <CardTitle className="font-headline">Proje Atama</CardTitle>
                             <CardDescription>Öğrenci tercihlerine göre proje dersi ataması yapın.</CardDescription>
                         </div>
-                        <Button onClick={handleSaveChanges}>
-                            <Save className="mr-2 h-4 w-4" /> Atamaları Kaydet
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={handleExport} variant="outline">
+                                <FileDown className="mr-2 h-4 w-4" /> Dağıtım Listesini İndir
+                            </Button>
+                            <Button onClick={handleSaveChanges}>
+                                <Save className="mr-2 h-4 w-4" /> Atamaları Kaydet
+                            </Button>
+                        </div>
                     </div>
                      <div className="mt-4">
                         <Label>Filtrele:</Label>
@@ -211,5 +232,3 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
     </div>
   );
 }
-
-    

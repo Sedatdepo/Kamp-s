@@ -429,7 +429,7 @@ interface ExportProjectDistributionArgs {
 }
 
 export function exportProjectDistributionToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectDistributionArgs) {
-    const reportTitle = "Proje Ödevi Dağılım Listesi";
+    const reportTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const title = `${currentClass.name} - ${reportTitle}`;
     const config = teacherProfile?.reportConfig;
     const school = config?.schoolName || "..........................................";
@@ -505,9 +505,6 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         `;
     };
 
-    let dilekcelerContent = students.map(generateDilekce).join('');
-
-    // --- ÖZET LİSTE (DEĞİŞİKLİK YOK, AYNEN KORUNDU) ---
     const summaryTitle = "PROJE ÖDEVİ DAĞILIM LİSTESİ";
     const summaryHeader = generateReportHeader(summaryTitle, currentClass, teacherProfile);
     const summaryTableHeader = `
@@ -531,22 +528,37 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
     }).join('');
     
     const summaryFooter = generateReportFooter(teacherProfile);
-
-    const summaryContent = `
-        <div style="page-break-before: always;">
-            ${summaryHeader}
-            <table>
-                <thead>${summaryTableHeader}</thead>
-                <tbody>${summaryDataRows}</tbody>
-            </table>
-            ${summaryFooter}
-        </div>
-    `;
-
-    const content = `
-        ${dilekcelerContent}
-        ${summaryContent}
-    `;
+    
+    let content;
+    // Dilekçeleri sadece tercih yapmış ama henüz atanmamış öğrenciler için oluştur
+    const studentsWhoNeedPetition = students.filter(s => s.projectPreferences?.length > 0 && !s.assignedLesson);
+    
+    if (studentsWhoNeedPetition.length > 0) {
+        const dilekcelerContent = studentsWhoNeedPetition.map(generateDilekce).join('');
+        const summaryContent = `
+            <div style="page-break-before: always;">
+                ${summaryHeader}
+                <table>
+                    <thead>${summaryTableHeader}</thead>
+                    <tbody>${summaryDataRows}</tbody>
+                </table>
+                ${summaryFooter}
+            </div>
+        `;
+        content = `${dilekcelerContent}${summaryContent}`;
+    } else {
+        // Eğer dilekçe gerektiren öğrenci yoksa, sadece özet listeyi göster
+        content = `
+            <div>
+                ${summaryHeader}
+                <table>
+                    <thead>${summaryTableHeader}</thead>
+                    <tbody>${summaryDataRows}</tbody>
+                </table>
+                ${summaryFooter}
+            </div>
+        `;
+    }
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
