@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,16 +16,10 @@ interface StudentManagementTabProps {
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
   classes: Class[];
+  onStudentsChange: (students: Student[]) => void; // Add this prop
 }
 
-export function StudentManagementTab({ students, currentClass, teacherProfile, classes }: StudentManagementTabProps) {
-    const { db } = useAuth();
-    const [localStudents, setLocalStudents] = React.useState<Student[]>(students);
-
-    React.useEffect(() => {
-        setLocalStudents(students);
-    }, [students]);
-
+export function StudentManagementTab({ students, currentClass, teacherProfile, classes, onStudentsChange }: StudentManagementTabProps) {
     if (!currentClass) {
         return <p>Lütfen bir sınıf seçin.</p>;
     }
@@ -48,22 +41,21 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
             <TabsContent value="student-list" className="mt-4">
                 <StudentListTab
                     classId={currentClass.id}
-                    students={localStudents}
-                    onStudentsChange={setLocalStudents}
+                    students={students}
+                    onStudentsChange={onStudentsChange} // Pass it down
                     currentClass={currentClass}
                     teacherProfile={teacherProfile}
                 />
             </TabsContent>
             <TabsContent value="attendance" className="mt-4">
-                <AttendanceTab students={localStudents} currentClass={currentClass} onStudentsChange={setLocalStudents} />
+                <AttendanceTab students={students} currentClass={currentClass} onStudentsChange={onStudentsChange} />
             </TabsContent>
             <TabsContent value="duty-roster" className="mt-4">
                 <DutyRosterTab classes={classes} students={students} teacherProfile={teacherProfile} />
             </TabsContent>
             <TabsContent value="seating-plan" className="mt-4">
-                <SeatingPlanTab students={localStudents} currentClass={currentClass} />
+                <SeatingPlanTab students={students} currentClass={currentClass} />
             </TabsContent>
         </Tabs>
     );
 }
-
