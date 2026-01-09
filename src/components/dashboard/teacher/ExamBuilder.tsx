@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Bold, Italic, Underline as UnderlineIcon, ImageIcon, 
   Trash2, Save, FileText, Plus, Eye, Printer,
@@ -57,7 +57,7 @@ const KazanımSelector = ({ onSelect }: { onSelect: (kazanim: string) => void })
         <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Kazanım Seç</DialogTitle>
-                <DialogDescription>Soru oluşturmak için bir kazanım seçin veya arayın.</DialogDescription>
+                <DialogDescription>Soru üretmek için bir kazanım seçin veya arayın.</DialogDescription>
             </DialogHeader>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
