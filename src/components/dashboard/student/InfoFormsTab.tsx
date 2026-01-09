@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,8 +18,8 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Class } from '@/lib/types';
 import { useDoc, useMemoFirebase } from '@/firebase';
+import { Class } from '@/lib/types';
 
 const infoFormSchema = z.object({
   birthDate: z.date().optional(),
@@ -195,5 +193,3 @@ export function InfoFormTab() {
     </Card>
   );
 }
-
-    

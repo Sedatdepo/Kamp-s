@@ -17,7 +17,6 @@ import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
 import { ProjectTab } from './student/ProjectTab';
 import { useNotification } from '@/hooks/useNotification';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,6 +79,7 @@ export function StudentDashboard() {
     else if (activeTab === 'homeworks' || activeTab === 'regular-homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
     else if (activeTab === 'surveys') markAsSeen('surveys');
+    else if (activeTab === 'teacher-chats') markAsSeen('messages');
   }, [activeTab, markAsSeen]);
   
   const renderContent = () => {
@@ -181,7 +181,7 @@ export function StudentDashboard() {
                         isDisabled={!hasUnansweredSurvey}
                     />
 
-                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} />
+                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
                     
                     <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
                     
