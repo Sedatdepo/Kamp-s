@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
-import { useFirestore } from './useFirestore';
+import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Survey, SurveyResponse, Message } from '@/lib/types';
 import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore';
 
@@ -35,20 +34,20 @@ export const useNotification = () => {
   const studentId = appUser?.type === 'student' ? appUser.data.id : null;
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
 
-  const classQuery = useMemo(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
-  const { data: currentClass } = useFirestore<Class>(`class-for-notif-${classId}`, classQuery);
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: currentClass } = useDoc<Class>(classQuery);
 
-  const surveysQuery = useMemo(() => {
+  const surveysQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
   }, [db, classId]);
-  const { data: activeSurveys } = useFirestore<Survey[]>(`active-surveys-notif-${classId}`, surveysQuery);
+  const { data: activeSurveys } = useCollection<Survey>(surveysQuery);
 
-  const responsesQuery = useMemo(() => {
+  const responsesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
   }, [db, studentId]);
-  const { data: userResponses } = useFirestore<SurveyResponse[]>(`user-responses-notif-${studentId}`, responsesQuery);
+  const { data: userResponses } = useCollection<SurveyResponse>(responsesQuery);
 
   const hasUnansweredSurvey = useMemo(() => {
     if (!activeSurveys || !userResponses) return false;
@@ -56,11 +55,11 @@ export const useNotification = () => {
     return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
   }, [activeSurveys, userResponses]);
   
-  const messagesQuery = useMemo(() => {
+  const messagesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'messages'), where('participants', 'array-contains', studentId), where('isRead', '==', false), where('receiverId', '==', studentId));
   }, [db, studentId]);
-  const { data: unreadMessages } = useFirestore<Message[]>(`unread-messages-notif-${studentId}`, messagesQuery);
+  const { data: unreadMessages } = useCollection<Message>(messagesQuery);
 
 
   const checkNotifications = useCallback(async () => {
@@ -151,5 +150,3 @@ export const useNotification = () => {
 
   return { notifications, markAsSeen, hasUnansweredSurvey };
 };
-
-
