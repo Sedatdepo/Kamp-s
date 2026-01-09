@@ -46,9 +46,16 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // The signInStudent function in AuthContext will handle all logic
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
-      // No toast on success, redirection is handled by AuthContext
+      // The signInStudent function now returns a boolean indicating if navigation should happen
+      const shouldNavigate = await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
+      
+      if (!shouldNavigate) {
+          // If it shouldn't navigate (e.g. password required but not provided),
+          // the logic inside signInStudent will have thrown an error handled below.
+          // This keeps the student on the form.
+      }
+      // On success, AuthContext will handle navigation, so no toast or router.push here.
+
     } catch (error: any) {
       // The error might be because a password is required
       if (error.message.includes("şifre gereklidir")) {

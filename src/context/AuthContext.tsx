@@ -17,7 +17,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<void>;
+  signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      setAppUser(studentUser);
                      localStorage.setItem('appUser', JSON.stringify(studentUser));
                  } else {
-                     await signOut();
+                     signOut();
                  }
                 setProfileLoading(false);
             }
@@ -146,25 +146,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [studentId, db, signOut, user]);
 
 
-  useEffect(() => {
-    if (loading) return;
-    
-    const isPublic = publicRoutes.includes(pathname);
+    useEffect(() => {
+        if (loading) return;
 
-    if (appUser) {
-        if (appUser.type === 'student') {
-            if(pathname.startsWith('/dashboard/teacher') || isPublic) router.push('/dashboard/student');
-        } else if (appUser.type === 'teacher') {
-            if(pathname.startsWith('/dashboard/student') || isPublic) router.push('/dashboard/teacher');
+        const isPublic = publicRoutes.includes(pathname);
+        const isAuthRoute = pathname.startsWith('/dashboard');
+
+        if (appUser) {
+            const targetDashboard = `/dashboard/${appUser.type}`;
+            // If user is logged in but is on a public page (like login)
+            // or on the wrong dashboard, redirect them.
+            if (isPublic || (isAuthRoute && !pathname.startsWith(targetDashboard))) {
+                router.push(targetDashboard);
+            }
+        } else {
+            // If user is not logged in and is on a protected route,
+            // redirect them to the login page.
+            if (isAuthRoute) {
+                router.push('/');
+            }
         }
-    } else {
-      if (!isPublic) {
-        router.push('/');
-      }
-    }
-  }, [loading, appUser, pathname, router]);
+    }, [loading, appUser, pathname, router]);
 
-  const signInStudent = async (classCode: string, studentNumber: string, password?: string) => {
+  const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
     if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
 
     setProfileLoading(true);
@@ -196,13 +200,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
              const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
              await signInWithEmailAndPassword(auth, email, password);
-             // onAuthStateChanged will handle setting the user and navigation.
+             return true; // onAuthStateChanged will handle setting the user and navigation.
         } else {
             // No authUid, this is a guest-like session for the student
             const studentUser: AppUser = { type: 'student', data: studentData };
             setAppUser(studentUser);
             localStorage.setItem('appUser', JSON.stringify(studentUser));
-            router.push('/dashboard/student');
+            return true;
         }
 
     } catch (error: any) {
