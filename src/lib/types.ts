@@ -2,20 +2,6 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  dateAwarded?: string; // Standard badges might not have this
-  cost?: number; // For the badge shop
-}
-
-export interface CustomBadge extends Badge {
-    // Custom badges might have specific properties in the future
-}
-
-
 export interface Announcement {
   id: number;
   text: string;
@@ -451,4 +437,16 @@ export type ExamTheme = 'classic' | 'modern' | 'minimalist';
 
 export interface ExamDocument extends Archivable {
     data: Exam;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  dateAwarded?: string; 
+  cost?: number; 
+}
+
+export interface CustomBadge extends Badge {
 }
