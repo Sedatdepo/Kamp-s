@@ -43,9 +43,45 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
     }
   }, [isOpen, inviteLink]);
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(inviteLink);
-    toast({ title: 'Davet Linki Kopyalandı!' });
+  const copyLink = async () => {
+    try {
+      // Try the modern Clipboard API first
+      await navigator.clipboard.writeText(inviteLink);
+      toast({ title: 'Davet Linki Kopyalandı!' });
+    } catch (err) {
+      // If it fails, use the fallback method
+      console.warn('Clipboard API failed, falling back to execCommand.', err);
+      
+      const textArea = document.createElement("textarea");
+      textArea.value = inviteLink;
+      
+      // Make the textarea invisible and prevent scrolling
+      textArea.style.position = 'fixed';
+      textArea.style.top = '-9999px';
+      textArea.style.left = '-9999px';
+      
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          toast({ title: 'Davet Linki Kopyalandı!' });
+        } else {
+          throw new Error('Fallback copy was unsuccessful.');
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed:', fallbackErr);
+        toast({
+          title: 'Kopyalama Başarısız',
+          description: 'Link otomatik olarak kopyalanamadı. Lütfen manuel olarak kopyalayın.',
+          variant: 'destructive',
+        });
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
   };
 
   const downloadQrCode = () => {
