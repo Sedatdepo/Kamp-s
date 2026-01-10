@@ -17,6 +17,7 @@ import { SeatingPlanTab } from './student/SeatingPlanTab';
 import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
 import { ProjectTab } from './student/ProjectTab';
+import { BadgesTab } from './student/BadgesTab'; // Import Added
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy, Award } from 'lucide-react';
@@ -87,6 +88,7 @@ export function StudentDashboard() {
       switch(activeTab) {
           case 'grades': return <GradesTab />;
           case 'project': return <ProjectTab />;
+          case 'badges': return <BadgesTab />; // Case Added
           case 'announcements': return <StudentCommunicationTab />;
           case 'teacher-chats': return <TeacherChatsTab />;
           case 'homeworks': return <PerformanceHomeworkTab />;
@@ -139,6 +141,10 @@ export function StudentDashboard() {
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
+                    
+                    {/* Rozetlerim Kartı - Added Here */}
+                    <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın başarıları gör." onClick={() => setActiveTab('badges')} />
+                    
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />

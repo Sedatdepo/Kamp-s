@@ -2,19 +2,20 @@
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
-import { GradesTab } from './student/GradesTab';
-import { RiskFormTab } from './student/RiskFormTab';
-import { InfoFormTab } from './student/InfoFormTab';
-import { StudentCommunicationTab } from './student/StudentCommunicationTab';
-import { TeacherChatsTab } from './student/TeacherChatsTab';
-import { PerformanceHomeworkTab } from './student/PerformanceHomeworkTab';
-import { RegularHomeworkTab } from './student/RegularHomeworkTab';
-import { ElectionVoteTab } from './student/ElectionVoteTab';
-import { DutyRosterTab } from './student/DutyRosterTab';
-import { SeatingPlanTab } from './student/SeatingPlanTab';
-import { StudentSurveyTab } from './student/StudentSurveyTab';
-import { AccountSettingsTab } from './student/AccountSettingsTab';
-import { ProjectTab } from './student/ProjectTab';
+import { GradesTab } from './GradesTab';
+import { RiskFormTab } from './RiskFormTab';
+import { InfoFormTab } from './InfoFormTab';
+import { StudentCommunicationTab } from './StudentCommunicationTab';
+import { TeacherChatsTab } from './TeacherChatsTab';
+import { PerformanceHomeworkTab } from './PerformanceHomeworkTab';
+import { RegularHomeworkTab } from './RegularHomeworkTab';
+import { ElectionVoteTab } from './ElectionVoteTab';
+import { DutyRosterTab } from './DutyRosterTab';
+import { SeatingPlanTab } from './SeatingPlanTab';
+import { StudentSurveyTab } from './StudentSurveyTab';
+import { AccountSettingsTab } from './AccountSettingsTab';
+import { ProjectTab } from './ProjectTab';
+import { BadgesTab } from './BadgesTab'; // Added Import
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy, Award } from 'lucide-react';
@@ -24,9 +25,9 @@ import { AuthContext } from '@/context/AuthContext';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
-import { Skeleton } from '../ui/skeleton';
+import { Skeleton } from '../../ui/skeleton';
 import { cn } from '@/lib/utils';
-import { StudentClubTab } from './student/StudentClubTab'; 
+import { StudentClubTab } from './StudentClubTab'; 
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -97,6 +98,7 @@ export function StudentDashboard() {
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
+          case 'badges': return <BadgesTab />; // Added Case
           default: return null;
       }
   }
@@ -138,6 +140,10 @@ export function StudentDashboard() {
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
+                    
+                    {/* Rozetlerim Kartı - Added Here */}
+                    <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın başarı rozetlerini gör." onClick={() => setActiveTab('badges')} />
+                    
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
                     <MenuCard icon={<BookText />} title="Ödevler" description="Öğretmeninin verdiği diğer ödevler." onClick={() => setActiveTab('regular-homeworks')} hasNotification={notifications.homeworks} />
@@ -190,7 +196,7 @@ export function StudentDashboard() {
                         title="Kulüp" 
                         description="Kulüp tercihi yap veya atamanı gör." 
                         onClick={() => setActiveTab('club')} 
-                        isDisabled={false} // isDisabled logic is now inside StudentClubTab
+                        isDisabled={false} 
                     />
 
                     <MenuCard 

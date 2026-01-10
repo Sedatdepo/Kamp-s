@@ -19,6 +19,7 @@ import { AddRubricModal } from './AddRubricModal';
 import { EditProjectModal } from './EditProjectModal';
 import { CreateProjectModal } from './CreateProjectModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
+import { Heart, Filter } from 'lucide-react';
 
 export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const { db } = useAuth();

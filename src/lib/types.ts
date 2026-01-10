@@ -102,7 +102,7 @@ export interface MatchingPair {
   answer: string;
 }
 
-export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph' | 'choice' | 'open';
+export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'multiple' | 'checkbox' | 'dropdown' | 'linear' | 'date' | 'paragraph' | 'choice' | 'open' | 'text';
 
 export interface Question {
   id: string | number;
@@ -187,6 +187,7 @@ export type GradingScores = {
 export interface Student {
   id: string;
   authUid?: string;
+  uid?: string; // Added for compatibility
   classId: string;
   number: string;
   name: string;
@@ -233,6 +234,7 @@ export interface Club {
   id: string;
   name: string;
   teacherId: string;
+  description?: string;
 }
 
 
@@ -399,6 +401,18 @@ export interface HomeworkDocument extends Archivable {
 // Yeni eklenen DisciplineRecord tipi
 export interface DisciplineRecord extends Archivable {
     studentName?: string; // Add studentName for easy access
+    currentPhase?: number;
+    formData?: {
+        incidentDate: string;
+        incidentTime: string;
+        location: string;
+        description: string;
+        witnesses: string;
+        evidence: string;
+        defense?: string;
+        decision?: string;
+        sanction?: string;
+    };
 }
 
 export interface BepStudent {
@@ -449,4 +463,11 @@ export interface Badge {
 }
 
 export interface CustomBadge extends Badge {
+}
+
+// Mock Database interface to satisfy type checker if needed, 
+// though typically this should be handled by Firestore types.
+export interface Database {
+    disciplineRecords?: DisciplineRecord[];
+    zumreDocuments?: any[];
 }

@@ -18,6 +18,7 @@ import { AddRubricModal } from './AddRubricModal';
 import { EditAssignmentModal } from './EditAssignmentModal';
 import { CreateAssignmentModal } from './CreateAssignmentModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
+import { Heart, Filter } from 'lucide-react';
 
 export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const { db } = useAuth();

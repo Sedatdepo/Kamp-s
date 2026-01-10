@@ -10,6 +10,7 @@ import { collection, doc, addDoc, query, where, updateDoc, increment } from 'fir
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase } from '@/firebase';

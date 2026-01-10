@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import { useFirestore } from '@/hooks/useFirestore';
+import { useCollection } from '@/firebase'; // Changed import
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
@@ -31,7 +31,8 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
   const { toast } = useToast();
 
   const lessonsQuery = useMemo(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  const { data: lessons, loading: lessonsLoading } = useFirestore<Lesson[]>(`lessons-for-teacher-${teacherId}`, lessonsQuery);
+  // Changed useFirestore to useCollection
+  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
   const [filterLessonId, setFilterLessonId] = useState<string>('all');

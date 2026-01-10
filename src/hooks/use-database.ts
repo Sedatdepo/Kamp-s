@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
-    HomeworkDocument
+    HomeworkDocument, DisciplineRecord
 } from '@/lib/types';
 
 // localStorage anahtarı
 const DB_KEY = 'ito_kampus_database';
 
 // Veritabanı yapısı
-interface Database {
+export interface Database {
   annualPlans: AnnualPlan[];
   dilekceDocuments: DilekceDocument[];
   dutyRosterDocuments: DutyRosterDocument[];
@@ -21,7 +21,9 @@ interface Database {
   riskMapDocuments: RiskMapDocument[];
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
-  userScenarios: Record<string, string[]>; // Yeni eklendi
+  disciplineRecords: DisciplineRecord[]; // Added
+  zumreDocuments: any[]; // Added - define proper type if available
+  userScenarios: Record<string, string[]>; 
 }
 
 // Varsayılan boş veritabanı
@@ -35,7 +37,9 @@ const initialDb: Database = {
   riskMapDocuments: [],
   communicationDocuments: [],
   homeworkDocuments: [],
-  userScenarios: {}, // Yeni eklendi
+  disciplineRecords: [], // Added
+  zumreDocuments: [], // Added
+  userScenarios: {}, 
 };
 
 export const useDatabase = () => {
