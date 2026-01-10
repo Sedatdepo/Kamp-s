@@ -110,7 +110,7 @@ const playAudio = (type: any) => {
   }
 };
 
-export function GamificationTab() {
+export function SinifKahramanlariTab() {
   // State Tanımları
   const [students, setStudents] = useState<any[]>([]);
   const [behaviors, setBehaviors] = useState(INITIAL_BEHAVIORS);
@@ -791,7 +791,7 @@ export function GamificationTab() {
                       {editingBehaviorId === b.id ? (
                         <div className="flex items-center gap-2 w-full">
                            <input type="text" className="flex-1 border border-indigo-300 rounded px-2 py-1 text-sm" value={editForm.label} onChange={(e) => setEditForm({...editForm, label: e.target.value})} />
-                           <input type="number" className="w-14 border border-indigo-300 rounded px-2 py-1 text-sm" value={editForm.points} onChange={(e) => setEditForm({...editForm, points: parseInt(e.target.value)})} />
+                           <input type="number" className="w-14 border border-indigo-300 rounded px-2 py-1 text-sm" value={editForm.points} onChange={(e) => setEditForm({...editForm, points: parseInt(String(editForm.points))})} />
                            <button onClick={handleSaveEdit} className="text-green-600 p-1"><Check size={18}/></button>
                            <button onClick={() => setEditingBehaviorId(null)} className="text-slate-400 p-1"><X size={18}/></button>
                         </div>
