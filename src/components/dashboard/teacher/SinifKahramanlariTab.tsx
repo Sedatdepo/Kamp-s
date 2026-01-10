@@ -780,7 +780,7 @@ export function SinifKahramanlariTab() {
                   <h3 className="text-sm font-bold text-slate-500 mb-3 uppercase">Yeni Kriter Ekle</h3>
                   <form onSubmit={handleAddBehavior} className="flex gap-2">
                     <input type="text" placeholder="Davranış adı" className="border border-slate-300 rounded px-3 py-2 flex-1 text-sm" value={newBehavior.label} onChange={e => setNewBehavior({...newBehavior, label: e.target.value})} />
-                    <input type="number" placeholder="Puan" className="border border-slate-300 rounded px-3 py-2 w-20 text-sm" value={newBehavior.points} onChange={e => setNewBehavior({...newBehavior, points: parseInt(e.target.value)})} />
+                    <input type="number" placeholder="Puan" className="border border-slate-300 rounded px-3 py-2 w-20 text-sm" value={newBehavior.points} onChange={(e) => setNewBehavior({...newBehavior, points: parseInt(e.target.value)})} />
                     <button type="submit" className="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"><Plus size={18} /></button>
                   </form>
                 </div>
