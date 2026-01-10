@@ -7,7 +7,7 @@ import { Student } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
-  Crown, Award, Trash2, Volume2, VolumeX, Timer, X, Check
+  Crown, Award, Trash2, UserPlus, X, Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// --- SABİT VERİLER (Öğrenci Paneliyle Uyumlu ID'ler) ---
 
 const BEHAVIORS = [
   { id: 'beh_1', label: 'Derse Katılım', points: 5, icon: <Zap className="text-yellow-500" /> },
@@ -27,8 +27,6 @@ const BEHAVIORS = [
   { id: 'beh_5', label: 'Düzenli Defter', points: 5, icon: <Smile className="text-green-500" /> },
 ];
 
-// Bu ID'ler öğrenci panelindeki BadgesTab ile uyumlu olmalı veya genel bir yapı kurulmalı.
-// Şimdilik temel rozetleri tanımlıyoruz.
 const AVAILABLE_BADGES = [
   { id: '1', name: 'Katılım Ustası', icon: '⭐', description: 'İstikrarlı derse katılım.', cost: 50 },
   { id: '2', name: 'Ödev Canavarı', icon: '⚡', description: 'Ödevlerini eksiksiz yapar.', cost: 60 },
@@ -48,21 +46,11 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("points");
   
-  // Basit Ses Efekti
-  const playSound = (type: 'success' | 'badge') => {
-    // Tarayıcı kısıtlamaları nedeniyle basit bir beep veya console log
-    // Gerçek bir uygulamada burada Audio objesi kullanılır.
-    // const audio = new Audio('/sounds/success.mp3'); audio.play();
-  };
-
-  // --- PUAN VERME İŞLEMİ ---
   const handleGivePoints = async (student: Student, points: number, reason: string) => {
     if (!db) return;
 
     try {
       const studentRef = doc(db, 'students', student.id);
-      
-      // Firestore'da atomik güncelleme (Anlık yansır)
       await updateDoc(studentRef, {
         behaviorScore: increment(points)
       });
@@ -73,8 +61,7 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
         className: "bg-green-50 border-green-200 text-green-800"
       });
       
-      playSound('success');
-      setIsModalOpen(false); // Modalı kapat
+      setIsModalOpen(false);
     } catch (error) {
       console.error("Puan verme hatası:", error);
       toast({
@@ -85,11 +72,9 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
     }
   };
 
-  // --- ROZET VERME İŞLEMİ ---
   const handleGiveBadge = async (student: Student, badge: any) => {
     if (!db) return;
 
-    // Zaten bu rozete sahip mi?
     if (student.badges?.includes(badge.id)) {
       toast({
         variant: "destructive",
@@ -112,7 +97,6 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
         className: "bg-yellow-50 border-yellow-200 text-yellow-800"
       });
 
-      playSound('badge');
       setIsModalOpen(false);
     } catch (error) {
       console.error("Rozet hatası:", error);
@@ -130,14 +114,11 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
     setActiveTab("points");
   };
 
-  // Öğrencileri puana göre sırala (Liderlik Tablosu mantığı)
-  // FIX: students prop'u undefined ise boş dizi kullan
   const safeStudents = students || [];
   const sortedStudents = [...safeStudents].sort((a, b) => (b.behaviorScore || 0) - (a.behaviorScore || 0));
 
   return (
     <div className="space-y-6 p-2">
-      {/* Üst Bilgi Kartı */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -145,67 +126,60 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
           </h2>
           <p className="text-indigo-100 opacity-90">Öğrencilerinizi motive edin, puanlar ve rozetler verin.</p>
         </div>
-        <div className="hidden md:block">
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center min-w-[120px]">
-            <div className="text-xs uppercase font-bold tracking-wider opacity-80">Toplam Puan</div>
-            <div className="text-2xl font-black">{safeStudents.reduce((acc, s) => acc + (s.behaviorScore || 0), 0)}</div>
-          </div>
-        </div>
       </div>
 
-      {/* Öğrenci Listesi Grid */}
       {safeStudents.length === 0 ? (
         <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed">
           <p className="text-slate-500">Bu sınıfta henüz öğrenci yok.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {sortedStudents.map((student, index) => (
-            <Card 
-              key={student.id} 
-              className="cursor-pointer hover:shadow-lg transition-all hover:border-indigo-300 group relative overflow-hidden"
-              onClick={() => openStudentModal(student)}
-            >
-              {/* Sıralama Rozeti (İlk 3) */}
-              {index < 3 && (
-                <div className={`absolute top-0 right-0 p-2 rounded-bl-xl text-white font-bold text-xs shadow-sm z-10
-                  ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-slate-400' : 'bg-orange-400'}`}>
-                  #{index + 1}
-                </div>
-              )}
-
-              <CardContent className="p-4 flex flex-col items-center text-center pt-6">
-                <div className="relative">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold mb-3 border-4 
-                    ${index === 0 ? 'border-yellow-100 bg-yellow-50 text-yellow-600' : 'border-slate-100 bg-slate-50 text-slate-600'}`}>
-                    {student.name.charAt(0)}
-                  </div>
-                  {/* Puan Badge */}
-                  <div className="absolute -bottom-1 -right-1 bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full border-2 border-white">
-                    {student.behaviorScore || 0}p
-                  </div>
-                </div>
-                
-                <h3 className="font-bold text-slate-800 truncate w-full">{student.name}</h3>
-                <p className="text-xs text-slate-500 mb-3">{student.number}</p>
-
-                {/* Rozet Önizleme */}
-                <div className="flex gap-1 justify-center h-6">
-                  {student.badges && student.badges.slice(0, 3).map((badgeId, i) => (
-                    <span key={i} title="Rozet sahibi" className="text-sm">
-                      {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
-                    </span>
-                  ))}
-                  {(student.badges?.length || 0) > 3 && (
-                    <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded-full flex items-center">
-                      +{ (student.badges?.length || 0) - 3 }
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Sınıf Listesi ve Puan Durumu</CardTitle>
+                <CardDescription>Öğrencilere puan veya rozet vermek için işlem yapabilirsiniz.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[50px]">Sıra</TableHead>
+                            <TableHead>Öğrenci Adı</TableHead>
+                            <TableHead>Okul No</TableHead>
+                            <TableHead>Puan</TableHead>
+                            <TableHead>Rozetler</TableHead>
+                            <TableHead className="text-right">İşlemler</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedStudents.map((student, index) => (
+                            <TableRow key={student.id}>
+                                <TableCell className="font-bold">{index + 1}</TableCell>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell>{student.number}</TableCell>
+                                <TableCell>
+                                    <Badge variant="secondary">{student.behaviorScore || 0}</Badge>
+                                </TableCell>
+                                <TableCell className="flex gap-1">
+                                    {student.badges?.slice(0, 4).map((badgeId) => (
+                                        <span key={badgeId} title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name} className="text-lg">
+                                            {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
+                                        </span>
+                                    ))}
+                                    {(student.badges?.length || 0) > 4 && (
+                                        <span className="text-xs font-bold">+{(student.badges?.length || 0) - 4}</span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button size="sm" onClick={() => openStudentModal(student)}>
+                                        <Award className="mr-2 h-4 w-4" /> Puan/Rozet Ver
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
       )}
 
       {/* İŞLEM MODALI */}
