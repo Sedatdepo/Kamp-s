@@ -29,8 +29,9 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StudentClubTab } from './StudentClubTab'; 
+import { BadgesTab } from './BadgesTab';
 
-const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
+const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled, extraInfo }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean, extraInfo?: React.ReactNode }) => {
   if (isLoading) {
     return <Skeleton className="h-28 w-full" />;
   }
@@ -48,7 +49,8 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoadin
           <CardTitle className="font-headline text-lg group-hover:text-primary">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
-        {hasNotification && (
+        {extraInfo && <div className="absolute top-2 right-2">{extraInfo}</div>}
+        {hasNotification && !extraInfo && (
           <Badge variant="destructive" className="absolute top-2 right-2 h-3 w-3 p-0 flex items-center justify-center text-xs"></Badge>
         )}
       </CardHeader>
@@ -99,6 +101,7 @@ export function StudentDashboard() {
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
+          case 'badges': return <BadgesTab />;
           default: return null;
       }
   }
@@ -119,6 +122,7 @@ export function StudentDashboard() {
   }
   
   const behaviorScore = appUser?.type === 'student' ? (appUser.data.behaviorScore ?? 100) : 100;
+  const studentXp = appUser?.type === 'student' ? (appUser.data.xp ?? 0) : 0;
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
@@ -139,6 +143,13 @@ export function StudentDashboard() {
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
+                    <MenuCard 
+                        icon={<Award />} 
+                        title="Rozetlerim" 
+                        description="Kazandığın rozetleri ve puanını gör." 
+                        onClick={() => setActiveTab('badges')} 
+                        extraInfo={<Badge variant="secondary">{studentXp} XP</Badge>}
+                    />
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                     <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />

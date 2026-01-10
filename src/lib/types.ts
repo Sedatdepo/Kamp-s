@@ -7,8 +7,14 @@ export interface Badge {
   name: string;
   description: string;
   icon: string;
-  dateAwarded: string;
+  dateAwarded?: string; // Standard badges might not have this
+  cost?: number; // For the badge shop
 }
+
+export interface CustomBadge extends Badge {
+    // Custom badges might have specific properties in the future
+}
+
 
 export interface Announcement {
   id: number;
@@ -212,7 +218,8 @@ export interface Student {
   
   behaviorScore: number;
   xp?: number; // Gamification experience points
-  badges?: Badge[]; // Gamification badges
+  badges?: string[]; // Gamification badge IDs
+  customBadges?: CustomBadge[]; // Custom, one-off badges
 
   hasProject?: boolean;
   
