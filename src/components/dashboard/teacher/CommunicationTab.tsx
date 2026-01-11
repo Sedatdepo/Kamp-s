@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User, Users } from 'lucide-react';
+import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User, Users, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -146,7 +146,7 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   )
 }
 
-function MessagesPanel({ classId, students: allStudentsInClass }: { classId: string, students: Student[] }) {
+function MessagesPanel({ classId, students }: { classId: string, students: Student[] }) {
     const { appUser, db } = useAuth();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -211,7 +211,7 @@ function MessagesPanel({ classId, students: allStudentsInClass }: { classId: str
                     <CardTitle className="font-headline flex items-center gap-2"><Users className="h-6 w-6"/> Öğrenciler</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto">
-                    {allStudentsInClass && allStudentsInClass.map(student => (
+                    {students && students.map(student => (
                         <div key={student.id} onClick={() => setSelectedStudent(student)}
                             className={`p-3 rounded-lg cursor-pointer flex justify-between items-center ${selectedStudent?.id === student.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
                             <div className="flex items-center gap-3">
@@ -262,7 +262,7 @@ function MessagesPanel({ classId, students: allStudentsInClass }: { classId: str
 }
 
 
-export function CommunicationTab({ classId, currentClass }: CommunicationTabProps) {
+export function CommunicationTab({ classId, currentClass }: { classId: string; currentClass: Class | null; }) {
     const { db } = useAuth();
     const studentsQuery = useMemoFirebase(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
     const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
