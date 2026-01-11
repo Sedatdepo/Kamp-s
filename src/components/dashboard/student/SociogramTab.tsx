@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
@@ -32,6 +32,10 @@ export function SociogramTab() {
   
   const [tempAnswers, setTempAnswers] = useState<Record<number, string[]>>({});
   const [manualInputs, setManualInputs] = useState<Record<number, string>>({});
+  const [activeAutocompletion, setActiveAutocompletion] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     if (student && currentClass?.sociogramSurvey) {
@@ -85,10 +89,8 @@ export function SociogramTab() {
     let allLeadership: string[] = [];
 
     currentClass.sociogramSurvey.questions.forEach(q => {
-      // Get selections from clickable cards
       const visualAnswers = tempAnswers[q.id] || [];
       
-      // Process manually typed names
       const manualText = manualInputs[q.id] || '';
       const manualNames = manualText.split(',').map(name => name.trim()).filter(Boolean);
       const manualIds = manualNames.map(name => {
@@ -115,6 +117,38 @@ export function SociogramTab() {
         toast({ variant: 'destructive', title: 'Hata', description: 'Cevaplar kaydedilemedi.' });
     }
   };
+
+  const handleManualInputChange = (questionId: number, value: string) => {
+    setManualInputs(prev => ({...prev, [questionId]: value}));
+    const lastPart = value.split(',').pop()?.trim().toLowerCase() || '';
+    if (lastPart) {
+        setActiveAutocompletion(questionId);
+        setSearchTerm(lastPart);
+    } else {
+        setActiveAutocompletion(null);
+    }
+  };
+
+  const handleSuggestionClick = (questionId: number, name: string) => {
+    const currentInput = manualInputs[questionId] || '';
+    const parts = currentInput.split(',');
+    parts.pop(); // remove last (incomplete) part
+    parts.push(name);
+    setManualInputs(prev => ({...prev, [questionId]: parts.join(', ') + ', '}));
+    setActiveAutocompletion(null);
+    setSearchTerm('');
+    document.getElementById(`textarea-${questionId}`)?.focus();
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setActiveAutocompletion(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   if (classLoading || studentsLoading) {
       return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin"/></div>;
@@ -131,6 +165,11 @@ export function SociogramTab() {
   
   const otherClassmates = classmates?.filter(c => c.id !== student?.id) || [];
   const survey = currentClass.sociogramSurvey || { title: '', questions: [] };
+
+  const filteredSuggestions = useMemo(() => {
+    if (!searchTerm) return [];
+    return otherClassmates.filter(c => c.name.toLowerCase().includes(searchTerm));
+  }, [searchTerm, otherClassmates]);
 
   return (
     <div className="space-y-8">
@@ -187,13 +226,31 @@ export function SociogramTab() {
                             );
                          })}
                      </div>
-                     <div>
+                      <div className="relative" ref={autocompleteRef}>
                         <Textarea
+                            id={`textarea-${question.id}`}
                             placeholder="Veya isimleri buraya virgülle ayırarak yazın (örn: Ahmet Yılmaz, Ayşe Kaya)..."
                             value={manualInputs[question.id] || ''}
-                            onChange={(e) => setManualInputs(prev => ({...prev, [question.id]: e.target.value}))}
+                            onChange={(e) => handleManualInputChange(question.id, e.target.value)}
+                            onFocus={(e) => handleManualInputChange(question.id, e.target.value)}
                             className="text-sm"
                         />
+                        {activeAutocompletion === question.id && filteredSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                {filteredSuggestions.map(suggestion => (
+                                    <div 
+                                        key={suggestion.id}
+                                        className="px-4 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                                        onMouseDown={(e) => { // use onMouseDown to prevent blur event from firing first
+                                            e.preventDefault();
+                                            handleSuggestionClick(question.id, suggestion.name);
+                                        }}
+                                    >
+                                        {suggestion.name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                      </div>
                 </CardContent>
             </Card>
