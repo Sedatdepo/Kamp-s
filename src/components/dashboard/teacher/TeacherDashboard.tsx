@@ -1,6 +1,4 @@
-
-
-"use client";
+'use client';
 
 import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -623,6 +621,7 @@ export function TeacherDashboard() {
     
 
     
+
 
 
 

@@ -1,7 +1,9 @@
+'use client';
 
-"use client";
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useForm, useFieldArray, FormProvider, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { 
   Users, 
   FileText, 
