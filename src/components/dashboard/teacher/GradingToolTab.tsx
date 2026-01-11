@@ -97,12 +97,16 @@ const CriteriaGradingTable = ({
     
         const studentRef = doc(db, 'students', studentId);
         
-        // This is only for behavior tab, so we update behaviorScore
         try {
             await updateDoc(studentRef, {
                 behaviorScore: increment(change)
             });
-            // The onSnapshot in AuthContext will handle the UI update.
+            // The onSnapshot listener in AuthContext will handle the UI update.
+            // A toast can still be shown for immediate feedback.
+            toast({
+                title: `${change > 0 ? '+' : ''}${change} Puan`,
+                description: `${student.name} adlı öğrencinin puanı güncellendi.`
+            })
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Puan güncellenemedi: ' + e.message });
         }

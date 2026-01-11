@@ -95,55 +95,39 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
     if (!db) return;
 
     const isOwned = student.badges?.includes(badge.id);
+    const studentRef = doc(db, 'students', student.id);
 
-    if (isOwned) {
-      // Rozeti geri al
-       try {
-        const studentRef = doc(db, 'students', student.id);
+    try {
+      if (isOwned) {
         await updateDoc(studentRef, {
           badges: arrayRemove(badge.id)
         });
-
         toast({
           title: "Rozet Geri Alındı!",
           description: `${student.name} öğrencisinden "${badge.name}" rozeti kaldırıldı.`,
           variant: "destructive"
         });
-        setIsModalOpen(false); // Modalı kapat
-      } catch (error) {
-        console.error("Rozet geri alma hatası:", error);
-        toast({
-          variant: "destructive",
-          title: "Hata",
-          description: "Rozet geri alınamadı."
-        });
-      }
-    } else {
-      // Rozeti ver
-      try {
-        const studentRef = doc(db, 'students', student.id);
-        
+      } else {
         await updateDoc(studentRef, {
           badges: arrayUnion(badge.id)
         });
-
         toast({
           title: "Rozet Kazanıldı!",
           description: `${student.name}: ${badge.name}`,
           className: "bg-yellow-50 border-yellow-200 text-yellow-800"
         });
-
-        setIsModalOpen(false);
-      } catch (error) {
-        console.error("Rozet hatası:", error);
-        toast({
-          variant: "destructive",
-          title: "Hata",
-          description: "Rozet verilemedi."
-        });
       }
+      setIsModalOpen(false); // Modalı kapat
+    } catch (error) {
+      console.error("Rozet işlemi hatası:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Rozet işlemi gerçekleştirilemedi."
+      });
     }
   };
+
 
   const openStudentModal = (student: Student) => {
     setSelectedStudent(student);
