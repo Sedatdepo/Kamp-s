@@ -36,23 +36,20 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     const grades = termGrades || {};
     const perfCriteria = teacherProfile?.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile?.projCriteria || INITIAL_PROJ_CRITERIA;
-    const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
     
     const exam1 = grades.exam1;
     const exam2 = grades.exam2;
     const perf1 = calculateAverage(grades.scores1, perfCriteria);
     const perf2 = calculateAverage(grades.scores2, perfCriteria);
     const projAvg = student.hasProject ? calculateAverage(grades.projectScores, projCriteria) : null;
-    const behaviorAvg = calculateAverage(grades.behaviorScores, behaviorCriteria);
     
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1 ?? 'Girilmedi'} />
             <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2 ?? 'Girilmedi'} />
             <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1} />
             <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
-            <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
         </div>
     )
 };
@@ -93,6 +90,7 @@ export function GradesTab() {
     const term1Avg = calculateTermAverage(appUser.data.term1Grades);
     const term2Avg = calculateTermAverage(appUser.data.term2Grades);
     const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+    const behaviorScore = appUser.data.behaviorScore;
 
   if (classLoading || teacherLoading) {
     return <Card><CardContent className="p-6"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></CardContent></Card>
@@ -104,10 +102,16 @@ export function GradesTab() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle>Notlarım</CardTitle>
-                    <Card className="p-4 bg-background">
-                        <CardDescription className="flex items-center gap-2"><GraduationCap/> Yıl Sonu Ortalama</CardDescription>
-                        <p className="text-4xl font-bold text-primary text-center mt-1">{finalAverage.toFixed(2)}</p>
-                    </Card>
+                    <div className="flex gap-4">
+                        <Card className="p-4 bg-background">
+                            <CardDescription className="flex items-center gap-2"><UserCheck/> Davranış Puanı</CardDescription>
+                            <p className="text-4xl font-bold text-primary text-center mt-1">{behaviorScore.toFixed(2)}</p>
+                        </Card>
+                        <Card className="p-4 bg-background">
+                            <CardDescription className="flex items-center gap-2"><GraduationCap/> Yıl Sonu Ortalama</CardDescription>
+                            <p className="text-4xl font-bold text-primary text-center mt-1">{finalAverage.toFixed(2)}</p>
+                        </Card>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
