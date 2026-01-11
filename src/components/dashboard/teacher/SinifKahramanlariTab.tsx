@@ -7,7 +7,7 @@ import { Student } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
-  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle
+  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle, Plus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
