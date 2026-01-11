@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -27,7 +28,7 @@ interface StudentListTabProps {
 }
 
 export function StudentListTab({ classId, students, currentClass, teacherProfile }: StudentListTabProps) {
-  const { db } = useAuth();
+  const { db, appUser } = useAuth();
   const { toast } = useToast();
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
@@ -38,18 +39,21 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
   const [bulkStudentData, setBulkStudentData] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
+  const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+
   const sortedStudents = useMemo(() => {
     if (!students) return [];
     return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
   }, [students]);
 
   const handleAddStudent = async () => {
-    if (!newStudentName.trim() || !newStudentNumber.trim() || !db) return;
+    if (!newStudentName.trim() || !newStudentNumber.trim() || !db || !teacherId) return;
     try {
       const newStudentData: Omit<Student, 'id'> = {
         name: newStudentName,
         number: newStudentNumber,
         classId: classId,
+        teacherId: teacherId, // ADDED
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
@@ -68,7 +72,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
   };
   
   const handleBulkAddStudents = async () => {
-    if (!bulkStudentData.trim() || !db) return;
+    if (!bulkStudentData.trim() || !db || !teacherId) return;
     try {
         const lines = bulkStudentData.split('\n').filter(line => line.trim() !== '');
         const studentsToAdd = lines.map(line => {
@@ -81,7 +85,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         const batch = writeBatch(db);
         studentsToAdd.forEach(student => {
             const newStudentRef = doc(collection(db, 'students'));
-            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
+            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, teacherId: teacherId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
             batch.set(newStudentRef, newStudentData);
         });
 
@@ -127,7 +131,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !db) return;
+    if (!file || !db || !teacherId) return;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -146,7 +150,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         const batch = writeBatch(db);
         studentsToAdd.forEach(student => {
           const newStudentRef = doc(collection(db, 'students'));
-          const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
+          const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, teacherId: teacherId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
           batch.set(newStudentRef, newStudentData);
         });
 
@@ -192,7 +196,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
                           </DialogDescription>
                       </DialogHeader>
                       <Textarea 
-                          placeholder="101 Ali Yılmaz&#10;102 Ayşe Kaya&#10;103 Fatma Öztürk"
+                          placeholder="101 Ali Yılmaz\n102 Ayşe Kaya\n103 Fatma Öztürk"
                           value={bulkStudentData}
                           onChange={(e) => setBulkStudentData(e.target.value)}
                           rows={10}

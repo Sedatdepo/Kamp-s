@@ -205,6 +205,7 @@ export interface Student {
   authUid?: string;
   uid?: string; // Added for compatibility
   classId: string;
+  teacherId: string; // ADDED
   number: string;
   name: string;
   gender?: 'M' | 'F';

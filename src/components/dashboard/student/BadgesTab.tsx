@@ -31,7 +31,7 @@ export function BadgesTab() {
 
   const studentData = appUser.data;
 
-  const teacherQuery = useMemoFirebase(() => (studentData?.classId && db ? doc(db, 'teachers', appUser.data.teacherId) : null), [studentData?.classId, db, appUser.data.teacherId]);
+  const teacherQuery = useMemoFirebase(() => (studentData.teacherId && db ? doc(db, 'teachers', studentData.teacherId) : null), [studentData.teacherId, db]);
   const { data: teacherProfile } = useDoc<TeacherProfile>(teacherQuery);
   const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
 
