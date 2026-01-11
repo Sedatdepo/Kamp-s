@@ -2,16 +2,19 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Class, TeacherProfile, Lesson } from '@/lib/types';
+import {
+  collection,
+  query,
+  where,
+  doc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { LessonManager } from './LessonManager';
+import { Loader2, Save, FileDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -236,6 +239,10 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
 }
 
 export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
+  const { db } = useAuth();
+  const lessonsQuery = useMemoFirebase(() => (props.teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', props.teacherId)) : null), [props.teacherId, db]);
+  const { data: lessons } = useCollection<Lesson>(lessonsQuery);
+
   return (
     <Tabs defaultValue="assignment">
       <TabsList className="grid w-full grid-cols-2">
@@ -250,6 +257,7 @@ export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
           classId={props.classId}
           teacherProfile={props.teacherProfile}
           currentClass={props.currentClass}
+          lessons={lessons || []}
         />
       </TabsContent>
     </Tabs>

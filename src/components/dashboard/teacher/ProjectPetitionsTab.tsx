@@ -7,15 +7,21 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { saveAs } from 'file-saver';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Label } from '@/components/ui/label';
 
-export function ProjectPetitionsTab({ classId, teacherProfile, currentClass }: { classId: string, teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
+interface ProjectPetitionsTabProps {
+    classId: string;
+    teacherProfile: TeacherProfile | null;
+    currentClass: Class | null;
+    lessons: Lesson[];
+}
+
+export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, lessons }: ProjectPetitionsTabProps) {
   const { db } = useAuth();
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
@@ -39,6 +45,7 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass }: {
       number: s.number,
       name: s.name,
       className: currentClass?.name || '', 
+      projectPreferences: s.projectPreferences || [],
     }));
     setStudents(classStudents);
   };
@@ -60,24 +67,12 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass }: {
       <style>
         body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
         .page-break { page-break-after: always; }
-        
-        .dilekce-container { 
-            height: 9.5cm; 
-            border-bottom: 1px dashed #999; 
-            padding: 20px 40px; 
-            box-sizing: border-box; 
-            position: relative;
-        }
-        
+        .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
         .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
-        
         .tarih-sag { text-align: right; margin-bottom: 10px; font-size: 11pt; }
-        
         .content { text-align: justify; margin-bottom: 15px; line-height: 1.4; }
-        
         .tercihler { margin-left: 10px; margin-bottom: 20px; }
-        .tercih-satir { margin-bottom: 8px; }
-        
+        .tercih-satir { margin-bottom: 8px; font-weight: bold; }
         .imza-tablosu { width: 100%; margin-top: 25px; border-collapse: collapse; }
         .imza-hucre { vertical-align: top; width: 50%; padding: 5px; }
         .imza-baslik { font-weight: bold; margin-bottom: 40px; display: block; }
@@ -91,22 +86,22 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass }: {
     students.forEach((student, index) => {
       const isThirdItem = (index + 1) % 3 === 0;
       
+      const tercihlerHtml = Array.from({ length: 5 }).map((_, i) => {
+        const preferenceId = student.projectPreferences?.[i];
+        const lessonName = preferenceId ? lessons.find(l => l.id === preferenceId)?.name : '....................................................................';
+        return `<div class="tercih-satir"><b>${i + 1}.</b> ${lessonName}</div>`;
+      }).join('');
+
       htmlContent += `
         <div class="dilekce-container">
           <div class="header">${schoolName || '........................................... OKULU MÜDÜRLÜĞÜNE'}</div>
-          
           <div class="tarih-sag">${new Date().toLocaleDateString('tr-TR')}</div>
-          
           <div class="content">
             Okulunuzun <b>${student.className || '.......'}</b> sınıfı, <b>${student.number || '.......'}</b> numaralı öğrencisiyim.
             <b>${academicYear}</b> Eğitim-Öğretim yılında proje ödevi almak istediğim derslere ait tercihlerim öncelik sırasına göre aşağıdadır.
             <br/>Gereğini bilgilerinize arz ederim.
           </div>
-
-          <div class="tercihler">
-            ${[1, 2, 3, 4, 5].map(n => `<div class="tercih-satir"><b>${n}.</b> ....................................................................</div>`).join('')}
-          </div>
-
+          <div class="tercihler">${tercihlerHtml}</div>
           <table class="imza-tablosu">
             <tr>
               <td class="imza-hucre" align="center">
@@ -144,7 +139,7 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass }: {
                 <Button onClick={handleDownloadDoc}><FileDown className="mr-2"/> Word Olarak İndir</Button>
             </div>
             <CardDescription>
-                Sınıf listenizi aktarın ve tüm öğrenciler için tek bir dosyada tercih dilekçeleri oluşturun.
+                Sınıf listenizi aktarın ve öğrencilerin dijitalde yaptığı tercihleri içeren dilekçeleri oluşturun.
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
