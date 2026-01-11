@@ -57,9 +57,9 @@ export function SociogramTab() {
   }, [student, currentClass]);
 
   const studentsQuery = useMemoFirebase(() => {
-    if (!db || !student) return null;
-    return query(collection(db, 'students'), where('classId', '==', student.classId));
-  }, [db, student]);
+    if (!db || !student?.classId) return null;
+    return collection(db, 'classes', student.classId, 'students');
+  }, [db, student?.classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
   const handleSelection = (questionId: number, targetId: string, maxSelections: number) => {
