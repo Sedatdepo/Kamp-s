@@ -1,14 +1,13 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where } from 'firebase/firestore';
-import { Class, Homework, TeacherProfile, Student, Submission, HomeworkDocument } from '@/lib/types';
+import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -29,114 +28,68 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from '../RecordManager';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
+
+const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSubmitted }: { student: Student, homework: Homework, submissions: Submission[], classId: string, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
+    const submission = submissions.find(s => s.studentId === student.id);
+
+    if (submission) {
+        return <Badge>Teslim Edildi</Badge>;
+    }
+
+    if (!homework.questions || homework.questions.length === 0) {
+        return (
+            <div className="flex items-center space-x-2">
+                <Checkbox id={`mark-${student.id}`} onCheckedChange={() => onMarkAsSubmitted(student.id, homework.id)} />
+                <Label htmlFor={`mark-${student.id}`} className="text-xs">Teslim Etti</Label>
+            </div>
+        );
+    }
+    
+    return <Badge variant="secondary">Bekleniyor</Badge>;
+};
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
     const { db } = useAuth();
-    const { db: localDb, setDb: setLocalDb } = useDatabase();
-    const { homeworkDocuments = [] } = localDb;
   
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
     const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
-    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
-    const { data: liveHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(liveHomeworksQuery);
+    const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(liveHomeworksQuery);
+    
+    const fetchSubmissions = useCallback(async () => {
+        if (!db || !classId || !liveHomeworks || liveHomeworks.length === 0) return;
 
-    const displayedHomeworks = useMemo(() => {
-        if (selectedRecordId) {
-            const record = homeworkDocuments.find(d => d.id === selectedRecordId);
-            return record ? record.data.homeworks : [];
+        const newSubmissions: { [homeworkId: string]: Submission[] } = {};
+        for (const hw of liveHomeworks) {
+            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+            const querySnapshot = await getDocs(subsQuery);
+            const subs: Submission[] = [];
+            querySnapshot.forEach(doc => {
+                subs.push({ id: doc.id, ...doc.data() } as Submission);
+            });
+            newSubmissions[hw.id] = subs;
         }
-        return liveHomeworks ?? [];
-    }, [selectedRecordId, homeworkDocuments, liveHomeworks]);
-
-    const displayedSubmissions = useMemo(() => {
-        if (selectedRecordId) {
-            const record = homeworkDocuments.find(d => d.id === selectedRecordId);
-            const subsByHwId: { [homeworkId: string]: Submission[] } = {};
-            if(record) {
-                for (const sub of record.data.submissions) {
-                    if(!subsByHwId[sub.homeworkId as string]) {
-                        subsByHwId[sub.homeworkId as string] = [];
-                    }
-                    subsByHwId[sub.homeworkId as string].push(sub);
-                }
-            }
-            return subsByHwId;
-        }
-        return submissions;
-    }, [selectedRecordId, homeworkDocuments, submissions]);
+        setSubmissions(newSubmissions);
+    }, [liveHomeworks, db, classId]);
 
     useEffect(() => {
-        if (homeworksLoading || !db || !classId || !liveHomeworks) return;
-
-        const fetchSubmissions = async () => {
-            const newSubmissions: { [homeworkId: string]: Submission[] } = {};
-            for (const hw of liveHomeworks) {
-                const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
-                const querySnapshot = await getDocs(subsQuery);
-                const subs: Submission[] = [];
-                querySnapshot.forEach(doc => {
-                    subs.push({ id: doc.id, ...doc.data() } as Submission);
-                });
-                newSubmissions[hw.id] = subs;
-            }
-            setSubmissions(newSubmissions);
-        };
-
         fetchSubmissions();
-    }, [liveHomeworks, homeworksLoading, db, classId]);
+    }, [fetchSubmissions]);
     
-    const handleSaveToArchive = async () => {
-        if (!currentClass || !liveHomeworks) return;
-        const allSubmissions: Submission[] = Object.values(submissions).flat();
-
-        const newRecord: HomeworkDocument = {
-            id: `hw_${Date.now()}`,
-            name: `Ödevler - ${new Date().toLocaleDateString('tr-TR')}`,
-            date: new Date().toISOString(),
-            classId: currentClass.id,
-            data: {
-                homeworks: liveHomeworks ?? [],
-                submissions: allSubmissions
-            },
-        };
-        
-        setLocalDb(prevDb => ({
-            ...prevDb,
-            homeworkDocuments: [...(prevDb.homeworkDocuments || []), newRecord],
-        }));
-        toast({ title: 'Kaydedildi', description: 'Mevcut ödevler ve teslimler arşive başarıyla kaydedildi.' });
-    };
-
-    const handleNewRecord = useCallback(() => {
-        setSelectedRecordId(null);
-    }, []);
-
-    const handleDeleteRecord = useCallback(() => {
-        if (!selectedRecordId) return;
-        setLocalDb(prevDb => ({
-            ...prevDb,
-            homeworkDocuments: (prevDb.homeworkDocuments || []).filter(d => d.id !== selectedRecordId),
-        }));
-        handleNewRecord();
-        toast({ title: "Silindi", description: "Ödev kaydı arşivden silindi.", variant: "destructive" });
-    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
-
-
     const handleAddOrUpdateHomework = async () => {
         if (!db || !classId || !text.trim()) return;
 
@@ -165,6 +118,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             setText('');
             setDueDate(undefined);
             setEditingHomework(null);
+            // forceRefresh(); // This would be ideal if useCollection supported it.
         } catch (error) {
             console.error("Homework error:", error);
             toast({ variant: "destructive", title: "İşlem sırasında bir sorun oluştu." });
@@ -173,10 +127,44 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
     const handleDeleteHomework = async (id: string) => {
         if (!db || !classId) return;
-        const homeworkRef = doc(db, 'classes', classId, 'homeworks', id);
-        await deleteDoc(homeworkRef);
-        toast({ title: "Ödev silindi." });
+        try {
+            const subsSnapshot = await getDocs(collection(db, `classes/${classId}/homeworks/${id}/submissions`));
+            const batch = writeBatch(db);
+            subsSnapshot.forEach(doc => batch.delete(doc.ref));
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', id);
+            batch.delete(homeworkRef);
+            await batch.commit();
+            toast({ title: "Ödev ve tüm teslimler silindi." });
+            // forceRefresh();
+        } catch (error) {
+            toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
+        }
     };
+    
+    const handleMarkAsSubmitted = async (studentId: string, homeworkId: string) => {
+        if (!db || !classId) return;
+        
+        const student = students.find(s => s.id === studentId);
+        if (!student) return;
+
+        const submissionData = {
+            studentId: student.id,
+            studentName: student.name,
+            studentNumber: student.number,
+            homeworkId: homeworkId,
+            submittedAt: new Date().toISOString(),
+            text: "Öğretmen tarafından teslim edildi olarak işaretlendi.",
+        };
+        try {
+            const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homeworkId}/submissions`);
+            await addDoc(submissionsColRef, submissionData);
+            toast({ title: "Teslim Edildi", description: `${student.name} adlı öğrencinin ödevi teslim edildi olarak işaretlendi.` });
+            fetchSubmissions(); // Re-fetch to update the UI
+        } catch (error) {
+            toast({ variant: "destructive", title: "Hata", description: "İşlem kaydedilemedi." });
+        }
+    };
+
 
     const startEditing = (hw: Homework) => {
         setEditingHomework(hw);
@@ -206,15 +194,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-6">
-           <RecordManager
-                records={(homeworkDocuments || []).filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-                onNewRecord={handleNewRecord}
-                onDeleteRecord={handleDeleteRecord}
-                noun="Ödev Kaydı"
-            />
+        <div className="lg:col-span-1">
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline">{editingHomework ? 'Ödevi Düzenle' : 'Yeni Ödev Ekle'}</CardTitle>
@@ -254,14 +234,9 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     </div>
                 </CardContent>
             </Card>
-            <div className='flex items-center gap-2'>
-                <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
-                    <Save className="mr-2 h-4 w-4" /> Canlı Veriyi Arşive Kaydet
-                </Button>
-                <Button onClick={handleExport} variant="outline" className="w-full">
-                    <FileText className="mr-2 h-4 w-4"/> Raporu İndir
-                </Button>
-            </div>
+            <Button onClick={handleExport} variant="outline" className="w-full mt-4">
+                <FileText className="mr-2 h-4 w-4"/> Raporu İndir
+            </Button>
         </div>
 
         <div className="lg:col-span-2">
@@ -273,67 +248,63 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     <ScrollArea className="h-[70vh]">
                         {homeworksLoading ? <Loader2 className="mx-auto h-8 w-8 animate-spin" /> : (
                             <div className="space-y-4">
-                                {displayedHomeworks.length > 0 ? displayedHomeworks.map(hw => {
-                                    const assignedStudentIds = hw.assignedStudents || [];
-                                    const submittedCount = (displayedSubmissions[hw.id] || []).length;
-                                    const studentCount = assignedStudentIds.length;
-                                    const relevantStudents = students.filter(s => assignedStudentIds.includes(s.id));
-                                    
-                                    return (
-                                        <Accordion key={hw.id} type="single" collapsible>
-                                            <AccordionItem value={hw.id} className="border rounded-lg p-4">
-                                                <AccordionTrigger>
-                                                    <div className="flex flex-col text-left">
-                                                        <p className="font-semibold">{hw.text}</p>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
-                                                        </p>
+                                {liveHomeworks && liveHomeworks.length > 0 ? liveHomeworks.map(hw => (
+                                    <Accordion key={hw.id} type="single" collapsible>
+                                        <AccordionItem value={hw.id} className="border rounded-lg p-4">
+                                            <AccordionTrigger>
+                                                <div className="flex flex-col text-left">
+                                                    <p className="font-semibold">{hw.text}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
+                                                    </p>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="pt-4">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <p className="text-sm font-medium">{(submissions[hw.id] || []).length}/{students.length} öğrenci teslim etti.</p>
+                                                    <div>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>Bu ödevi ve tüm teslimleri kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
                                                     </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pt-4">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <p className="text-sm font-medium">{submittedCount}/{studentCount} öğrenci teslim etti.</p>
-                                                        <div>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"><Trash2 className="h-4 w-4"/></Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>Bu ödevi ve tüm teslimleri kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>
-                                                    </div>
-                                                    <Table>
-                                                        <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Teslim Durumu</TableHead><TableHead>Not</TableHead></TableRow></TableHeader>
-                                                        <TableBody>
-                                                            {relevantStudents.map(student => {
-                                                                const submission = (displayedSubmissions[hw.id] || []).find(s => s.studentId === student.id);
-                                                                return (
-                                                                    <TableRow key={student.id}>
-                                                                        <TableCell>{student.name}</TableCell>
-                                                                        <TableCell>
-                                                                            {submission ? <Badge>Teslim Edildi</Badge> : <Badge variant="secondary">Bekleniyor</Badge>}
-                                                                        </TableCell>
-                                                                        <TableCell>{submission?.grade ?? 'N/A'}</TableCell>
-                                                                    </TableRow>
-                                                                )
-                                                            })}
-                                                        </TableBody>
-                                                    </Table>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Accordion>
-                                    );
-                                }) : <p className="text-center text-muted-foreground py-4">Henüz ödev eklenmemiş.</p>}
+                                                </div>
+                                                <Table>
+                                                    <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Teslim Durumu</TableHead><TableHead>Not</TableHead></TableRow></TableHeader>
+                                                    <TableBody>
+                                                        {students.map(student => (
+                                                            <TableRow key={student.id}>
+                                                                <TableCell>{student.name}</TableCell>
+                                                                <TableCell>
+                                                                     <SubmissionStatus 
+                                                                        student={student} 
+                                                                        homework={hw}
+                                                                        submissions={submissions[hw.id] || []}
+                                                                        classId={classId}
+                                                                        onMarkAsSubmitted={handleMarkAsSubmitted}
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell>{(submissions[hw.id] || []).find(s => s.studentId === student.id)?.grade ?? 'N/A'}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                )) : <p className="text-center text-muted-foreground py-4">Henüz ödev eklenmemiş.</p>}
                             </div>
                         )}
                     </ScrollArea>

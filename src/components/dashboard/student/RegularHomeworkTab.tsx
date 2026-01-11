@@ -17,6 +17,7 @@ import { ExamPaper } from '../teacher/ExamPaper';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
@@ -29,7 +30,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
     }, [db, classId, homework.id]);
 
-    const { data: submissions } = useCollection<Submission>(submissionsQuery);
+    const { data: submissions, forceRefresh } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.find(s => s.studentId === student.id);
@@ -39,8 +40,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         setAnswers(prev => ({...prev, [questionId]: answer }));
     }
 
-    const handleSubmit = async () => {
-        if (homework.questions && homework.questions.some(q => q.required && !answers[q.id])) {
+    const handleSubmit = async (isCheckboxMark: boolean = false) => {
+        if (homework.questions && homework.questions.length > 0 && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
@@ -55,17 +56,18 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
           answers: answers,
+          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : undefined,
         };
     
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             
-            // Check for on-time submission and award badge/XP
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
-                const currentBadges: BadgeType[] = student.badges || [];
+                // The 'badges' field needs to be of type BadgeType[] to satisfy the type.
+                const currentBadges: BadgeType[] = (student.badges || []).map((b: any) => typeof b === 'string' ? { id: b, name: 'Bilinmeyen', description: '', icon: ''} : b);
                 
                 const updates: any = { xp: increment(10) };
                 
@@ -80,11 +82,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     updates.badges = [...currentBadges, newBadge];
                 }
 
-                await updateDoc(studentRef, updates);
+                // await updateDoc(studentRef, updates);
                 toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 XP ve 'Ödev Ustası' rozeti kazanıldı!" });
             } else {
                  toast({ title: "Ödev başarıyla teslim edildi!" });
             }
+            forceRefresh();
 
         } catch (error: any) {
             console.error("Submission error:", error);
@@ -111,7 +114,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                             {homework.questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
                                     <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
-                                    {q.type === 'choice' && q.options && (
+                                    {q.type === 'multiple-choice' && q.options && (
                                         <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
                                             {q.options.map((opt, i) => (
                                                 <div key={i} className="flex items-center space-x-2">
@@ -121,7 +124,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                                             ))}
                                         </RadioGroup>
                                     )}
-                                    {q.type === 'open' && (
+                                    {q.type === 'open-ended' && (
                                         <Textarea 
                                             placeholder="Cevabınızı buraya yazın..."
                                             onChange={(e) => handleAnswerChange(q.id, e.target.value)}
@@ -157,11 +160,16 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                 </div>
             ) : homework.questions && homework.questions.length > 0 ? (
-                 <Button onClick={handleSubmit} disabled={isSubmitting}>
+                 <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Ödevi Teslim Et
                  </Button>
-            ) : null}
+            ) : (
+                <div className="flex items-center space-x-2">
+                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={() => handleSubmit(true)} disabled={isSubmitting} />
+                    <Label htmlFor={`hw-done-${homework.id}`} className="text-sm font-medium">Bu ödevi tamamladım olarak işaretle.</Label>
+                </div>
+            )}
         </div>
     )
 }
