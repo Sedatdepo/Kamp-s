@@ -2,15 +2,16 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Calendar, Download, Users, RotateCcw, School, Upload } from 'lucide-react';
+import { Calendar, Download, Users, RotateCcw, School, Upload, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import type { Student as DutyStudent, Class, TeacherProfile } from '@/lib/types';
+import type { Student as DutyStudent, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { exportDutyRosterToRtf } from '@/lib/word-export';
 
 
 export default function NobetciListesi({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
@@ -52,7 +53,7 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
       return;
     }
 
-    let tempRoster: any[] = [];
+    let tempRoster: RosterItem[] = [];
     let currentStudentIndex = (startIndex - 1);
     let currentDate = new Date(start);
 
@@ -71,7 +72,8 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
         tempRoster.push({
           date: currentDate.toLocaleDateString('tr-TR'),
           day: daysMap[dayOfWeek],
-          student: studentNames
+          student: studentNames,
+          studentIds: [student1.id, student2.id]
         });
       }
       currentDate.setDate(currentDate.getDate() + 1);
@@ -87,72 +89,23 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
     toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu." });
   };
 
-  // --- WORD ÇIKTISI ALMA ---
-  const exportToWord = () => {
-    if (roster.length === 0) {
-      toast({ title: "Hata", description: "Lütfen önce listeyi oluşturun.", variant: "destructive" });
+  const handleExport = () => {
+    const currentClass = classes.find(c => c.id === selectedClassId);
+    if (!roster.length || !currentClass) {
+      toast({
+        title: 'Hata',
+        description: 'Lütfen önce listeyi oluşturun.',
+        variant: 'destructive',
+      });
       return;
     }
-    const selectedClass = classes.find(c => c.id === selectedClassId);
-
-    const header = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-            xmlns:w='urn:schemas-microsoft-com:office:word' 
-            xmlns='http://www.w3.org/TR/REC-html40'>
-      <head>
-        <meta charset='utf-8'>
-        <title>${selectedClass?.name} Nöbetçi Listesi</title>
-        <style>
-          body { font-family: 'Times New Roman', serif; }
-          table { width: 100%; border-collapse: collapse; }
-          td, th { border: 1px solid black; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          .title-area { text-align: center; margin-bottom: 20px; }
-          .school-name { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
-          .list-name { font-size: 14pt; font-weight: bold; margin-top: 5px; }
-          .signature-table { margin-top: 50px; width: 100%; border: none; }
-          .signature-table td { border: none; text-align: center; padding-top: 40px; }
-        </style>
-      </head>
-      <body>
-        <div class="title-area">
-          <div class="school-name">${teacherProfile?.schoolName || ''}</div>
-          <div class="list-name">${selectedClass?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</div>
-        </div>
-    `;
-    
-    const tableHTML = document.getElementById("roster-table")?.outerHTML || '';
-    
-    const signatureHTML = `
-      <table class="signature-table">
-        <tr>
-          <td>
-            <strong>${teacherProfile?.name || ''}</strong><br>
-            Sınıf Rehber Öğretmeni
-          </td>
-          <td>
-            <strong>${teacherProfile?.principalName || ''}</strong><br>
-            Okul Müdürü
-          </td>
-        </tr>
-      </table>
-    `;
-
-    const footer = "</body></html>";
-    
-    const sourceHTML = header + tableHTML + signatureHTML + footer;
-    
-    const blob = new Blob([sourceHTML], { type: 'application/vnd.ms-word' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    document.body.appendChild(link);
-    link.href = url;
-    link.download = `${selectedClass?.name || 'sinif'}_Nobetci_Listesi.doc`;
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportDutyRosterToRtf({
+      roster,
+      currentClass,
+      teacherProfile,
+    });
   };
-  
+
     if (!teacherProfile || !classes) {
         return <div className="flex items-center justify-center h-screen">Yükleniyor...</div>
     }
@@ -256,13 +209,9 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
                   Gelecek ay <strong>{nextStartInfo.index}</strong> numaralı kişiden (<strong>{nextStartInfo.name}</strong>) başlamalısınız.
                 </p>
               </div>
-              <button 
-                onClick={exportToWord}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-transform active:scale-95 w-full sm:w-auto"
-              >
-                <Download size={18} />
-                Word İndir
-              </button>
+               <Button onClick={handleExport} variant="outline" className="bg-white">
+                <FileText className="mr-2 h-4 w-4" /> Word İndir (.rtf)
+              </Button>
             </div>
           )}
 
@@ -270,8 +219,8 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
             {roster.length > 0 ? (
               <div className="w-full">
                 <div className="text-center mb-8 border-b pb-4">
-                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">${teacherProfile.schoolName}</h1>
-                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">${classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
+                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">{teacherProfile.schoolName}</h1>
+                  <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">{classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
                 </div>
                 
                 <table id="roster-table" className="w-full border-collapse text-left text-sm mb-12">
@@ -299,11 +248,11 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
 
                 <div className="flex flex-col sm:flex-row justify-between items-center px-10 mt-10 space-y-8 sm:space-y-0">
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">${teacherProfile.name}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile.name}</p>
                     <p className="text-gray-600">Sınıf Rehber Öğretmeni</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">${teacherProfile.principalName}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile.principalName}</p>
                     <p className="text-gray-600">Okul Müdürü</p>
                   </div>
                 </div>
