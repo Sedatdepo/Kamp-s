@@ -537,9 +537,10 @@ export function exportProjectPetitionsToRtf({ students, lessons, currentClass, t
 }
 
 
+
 // --- CLUB PETITIONS EXPORT ---
 interface ExportClubPetitionsArgs {
-    students: Student[];
+    students: Partial<Student>[];
     clubs: Club[];
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
