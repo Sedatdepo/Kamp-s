@@ -113,41 +113,68 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   };
 
   const safeStudents = students || [];
-  const sortedStudents = [...safeStudents].sort((a, b) => (b.behaviorScore || 0) - (a.behaviorScore || 0));
+  const sortedStudentsByScore = [...safeStudents].sort((a, b) => (b.behaviorScore || 0) - (a.behaviorScore || 0));
+  const sortedStudentsByName = [...safeStudents].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="space-y-6 p-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {sortedStudents.map((student, index) => (
-          <Card key={student.id} onClick={() => openStudentModal(student)} className="cursor-pointer hover:shadow-lg hover:border-primary transition-all group">
-            <CardHeader className="flex flex-col items-center text-center">
-              <div className="relative mb-3">
-                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                   <span className="text-3xl font-bold text-slate-500">{student.name.charAt(0)}</span>
-                 </div>
-                 <Badge variant="secondary" className="absolute -bottom-2 -right-2 bg-yellow-400 text-yellow-900 border-2 border-white shadow-md">
-                   {student.behaviorScore || 0} Puan
-                 </Badge>
-              </div>
-              <CardTitle className="text-lg">{student.name}</CardTitle>
-              <CardDescription>#{student.number}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center gap-2 flex-wrap px-4 pb-4">
-                {student.badges?.slice(0, 5).map(badgeId => (
-                    <span key={badgeId} className="text-2xl" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
-                        {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
-                    </span>
-                ))}
-            </CardContent>
-          </Card>
-        ))}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-2">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {sortedStudentsByScore.map((student, index) => (
+            <Card key={student.id} onClick={() => openStudentModal(student)} className="cursor-pointer hover:shadow-lg hover:border-primary transition-all group">
+              <CardHeader className="flex flex-col items-center text-center">
+                <div className="relative mb-3">
+                   <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                     <span className="text-3xl font-bold text-slate-500">{student.name.charAt(0)}</span>
+                   </div>
+                   <Badge variant="secondary" className="absolute -bottom-2 -right-2 bg-yellow-400 text-yellow-900 border-2 border-white shadow-md">
+                     {student.behaviorScore || 0} Puan
+                   </Badge>
+                </div>
+                <CardTitle className="text-lg">{student.name}</CardTitle>
+                <CardDescription>#{student.number}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center gap-2 flex-wrap px-4 pb-4">
+                  {student.badges?.slice(0, 5).map(badgeId => (
+                      <span key={badgeId} className="text-2xl" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
+                          {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
+                      </span>
+                  ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {safeStudents.length === 0 && (
+          <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed lg:col-span-3">
+            <p className="text-slate-500">Bu sınıfta henüz öğrenci yok.</p>
+          </div>
+        )}
       </div>
 
-      {safeStudents.length === 0 && (
-        <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed">
-          <p className="text-slate-500">Bu sınıfta henüz öğrenci yok.</p>
-        </div>
-      )}
+      <div className="lg:col-span-1">
+          <Card>
+              <CardHeader>
+                  <CardTitle>Sınıf Listesi</CardTitle>
+                  <CardDescription>Tüm öğrencilerin listesi.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <ScrollArea className="h-[400px]">
+                      {sortedStudentsByName.map(student => (
+                          <div key={student.id} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50">
+                              <div>
+                                  <p className="font-medium">{student.name}</p>
+                                  <p className="text-sm text-muted-foreground">#{student.number}</p>
+                              </div>
+                              <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
+                                  İşlem
+                              </Button>
+                          </div>
+                      ))}
+                  </ScrollArea>
+              </CardContent>
+          </Card>
+      </div>
 
       {/* İŞLEM MODALI */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
