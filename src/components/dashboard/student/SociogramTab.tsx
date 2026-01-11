@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, query, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion } from '@/lib/types';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee, CheckCircle } from 'lucide-react';
+import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -29,15 +29,21 @@ export function SociogramTab() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
+  // CORRECTED: Fetch students from the main /students collection based on classId
   const studentsQuery = useMemoFirebase(() => {
-    if (!db || !student?.classId) return null;
-    return query(collection(db, 'classes', student.classId, 'students'));
-  }, [db, student?.classId]);
+    if (!db || !classId) return null;
+    return query(collection(db, 'students'), where('classId', '==', classId));
+  }, [db, classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
   
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
   
-  const otherClassmates = useMemo(() => classmates?.filter(c => c.id !== student?.id) || [], [classmates, student]);
+  // CORRECTED: Filter out the current student from the correctly fetched classmates list
+  const otherClassmates = useMemo(() => {
+    if (!classmates || !student) return [];
+    return classmates.filter(c => c.id !== student.id);
+  }, [classmates, student]);
+
   const survey = useMemo(() => currentClass?.sociogramSurvey || { title: '', questions: [] }, [currentClass]);
   
 
@@ -89,6 +95,7 @@ export function SociogramTab() {
       if (q.type === 'leadership') allLeadership.push(...questionAnswers);
     });
 
+    // CORRECTED: Save to the correct student document in the 'students' collection
     const studentRef = doc(db, 'students', student.id);
     try {
         await updateDoc(studentRef, {
@@ -99,6 +106,7 @@ export function SociogramTab() {
         toast({ title: 'Cevaplarınız kaydedildi!' });
     } catch(e) {
         toast({ variant: 'destructive', title: 'Hata', description: 'Cevaplar kaydedilemedi.' });
+        console.error("Sociogram save error:", e);
     }
   };
   
