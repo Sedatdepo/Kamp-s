@@ -84,3 +84,68 @@ export const sendNotificationOnNewAnnouncement = functions
       return null;
     });
 
+export const sendNotificationOnGradeUpdate = functions
+    .region("us-central1")
+    .firestore.document("classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId}")
+    .onUpdate(async (change, context) => {
+        const beforeData = change.before.data();
+        const afterData = change.after.data();
+
+        // Not alanı yeni eklendiyse veya değiştiyse devam et
+        if (afterData.grade === undefined || afterData.grade === beforeData.grade) {
+            console.log("Not güncellenmedi, bildirim gönderilmeyecek.");
+            return null;
+        }
+
+        const studentId = afterData.studentId;
+        const homeworkId = context.params.homeworkId;
+        const classId = context.params.classId;
+
+        // Öğrenci belgesini al
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (!studentDoc.exists) {
+            console.error("Öğrenci bulunamadı:", studentId);
+            return null;
+        }
+        const studentData = studentDoc.data();
+        const tokens = studentData?.fcmTokens;
+
+        if (!tokens || tokens.length === 0) {
+            console.log("Öğrencinin bildirim token'ı bulunamadı:", studentId);
+            return null;
+        }
+
+        // Ödev belgesini al
+        const homeworkDoc = await db.collection("classes").doc(classId).collection("homeworks").doc(homeworkId).get();
+        if (!homeworkDoc.exists) {
+            console.error("Ödev bulunamadı:", homeworkId);
+            return null;
+        }
+        const homeworkData = homeworkDoc.data();
+        const homeworkTitle = homeworkData?.text || "Ödeviniz";
+
+        const payload = {
+            notification: {
+                title: "📝 Notunuz Girildi!",
+                body: `"${homeworkTitle}" başlıklı ödevinize not verildi: ${afterData.grade}`,
+                clickAction: "/dashboard/student", // Öğrenci paneline yönlendirir
+            },
+        };
+
+        try {
+            const response = await messaging.sendToDevice(tokens, payload);
+            console.log(`Bildirim başarıyla gönderildi: ${studentId}, Başarılı: ${response.successCount}`);
+            // Hatalı veya geçersiz token'ları temizleme
+            response.results.forEach((result, index) => {
+                const error = result.error;
+                if (error) {
+                    console.error("Bildirim gönderilirken hata:", tokens[index], error);
+                }
+            });
+        } catch (error) {
+            console.error("Bildirim gönderme hatası:", error);
+        }
+
+        return null;
+    });
+
