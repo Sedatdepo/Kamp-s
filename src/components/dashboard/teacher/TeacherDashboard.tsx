@@ -330,7 +330,6 @@ function ClassSelectionScreen({
                     <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
                     <MenuCard icon={<Users />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu tutanakları." onClick={() => setActiveTab('sok')} />
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => setActiveTab('veli-toplantisi')} />
-                    <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim programları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
@@ -449,13 +448,12 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     // Standalone document tabs (no class selected)
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'bep', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         let tabContent;
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
           case 'zumre': tabContent = <ZumreTab />; break;
-          case 'bep': tabContent = <BepTab />; break;
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
           case 'sok': tabContent = <SokTab />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
@@ -617,16 +615,3 @@ export function TeacherDashboard() {
     </div>
   );
 }
-
-    
-
-    
-
-
-
-
-
-
-
-
-
