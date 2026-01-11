@@ -10,14 +10,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Student } from '@/lib/types';
 import { saveAs } from 'file-saver';
+import { useAuth } from '@/hooks/useAuth';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Label } from '@/components/ui/label';
 
-
-export function ProjectPetitionsTab({ students: initialStudents, teacherProfile }: { students: Student[], teacherProfile: any }) {
+export function ProjectPetitionsTab({ classId, teacherProfile }: { classId: string, teacherProfile: any }) {
+  const { db } = useAuth();
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2025-2026');
   const [students, setStudents] = useState<Partial<Student>[]>([]);
+
+  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  const { data: initialStudents } = useCollection<Student>(studentsQuery);
 
   useEffect(() => {
     setTeacherName(teacherProfile?.name || '');
@@ -25,14 +31,26 @@ export function ProjectPetitionsTab({ students: initialStudents, teacherProfile 
   }, [teacherProfile]);
 
   const importClassList = () => {
+    if(!initialStudents) return;
     const classStudents = initialStudents.map(s => ({
       id: s.id,
       number: s.number,
       name: s.name,
-      className: s.classId, // This might need adjustment based on how you get class name
+      className: currentClass?.name || '', 
     }));
     setStudents(classStudents);
   };
+
+  const currentClass = useMemo(() => {
+      // This is a bit of a hack, but we need the class name.
+      // A better solution would be to pass the class itself.
+      if (initialStudents && initialStudents.length > 0) {
+          // Assuming all students are in the same class
+          // A proper implementation might fetch class details separately.
+          return { name: `Sınıf ${initialStudents[0].classId}` };
+      }
+      return null;
+  }, [initialStudents]);
   
   const addStudent = () => {
     setStudents([...students, { id: `manual_${Date.now()}`, number: '', name: '', className: '' }]);
@@ -96,7 +114,7 @@ export function ProjectPetitionsTab({ students: initialStudents, teacherProfile 
             </tr>
           </table>
         </div>
-        ${isThirdItem ? '<div class="page-break"></div>' : ''}
+        ${isThirdItem ? '<br class="page-break" />' : ''}
       `;
     });
 
