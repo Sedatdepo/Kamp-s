@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { ClubAssignmentTab } from './club/ClubAssignmentTab';
 import { ClubPetitionsTab } from './club/ClubPetitionsTab';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SocialClubTabProps {
   students: Student[];
