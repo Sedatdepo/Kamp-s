@@ -121,9 +121,25 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
   
   const [survey, setSurvey] = useState<SociogramSurvey>(currentClass?.sociogramSurvey || DEFAULT_SURVEY);
   
+  // --- This is the key fix ---
+  // If the class document in Firestore doesn't have a survey, create one automatically.
   useEffect(() => {
-    setSurvey(currentClass?.sociogramSurvey || DEFAULT_SURVEY);
-  }, [currentClass]);
+    if (currentClass && !currentClass.sociogramSurvey && db) {
+        const classRef = doc(db, 'classes', currentClass.id);
+        updateDoc(classRef, { sociogramSurvey: DEFAULT_SURVEY })
+            .then(() => {
+                setSurvey(DEFAULT_SURVEY);
+                toast({ title: 'Sosyogram Anketi Oluşturuldu', description: 'Bu sınıf için varsayılan anket soruları eklendi.'});
+            })
+            .catch(error => {
+                console.error("Failed to initialize sociogram survey:", error);
+                toast({ variant: 'destructive', title: 'Hata', description: 'Varsayılan anket oluşturulamadı.'});
+            });
+    } else if (currentClass?.sociogramSurvey) {
+        setSurvey(currentClass.sociogramSurvey);
+    }
+  }, [currentClass, db, toast]);
+
 
   const handleToggleActive = async (checked: boolean) => {
     if (!currentClass || !db) return;
