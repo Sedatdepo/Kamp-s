@@ -35,14 +35,26 @@ export function SociogramTab() {
   const [activeAutocompletion, setActiveAutocompletion] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const autocompleteRef = useRef<HTMLDivElement>(null);
-
+  
+  const studentsQuery = useMemoFirebase(() => {
+    if (!db || !student?.classId) return null;
+    return query(collection(db, 'classes', student.classId, 'students'));
+  }, [db, student?.classId]);
+  const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+  
+  const otherClassmates = useMemo(() => classmates?.filter(c => c.id !== student?.id) || [], [classmates, student]);
+  const survey = useMemo(() => currentClass?.sociogramSurvey || { title: '', questions: [] }, [currentClass]);
+  
+  const filteredSuggestions = useMemo(() => {
+    if (!searchTerm) return [];
+    return otherClassmates.filter(c => c.name.toLowerCase().includes(searchTerm));
+  }, [searchTerm, otherClassmates]);
 
   useEffect(() => {
-    if (student && currentClass?.sociogramSurvey) {
+    if (student && survey) {
       const initialAnswers: Record<number, string[]> = {};
-      const initialManualInputs: Record<number, string> = {};
 
-      currentClass.sociogramSurvey.questions.forEach(q => {
+      survey.questions.forEach(q => {
         let selections: string[] = [];
         if (q.type === 'positive') selections = student.positiveSelections || [];
         else if (q.type === 'negative') selections = student.negativeSelections || [];
@@ -52,14 +64,17 @@ export function SociogramTab() {
 
        setTempAnswers(initialAnswers);
     }
-  }, [student, currentClass]);
+  }, [student, survey]);
   
-  const studentsQuery = useMemoFirebase(() => {
-    if (!db || !student?.classId) return null;
-    return query(collection(db, 'classes', student.classId, 'students'));
-  }, [db, student?.classId]);
-  const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setActiveAutocompletion(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSelection = (questionId: number, targetId: string, maxSelections: number) => {
     setTempAnswers(prev => {
@@ -81,14 +96,14 @@ export function SociogramTab() {
     });
   };
 
-    const handleSubmit = async () => {
-    if (!student || !db || !currentClass?.sociogramSurvey || !classmates) return;
+  const handleSubmit = async () => {
+    if (!student || !db || !survey || !classmates) return;
 
     let allPositive: string[] = [];
     let allNegative: string[] = [];
     let allLeadership: string[] = [];
 
-    currentClass.sociogramSurvey.questions.forEach(q => {
+    survey.questions.forEach(q => {
       const visualAnswers = tempAnswers[q.id] || [];
       
       const manualText = manualInputs[q.id] || '';
@@ -139,16 +154,6 @@ export function SociogramTab() {
     setSearchTerm('');
     document.getElementById(`textarea-${questionId}`)?.focus();
   };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
-        setActiveAutocompletion(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
   
   if (classLoading || studentsLoading) {
       return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin"/></div>;
@@ -162,14 +167,6 @@ export function SociogramTab() {
           </Card>
       );
   }
-  
-  const otherClassmates = classmates?.filter(c => c.id !== student?.id) || [];
-  const survey = currentClass.sociogramSurvey || { title: '', questions: [] };
-
-  const filteredSuggestions = useMemo(() => {
-    if (!searchTerm) return [];
-    return otherClassmates.filter(c => c.name.toLowerCase().includes(searchTerm));
-  }, [searchTerm, otherClassmates]);
 
   return (
     <div className="space-y-8">
