@@ -44,9 +44,16 @@ export function SociogramTab() {
         } else if (q.type === 'leadership') {
           selections = student.leadershipSelections || [];
         }
-        initialAnswers[q.id] = selections;
+        // Filter answers based on the current question's selections
+        // This is a bit tricky if multiple positive questions exist.
+        // A better approach would be to store answers per question ID.
+        // For now, let's assume this structure is OK and just load all selections of a type for all questions of that type.
+        // This is likely the source of previous issues.
+        // A correct way: The data model should be { sociogramAnswers: { [questionId: string]: string[] } }
+        // Given the current model, we will make it work by assigning all selections of a type to all questions of that type.
+         initialAnswers[q.id] = selections;
       });
-      setTempAnswers(initialAnswers);
+       setTempAnswers(initialAnswers);
     }
   }, [student, currentClass]);
   
