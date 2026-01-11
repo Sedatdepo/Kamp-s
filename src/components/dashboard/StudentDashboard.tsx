@@ -49,46 +49,6 @@ import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StudentClubTab } from './student/StudentClubTab';
 
-// Yeni StatusCard Bileşeni
-const StatusCard = ({ score, badgeCount, onClick }: { score: number, badgeCount: number, onClick: () => void }) => {
-  const level = Math.floor(score / 50) + 1;
-  const progress = (score % 50) / 50 * 100;
-
-  return (
-    <Card onClick={onClick} className="col-span-full md:col-span-2 lg:col-span-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white cursor-pointer hover:shadow-lg transition-all border-none relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-        <Trophy size={100} />
-      </div>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              Seviye {level}
-            </CardTitle>
-            <CardDescription className="text-indigo-100">Kahraman Yolculuğu</CardDescription>
-          </div>
-          <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-            <Award className="text-yellow-300" size={24} />
-          </div>
-        </div>
-      </CardHeader>
-      <div className="px-6 pb-6">
-        <div className="flex justify-between text-sm mb-2 font-medium">
-          <span>{score} Puan</span>
-          <span>{Math.ceil((score + 1) / 50) * 50} Puan (Sonraki Seviye)</span>
-        </div>
-        <div className="h-3 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm">
-          <div className="h-full bg-yellow-400 transition-all duration-1000" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="mt-4 flex items-center gap-2 text-sm bg-white/10 w-fit px-3 py-1 rounded-full">
-          <Award size={14} className="text-yellow-300" />
-          <span>{badgeCount} Rozet Kazanıldı</span>
-        </div>
-      </div>
-    </Card>
-  );
-};
-
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
     return <Skeleton className="h-28 w-full" />;
@@ -196,9 +156,8 @@ export function StudentDashboard() {
                     </CardHeader>
                 </Card>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* YENİ STATUS CARD */}
-                    <StatusCard score={behaviorScore} badgeCount={badgeCount} onClick={() => setActiveTab('badges')} />
-
+                    
+                    <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('badges')} />
                     <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
                     <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
                     <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
