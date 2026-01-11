@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -92,7 +92,7 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
         <br><br><br>
         <table class="no-border" style="width:100%;">
             <tr>
-                <td class="no-border" style="width:33%;"></td>
+                <td class="no-border center" style="width:33%;"></td>
                 <td class="no-border center" style="width:34%;">
                     Uygundur<br/>${date}<br/><br/><br/>
                     <span class="bold">${teacher}</span><br/>
@@ -1612,6 +1612,69 @@ export function exportSurveyResultsToRtf({ survey, responses, students, currentC
         <p><b>Katılım Oranı:</b> ${responses.length} / ${students.length} (%${participationRate})</p>
         <hr>
         ${questionsHtml}
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- SOCIOGRAM EXPORT ---
+interface SociogramExportArgs {
+    students: Student[];
+    analysis: {
+        popular: { student: Student; pos: number; neg: number; lead: number }[];
+        isolated: Student[];
+        rejected: { student: Student; pos: number; neg: number; lead: number }[];
+    };
+    currentClass: Class;
+    teacherProfile: TeacherProfile | null;
+    survey: SociogramSurvey;
+}
+
+export function exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey }: SociogramExportArgs) {
+    const reportTitle = "Sosyometri Analiz Raporu";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const studentTable = `
+        <h3>Öğrenci Seçimleri</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Öğrenci</th>
+                    <th>Olumlu Seçimler</th>
+                    <th>Olumsuz Seçimler</th>
+                    <th>Lider Seçimleri</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${students.map(s => `
+                    <tr>
+                        <td>${s.name}</td>
+                        <td>${s.positiveSelections?.map(id => students.find(st => st.id === id)?.name).join(', ') || '-'}</td>
+                        <td>${s.negativeSelections?.map(id => students.find(st => st.id === id)?.name).join(', ') || '-'}</td>
+                        <td>${s.leadershipSelections?.map(id => students.find(st => st.id === id)?.name).join(', ') || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    const analysisSection = `
+        <h3>Analiz Sonuçları</h3>
+        <p><b>Sınıfın Yıldızları (En Çok Olumlu Seçilenler):</b> ${analysis.popular.map(p => p.student.name).join(', ') || 'Belirlenemedi'}</p>
+        <p><b>Destek Gerekenler (Dışlananlar):</b> ${analysis.rejected.map(r => r.student.name).join(', ') || 'Yok'}</p>
+        <p><b>Yalnızlar (Hiç Seçim Yapmayan/Almayan):</b> ${analysis.isolated.map(s => s.name).join(', ') || 'Yok'}</p>
+        <div style="border:1px solid #ccc; padding:10px; text-align:center; margin-top:20px;">[Grafik Görseli Web Arayüzünde Görüntülenir]</div>
+    `;
+
+    const content = `
+        ${header}
+        ${studentTable}
+        <br>
+        ${analysisSection}
         ${footer}
     `;
 
