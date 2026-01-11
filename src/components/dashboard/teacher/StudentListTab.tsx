@@ -13,7 +13,11 @@ import { Input } from '@/components/ui/input';
 import { StudentDetailModal } from './StudentDetailModal';
 import { ClassInviteDialog } from './ClassInviteDialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode } from 'lucide-react';
+import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode, ClipboardPaste } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
 
 interface StudentListTabProps {
   classId: string;
@@ -30,6 +34,8 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
+  const [bulkStudentData, setBulkStudentData] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const sortedStudents = useMemo(() => {
@@ -53,12 +59,40 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         hasProject: false,
       };
       await addDoc(collection(db, 'students'), newStudentData);
-      // The useCollection hook in TeacherDashboard will automatically update the list.
       toast({ title: 'Öğrenci eklendi!' });
       setNewStudentName('');
       setNewStudentNumber('');
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci eklenemedi.' });
+    }
+  };
+  
+  const handleBulkAddStudents = async () => {
+    if (!bulkStudentData.trim() || !db) return;
+    try {
+        const lines = bulkStudentData.split('\n').filter(line => line.trim() !== '');
+        const studentsToAdd = lines.map(line => {
+            const parts = line.split(/\s+/);
+            const number = parts[0];
+            const name = parts.slice(1).join(' ');
+            return { number, name };
+        }).filter(s => s.number && s.name);
+
+        const batch = writeBatch(db);
+        studentsToAdd.forEach(student => {
+            const newStudentRef = doc(collection(db, 'students'));
+            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
+            batch.set(newStudentRef, newStudentData);
+        });
+
+        await batch.commit();
+        toast({ title: `${studentsToAdd.length} öğrenci başarıyla eklendi!` });
+        setBulkStudentData('');
+        setIsBulkAddModalOpen(false);
+
+    } catch (error) {
+        console.error("Error importing students:", error);
+        toast({ variant: 'destructive', title: 'Veri Hatası', description: 'Öğrenciler içe aktarılamadı. Formatı kontrol edin (Numara Ad Soyad).' });
     }
   };
 
@@ -71,7 +105,6 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         number: editingStudent.number,
         hasProject: editingStudent.hasProject,
       });
-      // The useCollection hook will update the UI.
       toast({ title: 'Öğrenci güncellendi.' });
       setEditingStudent(null);
     } catch (error) {
@@ -84,7 +117,6 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
     if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
       try {
         await deleteDoc(doc(db, 'students', studentId));
-        // The useCollection hook in TeacherDashboard will automatically update the list.
         toast({ title: 'Öğrenci silindi.', variant: 'destructive' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci silinemedi.' });
@@ -119,7 +151,6 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         });
 
         await batch.commit();
-        // The useCollection hook will update the UI
         toast({ title: `${studentsToAdd.length} öğrenci başarıyla eklendi!` });
 
       } catch (error) {
@@ -149,6 +180,28 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
               <Button variant="outline" onClick={() => setIsInviteModalOpen(true)}>
                 <QrCode className="mr-2 h-4 w-4" /> Davet Et
               </Button>
+              <Dialog open={isBulkAddModalOpen} onOpenChange={setIsBulkAddModalOpen}>
+                  <DialogTrigger asChild>
+                     <Button variant="outline"><ClipboardPaste className="mr-2 h-4 w-4" /> Toplu Ekle</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Toplu Öğrenci Ekle</DialogTitle>
+                          <DialogDescription>
+                              Öğrenci listesini (Numara Ad Soyad formatında) aşağıdaki alana yapıştırın. Her öğrenci yeni bir satırda olmalıdır.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <Textarea 
+                          placeholder="101 Ali Yılmaz&#10;102 Ayşe Kaya&#10;103 Fatma Öztürk"
+                          value={bulkStudentData}
+                          onChange={(e) => setBulkStudentData(e.target.value)}
+                          rows={10}
+                      />
+                      <DialogFooter>
+                          <Button onClick={handleBulkAddStudents}>Öğrencileri Ekle</Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
               <Button variant="outline" asChild>
                 <label htmlFor="student-upload" className="cursor-pointer">
                   <Upload className="mr-2 h-4 w-4" /> Excel'den Aktar
