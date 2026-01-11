@@ -519,7 +519,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<Trophy />} title="Sınıf Kahramanları" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
+                <MenuCard icon={<Trophy />} title="Rozetler" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımları analiz et." onClick={() => setActiveTab('exam-analysis')} />
