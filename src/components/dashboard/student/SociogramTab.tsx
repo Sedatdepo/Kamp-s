@@ -3,12 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, writeBatch, query, collection, where } from 'firebase/firestore';
+import { collection, doc, query, updateDoc, writeBatch } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion } from '@/lib/types';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,32 +32,27 @@ export function SociogramTab() {
   const [tempAnswers, setTempAnswers] = useState<Record<number, string[]>>({});
 
   useEffect(() => {
-    // Pre-fill answers if they exist
-    if (student) {
-        const initialAnswers: Record<number, string[]> = {};
-        const survey = currentClass?.sociogramSurvey;
-        if(survey){
-            survey.questions.forEach(q => {
-                if (q.type === 'positive') {
-                     initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.positiveSelections || [])];
-                } else if (q.type === 'negative') {
-                    initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.negativeSelections || [])];
-                } else if (q.type === 'leadership') {
-                    initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.leadershipSelections || [])];
-                }
-            });
-            // Deduplicate
-            Object.keys(initialAnswers).forEach(key => {
-                initialAnswers[Number(key)] = [...new Set(initialAnswers[Number(key)])];
-            });
-            setTempAnswers(initialAnswers);
+    if (student && currentClass?.sociogramSurvey) {
+      const initialAnswers: Record<number, string[]> = {};
+      const survey = currentClass.sociogramSurvey;
+      survey.questions.forEach(q => {
+        let selections: string[] = [];
+        if (q.type === 'positive') {
+          selections = student.positiveSelections || [];
+        } else if (q.type === 'negative') {
+          selections = student.negativeSelections || [];
+        } else if (q.type === 'leadership') {
+          selections = student.leadershipSelections || [];
         }
+        initialAnswers[q.id] = selections;
+      });
+      setTempAnswers(initialAnswers);
     }
   }, [student, currentClass]);
 
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !student?.classId) return null;
-    return collection(db, 'classes', student.classId, 'students');
+    return query(collection(db, 'classes', student.classId, 'students'));
   }, [db, student?.classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
