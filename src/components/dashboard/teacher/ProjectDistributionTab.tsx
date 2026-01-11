@@ -1,24 +1,22 @@
-'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+"use client";
+
+import { useMemo, useState, useEffect } from 'react';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { Class, TeacherProfile, Lesson } from '@/lib/types';
-import {
-  collection,
-  query,
-  where,
-  doc,
-  updateDoc,
-  writeBatch,
-} from 'firebase/firestore';
+import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
+import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, FileDown } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LessonManager } from './LessonManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { exportProjectDistributionToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
@@ -242,6 +240,9 @@ export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
   const { db } = useAuth();
   const lessonsQuery = useMemoFirebase(() => (props.teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', props.teacherId)) : null), [props.teacherId, db]);
   const { data: lessons } = useCollection<Lesson>(lessonsQuery);
+  
+  const studentsQuery = useMemoFirebase(() => (props.classId && db ? query(collection(db, 'students'), where('classId', '==', props.classId)) : null), [props.classId, db]);
+  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
   return (
     <Tabs defaultValue="assignment">
@@ -258,6 +259,7 @@ export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
           teacherProfile={props.teacherProfile}
           currentClass={props.currentClass}
           lessons={lessons || []}
+          students={students || []}
         />
       </TabsContent>
     </Tabs>
