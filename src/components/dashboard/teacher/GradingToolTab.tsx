@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, increment } from 'firebase/firestore';
 import {
   Student,
   TeacherProfile,
@@ -63,7 +63,9 @@ const CriteriaGradingTable = ({
   onExport: () => void;
   isBehaviorTab?: boolean;
 }) => {
-    
+    const { db } = useAuth();
+    const { toast } = useToast();
+
     const calculateTotal = (studentId: string) => {
         const student = students.find(s => s.id === studentId);
         const scores = student?.[termKey]?.[scoreKey];
@@ -87,19 +89,43 @@ const CriteriaGradingTable = ({
         return null;
     }
     
-    const handlePointChange = (studentId: string, criteriaId: string, change: number, max: number) => {
+    const handlePointChange = async (studentId: string, criteriaId: string, change: number, max: number) => {
+        if (!db) return;
+    
         const student = students.find(s => s.id === studentId);
-        const currentScores = student?.[termKey]?.[scoreKey] || {};
-        const currentValue = Number(currentScores[criteriaId] || 0);
-        let newValue;
-
+        if (!student) return;
+    
+        const studentRef = doc(db, 'students', studentId);
+        const fieldPath = `${termKey}.${scoreKey}.${criteriaId}`;
+        const currentScore = student[termKey]?.[scoreKey]?.[criteriaId] || 0;
+        
+        let newScore;
         if(isBehaviorTab) {
-            newValue = Math.max(0, currentValue + change); // Davranış puanı eksilerek artar, o yüzden hep pozitif
+            newScore = Math.max(0, currentScore + change); 
         } else {
-             newValue = Math.max(0, Math.min(max, currentValue + change));
+            newScore = Math.max(0, Math.min(max, currentScore + change));
         }
 
-        onScoresChange(studentId, criteriaId, newValue);
+        if (newScore === currentScore && change !== 0) {
+            if (isBehaviorTab && newScore === 0 && change < 0) {
+                 toast({ variant: 'destructive', title: 'Puan sıfırdan küçük olamaz.' });
+            }
+            return;
+        }
+
+        // Update local state immediately for UI responsiveness
+        onScoresChange(studentId, criteriaId, newScore);
+
+        // Update Firestore
+        try {
+            await updateDoc(studentRef, {
+                [fieldPath]: increment(change)
+            });
+        } catch (e: any) {
+            // Revert local state on error
+            onScoresChange(studentId, criteriaId, currentScore);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Puan güncellenemedi: ' + e.message });
+        }
     }
 
     return (
@@ -144,7 +170,7 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 2, c.max)}><Minus className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 1, c.max)}><Plus className="h-4 w-4"/></Button>
                                                     <Input
                                                         type="number"
                                                         max={c.max}
@@ -153,7 +179,7 @@ const CriteriaGradingTable = ({
                                                         onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
                                                         className="w-16 h-9 text-center font-bold"
                                                     />
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -1, c.max)}><Plus className="h-4 w-4"/></Button>
+                                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -2, c.max)}><Minus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
                                                 <Input
