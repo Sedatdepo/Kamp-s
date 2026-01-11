@@ -1,6 +1,4 @@
-
-
-"use client";
+'use client';
 
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { Header } from '@/components/dashboard/Header';
@@ -17,10 +15,29 @@ import { SeatingPlanTab } from './student/SeatingPlanTab';
 import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
 import { ProjectTab } from './student/ProjectTab';
-import { BadgesTab } from './student/BadgesTab'; // Import Added
+import { BadgesTab } from './student/BadgesTab';
+import { SociogramTab as StudentSociogramTab } from './student/SociogramTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy, Award } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bell,
+  FileText,
+  Home,
+  MessageSquare,
+  ShieldAlert,
+  BookText,
+  Vote,
+  Users,
+  Grid,
+  ClipboardCheck,
+  Settings,
+  UserCheck,
+  GraduationCap,
+  Trophy,
+  Award,
+  Share2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -29,7 +46,7 @@ import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
-import { StudentClubTab } from './student/StudentClubTab'; 
+import { StudentClubTab } from './student/StudentClubTab';
 
 // Yeni StatusCard Bileşeni
 const StatusCard = ({ score, badgeCount, onClick }: { score: number, badgeCount: number, onClick: () => void }) => {
@@ -128,7 +145,7 @@ export function StudentDashboard() {
       switch(activeTab) {
           case 'grades': return <GradesTab />;
           case 'project': return <ProjectTab />;
-          case 'badges': return <BadgesTab />; // Case Added
+          case 'badges': return <BadgesTab />;
           case 'announcements': return <StudentCommunicationTab />;
           case 'teacher-chats': return <TeacherChatsTab />;
           case 'homeworks': return <PerformanceHomeworkTab />;
@@ -141,6 +158,7 @@ export function StudentDashboard() {
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
+          case 'sociogram': return <StudentSociogramTab />;
           default: return null;
       }
   }
@@ -224,6 +242,15 @@ export function StudentDashboard() {
                         isDisabled={!hasUnansweredSurvey}
                     />
 
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Share2 />}
+                        title="Sosyogram"
+                        description="Arkadaşlık ilişkilerini belirt."
+                        onClick={() => setActiveTab('sociogram')}
+                        isDisabled={!currentClass?.isSociogramActive}
+                    />
+
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
                     
                     <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
@@ -234,7 +261,7 @@ export function StudentDashboard() {
                         title="Kulüp" 
                         description="Kulüp tercihi yap veya atamanı gör." 
                         onClick={() => setActiveTab('club')} 
-                        isDisabled={false} // isDisabled logic is now inside StudentClubTab
+                        isDisabled={false}
                     />
 
                     <MenuCard 
