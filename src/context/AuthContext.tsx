@@ -140,8 +140,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
       } else {
-        setAppUser(null);
-        localStorage.removeItem('appUser');
+        const storedUser = localStorage.getItem('appUser');
+        if (storedUser) {
+          try {
+              const parsedUser = JSON.parse(storedUser);
+              if(parsedUser.type === 'student'){
+                  // Student with no authUid, keep them logged in
+                  setAppUser(parsedUser);
+              } else {
+                  setAppUser(null);
+                  localStorage.removeItem('appUser');
+              }
+          } catch(e){
+               setAppUser(null);
+               localStorage.removeItem('appUser');
+          }
+        } else {
+            setAppUser(null);
+        }
       }
       setLoading(false);
     });

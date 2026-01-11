@@ -205,7 +205,7 @@ export interface Student {
   authUid?: string;
   uid?: string; // Added for compatibility
   classId: string;
-  teacherId: string; // ADDED
+  teacherId: string;
   number: string;
   name: string;
   gender?: 'M' | 'F';
@@ -223,7 +223,7 @@ export interface Student {
   
   behaviorScore: number;
   xp?: number; // Gamification experience points
-  badges?: string[]; // Gamification badge IDs
+  badges?: string[]; // Gamification badge IDs - should be an array of badge IDs (string)
   customBadges?: CustomBadge[]; // Custom, one-off badges
 
   hasProject?: boolean;

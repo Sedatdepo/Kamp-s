@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -68,16 +69,15 @@ const CriteriaGradingTable = ({
 
     const calculateTotal = (studentId: string) => {
         const student = students.find(s => s.id === studentId);
+        if(isBehaviorTab) {
+            return student?.behaviorScore ?? 100;
+        }
         const scores = student?.[termKey]?.[scoreKey];
-        if (!scores) return isBehaviorTab ? 100 : 0;
+        if (!scores) return 0;
         
-        let total = isBehaviorTab ? 100 : 0;
+        let total = 0;
         for (const criteriaId in scores) {
-            if(isBehaviorTab) {
-                total -= Number(scores[criteriaId]);
-            } else {
-                total += Number(scores[criteriaId]);
-            }
+            total += Number(scores[criteriaId]);
         }
         return total;
     };
@@ -89,41 +89,21 @@ const CriteriaGradingTable = ({
         return null;
     }
     
-    const handlePointChange = async (studentId: string, criteriaId: string, change: number, max: number) => {
+    const handlePointChange = async (studentId: string, change: number) => {
         if (!db) return;
     
         const student = students.find(s => s.id === studentId);
         if (!student) return;
     
         const studentRef = doc(db, 'students', studentId);
-        const fieldPath = `${termKey}.${scoreKey}.${criteriaId}`;
-        const currentScore = student[termKey]?.[scoreKey]?.[criteriaId] || 0;
         
-        let newScore;
-        if(isBehaviorTab) {
-            newScore = Math.max(0, currentScore + change); 
-        } else {
-            newScore = Math.max(0, Math.min(max, currentScore + change));
-        }
-
-        if (newScore === currentScore && change !== 0) {
-            if (isBehaviorTab && newScore === 0 && change < 0) {
-                 toast({ variant: 'destructive', title: 'Puan sıfırdan küçük olamaz.' });
-            }
-            return;
-        }
-
-        // Update local state immediately for UI responsiveness
-        onScoresChange(studentId, criteriaId, newScore);
-
-        // Update Firestore
+        // This is only for behavior tab, so we update behaviorScore
         try {
             await updateDoc(studentRef, {
-                [fieldPath]: increment(change)
+                behaviorScore: increment(change)
             });
+            // The onSnapshot in AuthContext will handle the UI update.
         } catch (e: any) {
-            // Revert local state on error
-            onScoresChange(studentId, criteriaId, currentScore);
             toast({ variant: 'destructive', title: 'Hata', description: 'Puan güncellenemedi: ' + e.message });
         }
     }
@@ -170,16 +150,9 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 1, c.max)}><Plus className="h-4 w-4"/></Button>
-                                                    <Input
-                                                        type="number"
-                                                        max={c.max}
-                                                        min={0}
-                                                        value={studentScores?.[c.id] || ''}
-                                                        onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
-                                                        className="w-16 h-9 text-center font-bold"
-                                                    />
-                                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -2, c.max)}><Minus className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, 1)}><Plus className="h-4 w-4"/></Button>
+                                                    <span className="font-bold text-lg w-12">{student.behaviorScore}</span>
+                                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, -2)}><Minus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
                                                 <Input
@@ -198,10 +171,11 @@ const CriteriaGradingTable = ({
                                             type="number"
                                             max={100}
                                             min={0}
-                                            value={manualTotal ?? total}
+                                            value={isBehaviorTab ? total : (manualTotal ?? total)}
                                             onChange={(e) => onTotalScoreChange(student.id, e.target.value === '' ? null : Number(e.target.value))}
                                             className="w-24 mx-auto text-center h-10 font-bold text-lg bg-yellow-50 border-yellow-300"
                                             placeholder={total.toString()}
+                                            readOnly={isBehaviorTab}
                                         />
                                     </TableCell>
                                 </TableRow>
@@ -289,7 +263,8 @@ export function GradingToolTab({
   
                   if (value !== null && value >= 0) {
                       if(isBehavior) {
-                           // For behavior, we don't auto-distribute points. We just set the final score.
+                           // For behavior, we just set the final score.
+                           return { ...student, behaviorScore: value };
                       } else {
                           const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
                           if (totalMax > 0) {
@@ -301,14 +276,10 @@ export function GradingToolTab({
                       }
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = value;
-                      // @ts-ignore
-                      if (isBehavior) student.behaviorScore = value;
 
                   } else { // value is null, clear scores
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = null;
-                      // @ts-ignore
-                      if (isBehavior) student.behaviorScore = 100;
                   }
                   
                   // @ts-ignore
@@ -345,8 +316,8 @@ export function GradingToolTab({
              finalGrade = manualTotal;
           } else {
              if (isBehavior) {
-                const totalDeductions = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
-                finalGrade = 100 - totalDeductions;
+                // This part is now handled by instant +/- buttons, but let's keep it for manual total entry.
+                finalGrade = student.behaviorScore;
              } else {
                 const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
                 const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
@@ -355,6 +326,7 @@ export function GradingToolTab({
           }
 
           if (isBehavior) {
+               // behaviorScore is updated instantly now, so we just save the criteria breakdown if needed
                batch.update(studentRef, { 
                   [`${termKey}.${scoreKey}`]: studentScores,
                   behaviorScore: Math.round(finalGrade)
