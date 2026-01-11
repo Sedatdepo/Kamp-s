@@ -467,6 +467,147 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
+// --- PROJECT PETITIONS EXPORT ---
+interface ExportProjectPetitionsArgs {
+    students: Student[];
+    lessons: Lesson[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportProjectPetitionsToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectPetitionsArgs) {
+    const css = `
+        <style>
+            body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
+            .page-break { page-break-after: always; }
+            .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
+            .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
+            .tarih-sag { text-align: right; margin-bottom: 10px; font-size: 11pt; }
+            .content { text-align: justify; margin-bottom: 15px; line-height: 1.4; }
+            .tercihler { margin-left: 10px; margin-bottom: 20px; }
+            .tercih-satir { margin-bottom: 8px; font-weight: bold; }
+            .imza-tablosu { width: 100%; margin-top: 25px; border-collapse: collapse; }
+            .imza-hucre { vertical-align: top; width: 50%; padding: 5px; border: none;}
+            .imza-baslik { font-weight: bold; margin-bottom: 40px; display: block; }
+            .imza-isim { font-weight: bold; display: block; margin-top: 40px; text-transform: uppercase; }
+            .imza-unvan { font-size: 10pt; }
+        </style>
+    `;
+
+    let htmlContent = '';
+    students.forEach((student, index) => {
+        const isThirdItem = (index + 1) % 3 === 0;
+
+        const tercihlerHtml = Array.from({ length: 5 }).map((_, i) => {
+            const preferenceId = student.projectPreferences?.[i];
+            const lessonName = preferenceId ? lessons.find(l => l.id === preferenceId)?.name : '....................................................................';
+            return `<div class="tercih-satir"><b>${i + 1}.</b> ${lessonName}</div>`;
+        }).join('');
+
+        htmlContent += `
+            <div class="dilekce-container">
+                <div class="header">${teacherProfile?.schoolName || '...'} OKULU MÜDÜRLÜĞÜNE</div>
+                <div class="tarih-sag">${new Date().toLocaleDateString('tr-TR')}</div>
+                <div class="content">
+                    Okulunuzun <b>${currentClass?.name || '...'}</b> sınıfı, <b>${student.number || '...'}</b> numaralı öğrencisiyim.
+                    <b>${teacherProfile?.reportConfig?.academicYear || '...'}</b> Eğitim-Öğretim yılında proje ödevi almak istediğim derslere ait tercihlerim öncelik sırasına göre aşağıdadır.
+                    <br/>Gereğini bilgilerinize arz ederim.
+                </div>
+                <div class="tercihler">${tercihlerHtml}</div>
+                <table class="imza-tablosu">
+                    <tr>
+                        <td class="imza-hucre" align="center">
+                            <span class="imza-baslik">Uygundur</span><br/><br/>
+                            <span class="imza-isim">${teacherProfile?.name || '...'}</span><br/>
+                            <span class="imza-unvan">Sınıf Rehber Öğretmeni</span>
+                        </td>
+                        <td class="imza-hucre" align="center">
+                            <div style="height: 40px;"></div>
+                            <span class="imza-isim">${student.name || '...'}</span><br/>
+                            <span>İmza</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            ${isThirdItem ? '<br class="page-break" />' : ''}
+        `;
+    });
+
+    const fullHtml = `<html><head><meta charset='utf-8'><title>Proje Tercih Dilekçeleri</title>${css}</head><body>${htmlContent}</body></html>`;
+    downloadRtf(fullHtml, 'proje_tercih_dilekceleri.doc');
+}
+
+
+// --- CLUB PETITIONS EXPORT ---
+interface ExportClubPetitionsArgs {
+    students: Student[];
+    clubs: Club[];
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportClubPetitionsToRtf({ students, clubs, currentClass, teacherProfile }: ExportClubPetitionsArgs) {
+    const css = `
+        <style>
+            body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
+            .page-break { page-break-after: always; }
+            .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
+            .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
+            .tarih-sag { text-align: right; margin-bottom: 10px; font-size: 11pt; }
+            .content { text-align: justify; margin-bottom: 15px; line-height: 1.4; }
+            .tercihler { margin-left: 10px; margin-bottom: 20px; }
+            .tercih-satir { margin-bottom: 8px; font-weight: bold; }
+            .imza-tablosu { width: 100%; margin-top: 25px; border-collapse: collapse; }
+            .imza-hucre { vertical-align: top; width: 50%; padding: 5px; border: none;}
+            .imza-baslik { font-weight: bold; margin-bottom: 40px; display: block; }
+            .imza-isim { font-weight: bold; display: block; margin-top: 40px; text-transform: uppercase; }
+            .imza-unvan { font-size: 10pt; }
+        </style>
+    `;
+
+    let htmlContent = '';
+    students.forEach((student, index) => {
+        const isThirdItem = (index + 1) % 3 === 0;
+
+        const tercihlerHtml = Array.from({ length: 4 }).map((_, i) => {
+            const preferenceId = student.clubPreferences?.[i];
+            const clubName = preferenceId ? clubs.find(c => c.id === preferenceId)?.name : '....................................................................';
+            return `<div class="tercih-satir"><b>${i + 1}.</b> ${clubName}</div>`;
+        }).join('');
+
+        htmlContent += `
+            <div class="dilekce-container">
+                <div class="header">${teacherProfile?.schoolName || '...'} OKULU MÜDÜRLÜĞÜNE</div>
+                <div class="tarih-sag">${new Date().toLocaleDateString('tr-TR')}</div>
+                <div class="content">
+                    Okulunuzun <b>${currentClass?.name || '...'}</b> sınıfı, <b>${student.number || '...'}</b> numaralı öğrencisiyim.
+                    <b>${teacherProfile?.reportConfig?.academicYear || '...'}</b> Eğitim-Öğretim yılında, okuldaki sosyal etkinlik çalışmaları kapsamında görev almak istediğim kulüplere ait tercihlerim öncelik sırasına göre aşağıdadır.
+                    <br/>Gereğini bilgilerinize arz ederim.
+                </div>
+                <div class="tercihler">${tercihlerHtml}</div>
+                <table class="imza-tablosu">
+                    <tr>
+                        <td class="imza-hucre" align="center">
+                            <span class="imza-baslik">Uygundur</span><br/><br/>
+                            <span class="imza-isim">${teacherProfile?.name || '...'}</span><br/>
+                            <span class="imza-unvan">Sınıf Rehber Öğretmeni</span>
+                        </td>
+                        <td class="imza-hucre" align="center">
+                            <div style="height: 40px;"></div>
+                            <span class="imza-isim">${student.name || '...'}</span><br/>
+                            <span>İmza</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            ${isThirdItem ? '<br class="page-break" />' : ''}
+        `;
+    });
+
+    const fullHtml = `<html><head><meta charset='utf-8'><title>Kulüp Tercih Dilekçeleri</title>${css}</head><body>${htmlContent}</body></html>`;
+    downloadRtf(fullHtml, 'kulup_tercih_dilekceleri.doc');
+}
+
+
+
 // --- CLUB DISTRIBUTION EXPORT ---
 interface ExportClubDistributionArgs {
     students: Student[];
