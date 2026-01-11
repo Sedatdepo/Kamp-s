@@ -1,12 +1,13 @@
+
 "use client";
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student } from '@/lib/types';
-import { doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
-  Crown, Award, Trash2, UserPlus, X, Check
+  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 const BEHAVIORS = [
   { id: 'beh_1', label: 'Derse Katılım', points: 5, icon: <Zap className="text-yellow-500" /> },
@@ -51,7 +64,7 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("points");
   
-  const handleGivePoints = async (student: Student, points: number, reason: string) => {
+  const updatePoints = async (student: Student, points: number, reason: string) => {
     if (!db) return;
 
     try {
@@ -61,55 +74,74 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
       });
 
       toast({
-        title: `+${points} Puan Verildi!`,
+        title: `${points > 0 ? '+' : ''}${points} Puan ${points > 0 ? 'Verildi' : 'Geri Alındı'}!`,
         description: `${student.name}: ${reason}`,
-        className: "bg-green-50 border-green-200 text-green-800"
+        className: points > 0 ? "bg-green-50 border-green-200 text-green-800" : "bg-orange-50 border-orange-200 text-orange-800"
       });
       
+      // Close modal after action for better user experience
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Puan verme hatası:", error);
+      console.error("Puan verme/alma hatası:", error);
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "Puan verilemedi."
+        description: "Puan işlemi gerçekleştirilemedi."
       });
     }
   };
 
-  const handleGiveBadge = async (student: Student, badge: any) => {
+  const handleBadgeClick = async (student: Student, badge: any) => {
     if (!db) return;
 
-    if (student.badges?.includes(badge.id)) {
-      toast({
-        variant: "destructive",
-        title: "Zaten Var",
-        description: `${student.name} zaten bu rozete sahip.`
-      });
-      return;
-    }
+    const isOwned = student.badges?.includes(badge.id);
 
-    try {
-      const studentRef = doc(db, 'students', student.id);
-      
-      await updateDoc(studentRef, {
-        badges: arrayUnion(badge.id)
-      });
+    if (isOwned) {
+      // Rozeti geri al
+       try {
+        const studentRef = doc(db, 'students', student.id);
+        await updateDoc(studentRef, {
+          badges: arrayRemove(badge.id)
+        });
 
-      toast({
-        title: "Rozet Kazanıldı!",
-        description: `${student.name}: ${badge.name}`,
-        className: "bg-yellow-50 border-yellow-200 text-yellow-800"
-      });
+        toast({
+          title: "Rozet Geri Alındı!",
+          description: `${student.name} öğrencisinden "${badge.name}" rozeti kaldırıldı.`,
+          variant: "destructive"
+        });
+        setIsModalOpen(false); // Modalı kapat
+      } catch (error) {
+        console.error("Rozet geri alma hatası:", error);
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Rozet geri alınamadı."
+        });
+      }
+    } else {
+      // Rozeti ver
+      try {
+        const studentRef = doc(db, 'students', student.id);
+        
+        await updateDoc(studentRef, {
+          badges: arrayUnion(badge.id)
+        });
 
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Rozet hatası:", error);
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Rozet verilemedi."
-      });
+        toast({
+          title: "Rozet Kazanıldı!",
+          description: `${student.name}: ${badge.name}`,
+          className: "bg-yellow-50 border-yellow-200 text-yellow-800"
+        });
+
+        setIsModalOpen(false);
+      } catch (error) {
+        console.error("Rozet hatası:", error);
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Rozet verilemedi."
+        });
+      }
     }
   };
 
@@ -120,7 +152,7 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   };
 
   const safeStudents = students || [];
-  const sortedStudentsByName = [...safeStudents].sort((a, b) => a.name.localeCompare(b.name, 'tr', { sensitivity: 'base' }));
+  const sortedStudentsByName = [...safeStudents].sort((a, b) => (a.number && b.number) ? a.number.localeCompare(b.number, undefined, { numeric: true }) : a.name.localeCompare(b.name));
 
   return (
     <div className="p-2">
@@ -134,8 +166,8 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[80px]">Numara</TableHead>
                   <TableHead>Adı Soyadı</TableHead>
-                  <TableHead>Numara</TableHead>
                   <TableHead>Davranış Puanı</TableHead>
                   <TableHead>Rozetler</TableHead>
                   <TableHead className="text-right">İşlem</TableHead>
@@ -144,12 +176,12 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
               <TableBody>
                 {sortedStudentsByName.map(student => (
                   <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.number}</TableCell>
+                    <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{student.behaviorScore || 100}</Badge>
                     </TableCell>
-                    <TableCell className="flex gap-1">
+                    <TableCell className="flex gap-1 flex-wrap">
                       {student.badges?.map(badgeId => (
                         <span key={badgeId} className="text-lg" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
                           {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
@@ -185,35 +217,39 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
               {selectedStudent?.name}
             </DialogTitle>
             <DialogDescription>
-              Bu öğrenciye puan veya rozet verin.
+              Bu öğrenciye puan veya rozet verin/geri alın.
             </DialogDescription>
           </DialogHeader>
 
           {selectedStudent && (
             <Tabs defaultValue="points" value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="points">Puan Ver</TabsTrigger>
-                <TabsTrigger value="badges">Rozet Ver</TabsTrigger>
+                <TabsTrigger value="points">Puan İşlemleri</TabsTrigger>
+                <TabsTrigger value="badges">Rozet İşlemleri</TabsTrigger>
               </TabsList>
               
               <TabsContent value="points" className="mt-4 space-y-4">
                 <div className="grid grid-cols-1 gap-2">
                   {BEHAVIORS.map((behavior) => (
-                    <button
+                    <div
                       key={behavior.id}
-                      onClick={() => handleGivePoints(selectedStudent, behavior.points, behavior.label)}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="p-2 bg-white rounded-full shadow-sm">
                           {behavior.icon}
                         </div>
                         <span className="font-medium text-slate-700">{behavior.label}</span>
                       </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700 group-hover:bg-green-200 border-none">
-                        +{behavior.points} Puan
-                      </Badge>
-                    </button>
+                      <div className="flex items-center gap-2">
+                         <Button size="sm" variant="destructive" onClick={() => updatePoints(selectedStudent, -behavior.points, `${behavior.label} (Geri Alındı)`)}>
+                           <MinusCircle className="mr-2 h-4 w-4" /> -{behavior.points}
+                         </Button>
+                         <Button size="sm" variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200 border-none" onClick={() => updatePoints(selectedStudent, behavior.points, behavior.label)}>
+                           <Plus className="mr-2 h-4 w-4" /> +{behavior.points}
+                         </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </TabsContent>
@@ -224,26 +260,48 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
                     {AVAILABLE_BADGES.map((badge) => {
                       const isOwned = selectedStudent.badges?.includes(badge.id);
                       return (
-                        <div 
-                          key={badge.id}
-                          onClick={() => !isOwned && handleGiveBadge(selectedStudent, badge)}
-                          className={`
-                            relative p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer
-                            ${isOwned 
-                              ? 'bg-yellow-50 border-yellow-200 opacity-80 cursor-default' 
-                              : 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md'}
-                          `}
-                        >
-                          <div className="text-3xl mb-2">{badge.icon}</div>
-                          <div className="font-bold text-sm text-slate-800">{badge.name}</div>
-                          <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
-                          
-                          {isOwned && (
-                            <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm">
-                              <Check size={14} strokeWidth={3} />
+                        isOwned ? (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                     <div 
+                                      key={badge.id}
+                                      className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100"
+                                    >
+                                      <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm">
+                                        <Check size={14} strokeWidth={3} />
+                                      </div>
+                                      <div className="text-3xl mb-2">{badge.icon}</div>
+                                      <div className="font-bold text-sm text-slate-800">{badge.name}</div>
+                                      <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
+                                      <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                          <span className="text-white font-bold text-xs bg-red-600 px-2 py-1 rounded-full flex items-center gap-1"><Trash2 size={12}/> Geri Al</span>
+                                      </div>
+                                    </div>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Rozeti Geri Al</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            "{badge.name}" rozetini {selectedStudent.name} adlı öğrenciden geri almak istediğinize emin misiniz?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleBadgeClick(selectedStudent, badge)} className="bg-destructive hover:bg-destructive/90">Geri Al</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        ) : (
+                             <div 
+                              key={badge.id}
+                              onClick={() => handleBadgeClick(selectedStudent, badge)}
+                              className="p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md"
+                            >
+                              <div className="text-3xl mb-2">{badge.icon}</div>
+                              <div className="font-bold text-sm text-slate-800">{badge.name}</div>
+                              <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
                             </div>
-                          )}
-                        </div>
+                        )
                       );
                     })}
                   </div>
