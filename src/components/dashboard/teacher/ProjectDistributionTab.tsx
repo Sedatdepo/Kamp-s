@@ -249,6 +249,7 @@ export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
         <ProjectPetitionsTab 
           classId={props.classId}
           teacherProfile={props.teacherProfile}
+          currentClass={props.currentClass}
         />
       </TabsContent>
     </Tabs>
