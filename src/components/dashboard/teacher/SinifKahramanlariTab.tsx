@@ -15,7 +15,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const BEHAVIORS = [
   { id: 'beh_1', label: 'Derse Katılım', points: 5, icon: <Zap className="text-yellow-500" /> },
@@ -113,68 +120,59 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   };
 
   const safeStudents = students || [];
-  const sortedStudentsByScore = [...safeStudents].sort((a, b) => (b.behaviorScore || 0) - (a.behaviorScore || 0));
-  const sortedStudentsByName = [...safeStudents].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedStudentsByName = [...safeStudents].sort((a, b) => a.name.localeCompare(b.name, 'tr', { sensitivity: 'base' }));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-2">
-      <div className="lg:col-span-2 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {sortedStudentsByScore.map((student, index) => (
-            <Card key={student.id} onClick={() => openStudentModal(student)} className="cursor-pointer hover:shadow-lg hover:border-primary transition-all group">
-              <CardHeader className="flex flex-col items-center text-center">
-                <div className="relative mb-3">
-                   <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                     <span className="text-3xl font-bold text-slate-500">{student.name.charAt(0)}</span>
-                   </div>
-                   <Badge variant="secondary" className="absolute -bottom-2 -right-2 bg-yellow-400 text-yellow-900 border-2 border-white shadow-md">
-                     {student.behaviorScore || 0} Puan
-                   </Badge>
-                </div>
-                <CardTitle className="text-lg">{student.name}</CardTitle>
-                <CardDescription>#{student.number}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center gap-2 flex-wrap px-4 pb-4">
-                  {student.badges?.slice(0, 5).map(badgeId => (
-                      <span key={badgeId} className="text-2xl" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
+    <div className="p-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sınıf Listesi ve Puan Durumu</CardTitle>
+          <CardDescription>Öğrencilerinize puan ve rozetler vererek onları motive edin.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Adı Soyadı</TableHead>
+                  <TableHead>Numara</TableHead>
+                  <TableHead>Davranış Puanı</TableHead>
+                  <TableHead>Rozetler</TableHead>
+                  <TableHead className="text-right">İşlem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedStudentsByName.map(student => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell>{student.number}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{student.behaviorScore || 100}</Badge>
+                    </TableCell>
+                    <TableCell className="flex gap-1">
+                      {student.badges?.map(badgeId => (
+                        <span key={badgeId} className="text-lg" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
                           {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
-                      </span>
-                  ))}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {safeStudents.length === 0 && (
-          <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed lg:col-span-3">
-            <p className="text-slate-500">Bu sınıfta henüz öğrenci yok.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="lg:col-span-1">
-          <Card>
-              <CardHeader>
-                  <CardTitle>Sınıf Listesi</CardTitle>
-                  <CardDescription>Tüm öğrencilerin listesi.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <ScrollArea className="h-[400px]">
-                      {sortedStudentsByName.map(student => (
-                          <div key={student.id} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50">
-                              <div>
-                                  <p className="font-medium">{student.name}</p>
-                                  <p className="text-sm text-muted-foreground">#{student.number}</p>
-                              </div>
-                              <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
-                                  İşlem
-                              </Button>
-                          </div>
+                        </span>
                       ))}
-                  </ScrollArea>
-              </CardContent>
-          </Card>
-      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
+                        Puan/Rozet Ver
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {safeStudents.length === 0 && (
+            <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed">
+              <p className="text-slate-500">Bu sınıfta henüz öğrenci yok.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* İŞLEM MODALI */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
