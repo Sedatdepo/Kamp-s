@@ -1,133 +1,191 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
-import { Student } from '@/lib/types';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Student, Class, SociogramQuestion } from '@/lib/types';
+import { useDoc, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Share2, Users } from 'lucide-react';
+import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee, CheckCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const MAX_SELECTIONS = 3;
+
+const getIconComponent = (iconName: SociogramQuestion['icon']) => {
+    const icons = { Users, UserX, Star, BookOpen, Coffee };
+    const Icon = icons[iconName] || Users;
+    return <Icon size={20} />;
+};
+
 
 export function SociogramTab() {
   const { appUser, db } = useAuth();
   const { toast } = useToast();
   
   const student = appUser?.type === 'student' ? appUser.data : null;
+  const classId = student?.classId;
+
+  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
+  const [tempAnswers, setTempAnswers] = useState<Record<number, string[]>>({});
+
+  useEffect(() => {
+    // Pre-fill answers if they exist
+    if (student) {
+        const initialAnswers: Record<number, string[]> = {};
+        const survey = currentClass?.sociogramSurvey;
+        if(survey){
+            survey.questions.forEach(q => {
+                if (q.type === 'positive') {
+                     initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.positiveSelections || [])];
+                } else if (q.type === 'negative') {
+                    initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.negativeSelections || [])];
+                } else if (q.type === 'leadership') {
+                    initialAnswers[q.id] = [...(initialAnswers[q.id] || []), ...(student.leadershipSelections || [])];
+                }
+            });
+            // Deduplicate
+            Object.keys(initialAnswers).forEach(key => {
+                initialAnswers[Number(key)] = [...new Set(initialAnswers[Number(key)])];
+            });
+            setTempAnswers(initialAnswers);
+        }
+    }
+  }, [student, currentClass]);
+
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !student) return null;
     return query(collection(db, 'students'), where('classId', '==', student.classId));
   }, [db, student]);
-
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-  
-  const [selectedFriends, setSelectedFriends] = useState<string[]>(student?.sociogramSelections || []);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (student?.sociogramSelections) {
-      setSelectedFriends(student.sociogramSelections);
-    }
-  }, [student]);
-
-  const handleSelection = (studentId: string) => {
-    setSelectedFriends(prev => {
-      if (prev.includes(studentId)) {
-        return prev.filter(id => id !== studentId);
+  const handleSelection = (questionId: number, targetId: string, maxSelections: number) => {
+    setTempAnswers(prev => {
+      const currentList = prev[questionId] || [];
+      const index = currentList.indexOf(targetId);
+      
+      let newList;
+      if (index === -1) {
+        if (currentList.length < maxSelections) {
+          newList = [...currentList, targetId];
+        } else {
+          toast({ variant: 'destructive', title: `En fazla ${maxSelections} kişi seçebilirsiniz.` });
+          return prev;
+        }
+      } else {
+        newList = currentList.filter(id => id !== targetId);
       }
-      if (prev.length < MAX_SELECTIONS) {
-        return [...prev, studentId];
-      }
-      toast({
-        variant: 'destructive',
-        title: 'Seçim Limiti Doldu',
-        description: `En fazla ${MAX_SELECTIONS} arkadaş seçebilirsiniz.`,
-      });
-      return prev;
+      return { ...prev, [questionId]: newList };
     });
   };
 
-  const handleSave = async () => {
-    if (!db || !student) return;
+  const handleSubmit = async () => {
+    if (!student || !db || !currentClass?.sociogramSurvey) return;
 
-    setIsLoading(true);
+    let allPositive: string[] = [];
+    let allNegative: string[] = [];
+    let allLeadership: string[] = [];
+
+    currentClass.sociogramSurvey.questions.forEach(q => {
+      const answers = tempAnswers[q.id] || [];
+      if (q.type === 'positive') allPositive.push(...answers);
+      if (q.type === 'negative') allNegative.push(...answers);
+      if (q.type === 'leadership') allLeadership.push(...answers);
+    });
+
     const studentRef = doc(db, 'students', student.id);
-
     try {
-      await updateDoc(studentRef, { sociogramSelections: selectedFriends });
-      toast({
-        title: 'Tercihler Kaydedildi',
-        description: 'Arkadaşlık seçimleriniz başarıyla güncellendi.',
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Hata',
-        description: 'Seçimleriniz kaydedilemedi.',
-      });
-    } finally {
-      setIsLoading(false);
+        await updateDoc(studentRef, {
+            positiveSelections: [...new Set(allPositive)],
+            negativeSelections: [...new Set(allNegative)],
+            leadershipSelections: [...new Set(allLeadership)],
+        });
+        toast({ title: 'Cevaplarınız kaydedildi!' });
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Cevaplar kaydedilemedi.' });
     }
   };
   
+  if (classLoading || studentsLoading) {
+      return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin"/></div>;
+  }
+  
+  if (!currentClass?.isSociogramActive) {
+      return (
+          <Card>
+            <CardHeader><CardTitle>Sosyogram</CardTitle></CardHeader>
+            <CardContent><p className="text-muted-foreground text-center">Sosyogram anketi şu anda aktif değil.</p></CardContent>
+          </Card>
+      );
+  }
+  
   const otherClassmates = classmates?.filter(c => c.id !== student?.id) || [];
+  const survey = currentClass.sociogramSurvey || { title: '', questions: [] };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline">
-          <Share2 />
-          Sosyogram - Arkadaşlık Seçimi
-        </CardTitle>
-        <CardDescription>
-          Sınıfta en iyi anlaştığın <strong>{MAX_SELECTIONS}</strong> arkadaşını seç. Bu bilgiler sadece rehber öğretmen tarafından görülecektir.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {studentsLoading ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
-              {otherClassmates.map(c => (
-                <label
-                  key={c.id}
-                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                    selectedFriends.includes(c.id)
-                      ? 'bg-primary/10 border-primary shadow-sm'
-                      : 'bg-background hover:bg-muted/50'
-                  }`}
-                >
-                  <Checkbox
-                    id={`friend-${c.id}`}
-                    checked={selectedFriends.includes(c.id)}
-                    onCheckedChange={() => handleSelection(c.id)}
-                  />
-                  <span className="font-medium text-sm">{c.name}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex justify-between items-center pt-4 border-t">
-              <div className="text-sm text-muted-foreground">
-                Seçilen: <strong>{selectedFriends.length} / {MAX_SELECTIONS}</strong>
-              </div>
-              <Button onClick={handleSave} disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Seçimleri Kaydet
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-8">
+        <Card className="bg-gradient-to-r from-indigo-50 to-purple-50">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold text-slate-800">{survey.title}</CardTitle>
+                <CardDescription>Aşağıdaki soruları dürüstçe cevaplaman sınıf dinamiklerini anlamamıza yardımcı olacaktır.</CardDescription>
+            </CardHeader>
+        </Card>
+
+        {survey.questions.filter(q => q.active).map(question => (
+            <Card key={question.id}>
+                <CardHeader className={cn("flex flex-row items-start gap-4", 
+                    question.type === 'positive' ? 'bg-green-50/50' : question.type === 'negative' ? 'bg-red-50/50' : 'bg-amber-50/50'
+                )}>
+                    <div className={cn("mt-1 p-2 rounded-lg",
+                         question.type === 'positive' ? 'bg-green-100 text-green-600' : question.type === 'negative' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                    )}>
+                        {getIconComponent(question.icon)}
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg">{question.text}</CardTitle>
+                        <CardDescription>En fazla {question.maxSelections} kişi seçebilirsiniz.</CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                     {otherClassmates.map(classmate => {
+                        const currentAnswers = tempAnswers[question.id] || [];
+                        const isSelected = currentAnswers.includes(classmate.id);
+                        const isMax = currentAnswers.length >= question.maxSelections;
+
+                        return (
+                             <button
+                                key={classmate.id}
+                                onClick={() => handleSelection(question.id, classmate.id, question.maxSelections)}
+                                disabled={!isSelected && isMax}
+                                className={`relative p-3 rounded-xl border text-left transition-all ${
+                                    isSelected 
+                                    ? `border-blue-500 bg-blue-50 ring-2 ring-blue-200` 
+                                    : isMax 
+                                        ? 'opacity-40 grayscale cursor-not-allowed border-gray-100' 
+                                        : 'border-gray-100 hover:border-blue-300 hover:shadow-md bg-white'
+                                }`}
+                            >
+                                <div className="flex flex-col items-center">
+                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 text-xl ${classmate.gender === 'F' ? 'bg-pink-100 text-pink-500' : 'bg-blue-100 text-blue-500'}`}>
+                                        {classmate.gender === 'F' ? '👩' : '👨'}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700 truncate w-full text-center">{classmate.name.split(' ')[0]}</span>
+                                    {isSelected && <div className="absolute top-1 right-1 text-blue-600 bg-white rounded-full"><CheckCircle size={18} /></div>}
+                                </div>
+                            </button>
+                        );
+                     })}
+                </CardContent>
+            </Card>
+        ))}
+         <div className="flex justify-center py-4">
+             <Button onClick={handleSubmit} size="lg" className="px-12 py-6 text-lg font-bold">Cevapları Kaydet</Button>
+         </div>
+    </div>
   );
 }
+

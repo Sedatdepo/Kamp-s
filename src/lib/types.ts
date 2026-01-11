@@ -121,6 +121,19 @@ export interface Question {
   filled?: boolean;
 }
 
+export interface SociogramQuestion {
+    id: number;
+    text: string;
+    type: 'positive' | 'negative' | 'leadership';
+    maxSelections: number;
+    active: boolean;
+    icon: 'Users' | 'UserX' | 'Star' | 'BookOpen' | 'Coffee';
+}
+export interface SociogramSurvey {
+    title: string;
+    questions: SociogramQuestion[];
+}
+
 
 export interface Kazanım {
   id: string;
@@ -170,6 +183,7 @@ export interface Class {
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
   seatingPlanRows?: number;
   seatingPlanCols?: number;
+  sociogramSurvey?: SociogramSurvey; // NEW
 }
 
 export type GradingScores = {
@@ -192,6 +206,7 @@ export interface Student {
   classId: string;
   number: string;
   name: string;
+  gender?: 'M' | 'F';
   
   risks: string[]; // Array of riskFactor IDs
   projectPreferences: string[]; // Array of lesson IDs
@@ -217,7 +232,13 @@ export interface Student {
     status: 'present' | 'absent' | 'late' | 'excused';
   }[];
 
-  sociogramSelections?: string[]; // NEW for Sociogram
+  // UPDATED for new sociogram
+  positiveSelections?: string[]; 
+  negativeSelections?: string[];
+  leadershipSelections?: string[];
+
+  // DEPRECATED
+  sociogramSelections?: string[]; 
 
   // Project Fields - DEPRECATED, use assignedLesson
   projectCode?: string;
