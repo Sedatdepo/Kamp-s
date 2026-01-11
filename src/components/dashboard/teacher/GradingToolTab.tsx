@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Settings, Sheet, FileDown } from 'lucide-react';
+import { Save, Settings, Sheet, FileDown, Plus, Minus } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,7 +50,8 @@ const CriteriaGradingTable = ({
   onScoresChange,
   onTotalScoreChange,
   onSave,
-  onExport
+  onExport,
+  isBehaviorTab = false,
 }: {
   students: Student[];
   criteria: Criterion[];
@@ -60,6 +61,7 @@ const CriteriaGradingTable = ({
   onTotalScoreChange: (studentId: string, value: number | null) => void;
   onSave: () => void;
   onExport: () => void;
+  isBehaviorTab?: boolean;
 }) => {
     
     const calculateTotal = (studentId: string) => {
@@ -73,8 +75,15 @@ const CriteriaGradingTable = ({
         if(scoreKey === 'scores1') return 'perf1';
         if(scoreKey === 'scores2') return 'perf2';
         if(scoreKey === 'projectScores') return 'projectGrade';
-        // behaviorScores için özel bir anahtar yok, genel notu etkileyecek
         return null;
+    }
+    
+    const handlePointChange = (studentId: string, criteriaId: string, change: number, max: number) => {
+        const student = students.find(s => s.id === studentId);
+        const currentScores = student?.[termKey]?.[scoreKey] || {};
+        const currentValue = Number(currentScores[criteriaId] || 0);
+        const newValue = Math.max(0, Math.min(max, currentValue + change));
+        onScoresChange(studentId, criteriaId, newValue);
     }
 
     return (
@@ -117,14 +126,29 @@ const CriteriaGradingTable = ({
                                     <TableCell className="font-medium sticky left-0 bg-background z-10">{student.name}</TableCell>
                                     {criteria.map(c => (
                                         <TableCell key={c.id} className="text-center">
-                                            <Input
-                                                type="number"
-                                                max={c.max}
-                                                min={0}
-                                                value={studentScores?.[c.id] || ''}
-                                                onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
-                                                className="w-20 mx-auto text-center h-9"
-                                            />
+                                            {isBehaviorTab ? (
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -2, c.max)}><Minus className="h-4 w-4"/></Button>
+                                                    <Input
+                                                        type="number"
+                                                        max={c.max}
+                                                        min={0}
+                                                        value={studentScores?.[c.id] || ''}
+                                                        onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
+                                                        className="w-16 h-9 text-center font-bold"
+                                                    />
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 1, c.max)}><Plus className="h-4 w-4"/></Button>
+                                                </div>
+                                            ) : (
+                                                <Input
+                                                    type="number"
+                                                    max={c.max}
+                                                    min={0}
+                                                    value={studentScores?.[c.id] || ''}
+                                                    onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
+                                                    className="w-20 mx-auto text-center h-9"
+                                                />
+                                            )}
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-center font-bold text-lg sticky right-0 bg-background z-10">
@@ -418,6 +442,7 @@ export function GradingToolTab({
                 onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'behaviorScores', behaviorCriteria)}
                 onSave={() => handleSaveScores('behaviorScores', behaviorCriteria)}
                 onExport={() => handleExport(4)}
+                isBehaviorTab={true}
             />
         </TabsContent>
       </Tabs>
