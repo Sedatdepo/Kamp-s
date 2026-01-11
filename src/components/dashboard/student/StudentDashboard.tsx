@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useContext } from 'react';
@@ -17,9 +18,10 @@ import { StudentSurveyTab } from './StudentSurveyTab';
 import { AccountSettingsTab } from './AccountSettingsTab';
 import { ProjectTab } from './ProjectTab';
 import { BadgesTab } from './BadgesTab'; // Import Added
+import { SociogramTab as StudentSociogramTab } from './SociogramTab'; // Sosyogram import
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy, Award } from 'lucide-react';
+import { ArrowLeft, Bell, FileText, Home, MessageSquare, ShieldAlert, BookText, Vote, Users, Grid, ClipboardCheck, Settings, UserCheck, GraduationCap, Trophy, Award, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '@/context/AuthContext';
@@ -140,6 +142,7 @@ export function StudentDashboard() {
           case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
+          case 'sociogram': return <StudentSociogramTab />;
           default: return null;
       }
   }
@@ -221,6 +224,15 @@ export function StudentDashboard() {
                         onClick={() => setActiveTab('surveys')} 
                         hasNotification={notifications.surveys}
                         isDisabled={!hasUnansweredSurvey}
+                    />
+
+                    <MenuCard 
+                        isLoading={classLoading}
+                        icon={<Share2 />}
+                        title="Sosyogram"
+                        description="Arkadaşlık ilişkilerini belirt."
+                        onClick={() => setActiveTab('sociogram')}
+                        isDisabled={!currentClass?.isSociogramActive}
                     />
 
                     <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />

@@ -162,6 +162,7 @@ export interface Class {
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
   isClubSelectionActive?: boolean; // NEW
+  isSociogramActive?: boolean; // NEW for Sociogram
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -215,6 +216,8 @@ export interface Student {
     date: string; // YYYY-MM-DD
     status: 'present' | 'absent' | 'late' | 'excused';
   }[];
+
+  sociogramSelections?: string[]; // NEW for Sociogram
 
   // Project Fields - DEPRECATED, use assignedLesson
   projectCode?: string;

@@ -23,8 +23,9 @@ import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import MebClubTab from './MebClubTab';
 import { SocialClubTab } from './SocialClubTab';
+import { SociogramTab } from './SociogramTab'; // Sosyogram import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile } from '@/lib/types';
@@ -51,7 +52,7 @@ import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { SinifKahramanlariTab } from './SinifKahramanlariTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -366,6 +367,7 @@ const TABS_CONFIG = {
   "meb-club": { label: "Kulüp Evrak", icon: Trophy },
   "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
   "gamification": { label: "Rozetler", icon: Trophy },
+  "sociogram": { label: "Sosyogram", icon: Share2 },
 } as const;
 
 
@@ -522,6 +524,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
                 <MenuCard icon={<Trophy />} title="Rozetler" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
+                <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımları analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
@@ -556,6 +559,7 @@ export function TeacherDashboard() {
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;
+        case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 
@@ -619,6 +623,7 @@ export function TeacherDashboard() {
     
 
     
+
 
 
 
