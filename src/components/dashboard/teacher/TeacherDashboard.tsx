@@ -555,7 +555,7 @@ export function TeacherDashboard() {
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} />; break;
-        case 'gamification': tabContent = <SinifKahramanlariTab />; break;
+        case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 
@@ -619,6 +619,7 @@ export function TeacherDashboard() {
     
 
     
+
 
 
 
