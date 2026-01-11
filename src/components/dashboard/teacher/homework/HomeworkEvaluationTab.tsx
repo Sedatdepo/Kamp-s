@@ -32,7 +32,7 @@ import {
 import { useCollection, useMemoFirebase } from '@/firebase';
 
 
-const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete }: any) => {
+const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: any) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
@@ -62,20 +62,45 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
     const handleSaveScores = async () => {
         if (!db) return;
         const batch = writeBatch(db);
-        Object.keys(scores).forEach(studentId => {
-            const submission = submissions.find((s: Submission) => s.studentId === studentId);
+
+        for (const studentId of Object.keys(scores)) {
+            const student = students.find((s: Student) => s.id === studentId);
+            if (!student) continue;
+
+            const studentScores = scores[studentId];
+            if (!studentScores) continue;
+
+            let submission = submissions.find((s: Submission) => s.studentId === studentId);
+            const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
+
             if (submission) {
+                // Update existing submission
                 const submissionRef = doc(db, `classes/${classId}/homeworks/${homework.id}/submissions`, submission.id);
-                const studentScores = scores[studentId];
-                const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
                 batch.update(submissionRef, { grade: totalScore, rubricScores: studentScores });
+            } else {
+                // Create a new submission if one doesn't exist for the scored student
+                const newSubmissionRef = doc(collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`));
+                const newSubmissionData: Partial<Submission> = {
+                    studentId: student.id,
+                    studentName: student.name,
+                    studentNumber: student.number,
+                    homeworkId: homework.id,
+                    submittedAt: new Date().toISOString(), // Mark as now since it's being graded
+                    grade: totalScore,
+                    rubricScores: studentScores,
+                    feedback: 'Ödev teslim edilmedi, öğretmen tarafından değerlendirildi.'
+                };
+                batch.set(newSubmissionRef, newSubmissionData);
             }
-        });
+        }
+
         try {
             await batch.commit();
             toast({ title: "Notlar başarıyla kaydedildi!" });
+            onScoresUpdated(); // Callback to refresh data in parent
         } catch (error) {
             toast({ title: "Hata!", description: "Notlar kaydedilirken bir sorun oluştu.", variant: 'destructive' });
+            console.error("Score saving error:", error);
         }
     };
     
@@ -181,7 +206,6 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                     </TableHeader>
                     <TableBody>
                         {assignedStudents.map((student: Student) => {
-                            const submission = submissions.find((s: Submission) => s.studentId === student.id);
                             const studentScores = scores[student.id] || {};
                             const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
                             return (
@@ -193,7 +217,6 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                                 type="number"
                                                 max={item.score}
                                                 min={0}
-                                                disabled={!submission}
                                                 value={studentScores[item.label] || ''}
                                                 onChange={e => handleScoreChange(student.id, item.label, e.target.value)}
                                                 className="w-20 mx-auto text-center h-8"
@@ -224,33 +247,34 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+    const { data: homeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(homeworksQuery);
 
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchAllSubmissions = async () => {
-            if (homeworksLoading || !db || !classId || !homeworks || homeworks.length === 0) {
-                 setSubmissionsLoading(false);
-                 return;
-            }
-            setSubmissionsLoading(true);
-            const subsByHomework: { [homeworkId: string]: Submission[] } = {};
-            for (const hw of homeworks) {
-                const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
-                const querySnapshot = await getDocs(subsQuery);
-                const subs: Submission[] = [];
-                querySnapshot.forEach(doc => {
-                    subs.push({ id: doc.id, ...doc.data() } as Submission);
-                });
-                subsByHomework[hw.id] = subs;
-            }
-            setAllSubmissions(subsByHomework);
+    const fetchSubmissions = useCallback(async () => {
+        if (homeworksLoading || !db || !classId || !homeworks || homeworks.length === 0) {
             setSubmissionsLoading(false);
-        };
-        fetchAllSubmissions();
+            return;
+        }
+        setSubmissionsLoading(true);
+        const subsByHomework: { [homeworkId: string]: Submission[] } = {};
+        for (const hw of homeworks) {
+            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+            const querySnapshot = await getDocs(subsQuery);
+            const subs: Submission[] = [];
+            querySnapshot.forEach(doc => {
+                subs.push({ id: doc.id, ...doc.data() } as Submission);
+            });
+            subsByHomework[hw.id] = subs;
+        }
+        setAllSubmissions(subsByHomework);
+        setSubmissionsLoading(false);
     }, [homeworks, db, classId, homeworksLoading]);
+
+    useEffect(() => {
+        fetchSubmissions();
+    }, [fetchSubmissions]);
     
     const handleHomeworkDelete = async (homeworkId: string) => {
         if (!db) return;
@@ -259,10 +283,17 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
             await deleteDoc(homeworkRef);
             // Optionally delete all sub-collections, though Firestore console does this
             toast({ title: "Ödev silindi." });
+            // forceRefresh is not available from useCollection, you might need to implement it or refetch
         } catch (error) {
             toast({ variant: 'destructive', title: "Hata", description: "Ödev silinemedi." });
         }
     }
+
+    const handleScoresUpdated = () => {
+        // Refetch submissions after scores are saved
+        fetchSubmissions();
+    }
+
 
     if (homeworksLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
 
@@ -283,6 +314,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
                             classId={classId}
                             teacherProfile={teacherProfile}
                             onHomeworkDelete={handleHomeworkDelete}
+                            onScoresUpdated={handleScoresUpdated}
                         />
                     ))
                 ) : (
