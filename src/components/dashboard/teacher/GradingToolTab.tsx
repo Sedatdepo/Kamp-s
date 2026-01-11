@@ -67,8 +67,17 @@ const CriteriaGradingTable = ({
     const calculateTotal = (studentId: string) => {
         const student = students.find(s => s.id === studentId);
         const scores = student?.[termKey]?.[scoreKey];
-        if (!scores) return 0;
-        return criteria.reduce((sum, c) => sum + (Number(scores[c.id]) || 0), 0);
+        if (!scores) return isBehaviorTab ? 100 : 0;
+        
+        let total = isBehaviorTab ? 100 : 0;
+        for (const criteriaId in scores) {
+            if(isBehaviorTab) {
+                total -= Number(scores[criteriaId]);
+            } else {
+                total += Number(scores[criteriaId]);
+            }
+        }
+        return total;
     };
 
     const getPerformanceGradeKey = () => {
@@ -82,7 +91,14 @@ const CriteriaGradingTable = ({
         const student = students.find(s => s.id === studentId);
         const currentScores = student?.[termKey]?.[scoreKey] || {};
         const currentValue = Number(currentScores[criteriaId] || 0);
-        const newValue = Math.max(0, Math.min(max, currentValue + change));
+        let newValue;
+
+        if(isBehaviorTab) {
+            newValue = Math.max(0, currentValue + change); // Davranış puanı eksilerek artar, o yüzden hep pozitif
+        } else {
+             newValue = Math.max(0, Math.min(max, currentValue + change));
+        }
+
         onScoresChange(studentId, criteriaId, newValue);
     }
 
@@ -128,7 +144,7 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -2, c.max)}><Minus className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 2, c.max)}><Minus className="h-4 w-4"/></Button>
                                                     <Input
                                                         type="number"
                                                         max={c.max}
@@ -137,7 +153,7 @@ const CriteriaGradingTable = ({
                                                         onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
                                                         className="w-16 h-9 text-center font-bold"
                                                     />
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, 1, c.max)}><Plus className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.id, -1, c.max)}><Plus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
                                                 <Input
@@ -232,6 +248,7 @@ export function GradingToolTab({
 
   const handleTotalScoreChange = (studentId: string, value: number | null, scoreKey: ScoreKey, criteria: Criterion[]) => {
       const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+      const isBehavior = scoreKey === 'behaviorScores';
       
       let perfGradeKey: 'perf1' | 'perf2' | 'projectGrade' | null = null;
       if (scoreKey === 'scores1') perfGradeKey = 'perf1';
@@ -245,27 +262,31 @@ export function GradingToolTab({
                   const newScores: { [key: string]: number } = {};
   
                   if (value !== null && value >= 0) {
-                      const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
-                      if (totalMax > 0) {
-                          criteria.forEach(c => {
-                              const proportion = (c.max || 0) / totalMax;
-                              newScores[c.id] = Math.round(value * proportion);
-                          });
+                      if(isBehavior) {
+                           // For behavior, we don't auto-distribute points. We just set the final score.
+                      } else {
+                          const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
+                          if (totalMax > 0) {
+                              criteria.forEach(c => {
+                                  const proportion = (c.max || 0) / totalMax;
+                                  newScores[c.id] = Math.round(value * proportion);
+                              });
+                          }
                       }
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = value;
                       // @ts-ignore
-                      if (scoreKey === 'behaviorScores') student.behaviorScore = value;
+                      if (isBehavior) student.behaviorScore = value;
 
                   } else { // value is null, clear scores
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = null;
                       // @ts-ignore
-                      if (scoreKey === 'behaviorScores') student.behaviorScore = 100; // Or default
+                      if (isBehavior) student.behaviorScore = 100;
                   }
                   
                   // @ts-ignore
-                  updatedTermGrades[scoreKey] = newScores;
+                  if (!isBehavior) updatedTermGrades[scoreKey] = newScores;
   
                   return { ...student, [termKey]: updatedTermGrades };
               }
@@ -277,6 +298,7 @@ export function GradingToolTab({
   const handleSaveScores = async (scoreKey: ScoreKey, criteria: Criterion[]) => {
       if (!db || students.length === 0) return;
       const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+      const isBehavior = scoreKey === 'behaviorScores';
       const batch = writeBatch(db);
 
       students.forEach(student => {
@@ -290,18 +312,23 @@ export function GradingToolTab({
           else if(scoreKey === 'projectScores') performanceGradeKey = 'projectGrade';
           
           // @ts-ignore
-          const manualTotal = performanceGradeKey ? student[termKey]?.[performanceGradeKey] : undefined;
+          const manualTotal = isBehavior ? student.behaviorScore : (performanceGradeKey ? student[termKey]?.[performanceGradeKey] : undefined);
 
           let finalGrade;
           if (manualTotal !== null && manualTotal !== undefined) {
              finalGrade = manualTotal;
           } else {
-            const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
-            const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
-            finalGrade = (maxScore > 0) ? (totalScore / maxScore) * 100 : 0;
+             if (isBehavior) {
+                const totalDeductions = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
+                finalGrade = 100 - totalDeductions;
+             } else {
+                const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
+                const maxScore = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 100);
+                finalGrade = (maxScore > 0) ? (totalScore / maxScore) * 100 : 0;
+             }
           }
 
-          if (scoreKey === 'behaviorScores') {
+          if (isBehavior) {
                batch.update(studentRef, { 
                   [`${termKey}.${scoreKey}`]: studentScores,
                   behaviorScore: Math.round(finalGrade)
