@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -10,14 +11,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Student, Class } from '@/lib/types';
+import { Student, Class, TeacherProfile } from '@/lib/types';
+import { exportSeatingPlanToRtf } from '@/lib/word-export';
+import { FileDown } from 'lucide-react';
+
 
 interface SeatingPlanTabProps {
   students: Student[];
   currentClass: Class | null;
+  teacherProfile: TeacherProfile | null;
 }
 
-export function SeatingPlanTab({ students, currentClass }: SeatingPlanTabProps) {
+export function SeatingPlanTab({ students, currentClass, teacherProfile }: SeatingPlanTabProps) {
     const { db } = useAuth();
     const { toast } = useToast();
     const [rowCount, setRowCount] = useState(currentClass?.seatingPlanRows || 4);
@@ -47,6 +52,30 @@ export function SeatingPlanTab({ students, currentClass }: SeatingPlanTabProps) 
         setSeatingPlan(newPlan);
     };
 
+    const handleExport = () => {
+        if (!currentClass || !students) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Veriler olmadan çıktı alınamaz.'});
+            return;
+        }
+        
+        const planWithStudentObjects: { [key: string]: Student } = {};
+        for (const key in seatingPlan) {
+            const studentId = seatingPlan[key];
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                planWithStudentObjects[key] = student;
+            }
+        }
+
+        exportSeatingPlanToRtf({
+            seatingPlan: planWithStudentObjects,
+            rowCount,
+            colCount,
+            currentClass,
+            teacherProfile,
+        });
+    };
+
     if (!students) return <p>Öğrenci verisi yükleniyor...</p>;
     
     return (
@@ -65,7 +94,12 @@ export function SeatingPlanTab({ students, currentClass }: SeatingPlanTabProps) 
                             <Label>Sütun Sayısı (Yatay)</Label>
                             <Input type="number" value={colCount} onChange={e => setColCount(Number(e.target.value))} />
                         </div>
-                        <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
+                        <div className="flex gap-2">
+                            <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
+                            <Button onClick={handleExport} variant="outline" className="w-full">
+                                <FileDown className="mr-2 h-4 w-4"/> Word İndir
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
