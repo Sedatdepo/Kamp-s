@@ -1,7 +1,6 @@
+'use client';
 
-"use client";
-
-import { useMemo, useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
@@ -17,7 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { exportProjectDistributionToRtf, exportProjectPetitionsToRtf } from '@/lib/word-export';
+import { exportProjectDistributionToRtf } from '@/lib/word-export';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProjectPetitionsTab } from './ProjectPetitionsTab';
+
 
 interface DistributionAssignmentTabProps {
   classId: string;
@@ -27,7 +29,7 @@ interface DistributionAssignmentTabProps {
   classes: Class[];
 }
 
-export function ProjectDistributionTab({ classId, teacherId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
+function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
   const { db } = useAuth();
   const { toast } = useToast();
 
@@ -48,7 +50,6 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
   }, [students]);
 
   const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
-    // If "unassigned" is selected, treat it as clearing the value.
     const finalValue = value === 'unassigned' ? null : value;
     setLocalStudents(prev => 
       prev.map(s => s.id === studentId ? { ...s, [field]: finalValue } : s)
@@ -112,23 +113,6 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
     });
   };
 
-  const handleExportPetitions = () => {
-    if (!currentClass || !teacherProfile || !students || !lessons) {
-        toast({
-            variant: 'destructive',
-            title: 'Veri Eksik',
-            description: 'Dilekçeleri oluşturmak için gerekli tüm veriler yüklenemedi.'
-        });
-        return;
-    }
-    exportProjectPetitionsToRtf({
-        students,
-        lessons,
-        currentClass,
-        teacherProfile,
-    });
-  };
-
   const filteredStudents = useMemo(() => {
     if (filterLessonId === 'all' || !localStudents) return localStudents;
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
@@ -166,9 +150,6 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
                             <CardDescription>Öğrenci tercihlerine göre proje dersi ataması yapın.</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={handleExportPetitions} variant="outline">
-                                <FileDown className="mr-2 h-4 w-4" /> Dilekçeleri İndir
-                            </Button>
                             <Button onClick={handleExportDistribution} variant="outline">
                                 <FileDown className="mr-2 h-4 w-4" /> Atama Listesini İndir
                             </Button>
@@ -251,5 +232,22 @@ export function ProjectDistributionTab({ classId, teacherId, teacherProfile, cur
             </Card>
         </div>
     </div>
+  );
+}
+
+export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
+  return (
+    <Tabs defaultValue="assignment">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="assignment">Proje Atama</TabsTrigger>
+        <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
+      </TabsList>
+      <TabsContent value="assignment" className="mt-4">
+        <ProjectAssignmentView {...props} />
+      </TabsContent>
+      <TabsContent value="petitions" className="mt-4">
+        <ProjectPetitionsTab {...props} />
+      </TabsContent>
+    </Tabs>
   );
 }

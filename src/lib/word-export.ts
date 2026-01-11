@@ -442,7 +442,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
             <th class="horizontal" style="width:35%;">Atanan Proje Ödevi</th>
         </tr>
     `;
-    const dataRows = students.filter(s => s.projectPreferences?.length > 0).map((s, index) => {
+    const dataRows = students.filter(s => s.assignedLesson).map((s, index) => {
         const assignedLesson = lessons.find(l => l.id === s.assignedLesson);
         return `
             <tr>
@@ -462,90 +462,6 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
         </table>
         ${footer}
     `;
-
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
-}
-
-// --- PROJECT PETITIONS EXPORT (DILEKCELER) ---
-interface ExportProjectPetitionsArgs {
-    students: Student[];
-    lessons: Lesson[];
-    currentClass: Class;
-    teacherProfile?: TeacherProfile | null;
-}
-export function exportProjectPetitionsToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectPetitionsArgs) {
-    const title = `${currentClass.name} - Proje Dilekçeleri`;
-    const config = teacherProfile?.reportConfig;
-    const school = config?.schoolName || "..........................................";
-    const academicYear = config?.academicYear || "20....-20....";
-
-    const generateDilekce = (student: Student) => {
-        const preferencesRows = Array.from({ length: 5 }).map((_, i) => {
-            const prefId = student.projectPreferences?.[i];
-            const lesson = prefId ? lessons.find(l => l.id === prefId) : null;
-            return `
-                <tr style="height: 30px;">
-                    <td class="center" style="width: 10%;">${i + 1}</td>
-                    <td style="width: 90%;">${lesson ? lesson.name : ''}</td>
-                </tr>
-            `;
-        }).join('');
-
-        return `
-            <div style="page-break-after: always; width: 100%; height: 95%;">
-                <table class="no-border" style="width: 100%; height: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td class="no-border" style="vertical-align: top;">
-                            <div class="center bold" style="font-size: 14pt;">
-                                <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
-                            </div>
-                            <br><br>
-                            <p style="text-indent: 2em; line-height: 1.5; font-size: 12pt; text-align: justify;">
-                                Okulunuzun ${currentClass.name} sınıfı, ${student.number} numaralı öğrencisiyim. 
-                                ${academicYear} Eğitim-Öğretim yılında almam gereken proje ödevi için, 
-                                aşağıda belirttiğim derslerden birinin tarafıma verilmesini istiyorum.
-                            </p>
-                            <p style="text-indent: 2em; margin-top: 10px;">Gereğini bilgilerinize arz ederim.</p>
-                            <br><br>
-                            
-                            <h4 style="margin-bottom: 5px;">Proje Ödevi İstediğim Dersler:</h4>
-                            <table style="width: 100%; border: 1px solid black;">
-                                <thead>
-                                    <tr style="background-color: #f2f2f2;">
-                                        <th style="width: 10%;">Sıra</th>
-                                        <th style="width: 90%;">Dersin Adı</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${preferencesRows}
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="no-border" style="vertical-align: bottom; height: 100px;">
-                            <table class="no-border" style="width: 100%;">
-                                <tr>
-                                    <td class="no-border" style="width: 60%;"></td>
-                                    <td class="no-border" style="width: 40%; text-align: center;">
-                                        <p style="margin: 0;">${new Date().toLocaleDateString('tr-TR')}</p>
-                                        <br>
-                                        <p style="margin: 0;">(İmza)</p>
-                                        <p style="margin: 0; font-weight: bold;">${student.name}</p>
-                                        <p style="margin: 0;">No: ${student.number}</p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        `;
-    };
-
-    const studentsWhoNeedPetition = students.filter(s => s.projectPreferences?.length > 0);
-    const content = studentsWhoNeedPetition.map(generateDilekce).join('');
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
@@ -593,89 +509,6 @@ export function exportClubDistributionToRtf({ students, clubs, currentClass, tea
         </table>
         ${footer}
     `;
-
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
-}
-
-// --- CLUB PETITIONS EXPORT ---
-interface ExportClubPetitionsArgs {
-    students: Student[];
-    clubs: Club[];
-    currentClass: Class;
-    teacherProfile?: TeacherProfile | null;
-}
-export function exportClubPetitionsToRtf({ students, clubs, currentClass, teacherProfile }: ExportClubPetitionsArgs) {
-    const title = `${currentClass.name} - Kulüp Tercih Dilekçeleri`;
-    const config = teacherProfile?.reportConfig;
-    const school = config?.schoolName || "..........................................";
-    const academicYear = config?.academicYear || "20....-20....";
-
-    const generateDilekce = (student: Student) => {
-        const preferencesRows = Array.from({ length: 4 }).map((_, i) => {
-            const prefId = student.clubPreferences?.[i];
-            const club = prefId ? clubs.find(c => c.id === prefId) : null;
-            return `
-                <tr style="height: 30px;">
-                    <td class="center" style="width: 10%;">${i + 1}</td>
-                    <td style="width: 90%;">${club ? club.name : ''}</td>
-                </tr>
-            `;
-        }).join('');
-
-        return `
-            <div style="page-break-after: always; width: 100%; height: 95%;">
-                <table class="no-border" style="width: 100%; height: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td class="no-border" style="vertical-align: top;">
-                            <div class="center bold" style="font-size: 14pt;">
-                                <p style="margin:0;">${school.toLocaleUpperCase('tr-TR')} MÜDÜRLÜĞÜNE</p>
-                            </div>
-                            <br><br>
-                            <p style="text-indent: 2em; line-height: 1.5; font-size: 12pt; text-align: justify;">
-                                Okulunuzun ${currentClass.name} sınıfı, ${student.number} numaralı öğrencisiyim. 
-                                ${academicYear} Eğitim-Öğretim yılında sosyal etkinlikler kapsamında, aşağıda belirttiğim kulüplerden birine katılmak istiyorum.
-                            </p>
-                            <p style="text-indent: 2em; margin-top: 10px;">Gereğini bilgilerinize arz ederim.</p>
-                            <br><br>
-                            
-                            <h4 style="margin-bottom: 5px;">Tercih Ettiğim Kulüpler:</h4>
-                            <table style="width: 100%; border: 1px solid black;">
-                                <thead>
-                                    <tr style="background-color: #f2f2f2;">
-                                        <th style="width: 10%;">Tercih Sırası</th>
-                                        <th style="width: 90%;">Kulüp Adı</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${preferencesRows}
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="no-border" style="vertical-align: bottom; height: 100px;">
-                            <table class="no-border" style="width: 100%;">
-                                <tr>
-                                    <td class="no-border" style="width: 60%;"></td>
-                                    <td class="no-border" style="width: 40%; text-align: center;">
-                                        <p style="margin: 0;">${new Date().toLocaleDateString('tr-TR')}</p>
-                                        <br>
-                                        <p style="margin: 0;">(İmza)</p>
-                                        <p style="margin: 0; font-weight: bold;">${student.name}</p>
-                                        <p style="margin: 0;">No: ${student.number}</p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        `;
-    };
-
-    const studentsWhoNeedPetition = students.filter(s => s.clubPreferences?.length > 0);
-    const content = studentsWhoNeedPetition.map(generateDilekce).join('');
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
@@ -1143,7 +976,7 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
         return `
             <tr>
                 <td>${format(new Date(dr.date), 'dd.MM.yyyy')}</td>
-                <td>${dr.formData?.phase1Data?.behaviorType ? (dr.formData.phase1Data.behaviorType.label || dr.formData.phase1Data.behaviorType) : 'Belirtilmemiş'}</td>
+                <td>${dr.formData?.phase1Data?.behaviorType ? (dr.formData.phase1Data.label || dr.formData.phase1Data.behaviorType) : 'Belirtilmemiş'}</td>
                 <td>${phaseMap[dr.currentPhase - 1] || 'Bilinmiyor'}</td>
             </tr>
         `;
