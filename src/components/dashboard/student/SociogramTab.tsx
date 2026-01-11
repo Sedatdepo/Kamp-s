@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const getIconComponent = (iconName: SociogramQuestion['icon']) => {
@@ -30,29 +31,21 @@ export function SociogramTab() {
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
   const [tempAnswers, setTempAnswers] = useState<Record<number, string[]>>({});
+  const [manualInputs, setManualInputs] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (student && currentClass?.sociogramSurvey) {
       const initialAnswers: Record<number, string[]> = {};
-      const survey = currentClass.sociogramSurvey;
-      survey.questions.forEach(q => {
+      const initialManualInputs: Record<number, string> = {};
+
+      currentClass.sociogramSurvey.questions.forEach(q => {
         let selections: string[] = [];
-        if (q.type === 'positive') {
-          selections = student.positiveSelections || [];
-        } else if (q.type === 'negative') {
-          selections = student.negativeSelections || [];
-        } else if (q.type === 'leadership') {
-          selections = student.leadershipSelections || [];
-        }
-        // Filter answers based on the current question's selections
-        // This is a bit tricky if multiple positive questions exist.
-        // A better approach would be to store answers per question ID.
-        // For now, let's assume this structure is OK and just load all selections of a type for all questions of that type.
-        // This is likely the source of previous issues.
-        // A correct way: The data model should be { sociogramAnswers: { [questionId: string]: string[] } }
-        // Given the current model, we will make it work by assigning all selections of a type to all questions of that type.
-         initialAnswers[q.id] = selections;
+        if (q.type === 'positive') selections = student.positiveSelections || [];
+        else if (q.type === 'negative') selections = student.negativeSelections || [];
+        else if (q.type === 'leadership') selections = student.leadershipSelections || [];
+        initialAnswers[q.id] = selections;
       });
+
        setTempAnswers(initialAnswers);
     }
   }, [student, currentClass]);
@@ -84,18 +77,30 @@ export function SociogramTab() {
     });
   };
 
-  const handleSubmit = async () => {
-    if (!student || !db || !currentClass?.sociogramSurvey) return;
+    const handleSubmit = async () => {
+    if (!student || !db || !currentClass?.sociogramSurvey || !classmates) return;
 
     let allPositive: string[] = [];
     let allNegative: string[] = [];
     let allLeadership: string[] = [];
 
     currentClass.sociogramSurvey.questions.forEach(q => {
-      const answers = tempAnswers[q.id] || [];
-      if (q.type === 'positive') allPositive.push(...answers);
-      if (q.type === 'negative') allNegative.push(...answers);
-      if (q.type === 'leadership') allLeadership.push(...answers);
+      // Get selections from clickable cards
+      const visualAnswers = tempAnswers[q.id] || [];
+      
+      // Process manually typed names
+      const manualText = manualInputs[q.id] || '';
+      const manualNames = manualText.split(',').map(name => name.trim()).filter(Boolean);
+      const manualIds = manualNames.map(name => {
+          const foundStudent = classmates.find(c => c.name.toLowerCase() === name.toLowerCase());
+          return foundStudent ? foundStudent.id : null;
+      }).filter((id): id is string => id !== null);
+
+      const combinedAnswers = [...new Set([...visualAnswers, ...manualIds])];
+
+      if (q.type === 'positive') allPositive.push(...combinedAnswers);
+      if (q.type === 'negative') allNegative.push(...combinedAnswers);
+      if (q.type === 'leadership') allLeadership.push(...combinedAnswers);
     });
 
     const studentRef = doc(db, 'students', student.id);
@@ -151,35 +156,45 @@ export function SociogramTab() {
                         <CardDescription>En fazla {question.maxSelections} kişi seçebilirsiniz.</CardDescription>
                     </div>
                 </CardHeader>
-                <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                     {otherClassmates.map(classmate => {
-                        const currentAnswers = tempAnswers[question.id] || [];
-                        const isSelected = currentAnswers.includes(classmate.id);
-                        const isMax = currentAnswers.length >= question.maxSelections;
+                <CardContent className="p-4 space-y-4">
+                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                         {otherClassmates.map(classmate => {
+                            const currentAnswers = tempAnswers[question.id] || [];
+                            const isSelected = currentAnswers.includes(classmate.id);
+                            const isMax = currentAnswers.length >= question.maxSelections;
 
-                        return (
-                             <button
-                                key={classmate.id}
-                                onClick={() => handleSelection(question.id, classmate.id, question.maxSelections)}
-                                disabled={!isSelected && isMax}
-                                className={`relative p-3 rounded-xl border text-left transition-all ${
-                                    isSelected 
-                                    ? `border-blue-500 bg-blue-50 ring-2 ring-blue-200` 
-                                    : isMax 
-                                        ? 'opacity-40 grayscale cursor-not-allowed border-gray-100' 
-                                        : 'border-gray-100 hover:border-blue-300 hover:shadow-md bg-white'
-                                }`}
-                            >
-                                <div className="flex flex-col items-center">
-                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 text-xl ${classmate.gender === 'F' ? 'bg-pink-100 text-pink-500' : 'bg-blue-100 text-blue-500'}`}>
-                                        {classmate.gender === 'F' ? '👩' : '👨'}
+                            return (
+                                 <button
+                                    key={classmate.id}
+                                    onClick={() => handleSelection(question.id, classmate.id, question.maxSelections)}
+                                    disabled={!isSelected && isMax}
+                                    className={`relative p-3 rounded-xl border text-left transition-all ${
+                                        isSelected 
+                                        ? `border-blue-500 bg-blue-50 ring-2 ring-blue-200` 
+                                        : isMax 
+                                            ? 'opacity-40 grayscale cursor-not-allowed border-gray-100' 
+                                            : 'border-gray-100 hover:border-blue-300 hover:shadow-md bg-white'
+                                    }`}
+                                >
+                                    <div className="flex flex-col items-center">
+                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 text-xl ${classmate.gender === 'F' ? 'bg-pink-100 text-pink-500' : 'bg-blue-100 text-blue-500'}`}>
+                                            {classmate.gender === 'F' ? '👩' : '👨'}
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700 truncate w-full text-center">{classmate.name.split(' ')[0]}</span>
+                                        {isSelected && <div className="absolute top-1 right-1 text-blue-600 bg-white rounded-full"><CheckCircle size={18} /></div>}
                                     </div>
-                                    <span className="text-sm font-medium text-gray-700 truncate w-full text-center">{classmate.name.split(' ')[0]}</span>
-                                    {isSelected && <div className="absolute top-1 right-1 text-blue-600 bg-white rounded-full"><CheckCircle size={18} /></div>}
-                                </div>
-                            </button>
-                        );
-                     })}
+                                </button>
+                            );
+                         })}
+                     </div>
+                     <div>
+                        <Textarea
+                            placeholder="Veya isimleri buraya virgülle ayırarak yazın (örn: Ahmet Yılmaz, Ayşe Kaya)..."
+                            value={manualInputs[question.id] || ''}
+                            onChange={(e) => setManualInputs(prev => ({...prev, [question.id]: e.target.value}))}
+                            className="text-sm"
+                        />
+                     </div>
                 </CardContent>
             </Card>
         ))}
