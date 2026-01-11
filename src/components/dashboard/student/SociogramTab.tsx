@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, query, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion } from '@/lib/types';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,12 +49,13 @@ export function SociogramTab() {
       setTempAnswers(initialAnswers);
     }
   }, [student, currentClass]);
-
+  
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !student?.classId) return null;
     return query(collection(db, 'classes', student.classId, 'students'));
   }, [db, student?.classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+
 
   const handleSelection = (questionId: number, targetId: string, maxSelections: number) => {
     setTempAnswers(prev => {
