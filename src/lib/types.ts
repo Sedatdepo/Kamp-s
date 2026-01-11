@@ -1,6 +1,7 @@
 
 
 import type { Timestamp } from 'firebase/firestore';
+import { z } from 'zod';
 
 export interface Announcement {
   id: number;
@@ -236,14 +237,6 @@ export interface Student {
   positiveSelections?: string[]; 
   negativeSelections?: string[];
   leadershipSelections?: string[];
-
-  // DEPRECATED
-  sociogramSelections?: string[]; 
-
-  // Project Fields - DEPRECATED, use assignedLesson
-  projectCode?: string;
-  projectDueDate?: string; // YYYY-MM-DD
-  projectSubmitted?: boolean;
 }
 
 export interface Lesson {
@@ -495,3 +488,38 @@ export interface Database {
     disciplineRecords?: DisciplineRecord[];
     zumreDocuments?: any[];
 }
+
+
+// --- SOCIOGRAM AI ANALYSIS TYPES ---
+
+export const SociogramAnalysisInput = z.object({
+    studentNames: z.array(z.string()).describe("Sınıftaki tüm öğrencilerin isim listesi."),
+    relationships: z.array(z.object({
+        from: z.string().describe("Seçimi yapan öğrenci."),
+        to: z.string().describe("Seçilen öğrenci."),
+        type: z.enum(['positive', 'negative', 'leadership']).describe("Seçim türü (olumlu, olumsuz, lider)."),
+    })).describe("Öğrenciler arasındaki tüm seçim ilişkileri."),
+});
+export type SociogramAnalysisInput = z.infer<typeof SociogramAnalysisInput>;
+
+export const SociogramAnalysisOutput = z.object({
+  summary: z.string().describe("Sınıfın genel sosyal yapısı hakkında kısa bir özet."),
+  cliques: z.array(z.object({
+    members: z.array(z.string()).describe("Grup üyelerinin isimleri."),
+    description: z.string().describe("Bu grubun (kliğin) belirgin özelliği."),
+  })).describe("Birbirini karşılıklı seçen 3 veya daha fazla öğrenciden oluşan gruplar."),
+  leaders: z.array(z.object({
+    student: z.string().describe("Lider olarak tanımlanan öğrencinin adı."),
+    reason: z.string().describe("Bu öğrencinin neden lider olarak görüldüğünün açıklaması."),
+  })).describe("Sınıfın popüler ve gizli liderleri."),
+  risks: z.array(z.object({
+    student: z.string().describe("Risk grubundaki öğrencinin adı."),
+    reason: z.string().describe("Risk grubunda olmasının nedeni (izole, reddedilmiş vb.)."),
+    recommendation: z.string().describe("Öğretmene yönelik somut pedagojik tavsiye."),
+  })).describe("Sosyal olarak izole edilmiş veya reddedilmiş, destek gerektiren öğrenciler."),
+   tensions: z.array(z.object({
+    students: z.array(z.string()).length(2).describe("Arasında gerilim olan iki öğrenci."),
+    description: z.string().describe("Bu gerilimin olası etkisi hakkında kısa bir yorum."),
+  })).describe("Karşılıklı olarak birbirini negatif seçen öğrenci çiftleri arasındaki potansiyel çatışmalar."),
+});
+export type SociogramAnalysisOutput = z.infer<typeof SociogramAnalysisOutput>;

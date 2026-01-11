@@ -4,12 +4,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Student, Class, SociogramQuestion, SociogramSurvey } from '@/lib/types';
+import { Student, Class, SociogramQuestion, SociogramSurvey, SociogramAnalysisOutput } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Share2, Users, User, UserCheck, UserX, Star, BookOpen, Coffee, FileDown, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, Share2, Users, User, UserCheck, UserX, Star, BookOpen, Coffee, FileDown, CheckCircle, AlertTriangle, Wand2, Lightbulb, Heart, Group, Frown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { exportSociogramToRtf } from '@/lib/word-export';
+import { analyzeSociogram } from '@/ai/flows/analyze-sociogram-flow';
 
 
 interface SociogramTabProps {
@@ -120,9 +121,9 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
   const { toast } = useToast();
   
   const [survey, setSurvey] = useState<SociogramSurvey>(currentClass?.sociogramSurvey || DEFAULT_SURVEY);
+  const [aiAnalysis, setAiAnalysis] = useState<SociogramAnalysisOutput | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  // --- This is the key fix ---
-  // If the class document in Firestore doesn't have a survey, create one automatically.
   useEffect(() => {
     if (currentClass && !currentClass.sociogramSurvey && db) {
         const classRef = doc(db, 'classes', currentClass.id);
@@ -195,13 +196,13 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
     const popular = Object.entries(timesChosen)
       .sort(([, a], [, b]) => (b.pos + b.lead) - (a.pos + a.lead))
       .slice(0, 5)
-      .map(([id, count]) => ({ student: students.find(s => s.id === id), ...count }));
+      .map(([id, count]) => ({ student: students.find(s => s.id === id)!, ...count }));
 
     const rejected = Object.entries(timesChosen)
       .sort(([, a], [, b]) => b.neg - a.neg)
       .slice(0, 5)
       .filter(([, count]) => count.neg > 0)
-      .map(([id, count]) => ({ student: students.find(s => s.id === id), ...count }));
+      .map(([id, count]) => ({ student: students.find(s => s.id === id)!, ...count }));
 
     const isolated = students.filter(s => (timesChosen[s.id]?.pos || 0) === 0 && (s.positiveSelections?.length || 0) === 0);
     
@@ -217,6 +218,30 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
     if (!currentClass || !students || !teacherProfile) return;
     exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey });
   }
+
+  const handleAnalyzeWithAI = async () => {
+      setIsAnalyzing(true);
+      setAiAnalysis(null);
+      const relationships = students.flatMap(student => [
+        ...(student.positiveSelections || []).map(toId => ({ from: student.name, to: students.find(s => s.id === toId)?.name || '', type: 'positive' })),
+        ...(student.negativeSelections || []).map(toId => ({ from: student.name, to: students.find(s => s.id === toId)?.name || '', type: 'negative' })),
+        ...(student.leadershipSelections || []).map(toId => ({ from: student.name, to: students.find(s => s.id === toId)?.name || '', type: 'leadership' }))
+      ]);
+
+      try {
+          const result = await analyzeSociogram({
+              studentNames: students.map(s => s.name),
+              relationships: relationships.filter(r => r.to) as any,
+          });
+          setAiAnalysis(result);
+      } catch (error) {
+          console.error("AI Analysis failed:", error);
+          toast({ variant: 'destructive', title: 'Analiz Başarısız', description: 'Yapay zeka ile iletişim kurulamadı.' });
+      } finally {
+          setIsAnalyzing(false);
+      }
+  }
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -257,23 +282,31 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
         
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><AlertTriangle /> Destek Gerekenler</CardTitle>
-                <CardDescription>İzole olan veya dışlanma riski taşıyan öğrenciler.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Lightbulb /> AI Analiz Sonuçları</CardTitle>
+                 <CardDescription>Yapay zekanın sınıf dinamikleri hakkındaki yorumları.</CardDescription>
+                 <Button onClick={handleAnalyzeWithAI} disabled={isAnalyzing} size="sm" className="mt-2">
+                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
+                    Yapay Zeka ile Yorumla
+                </Button>
             </CardHeader>
-            <CardContent>
-                <h4 className="font-semibold text-sm mb-2 text-gray-600">Yalnız Öğrenciler ({analysis.isolated.length})</h4>
-                {analysis.isolated.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                        {analysis.isolated.map(s => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}
+            <CardContent className="space-y-4 text-sm max-h-96 overflow-y-auto">
+                 {aiAnalysis ? (
+                    <div className="space-y-4">
+                        <p className="p-3 bg-blue-50 text-blue-800 rounded-md border border-blue-100">{aiAnalysis.summary}</p>
+                        
+                        {aiAnalysis.leaders.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-500"/>Liderler</h4>{aiAnalysis.leaders.map(l => <p key={l.student}>- <strong>{l.student}:</strong> {l.reason}</p>)}</div>}
+
+                        {aiAnalysis.cliques.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Group size={16} className="text-green-600"/>Gruplar (Klikler)</h4>{aiAnalysis.cliques.map(c => <p key={c.members.join('-')}>- <strong>{c.members.join(', ')}:</strong> {c.description}</p>)}</div>}
+
+                        {aiAnalysis.risks.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><AlertTriangle size={16} className="text-red-500"/>Risk Grubu</h4>{aiAnalysis.risks.map(r => <p key={r.student}>- <strong>{r.student} ({r.reason}):</strong> {r.recommendation}</p>)}</div>}
+                        
+                        {aiAnalysis.tensions.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Frown size={16} className="text-orange-500"/>Gerilimler</h4>{aiAnalysis.tensions.map(t => <p key={t.students.join('-')}>- <strong>{t.students.join(' ↔ ')}:</strong> {t.description}</p>)}</div>}
                     </div>
-                ) : <p className="text-xs text-muted-foreground">Yalnız öğrenci bulunmuyor.</p>}
-                
-                <h4 className="font-semibold text-sm mb-2 mt-4 text-gray-600">En Çok İstenmeyenler ({analysis.rejected.length})</h4>
-                {analysis.rejected.length > 0 ? (
-                     <div className="flex flex-wrap gap-2">
-                        {analysis.rejected.map(r => r.student && <Badge key={r.student.id} variant="destructive">{r.student.name} ({r.neg} oy)</Badge>)}
-                    </div>
-                ) : <p className="text-xs text-muted-foreground">Negatif seçim alan öğrenci yok.</p>}
+                ) : (
+                    <p className="text-center text-muted-foreground py-4">
+                        {isAnalyzing ? 'Analiz ediliyor...' : 'Analiz sonuçlarını görmek için butona tıklayın.'}
+                    </p>
+                )}
             </CardContent>
         </Card>
       </div>
