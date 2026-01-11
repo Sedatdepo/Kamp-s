@@ -261,10 +261,9 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
                       const isOwned = selectedStudent.badges?.includes(badge.id);
                       return (
                         isOwned ? (
-                            <AlertDialog>
+                            <AlertDialog key={badge.id}>
                                 <AlertDialogTrigger asChild>
                                      <div 
-                                      key={badge.id}
                                       className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100"
                                     >
                                       <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm">
