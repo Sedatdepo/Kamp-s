@@ -3,7 +3,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, Firestore, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, Firestore, updateDoc, Unsubscribe } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
@@ -65,7 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Keep track of student snapshot listener
+  const studentUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
+
   const signOut = useCallback(async () => {
+    // Unsubscribe from any active student listener
+    if (studentUnsubscribeRef.current) {
+        studentUnsubscribeRef.current();
+        studentUnsubscribeRef.current = null;
+    }
     if (auth) {
         await firebaseSignOut(auth);
     }
@@ -91,26 +99,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      
+      // Clean up previous student listener if it exists
+      if (studentUnsubscribeRef.current) {
+          studentUnsubscribeRef.current();
+          studentUnsubscribeRef.current = null;
+      }
+
       if (firebaseUser) {
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
+        const studentQuery = query(collection(db, 'students'), where('authUid', '==', firebaseUser.uid));
+        
         const teacherSnap = await getDoc(teacherRef);
-
+        
         if (teacherSnap.exists()) {
           await seedDatabase(db, firebaseUser.uid);
           const profile = { id: teacherSnap.id, ...teacherSnap.data() } as TeacherProfile;
           setAppUser({ type: 'teacher', data: firebaseUser, profile });
         } else {
-          const studentQuery = query(collection(db, 'students'), where('authUid', '==', firebaseUser.uid));
-          const studentSnapshot = await getDocs(studentQuery);
-          if (!studentSnapshot.empty) {
-            const studentDoc = studentSnapshot.docs[0];
-            const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-            setAppUser({ type: 'student', data: studentData });
-          } else {
-            await signOut();
-          }
+            const studentSnapshot = await getDocs(studentQuery);
+            if (!studentSnapshot.empty) {
+                const studentDoc = studentSnapshot.docs[0];
+                
+                // Set up a real-time listener for the student document
+                studentUnsubscribeRef.current = onSnapshot(doc(db, 'students', studentDoc.id), (docSnap) => {
+                    if (docSnap.exists()) {
+                        const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                        const userPayload = { type: 'student' as 'student', data: studentData };
+                        setAppUser(userPayload);
+                        localStorage.setItem('appUser', JSON.stringify(userPayload)); // Keep local storage in sync
+                    } else {
+                        // Student document was deleted, sign out
+                        signOut();
+                    }
+                });
+            } else {
+                await signOut();
+            }
         }
       } else {
         setAppUser(null);
@@ -119,7 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeAuth();
+        if (studentUnsubscribeRef.current) {
+            studentUnsubscribeRef.current();
+        }
+    };
   }, [auth, db, signOut]);
 
     useEffect(() => {
@@ -186,7 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
              const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
              const userCredential = await signInWithEmailAndPassword(auth, email, password);
-             setAppUser({ type: 'student', data: studentData });
+             
+             // The onAuthStateChanged listener will handle setting the appUser.
              router.push('/dashboard/student');
              return true; 
         } else {
@@ -207,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       auth, 
       db, 
       storage 
-  }), [appUser, loading, auth, db, storage, signOut]);
+  }), [appUser, loading, auth, db, storage, signOut, signInStudent, signInTeacher]);
 
   return (
     <AuthContext.Provider value={contextValue}>
