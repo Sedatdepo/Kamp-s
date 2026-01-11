@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Student } from '@/lib/types';
 import { saveAs } from 'file-saver';
+import { Label } from '@/components/ui/label';
 
 
 export function ProjectPetitionsTab({ students: initialStudents, teacherProfile }: { students: Student[], teacherProfile: any }) {
@@ -105,7 +106,7 @@ export function ProjectPetitionsTab({ students: initialStudents, teacherProfile 
       <body>${htmlContent}</body></html>
     `;
     
-    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
+    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8;' });
     saveAs(blob, 'proje_tercih_dilekceleri.doc');
   };
 
