@@ -1,4 +1,5 @@
-'use client';
+
+"use client";
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
