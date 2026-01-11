@@ -146,15 +146,12 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   )
 }
 
-function MessagesPanel({ classId }: { classId: string }) {
+function MessagesPanel({ classId, students: allStudentsInClass }: { classId: string, students: Student[] }) {
     const { appUser, db } = useAuth();
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const { toast } = useToast();
-
-    const studentsQuery = useMemoFirebase(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
-    const { data: students } = useCollection<Student>(studentsQuery);
 
     const messagesQuery = useMemoFirebase(() => {
         if (!db || !teacherId) return null;
@@ -202,14 +199,6 @@ function MessagesPanel({ classId }: { classId: string }) {
         toast({ title: "Mesaj gönderildi." });
     };
 
-    const studentList = useMemo(() => {
-        if (!students || !allMessages) return students || [];
-        const messageStudentIds = new Set(allMessages.map(m => m.senderId === teacherId ? m.receiverId : m.senderId));
-        const studentsWithMessages = students.filter(s => messageStudentIds.has(s.id));
-        const studentsWithoutMessages = students.filter(s => !messageStudentIds.has(s.id));
-        return [...studentsWithMessages, ...studentsWithoutMessages];
-    }, [students, allMessages, teacherId]);
-
     const chatMessages = useMemo(() => {
         if (!selectedStudent || !allMessages) return [];
         return allMessages.filter(m => m.participants.includes(selectedStudent.id)).sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
@@ -222,7 +211,7 @@ function MessagesPanel({ classId }: { classId: string }) {
                     <CardTitle className="font-headline flex items-center gap-2"><Users className="h-6 w-6"/> Öğrenciler</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto">
-                    {studentList.map(student => (
+                    {allStudentsInClass && allStudentsInClass.map(student => (
                         <div key={student.id} onClick={() => setSelectedStudent(student)}
                             className={`p-3 rounded-lg cursor-pointer flex justify-between items-center ${selectedStudent?.id === student.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
                             <div className="flex items-center gap-3">
@@ -274,6 +263,10 @@ function MessagesPanel({ classId }: { classId: string }) {
 
 
 export function CommunicationTab({ classId, currentClass }: CommunicationTabProps) {
+    const { db } = useAuth();
+    const studentsQuery = useMemoFirebase(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
+    const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+
   return (
     <Tabs defaultValue="announcements">
       <TabsList className="grid w-full grid-cols-2">
@@ -284,7 +277,7 @@ export function CommunicationTab({ classId, currentClass }: CommunicationTabProp
         <AnnouncementsPanel classId={classId} currentClass={currentClass} />
       </TabsContent>
       <TabsContent value="messages" className="mt-4">
-        <MessagesPanel classId={classId} />
+        {studentsLoading ? <Loader2 className="animate-spin mx-auto mt-10"/> : <MessagesPanel classId={classId} students={students || []} />}
       </TabsContent>
     </Tabs>
   );
