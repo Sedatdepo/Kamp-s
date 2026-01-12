@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { 
   Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
   Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks
+  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -242,6 +242,23 @@ export default function VeliToplantisiTab() {
         toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
 
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'width=800,height=600');
+        if (printWindow) {
+            printWindow.document.write(previewHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        } else { alert("Pop-up engelleyiciyi kapatın."); }
+    };
+    
+    const handlePreview = () => {
+        const content = generateDocumentHTML(form.getValues());
+        setPreviewHtml(content);
+        setIsPreviewOpen(true);
+    };
+
+    
     return (
       <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
         <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">

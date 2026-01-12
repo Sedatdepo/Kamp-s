@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { 
   Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
   Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks
+  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -231,7 +231,7 @@ export default function ZumreTab() {
         document.body.removeChild(link);
         toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
-    
+
     return (
       <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
         {/* HEADER */}
@@ -276,7 +276,7 @@ export default function ZumreTab() {
                                         <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                     </div>
                                     <div className="pl-8 relative">
-                                        <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px] pr-8" placeholder="Görüşme detayları..." />
+                                        <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
                                     </div>
                                     <div className="flex justify-end gap-2 pl-8">
                                         <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index}>
@@ -303,4 +303,3 @@ export default function ZumreTab() {
       </div>
     );
 }
-
