@@ -38,6 +38,13 @@ export async function generateQuestion(input: GenerateQuestionInput): Promise<Qu
       name: 'generateQuestionFlow',
       inputSchema: GenerateQuestionInputSchema,
       outputSchema: QuestionOutputSchema,
+      retry: {
+        maxAttempts: 3,
+        backoff: {
+            initial: 2000,
+            multiplier: 2,
+        }
+      }
     },
     async (input) => {
         const prompt = ai.definePrompt({
