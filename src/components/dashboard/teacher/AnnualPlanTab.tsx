@@ -336,7 +336,7 @@ function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: T
 }
 
 // --- Rehberlik Planı ---
-function GuidanceAnnualPlan() {
+function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
   const [activeTab, setActiveTab] = useState('plan');
   const [selectedGrade, setSelectedGrade] = useState('9');
   const [selectedActivityIndex, setSelectedActivityIndex] = useState(0);
@@ -349,7 +349,7 @@ function GuidanceAnnualPlan() {
   const [veliGorusmeText, setVeliGorusmeText] = useState("");
   const [beklentiText, setBeklentiText] = useState("");
 
-  const handleGenerateReportContent = async (reportType) => {
+  const handleGenerateReportContent = async (reportType: 'term' | 'year') => {
     setIsGenerating(true);
     let agendaTitle = "";
     if (reportType === 'term') {
@@ -681,13 +681,7 @@ function GuidanceAnnualPlan() {
       <h3>C) SINIFIN GENEL DURUMU</h3>
       <p style="text-align: justify;">Sınıf içi iletişim, arkadaşlık ilişkileri ve sınıf iklimi genel olarak olumlu düzeydedir. Öğrencilerin derslere katılımı ve akademik sorumluluk bilinçleri takip edilmektedir. Risk grubunda olduğu tespit edilen öğrencilerle ilgili olarak Okul Rehberlik Servisi ve velilerle iş birliği sağlanmıştır.</p>
       <br>
-      <h3>D) REHBERLİK SERVİSİNE YÖNLENDİRİLEN ÖĞRENCİLER VE NEDENLERİ</h3>
-      <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
-      <br>
-      <h3>E) YAPILAN VELİ GÖRÜŞMELERİ VE SONUÇLARI</h3>
-      <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
-      <br>
-      <h3>F) REHBERLİK SERVİSİNDEN BEKLENTİLER</h3>
+      <h3>D) REHBERLİK SERVİSİNDEN BEKLENTİLER</h3>
       <p>..........................................................................................................................................................................</p>
       <div style="margin-top:50px;">
         <p style="text-align:center;">................................<br>Sınıf Rehber Öğretmeni</p>
@@ -752,13 +746,7 @@ function GuidanceAnnualPlan() {
       <h3>C) SINIFIN GENEL DEĞERLENDİRMESİ</h3>
       <p style="text-align: justify;">Yıl boyunca sınıfın genel uyumu, arkadaşlık ilişkileri ve derse katılım düzeyleri olumlu seyretmiştir. Akademik anlamda desteklenmesi gereken öğrencilerle bireysel görüşmeler yapılmış, veli iş birliği sağlanmıştır. Rehberlik servisi ile koordineli çalışılarak risk durumundaki öğrencilere gerekli yönlendirmeler yapılmıştır.</p>
       <br>
-      <h3>D) REHBERLİK SERVİSİNE YÖNLENDİRİLEN ÖĞRENCİLER VE NEDENLERİ</h3>
-       <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
-      <br>
-      <h3>E) YAPILAN VELİ GÖRÜŞMELERİ VE SONUÇLARI</h3>
-       <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
-      <br>
-      <h3>F) GELECEK YIL İÇİN ÖNERİLER</h3>
+      <h3>D) GELECEK YIL İÇİN ÖNERİLER</h3>
       <p>..........................................................................................................................................................................</p>
       <div style="margin-top:50px;">
         <p style="text-align:center;">................................<br>Sınıf Rehber Öğretmeni</p>
@@ -1016,74 +1004,74 @@ function GuidanceAnnualPlan() {
     </div>
   );
 
-    return (
-        <div className="flex flex-col md:flex-row h-screen bg-gray-100 font-sans">
-          {/* Sidebar */}
-          <div className="w-full md:w-64 bg-indigo-900 text-white flex-shrink-0">
-            <div className="p-6 border-b border-indigo-800">
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                <BookOpen size={24} className="text-indigo-300" />
-                Rehberlik Asistanı
-              </h1>
-              <p className="text-xs text-indigo-300 mt-1">2025-2026 Eğitim Yılı</p>
-            </div>
-            
-            <div className="p-4">
-                <label className="text-xs text-indigo-300 uppercase font-bold tracking-wider mb-2 block">Sınıf Seçimi</label>
-                <div className="grid grid-cols-4 gap-2 mb-6">
-                    {['9', '10', '11', '12'].map(grade => (
-                        <button 
-                            key={grade}
-                            onClick={() => {
-                                setSelectedGrade(grade);
-                                setSelectedActivityIndex(0); 
-                            }}
-                            className={`p-2 rounded text-center font-bold transition-colors ${selectedGrade === grade ? 'bg-indigo-500 text-white shadow-lg' : 'bg-indigo-800 text-indigo-300 hover:bg-indigo-700'}`}
-                        >
-                            {grade}
-                        </button>
-                    ))}
-                </div>
-
-                <nav className="space-y-2">
-                    <button onClick={() => setActiveTab('plan')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'plan' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
-                        <Calendar size={18} /> Yıllık Plan
-                    </button>
-                    <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'activity' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
-                        <FileText size={18} /> Etkinlik Raporu
-                    </button>
-                     <button onClick={() => setActiveTab('termReport')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'termReport' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
-                        <ClipboardCheck size={18} /> Dönem Sonu Raporu
-                    </button>
-                     <button onClick={() => setActiveTab('endyear')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'endyear' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
-                        <CheckCircle size={18} /> Yıl Sonu Raporu
-                    </button>
-                </nav>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-auto p-8">
-            <header className="flex justify-between items-center mb-8">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">
-                        {activeTab === 'plan' && 'Sınıf Yıllık Çerçeve Planı'}
-                        {activeTab === 'activity' && 'Etkinlik Sonuç Raporu'}
-                        {activeTab === 'termReport' && 'Dönem Sonu Faaliyet Raporu'}
-                        {activeTab === 'endyear' && 'Yıl Sonu Faaliyet Raporu'}
-                    </h2>
-                    <p className="text-gray-500 text-sm mt-1">{selectedGrade}. Sınıf Doküman Yönetimi</p>
-                </div>
-                <div className="text-right">
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">Tam Yıl Verisi Yüklendi</span>
-                </div>
-            </header>
-
-            {activeTab === 'plan' && renderAnnualPlan()}
-            {activeTab === 'activity' && renderActivityReport()}
-            {activeTab === 'termReport' && renderTermReport()}
-            {activeTab === 'endyear' && renderEndYearReport()}
-          </div>
+  return (
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100 font-sans">
+      {/* Sidebar */}
+      <div className="w-full md:w-64 bg-indigo-900 text-white flex-shrink-0">
+        <div className="p-6 border-b border-indigo-800">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <BookOpen size={24} className="text-indigo-300" />
+            Rehberlik Asistanı
+          </h1>
+          <p className="text-xs text-indigo-300 mt-1">2025-2026 Eğitim Yılı</p>
         </div>
-      );
+        
+        <div className="p-4">
+            <label className="text-xs text-indigo-300 uppercase font-bold tracking-wider mb-2 block">Sınıf Seçimi</label>
+            <div className="grid grid-cols-4 gap-2 mb-6">
+                {['9', '10', '11', '12'].map(grade => (
+                    <button 
+                        key={grade}
+                        onClick={() => {
+                            setSelectedGrade(grade);
+                            setSelectedActivityIndex(0); 
+                        }}
+                        className={`p-2 rounded text-center font-bold transition-colors ${selectedGrade === grade ? 'bg-indigo-500 text-white shadow-lg' : 'bg-indigo-800 text-indigo-300 hover:bg-indigo-700'}`}
+                    >
+                        {grade}
+                    </button>
+                ))}
+            </div>
+
+            <nav className="space-y-2">
+                <button onClick={() => setActiveTab('plan')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'plan' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
+                    <Calendar size={18} /> Yıllık Plan
+                </button>
+                <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'activity' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
+                    <FileText size={18} /> Etkinlik Raporu
+                </button>
+                 <button onClick={() => setActiveTab('termReport')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'termReport' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
+                    <ClipboardCheck size={18} /> Dönem Sonu Raporu
+                </button>
+                 <button onClick={() => setActiveTab('endyear')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${activeTab === 'endyear' ? 'bg-white text-indigo-900 font-medium' : 'text-indigo-100 hover:bg-indigo-800'}`}>
+                    <CheckCircle size={18} /> Yıl Sonu Raporu
+                </button>
+            </nav>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto p-8">
+        <header className="flex justify-between items-center mb-8">
+            <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                    {activeTab === 'plan' && 'Sınıf Yıllık Çerçeve Planı'}
+                    {activeTab === 'activity' && 'Etkinlik Sonuç Raporu'}
+                    {activeTab === 'termReport' && 'Dönem Sonu Faaliyet Raporu'}
+                    {activeTab === 'endyear' && 'Yıl Sonu Faaliyet Raporu'}
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">{selectedGrade}. Sınıf Doküman Yönetimi</p>
+            </div>
+            <div className="text-right">
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">Tam Yıl Verisi Yüklendi</span>
+            </div>
+        </header>
+
+        {activeTab === 'plan' && renderAnnualPlan()}
+        {activeTab === 'activity' && renderActivityReport()}
+        {activeTab === 'termReport' && renderTermReport()}
+        {activeTab === 'endyear' && renderEndYearReport()}
+      </div>
+    </div>
+  );
 };
