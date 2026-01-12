@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { 
   Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
   Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2
+  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -450,6 +450,12 @@ export default function SokTab() {
             printWindow.print();
         } else { alert("Pop-up engelleyiciyi kapatın."); }
     };
+    
+    const handlePreview = () => {
+        const content = generateDocumentHTML(form.getValues());
+        setPreviewHtml(content);
+        setIsPreviewOpen(true);
+    };
 
     const downloadDoc = (content: string, filename: string) => {
         const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
@@ -569,6 +575,24 @@ export default function SokTab() {
                     </form>
                 </Form>
             </main>
+             {/* PREVIEW DIALOG */}
+            {isPreviewOpen && (
+                <div className="fixed inset-0 z-[200] bg-black/70 p-8 flex items-center justify-center">
+                    <div className="bg-white rounded-lg w-full max-w-4xl h-full flex flex-col">
+                        <div className="p-4 border-b flex justify-between items-center">
+                            <h3 className="font-bold text-lg">Önizleme</h3>
+                            <div>
+                                <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Yazdır</Button>
+                                <Button variant="ghost" size="icon" onClick={() => setIsPreviewOpen(false)}><X/></Button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-8 bg-gray-200">
+                           <div className="bg-white shadow-lg p-12 mx-auto" style={{width: '21cm', minHeight: '29.7cm'}} dangerouslySetInnerHTML={{ __html: previewHtml }}></div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
