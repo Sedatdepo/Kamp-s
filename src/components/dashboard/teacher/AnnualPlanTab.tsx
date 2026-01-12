@@ -32,10 +32,21 @@ const turkishToRTF = (text: any) => {
     .replace(/\n/g, "\\par ");
 };
 
-const downloadDailyPlan = (weekData: any, grade: number) => {
-  const processText = weekData.processComponents 
-    ? turkishToRTF(weekData.processComponents) 
-    : "Konu ile ilgili temel kavramlar a\\'e7\\'fdklan\\'fdr. \\'d6rnek soru \\'e7\\'f6z\\'fcmleri yap\\'fdl\\'fdr.";
+const downloadDailyPlan = (weekData: any, grade: number, subject: string) => {
+    let lessonName = "DERS";
+    let processTextContent = "Konu ile ilgili temel kavramlar a\\'e7\\'fdklan\\'fdr. \\'d6rnek soru \\'e7\\'f6z\\'fcmleri yap\\'fdl\\'fdr.";
+
+    if(subject === 'Fizik') {
+        lessonName = "F\\'ddZ\\'ddK";
+        processTextContent = weekData.processComponents 
+            ? turkishToRTF(weekData.processComponents) 
+            : processTextContent;
+    } else if (subject === 'Edebiyat') {
+        lessonName = "T\\'dcRK D\\'ddL\\'dd VE EDEB\\'ddYATI";
+        processTextContent = weekData.processComponents 
+            ? turkishToRTF(weekData.processComponents) 
+            : "Metin tahlili ve edebiyat at\\'f6lyesi \\'e7al\\'fd\\'femalar\\'fd yap\\'fdl\\'fdr.";
+    }
 
   const rtfContent = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
 {\\fonttbl{\\f0\\fnil\\fcharset162 Times New Roman;}{\\f1\\fnil\\fcharset162 Arial;}{\\f2\\fnil\\fcharset162 Calibri;}}
@@ -53,7 +64,7 @@ G\\'dcNL\\'dcK DERS PLANI\\par
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl Dersin Ad\\'fd\\cell F\\'ddZ\\'ddK\\cell\\row
+\\pard\\intbl Dersin Ad\\'fd\\cell ${lessonName}\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
@@ -73,7 +84,7 @@ G\\'dcNL\\'dcK DERS PLANI\\par
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl \\'d6nerilen S\\'fcre\\cell ${weekData.hours} Ders Saati (40 + 40 Dakika)\\cell\\row
+\\pard\\intbl \\'d6nerilen S\\'fcre\\cell ${weekData.hours} Ders Saati\\cell\\row
 \\pard\\par
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
@@ -85,54 +96,36 @@ G\\'dcNL\\'dcK DERS PLANI\\par
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl Y\\'f6ntem ve Teknikler\\cell Anlat\\'fdm, Soru-Cevap, Tart\\'fd\\'fea, G\\'f6sterip Yapt\\'fdrma, Problem \\'c7\\'f6zme, Beyin F\\'fdrta\\'fdnas\\'fd, Deney/G\\'f6zlem\\cell\\row
+\\pard\\intbl Y\\'f6ntem ve Teknikler\\cell Anlat\\'fdm, Soru-Cevap, Tart\\'fd\\'fea, G\\'f6sterip Yapt\\'fdrma, Problem \\'c7\\'f6zme\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl Ara\\'e7, Gere\\'e7 ve Materyaller\\cell Ders Kitab\\'fd, Etkile\\'feimli Tahta, EBA, OGM Materyal, Deney Malzemeleri, \\'c7al\\'fd\\'fea Ka\\'f0\\'fdtlar\\'fd\\cell\\row
-\\trowd\\trgaph108\\trleft-108
-\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
-\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl K\\'fclt\\'fcr ve De\\'f0erler\\cell Bilimsellik, Sorumluluk, Sab\\'fdr, Do\\'f0ruluk, D\\'fcr\\'fcstl\\'fck, Vatanseverlik, Estetik\\cell\\row
-\\trowd\\trgaph108\\trleft-108
-\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx2500
-\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl G\\'fcvenlik \\'d6nlemleri\\cell Laboratuvar kullan\\'fdm\\'fd s\\'fdras\\'fdnda elektrik ve cam malzeme g\\'fcvenli\\'f0ine dikkat edilecektir. S\\'fdn\\'fdf i\\'e7i hareketlerde fiziksel mesafeye \\'f6zen g\\'f6sterilecektir.\\cell\\row
+\\pard\\intbl Ara\\'e7, Gere\\'e7 ve Materyaller\\cell Ders Kitab\\'fd, Etkile\\'feimli Tahta, EBA, OGM Materyal\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
 \\pard\\intbl \\b DERSE HAZIRLIK VE G\\'ddR\\'dd\\'de\\b0\\par
-\\pard\\li100 1. S\\'fdn\\'fdfa selam verilerek girilir, \\'f6\\'f0rencilerin hal ve hat\\'fdrlar\\'fd sorulur. Yoklama al\\'fdn\\'fdr.\\par
-2. S\\'fdn\\'fdf\\'fdn fiziksel ortam\\'fd (\\'fd\\'fe\\'fdk, s\\'fdcakl\\'fdk vb.) derse haz\\'fdr hale getirilir.\\par
-3. \\'d6nceki derste i\\'felenen konular k\\'fdsaca soru-cevap y\\'f6ntemiyle hat\\'fdrla\\'fdt\\'fdl\\'fdr.\\par
-4. \\'d6\\'f0rencilere "Bug\\'fcn ne \\'f6\\'f0renece\\'f0iz?" sorusu y\\'f6neltilerek dersin kazan\\'fdm\\'fd tahtaya yaz\\'ffl\\'fdr.\\par
-5. G\\'fcnl\\'fck hayattan konuyla ilgili bir \\'f6rnek veya problem durumu payla\\'fe\\'fdlarak \\'f6\\'f0rencilerin dikkati \\'e7ekilir ve motivasyonlar\\'fd sa\\'f0lan\\'fdr.\\cell\\row
+\\pard\\li100 1. S\\'fdn\\'fdfa selam verilerek girilir, yoklama al\\'fdn\\'fdr.\\par
+2. \\'d6nceki derste i\\'felenen konular k\\'fdsaca hat\\'fdrlat\\'fdl\\'fdr.\\par
+3. G\\'fcnl\\'fck hayattan konuyla ilgili bir \\'f6rnekle \\'f6\\'f0rencilerin dikkati \\'e7ekilir.\\par
+\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
 \\pard\\intbl \\b GEL\\'dd\\'deME (KONU \\'dd\\'deLEN\\'dd\\'de\\'dd)\\b0\\par
 \\pard\\li100 Bu b\\'f6l\\'fcmde T\\'fcrkiye Y\\'fczy\\'fdl\\'fd Maarif Modeli \\'e7er\\'e7evesinde a\\'fea\\'f0\\'fddaki s\\'fcre\\'e7 bile\\'feenleri takip edilecektir:\\par
 \\par
-${processText}\\par
-\\par
-1. Konunun temel kavramlar\\'fd etkile\\'feimli tahta veya sunum arac\\'fdl\\'fd\\'f0\\'fdyla g\\'f6rsellerle desteklenerek a\\'e7\\'fdklan\\'fdr.\\par
-2. Varsa form\\'fcller ve matematiksel modeller t\\'fcretilir, birim analizleri yap\\'fdl\\'fdr.\\par
-3. Anla\\'fe\\'fdlmay\\'fd kolayla\\'fet\\'fdrmak i\\'e7in analojiler ve modeller kullan\\'fdl\\'fdr.\\par
-4. Konuyla ilgili \\'f6rnek sorular \\'f6nce \\'f6\\'f0retmen taraf\\'fdndan, sonra \\'f6\\'f0rencilerle birlikte \\'e7\\'f6z\\'fcl\\'fcr.\\par
-5. Anla\\'fe\\'fdlmayan noktalar i\\'e7in \\'f6\\'f0rencilere s\\'f6z hakk\\'fd verilir ve geri bildirim sa\\'f0lan\\'fdr.\\cell\\row
+${processTextContent}\\par
+\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
 \\pard\\intbl \\b SONU\\'c7 VE DE\\'d0ERLEND\\'ddRME\\b0\\par
 \\pard\\li100 1. Dersin sonunda konu k\\'fdsaca \\'f6zetlenir.\\par
-2. Kazan\\'fdm\\'fdn ger\\'e7ekle\\'feip ger\\'e7ekle\\'femedi\\'f0ini anlamak i\\'e7in s\\'fdn\\'fdfa 2-3 adet k\\'fdsa cevapl\\'fd soru sorulur.\\par
-3. Gelecek derste i\\'felecek konu hakk\\'fdnda k\\'fdsa bilgi verilerek derse haz\\'fdrl\\'fdkl\\'fd gelmeleri istenir.\\par
-4. Varsa ders kitab\\'fdndan ilgili b\\'f6l\\'fcmdeki sorular \\'f6dev olarak verilir.\\cell\\row
+2. Kazan\\'fdm\\'fdn ger\\'e7ekle\\'feip ger\\'e7ekle\\'femedi\\'f0ini anlamak i\\'e7in sorular sorulur.\\par
+3. Gelecek derse haz\\'fdrl\\'fdkl\\'fd gelmeleri istenir.\\cell\\row
 \\pard\\par
-\\trowd\\trgaph108\\trleft-108
-\\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl\\b\\f1\\fs20 B\\'d6L\\'dcM III: ONAMA\\b0\\f0\\fs22\\cell\\row
 \\trowd\\trgaph108\\trleft-108
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx4750
 \\clbrdrt\\brdrs\\brdrw10 \\clbrdrl\\brdrs\\brdrw10 \\clbrdrb\\brdrs\\brdrw10 \\clbrdrr\\brdrs\\brdrw10 \\cellx9500
-\\pard\\intbl\\qc DERS \\'d6\\'f0RETMEN\\'dd\\par
+\\pard\\intbl\\qc DERS \\'d6\\'d0RETMEN\\'dd\\par
 \\par
 \\par
 (\\'ddmza)\\cell OKUL M\\'dcD\\'dcR\\'dc\\par
@@ -146,7 +139,7 @@ ${processText}\\par
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Fizik_${grade}_Sinif_Gunluk_Plan_${weekData.week.replace(/\s/g, "_")}.rtf`;
+  link.download = `${subject}_${grade === 0 ? 'Hazirlik' : grade}_Sinif_Gunluk_Plan_${weekData.week.replace(/\s/g, "_")}.rtf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -274,7 +267,7 @@ function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: T
             </Select>
 
           {subjectData.grades.map((grade: string) => (
-            <button key={grade} onClick={() => setActiveGrade(grade)} className={`px-8 py-3 rounded-xl font-bold transition-all shadow-sm border-2 ${activeGrade === grade ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform -translate-y-0.5' : 'bg-white text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50'}`}>{grade}. Sınıf</button>
+            <button key={grade} onClick={() => setActiveGrade(grade)} className={`px-8 py-3 rounded-xl font-bold transition-all shadow-sm border-2 ${activeGrade === grade ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform -translate-y-0.5' : 'bg-white text-slate-500 border-transparent hover:text-indigo-600 hover:bg-indigo-50'}`}>{grade === '0' ? 'Hazırlık' : `${grade}. Sınıf`}</button>
           ))}
         </div>
 
@@ -323,7 +316,7 @@ function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: T
                   {week.learningOutcome && (<div className="bg-white/50 border border-slate-200 p-4 rounded-lg"><span className="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Kazanım</span><p className="text-slate-700 text-sm leading-relaxed">{week.learningOutcome}</p></div>)}
                   {week.processComponents && (<div className="pt-2 border-t border-dashed border-slate-200"><span className="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Süreç Bileşenleri</span><div className="text-slate-600 text-sm leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: week.processComponents }} /></div>)}
                   {week.specialDays && (<div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-100 mt-2"><BookOpen size={12} />{week.specialDays}</div>)}
-                  <button onClick={() => downloadDailyPlan(week, parseInt(activeGrade))} className="w-full mt-4 pt-4 border-t border-slate-100 text-center text-indigo-600 text-sm font-semibold hover:text-indigo-800 transition-colors flex items-center justify-center gap-2 group"><Download size={16} className="group-hover:scale-110 transition-transform" /> Günlük Planı İndir (.rtf)</button>
+                  <button onClick={() => downloadDailyPlan(week, parseInt(activeGrade), activeSubject)} className="w-full mt-4 pt-4 border-t border-slate-100 text-center text-indigo-600 text-sm font-semibold hover:text-indigo-800 transition-colors flex items-center justify-center gap-2 group"><Download size={16} className="group-hover:scale-110 transition-transform" /> Günlük Planı İndir (.rtf)</button>
                 </div>
               </div>
             )})
@@ -912,29 +905,6 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
                     defaultValue="Sınıf içi iletişim ve arkadaşlık ilişkileri olumlu düzeydedir. Akademik başarı takibi düzenli olarak yapılmıştır."
                 ></textarea>
             </div>
-             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Öğrenci adı ve yönlendirme nedeni..."
-                ></textarea>
-            </div>
-            
-            <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
-                ></textarea>
-            </div>
-
-             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">F) Rehberlik Servisinden Beklentiler</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Varsa beklentilerinizi yazınız..."
-                ></textarea>
-            </div>
         </div>
     </div>
   );
@@ -976,28 +946,6 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
                 <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     defaultValue="Yıl boyunca sınıfın genel uyumu, arkadaşlık ilişkileri ve derse katılım düzeyleri olumlu seyretmiştir."
-                ></textarea>
-            </div>
-             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Öğrenci adı ve yönlendirme nedeni..."
-                ></textarea>
-            </div>
-            
-            <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
-                ></textarea>
-            </div>
-             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">F) Gelecek Yıl İçin Öneriler</label>
-                <textarea 
-                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
-                    placeholder="Gelecek yıl için önerilerinizi yazınız..."
                 ></textarea>
             </div>
         </div>
