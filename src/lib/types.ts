@@ -490,6 +490,11 @@ export interface CustomBadge extends Badge {
 export interface Database {
     disciplineRecords?: DisciplineRecord[];
     zumreDocuments?: any[];
+    userScenarios: Record<string, string[]>; 
+    examAnalysisDocuments?: ExamAnalysisDocument[];
+    homeworkStatusDocuments?: HomeworkStatusDocument[];
+    surveyDocuments?: SurveyDocument[];
+    infoFormsStatusDocuments?: InfoFormsStatusDocument[];
 }
 
 
@@ -526,3 +531,27 @@ export const SociogramAnalysisOutput = z.object({
   })).describe("Karşılıklı olarak birbirini negatif seçen öğrenci çiftleri arasındaki potansiyel çatışmalar."),
 });
 export type SociogramAnalysisOutput = z.infer<typeof SociogramAnalysisOutput>;
+
+
+// NEW ARCHIVE TYPES
+export interface ExamAnalysisDocument extends Archivable {
+    data: {
+        examKey: string;
+        students: Student[]; // Snapshot of students at the time of archiving
+    };
+}
+export interface HomeworkStatusDocument extends Archivable {
+    data: {
+        homeworks: Homework[]; // Snapshot of homeworks
+        submissions: Submission[]; // Snapshot of submissions
+    };
+}
+export interface SurveyDocument extends Archivable {
+    data: Survey;
+}
+export interface InfoFormsStatusDocument extends Archivable {
+    data: {
+        students: { id: string, name: string, number: string }[];
+        infoForms: { studentId: string, submitted: boolean }[];
+    };
+}

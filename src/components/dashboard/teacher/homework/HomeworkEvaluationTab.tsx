@@ -3,11 +3,11 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, TeacherProfile, Submission, Homework } from '@/lib/types';
+import { Student, Class, TeacherProfile, Submission, Homework, HomeworkStatusDocument } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X, Check } from 'lucide-react';
-import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X, Check, FileText } from 'lucide-react';
+import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from '../RecordManager';
 
 
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: any) => {
@@ -122,8 +124,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
     const handleMarkAsSubmitted = async (student: Student) => {
         if (!db || !classId) return;
         
-        const newSubmissionRef = doc(collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`));
-        const submissionData: Partial<Submission> = {
+        const submissionData = {
             studentId: student.id,
             studentName: student.name,
             studentNumber: student.number,
@@ -131,15 +132,15 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
             submittedAt: new Date().toISOString(),
             feedback: 'Öğretmen tarafından teslim edildi olarak işaretlendi.'
         };
-
         try {
-            await setDoc(newSubmissionRef, submissionData);
+            await addDoc(collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`), submissionData);
             toast({ title: "Teslim Edildi", description: `${student.name} için ödev teslim edilmiş sayıldı.` });
             onScoresUpdated();
         } catch (error) {
             toast({ title: "Hata", description: "İşlem kaydedilemedi.", variant: 'destructive' });
         }
     };
+
 
     const assignedStudents = students.filter((s: Student) => homework.assignedStudents?.includes(s.id));
     const submittedCount = submissions.length;
@@ -224,7 +225,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                 <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
                             ))}
                             <TableHead className="text-center w-[100px]">Toplam</TableHead>
-                            <TableHead className="text-center w-[150px]">Durum</TableHead>
+                             <TableHead className="text-center w-[150px]">Durum</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -274,25 +275,29 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
 export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
+    const { db: localDb, setDb: setLocalDb, loading: localDbLoading } = useDatabase();
+    const { homeworkStatusDocuments = [] } = localDb;
+
+    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(homeworksQuery);
+    const { data: liveHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
     const fetchSubmissions = useCallback(async () => {
-        if (homeworksLoading || !db || !classId || !homeworks || homeworks.length === 0) {
+        if (homeworksLoading || !db || !classId || !liveHomeworks || liveHomeworks.length === 0) {
             setSubmissionsLoading(false);
             return;
         }
         setSubmissionsLoading(true);
         const subsByHomework: { [homeworkId: string]: Submission[] } = {};
-        for (const hw of homeworks) {
+        for (const hw of liveHomeworks) {
             const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
             const querySnapshot = await getDocs(subsQuery);
             const subs: Submission[] = [];
@@ -303,59 +308,119 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
         }
         setAllSubmissions(subsByHomework);
         setSubmissionsLoading(false);
-    }, [homeworks, db, classId, homeworksLoading]);
+    }, [liveHomeworks, db, classId, homeworksLoading]);
 
     useEffect(() => {
         fetchSubmissions();
     }, [fetchSubmissions]);
+
+    const displayedData = useMemo(() => {
+        if (selectedRecordId) {
+            const record = homeworkStatusDocuments.find(d => d.id === selectedRecordId);
+            if (record) {
+                const subsByHw: { [homeworkId: string]: Submission[] } = {};
+                record.data.homeworks.forEach(hw => {
+                    subsByHw[hw.id] = record.data.submissions.filter(s => s.homeworkId === hw.id);
+                });
+                return {
+                    homeworks: record.data.homeworks,
+                    submissions: subsByHw,
+                };
+            }
+        }
+        return {
+            homeworks: liveHomeworks,
+            submissions: allSubmissions,
+        };
+    }, [selectedRecordId, homeworkStatusDocuments, liveHomeworks, allSubmissions]);
     
     const handleHomeworkDelete = async (homeworkId: string) => {
         if (!db) return;
         const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
         try {
             await deleteDoc(homeworkRef);
-            // Optionally delete all sub-collections, though Firestore console does this
             toast({ title: "Ödev silindi." });
-            // forceRefresh is not available from useCollection, you might need to implement it or refetch
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }
     }
 
     const handleScoresUpdated = () => {
-        // Refetch submissions after scores are saved
         fetchSubmissions();
     }
+    
+    const handleSaveToArchive = () => {
+        if (!currentClass || !liveHomeworks) return;
+
+        const newRecord: HomeworkStatusDocument = {
+            id: `hw_status_${Date.now()}`,
+            name: `Ödev Durumu - ${new Date().toLocaleDateString('tr-TR')}`,
+            date: new Date().toISOString(),
+            classId: currentClass.id,
+            data: { 
+                homeworks: liveHomeworks,
+                submissions: Object.values(allSubmissions).flat()
+            },
+        };
+
+        setLocalDb(prev => ({ ...prev, homeworkStatusDocuments: [...(prev.homeworkStatusDocuments || []), newRecord] }));
+        toast({ title: 'Arşivlendi', description: 'Ödev durumu arşive kaydedildi.' });
+    };
+
+    const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
+    const handleDeleteRecord = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({ ...prev, homeworkStatusDocuments: (prev.homeworkStatusDocuments || []).filter(d => d.id !== selectedRecordId) }));
+        handleNewRecord();
+        toast({ title: 'Kayıt Silindi', variant: 'destructive' });
+    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
 
-    if (homeworksLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+    if (homeworksLoading || submissionsLoading || localDbLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Performans Ödevi Değerlendirme</CardTitle>
-                <CardDescription>Atadığınız performans ödevlerini yönetin ve öğrencilerinizi kriterlere göre notlayın.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 {homeworks && homeworks.length > 0 ? (
-                    homeworks.map(hw => (
-                        <HomeworkEvaluationCard
-                            key={hw.id}
-                            homework={hw}
-                            students={students}
-                            submissions={allSubmissions[hw.id] || []}
-                            classId={classId}
-                            teacherProfile={teacherProfile}
-                            onHomeworkDelete={handleHomeworkDelete}
-                            onScoresUpdated={handleScoresUpdated}
-                        />
-                    ))
-                ) : (
-                    <div className="text-center p-10 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">Bu sınıfa atanmış performans ödevi bulunmuyor.</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+             <div className="lg:col-span-1">
+                 <RecordManager
+                    records={(homeworkStatusDocuments || []).filter(d => d.classId === classId)}
+                    selectedRecordId={selectedRecordId}
+                    onSelectRecord={setSelectedRecordId}
+                    onNewRecord={handleNewRecord}
+                    onDeleteRecord={handleDeleteRecord}
+                    noun="Ödev Durumu"
+                />
+                 <Button onClick={handleSaveToArchive} className="w-full mt-4" disabled={!!selectedRecordId}>
+                    <Save className="mr-2 h-4 w-4" /> Mevcut Durumu Arşivle
+                </Button>
+            </div>
+            <div className="lg:col-span-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Performans Ödevi Değerlendirme</CardTitle>
+                        <CardDescription>Atadığınız performans ödevlerini yönetin ve öğrencilerinizi kriterlere göre notlayın.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {displayedData.homeworks && displayedData.homeworks.length > 0 ? (
+                            displayedData.homeworks.map(hw => (
+                                <HomeworkEvaluationCard
+                                    key={hw.id}
+                                    homework={hw}
+                                    students={students}
+                                    submissions={displayedData.submissions[hw.id] || []}
+                                    classId={classId}
+                                    teacherProfile={teacherProfile}
+                                    onHomeworkDelete={handleHomeworkDelete}
+                                    onScoresUpdated={handleScoresUpdated}
+                                />
+                            ))
+                        ) : (
+                            <div className="text-center p-10 bg-muted/50 rounded-lg">
+                                <p className="text-muted-foreground">Bu sınıfa atanmış performans ödevi bulunmuyor.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     );
 };

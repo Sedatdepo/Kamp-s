@@ -1,10 +1,12 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { 
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
-    HomeworkDocument, DisciplineRecord
+    HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
+    InfoFormsStatusDocument, SurveyDocument
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -24,6 +26,10 @@ export interface Database {
   disciplineRecords: DisciplineRecord[]; // Added
   zumreDocuments: any[]; // Added - define proper type if available
   userScenarios: Record<string, string[]>; 
+  examAnalysisDocuments?: ExamAnalysisDocument[];
+  homeworkStatusDocuments?: HomeworkStatusDocument[];
+  surveyDocuments?: SurveyDocument[];
+  infoFormsStatusDocuments?: InfoFormsStatusDocument[];
 }
 
 // Varsayılan boş veritabanı
@@ -40,6 +46,10 @@ const initialDb: Database = {
   disciplineRecords: [], // Added
   zumreDocuments: [], // Added
   userScenarios: {}, 
+  examAnalysisDocuments: [],
+  homeworkStatusDocuments: [],
+  surveyDocuments: [],
+  infoFormsStatusDocuments: [],
 };
 
 export const useDatabase = () => {

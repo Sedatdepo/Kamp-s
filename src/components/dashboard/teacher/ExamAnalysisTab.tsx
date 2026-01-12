@@ -1,13 +1,8 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import {
-  Student,
-  Class,
-  TeacherProfile,
-  Kazanım,
-} from '@/lib/types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Student, Class, TeacherProfile, Kazanım, ExamAnalysisDocument } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -32,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquare, Square, BookOpen, Search } from 'lucide-react';
+import { BarChart, Users, TrendingUp, TrendingDown, Target, FileDown, CheckSquare, Square, BookOpen, Search, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { saveAs } from 'file-saver';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,7 +35,9 @@ import { Input } from '@/components/ui/input';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
-
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExamAnalysisTabProps {
   students: Student[];
@@ -294,8 +291,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
   };
 
   const generateRTF = () => {
-    let rtf = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat\\deflang1055
-{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
+    let rtf = `{\\rtf1\\ansi\\ansicpg1254\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset162 Calibri;}}
 {\\colortbl ;\\red0\\green0\\blue0;}
 \\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\\qc\\b\\f0\\fs28 SINAV SONU\\u199? DE\\u286?ERLEND\\u304?RME TUTANA\\u286?I\\par
 \\pard\\sa200\\sl276\\slmult1\\qj\\fs22\\par
@@ -519,50 +515,88 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
 
 
 export function ExamAnalysisTab({ students, currentClass, teacherProfile }: ExamAnalysisTabProps) {
-  const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
+    const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
+    const { db: localDb, setDb: setLocalDb, loading } = useDatabase();
+    const { examAnalysisDocuments = [] } = localDb;
+    const { toast } = useToast();
+    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-  const { term, exam } = useMemo(() => {
-    const [termKey, examKey] = selectedExamKey.split('-');
-    return {
-      term: termKey as TermKey,
-      exam: examKey as ExamKey,
+    const { term, exam } = useMemo(() => {
+        const [termKey, examKey] = selectedExamKey.split('-');
+        return {
+        term: termKey as TermKey,
+        exam: examKey as ExamKey,
+        };
+    }, [selectedExamKey]);
+
+    const displayedStudents = useMemo(() => {
+        if (selectedRecordId) {
+            const record = examAnalysisDocuments.find(d => d.id === selectedRecordId);
+            if (record && record.data.examKey === selectedExamKey) {
+                return record.data.students;
+            }
+        }
+        return students;
+    }, [selectedRecordId, examAnalysisDocuments, students, selectedExamKey]);
+
+    const examData = useMemo(() => {
+        const termGradesKey = term === 'term1' ? 'term1Grades' : 'term2Grades';
+        return displayedStudents
+        .map(student => {
+            const grades = student[termGradesKey] as any;
+            const grade = grades?.[exam] ?? -1;
+            return { student, grade };
+        })
+        .filter(item => item.grade !== -1);
+    }, [displayedStudents, term, exam]);
+
+    const classAverage = useMemo(() => {
+        if (examData.length === 0) return 0;
+        const total = examData.reduce((sum, item) => sum + item.grade, 0);
+        return total / examData.length;
+    }, [examData]);
+
+    const successRate = useMemo(() => {
+        if (examData.length === 0) return 0;
+        const passingStudents = examData.filter(item => item.grade >= 50).length;
+        return (passingStudents / examData.length) * 100;
+    }, [examData]);
+    
+    const sortedStudentsByGrade = useMemo(() => {
+        return [...examData].sort((a,b) => b.grade - a.grade);
+    }, [examData]);
+
+    const handleSaveToArchive = () => {
+        const newRecord: ExamAnalysisDocument = {
+            id: `exam_analysis_${Date.now()}`,
+            name: `${currentClass?.name} - ${selectedExamKey} Analizi`,
+            date: new Date().toISOString(),
+            classId: currentClass?.id,
+            data: { examKey: selectedExamKey, students: students },
+        };
+        setLocalDb(prev => ({ ...prev, examAnalysisDocuments: [...(prev.examAnalysisDocuments || []), newRecord] }));
+        toast({ title: 'Arşivlendi', description: 'Sınav analizi arşive kaydedildi.' });
     };
-  }, [selectedExamKey]);
 
-  const examData = useMemo(() => {
-    const termGradesKey = term === 'term1' ? 'term1Grades' : 'term2Grades';
-    return students
-      .map(student => {
-        const grades = student[termGradesKey] as any;
-        const grade = grades?.[exam] ?? -1;
-        return { student, grade };
-      })
-      .filter(item => item.grade !== -1);
-  }, [students, term, exam]);
-
-  const classAverage = useMemo(() => {
-    if (examData.length === 0) return 0;
-    const total = examData.reduce((sum, item) => sum + item.grade, 0);
-    return total / examData.length;
-  }, [examData]);
-
-  const successRate = useMemo(() => {
-    if (examData.length === 0) return 0;
-    const passingStudents = examData.filter(item => item.grade >= 50).length;
-    return (passingStudents / examData.length) * 100;
-  }, [examData]);
-  
-  const sortedStudents = useMemo(() => {
-      return [...examData].sort((a,b) => b.grade - a.grade);
-  }, [examData]);
-
-  const highestScorers = sortedStudents.slice(0, 3);
-  const lowestScorers = sortedStudents.slice(-3).reverse();
-
+    const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
+    const handleDeleteRecord = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({...prev, examAnalysisDocuments: (prev.examAnalysisDocuments || []).filter(d => d.id !== selectedRecordId)}));
+        handleNewRecord();
+        toast({ title: 'Kayıt Silindi', variant: 'destructive' });
+    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
       <div className="xl:col-span-1 space-y-6">
+        <RecordManager 
+            records={(examAnalysisDocuments || []).filter(d => d.classId === currentClass?.id)}
+            selectedRecordId={selectedRecordId}
+            onSelectRecord={setSelectedRecordId}
+            onNewRecord={handleNewRecord}
+            onDeleteRecord={handleDeleteRecord}
+            noun="Sınav Analizi"
+        />
         <Card>
           <CardHeader>
             <CardTitle>Sınav Seçimi ve Genel İstatistikler</CardTitle>
@@ -579,11 +613,14 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
                     <SelectItem value="term2-exam2">2. Dönem 2. Yazılı</SelectItem>
                 </SelectContent>
             </Select>
+            <Button onClick={handleSaveToArchive} className="w-full" disabled={!!selectedRecordId}>
+                <Save className="mr-2 h-4 w-4" /> Mevcut Durumu Arşivle
+            </Button>
             <div className="grid grid-cols-2 gap-4">
                 <StatCard title="Sınıf Ortalaması" value={classAverage.toFixed(2)} icon={<BarChart className="text-blue-500" />} />
                 <StatCard title="Başarı Oranı" value={`%${successRate.toFixed(2)}`} icon={<Users className="text-green-500" />} />
-                <StatCard title="En Yüksek Not" value={highestScorers[0]?.grade.toString() || 'N/A'} icon={<TrendingUp className="text-emerald-500" />} />
-                <StatCard title="En Düşük Not" value={lowestScorers[0]?.grade.toString() || 'N/A'} icon={<TrendingDown className="text-red-500" />} />
+                <StatCard title="En Yüksek Not" value={sortedStudentsByGrade[0]?.grade.toString() || 'N/A'} icon={<TrendingUp className="text-emerald-500" />} />
+                <StatCard title="En Düşük Not" value={sortedStudentsByGrade[sortedStudentsByGrade.length - 1]?.grade.toString() || 'N/A'} icon={<TrendingDown className="text-red-500" />} />
             </div>
           </CardContent>
         </Card>
@@ -601,13 +638,13 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sortedStudents.map(({student, grade}) => (
+                        {sortedStudentsByGrade.map(({student, grade}) => (
                             <TableRow key={student.id}>
                                 <TableCell>{student.name}</TableCell>
                                 <TableCell className="text-right font-bold">{grade}</TableCell>
                             </TableRow>
                         ))}
-                        {sortedStudents.length === 0 && (
+                        {sortedStudentsByGrade.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={2} className="text-center text-muted-foreground">Bu sınav için not girilmemiş.</TableCell>
                             </TableRow>

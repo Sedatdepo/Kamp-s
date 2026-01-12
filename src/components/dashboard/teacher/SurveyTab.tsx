@@ -1,7 +1,8 @@
+
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Student, Class, TeacherProfile, Survey, Question, SurveyResponse } from '@/lib/types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Student, Class, TeacherProfile, Survey, Question, SurveyResponse, SurveyDocument } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Eye, BarChart2, Check, X, FileText, CheckSquare, Circle, Layout, Send, AlignLeft, ChevronDown, Calendar, Star, Save, List, ClipboardCheck, ArrowLeft, Download } from 'lucide-react';
@@ -27,6 +28,8 @@ import {
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { exportSurveyResultsToRtf } from '@/lib/word-export';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
 
 
 const ResultsView = ({ survey, students, teacherProfile, currentClass, onBack }: { survey: Survey, students: Student[], teacherProfile: TeacherProfile | null, currentClass: Class | null, onBack: () => void }) => {
@@ -173,15 +176,17 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   const { db, appUser } = useAuth();
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
   const { toast } = useToast();
+  const { db: localDb, setDb: setLocalDb, loading: localDbLoading } = useDatabase();
+  const { surveyDocuments = [] } = localDb;
 
   const [view, setView] = useState<'list' | 'builder' | 'results'>('list'); 
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   const [formTitle, setFormTitle] = useState('Yeni Anket');
   const [formDesc, setFormDesc] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [responses, setResponses] = useState<any[]>([]);
-
+  
   const surveysQuery = useMemoFirebase(() => {
     if (!db || !currentClass?.id) return null;
     return query(collection(db, 'surveys'), where('classId', '==', currentClass.id));
@@ -189,22 +194,24 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
 
   const { data: surveys, isLoading: loading } = useCollection<Survey>(surveysQuery);
 
-  const startNewSurvey = () => {
+  const startNewSurvey = useCallback(() => {
     setSelectedSurvey(null);
+    setSelectedRecordId(null);
     setFormTitle('Yeni Anket');
     setFormDesc('');
     setQuestions([]);
     setView('builder');
-  }
+  }, []);
 
-  const startEditingSurvey = (survey: Survey) => {
+  const startEditingSurvey = useCallback((survey: Survey) => {
     setSelectedSurvey(survey);
+    setSelectedRecordId(null); // Live data is being edited
     setFormTitle(survey.title);
     setFormDesc(survey.description);
     setQuestions(survey.questions);
     setView('builder');
-  }
-
+  }, []);
+  
   const viewResults = (survey: Survey) => {
     setSelectedSurvey(survey);
     setView('results');
@@ -213,7 +220,7 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   const handleSaveSurvey = async () => {
     if(!db || !currentClass) return;
 
-    const surveyData = {
+    const surveyData: Omit<Survey, 'id'> = {
         title: formTitle,
         description: formDesc,
         questions,
@@ -225,22 +232,18 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
 
     try {
         if(selectedSurvey) {
-            // Update existing survey
             const surveyRef = doc(db, 'surveys', selectedSurvey.id);
             await updateDoc(surveyRef, surveyData);
             toast({title: 'Anket güncellendi!'});
         } else {
-            // Create new survey
             const docRef = await addDoc(collection(db, 'surveys'), surveyData);
             toast({title: 'Anket oluşturuldu!'});
-            // Select the newly created survey for further editing
             setSelectedSurvey({id: docRef.id, ...surveyData});
         }
     } catch (e) {
         toast({variant: 'destructive', title: 'Hata', description: 'Anket kaydedilemedi.'});
     }
   }
-
 
   const addQuestion = () => {
     const newQ: Question = {
@@ -290,30 +293,6 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const data: { [key: string]: any } = {};
-    
-    questions.forEach(q => {
-      if (q.type === 'checkbox') {
-        data[q.id] = formData.getAll(`q_${q.id}`);
-      } else {
-        data[q.id] = formData.get(`q_${q.id}`);
-      }
-    });
-
-    setResponses([...responses, { id: Date.now(), answers: data }]);
-    const btn = document.getElementById('submit-btn');
-    if(btn) {
-       btn.innerText = "Gönderildi!";
-       btn.classList.add('bg-green-600');
-       setTimeout(() => {
-         setView('results');
-       }, 800);
-    }
-  };
-
   const handleToggleActive = async (survey: Survey, checked: boolean) => {
     if (!db) return;
     const surveyRef = doc(db, 'surveys', survey.id);
@@ -328,17 +307,12 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
     if (!db) return;
     try {
       const batch = writeBatch(db);
-      
-      // Delete the survey document
       const surveyRef = doc(db, 'surveys', surveyId);
       batch.delete(surveyRef);
 
-      // Find and delete all related responses
       const responsesQuery = query(collection(db, 'surveyResponses'), where('surveyId', '==', surveyId));
       const responsesSnapshot = await getDocs(responsesQuery);
-      responsesSnapshot.forEach(responseDoc => {
-        batch.delete(responseDoc.ref);
-      });
+      responsesSnapshot.forEach(responseDoc => batch.delete(responseDoc.ref));
 
       await batch.commit();
       toast({ title: 'Anket Silindi', description: 'Anket ve ilgili tüm yanıtlar başarıyla silindi.' });
@@ -346,6 +320,43 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
       toast({ variant: 'destructive', title: 'Hata', description: 'Anket silinirken bir sorun oluştu.' });
     }
   };
+
+   const handleSaveToArchive = () => {
+    if (!selectedSurvey) return;
+    const newRecord: SurveyDocument = {
+      id: `survey_${Date.now()}`,
+      name: selectedSurvey.title,
+      date: new Date().toISOString(),
+      classId: selectedSurvey.classId,
+      data: selectedSurvey,
+    };
+    setLocalDb(prev => ({...prev, surveyDocuments: [...(prev.surveyDocuments || []), newRecord] }));
+    toast({ title: 'Arşivlendi' });
+  };
+  
+  const handleNewRecord = useCallback(() => {
+    setSelectedRecordId(null);
+    startNewSurvey();
+  }, [startNewSurvey]);
+
+  const handleDeleteRecord = useCallback(() => {
+    if (!selectedRecordId) return;
+    setLocalDb(prev => ({...prev, surveyDocuments: (prev.surveyDocuments || []).filter(d => d.id !== selectedRecordId)}));
+    setSelectedRecordId(null);
+    toast({ title: 'Kayıt Silindi', variant: 'destructive' });
+  }, [selectedRecordId, setLocalDb, toast]);
+
+  useEffect(() => {
+      if(selectedRecordId) {
+          const record = surveyDocuments.find(d => d.id === selectedRecordId);
+          if (record) {
+              startEditingSurvey(record.data);
+          }
+      } else if(view === 'list') {
+        setSelectedSurvey(null);
+      }
+  }, [selectedRecordId, surveyDocuments, startEditingSurvey, view]);
+
 
   if (view === 'results' && selectedSurvey) {
     return <ResultsView survey={selectedSurvey} students={students} teacherProfile={teacherProfile} currentClass={currentClass} onBack={() => setView('list')} />;
@@ -489,90 +500,107 @@ export function SurveyTab({ students, currentClass, teacherProfile }: SurveyTabP
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-            <div>
-                <CardTitle className="font-headline flex items-center gap-2">
-                <ClipboardCheck />
-                Anket Modülü
-                </CardTitle>
-                <CardDescription>
-                Öğrencileriniz için anketler oluşturun ve sonuçlarını analiz edin.
-                </CardDescription>
-            </div>
-            <Button onClick={startNewSurvey}>
-                <Plus className="mr-2 h-4 w-4" />
-                Yeni Anket Oluştur
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+            <RecordManager
+                records={(surveyDocuments || []).filter(d => d.classId === classId)}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                onNewRecord={handleNewRecord}
+                onDeleteRecord={handleDeleteRecord}
+                noun="Anket"
+            />
+            <Button onClick={handleSaveToArchive} disabled={!selectedSurvey} className="w-full mt-4">
+                <Save className="mr-2 h-4 w-4" /> Aktif Anketi Arşivle
             </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-            <div className="flex justify-center items-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        ) : surveys && surveys.length > 0 ? (
-            <div className="space-y-4">
-                {surveys.map(survey => (
-                    <div key={survey.id} className="border p-4 rounded-lg flex justify-between items-center">
+         <div className="md:col-span-2">
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold">{survey.title}</p>
-                            <p className="text-sm text-muted-foreground">{survey.description}</p>
+                            <CardTitle className="font-headline flex items-center gap-2">
+                            <ClipboardCheck />
+                            Anket Modülü
+                            </CardTitle>
+                            <CardDescription>
+                            Öğrencileriniz için anketler oluşturun ve sonuçlarını analiz edin.
+                            </CardDescription>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                    id={`survey-toggle-${survey.id}`}
-                                    checked={survey.isActive}
-                                    onCheckedChange={(checked) => handleToggleActive(survey, checked)}
-                                />
-                                <Label htmlFor={`survey-toggle-${survey.id}`} className={survey.isActive ? 'text-green-600 font-semibold' : 'text-muted-foreground'}>
-                                    {survey.isActive ? 'Aktif' : 'Pasif'}
-                                </Label>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => viewResults(survey)}>
-                                <BarChart2 className="mr-2 h-4 w-4" />
-                                Sonuçları Gör
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 h-9 w-9">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      "{survey.title}" anketini ve bu ankete ait tüm yanıtları kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteSurvey(survey.id)} className="bg-destructive hover:bg-destructive/90">
-                                      Sil
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                        </div>
+                        <Button onClick={startNewSurvey}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Yeni Anket Oluştur
+                        </Button>
                     </div>
-                ))}
-            </div>
-        ) : (
-             <div className="text-center p-10 bg-muted/50 rounded-lg">
-                <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
-                    <List className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold">Henüz Anket Oluşturulmamış</h3>
-                <p className="text-muted-foreground mt-2">
-                    İlk anketinizi oluşturmak için "Yeni Anket Oluştur" butonuna tıklayın.
-                </p>
-            </div>
-        )}
-      </CardContent>
-    </Card>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex justify-center items-center py-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : surveys && surveys.length > 0 ? (
+                        <div className="space-y-4">
+                            {surveys.map(survey => (
+                                <div key={survey.id} className="border p-4 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold">{survey.title}</p>
+                                        <p className="text-sm text-muted-foreground">{survey.description}</p>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id={`survey-toggle-${survey.id}`}
+                                                checked={survey.isActive}
+                                                onCheckedChange={(checked) => handleToggleActive(survey, checked)}
+                                            />
+                                            <Label htmlFor={`survey-toggle-${survey.id}`} className={survey.isActive ? 'text-green-600 font-semibold' : 'text-muted-foreground'}>
+                                                {survey.isActive ? 'Aktif' : 'Pasif'}
+                                            </Label>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => viewResults(survey)}>
+                                            <BarChart2 className="mr-2 h-4 w-4" />
+                                            Sonuçları Gör
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => startEditingSurvey(survey)}>Düzenle</Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 h-9 w-9">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                "{survey.title}" anketini ve bu ankete ait tüm yanıtları kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteSurvey(survey.id)} className="bg-destructive hover:bg-destructive/90">
+                                                Sil
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center p-10 bg-muted/50 rounded-lg">
+                            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
+                                <List className="h-8 w-8 text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold">Henüz Anket Oluşturulmamış</h3>
+                            <p className="text-muted-foreground mt-2">
+                                İlk anketinizi oluşturmak için "Yeni Anket Oluştur" butonuna tıklayın.
+                            </p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    </div>
   );
 }
