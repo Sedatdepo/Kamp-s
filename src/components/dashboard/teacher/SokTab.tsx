@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { useForm, useFieldArray, FormProvider, Controller } from 'react-hook-form';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
   Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, X
+  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
+import { Loader2 } from 'lucide-react';
+
 
 // --- MOCK DATA & CONSTANTS (ŞÖK İÇİN) ---
 const SOK_GUNDEM_MADDELERI = [
@@ -145,6 +148,8 @@ export default function SokTab() {
     // Drag & Drop Refs
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
+    const [isGenerating, setIsGenerating] = useState<number | null>(null);
+
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -191,34 +196,32 @@ export default function SokTab() {
         return text;
     };
 
-    // AKILLI OTOMATİK DOLDURMA
-    const handleAutoFill = (index: number) => {
-        const currentAgenda = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
-        
-        // 1. Kullanıcı Şablonları (Tam Eşleşme)
-        if (customTemplates[currentAgenda] && customTemplates[currentAgenda].length > 0) {
-            const myPool = customTemplates[currentAgenda];
-            const randomSentence = myPool[Math.floor(Math.random() * myPool.length)];
-            form.setValue(`gorusmeler.${index}.detay`, randomSentence, { shouldDirty: true });
-            toast({ title: "Şablon Kullanıldı", description: "Kişisel kütüphanenizden dolduruldu.", variant: "success" });
-            return;
+    const handleAutoFill = async (index: number) => {
+        const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
+        if (!agendaTitle) {
+          toast({ title: 'Hata', description: 'Lütfen önce gündem maddesi başlığını girin.', variant: 'destructive' });
+          return;
         }
-
-        // 2. Sistem Havuzu (Kelime Eşleşmesi)
-        const currentAgendaLower = currentAgenda.toLowerCase();
-        let matchedKey = "default";
-        for (const key of Object.keys(SMART_CONTENT_POOL)) {
-            if (currentAgendaLower.includes(key)) {
-                matchedKey = key;
-                break;
-            }
+        setIsGenerating(index);
+        try {
+          const response = await generateMeetingAgendaItem({
+            meetingType: 'ŞÖK',
+            agendaTitle,
+            classInfo: form.getValues('sinif'),
+            teacherInfo: form.getValues('sinifRehberOgretmeni'),
+          });
+          if (response.generatedText) {
+            form.setValue(`gorusmeler.${index}.detay`, response.generatedText, { shouldDirty: true });
+            toast({ title: 'Metin Oluşturuldu', description: `'${agendaTitle}' maddesi için içerik başarıyla oluşturuldu.`, variant: 'success' });
+          }
+        } catch (error) {
+          console.error("AI Error:", error);
+          toast({ title: 'Yapay Zeka Hatası', description: 'İçerik oluşturulurken bir hata oluştu.', variant: 'destructive' });
+        } finally {
+          setIsGenerating(null);
         }
-        const pool = SMART_CONTENT_POOL[matchedKey];
-        const randomSentence = pool[Math.floor(Math.random() * pool.length)];
-        
-        form.setValue(`gorusmeler.${index}.detay`, randomSentence, { shouldDirty: true });
-        toast({ title: "Otomatik Dolduruldu", description: "Varsayılan içerik eklendi." });
     };
+    
 
     // KÜTÜPHANE YÖNETİMİ
     const saveAgendaToLibrary = (index: number) => {
@@ -312,8 +315,88 @@ export default function SokTab() {
         setEditingItem(null);
         toast({ title: "Güncellendi", variant: "success" });
     };
+    const addAgendaFromLibrary = (text: string) => {
+        appendGundem({ madde: text });
+        appendGorusme({ detay: '' });
+        setIsAgendaLibraryOpen(false);
+        toast({ title: "Eklendi", description: "Madde listeye eklendi." });
+    };
 
-    // DOCUMENT GENERATION
+    // ARCHIVE HANDLERS
+    const openSaveDialog = () => {
+        const vals = form.getValues();
+        setSaveNameInput(`${vals.academicYear} - ${vals.sinif} Toplantısı`);
+        setIsSaveDialogOpen(true);
+    };
+
+    const handleSaveToArchive = () => {
+        if (!saveNameInput.trim()) return;
+
+        const newDoc: ArchivedDocument = {
+            id: Date.now().toString(),
+            name: saveNameInput,
+            createdAt: new Date().toLocaleDateString('tr-TR'),
+            data: form.getValues()
+        };
+
+        const updatedArchives = [newDoc, ...archives];
+        setArchives(updatedArchives);
+        localStorage.setItem("sok_archives", JSON.stringify(updatedArchives));
+        
+        setIsSaveDialogOpen(false);
+        toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
+    };
+
+    const handleLoadFromArchive = (doc: ArchivedDocument) => {
+        if (confirm(`"${doc.name}" adlı kayıt yüklenecek. Mevcut verileriniz değişecek. Onaylıyor musunuz?`)) {
+            form.reset(doc.data);
+            setIsArchiveListOpen(false);
+            toast({ title: "Yüklendi", description: "Arşivden başarıyla yüklendi.", variant: "success" });
+        }
+    };
+
+    const handleDeleteFromArchive = (id: string) => {
+        if (confirm("Bu kaydı silmek istediğinize emin misiniz?")) {
+            const updatedArchives = archives.filter(doc => doc.id !== id);
+            setArchives(updatedArchives);
+            localStorage.setItem("sok_archives", JSON.stringify(updatedArchives));
+            toast({ title: "Silindi", description: "Kayıt arşivden silindi." });
+        }
+    };
+
+    // VOICE
+    const toggleListening = (index: number, fieldType: 'madde' | 'detay') => {
+        const currentId = `${fieldType}-${index}`;
+        if (listeningId === currentId) { recognitionRef.current?.stop(); setListeningId(null); return; }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) { alert("Tarayıcınız desteklemiyor."); return; }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.onstart = () => setListeningId(currentId);
+        recognition.onresult = (e: any) => {
+            const txt = e.results[0][0].transcript;
+            const path = fieldType === 'madde' ? `gundemMaddeleri.${index}.madde` : `gorusmeler.${index}.detay`;
+            // @ts-ignore
+            const current = form.getValues(path) || "";
+            // @ts-ignore
+            form.setValue(path, current ? `${current} ${txt}` : txt, { shouldDirty: true });
+        };
+        recognition.onend = () => setListeningId(null);
+        recognitionRef.current = recognition;
+        recognition.start();
+    };
+
+    const generateDecisionsWithAI = async () => {
+        setIsGeneratingDecisions(true);
+        setTimeout(() => {
+            form.setValue('kararlar', SOK_VARSAYILAN_KARARLAR.join('\n'), { shouldDirty: true });
+            setIsGeneratingDecisions(false);
+            toast({ title: "Tamamlandı", description: "Kararlar listeye eklendi.", variant: "success" });
+        }, 500);
+    };
+
     const generateDocumentHTML = (data: FormData) => {
         const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
@@ -354,14 +437,7 @@ export default function SokTab() {
 
     const handleExport = () => {
         const content = generateDocumentHTML(form.getValues());
-        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `SOK_Tutanagi_${form.getValues('sinif')}.doc`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadDoc(content, `SOK_Tutanagi_${form.getValues('sinif')}.doc`);
         toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
 
@@ -375,43 +451,15 @@ export default function SokTab() {
         } else { alert("Pop-up engelleyiciyi kapatın."); }
     };
 
-    // ARCHIVE HANDLERS
-    const handleSaveArchive = () => {
-        const newDoc: ArchivedDocument = {
-            id: Date.now().toString(),
-            name: saveNameInput || `ŞÖK - ${form.getValues('sinif')}`,
-            createdAt: new Date().toLocaleDateString('tr-TR'),
-            data: form.getValues()
-        };
-        const updated = [newDoc, ...archives];
-        setArchives(updated);
-        localStorage.setItem("sok_archives", JSON.stringify(updated));
-        setIsSaveDialogOpen(false);
-        toast({ title: "Arşivlendi", description: "Tutanak saklandı.", variant: "success" });
-    };
-
-    // VOICE
-    const toggleListening = (index: number, fieldType: 'madde' | 'detay') => {
-        const currentId = `${fieldType}-${index}`;
-        if (listeningId === currentId) { recognitionRef.current?.stop(); setListeningId(null); return; }
-
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) { alert("Tarayıcınız desteklemiyor."); return; }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'tr-TR';
-        recognition.onstart = () => setListeningId(currentId);
-        recognition.onresult = (e: any) => {
-            const txt = e.results[0][0].transcript;
-            const path = fieldType === 'madde' ? `gundemMaddeleri.${index}.madde` : `gorusmeler.${index}.detay`;
-            // @ts-ignore
-            const current = form.getValues(path) || "";
-            // @ts-ignore
-            form.setValue(path, current ? `${current} ${txt}` : txt, { shouldDirty: true });
-        };
-        recognition.onend = () => setListeningId(null);
-        recognitionRef.current = recognition;
-        recognition.start();
+    const downloadDoc = (content: string, filename: string) => {
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleSortEnd = () => {
@@ -421,10 +469,10 @@ export default function SokTab() {
         }
         draggedItem.current = null; draggedOverItem.current = null;
     };
-
     // Helper for Scenarios
     const getScenarios = () => {
         if (activeGundemIndex === null) return [];
+        
         const currentAgenda = form.getValues(`gundemMaddeleri.${activeGundemIndex}.madde`).trim();
         
         const systemScenarios = SOK_SENARYOLARI.find(s => s.agenda.toLowerCase() === currentAgenda.toLowerCase())?.scenarios || [];
@@ -435,7 +483,6 @@ export default function SokTab() {
             ...systemScenarios.map(s => ({ description: s.description, content: formatContent(s.content) }))
         ];
     };
-
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
             
@@ -460,39 +507,25 @@ export default function SokTab() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center rounded-md border border-slate-300 bg-white mr-2">
-                        <Button onClick={() => setIsSaveDialogOpen(true)} variant="ghost" className="rounded-r-none border-r"><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
+                        <Button onClick={openSaveDialog} variant="ghost" className="rounded-r-none border-r"><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
                         <Button onClick={() => setIsArchiveListOpen(true)} variant="ghost" className="rounded-l-none"><Archive className="mr-2 h-4 w-4"/> Arşiv ({archives.length})</Button>
                     </div>
                     <div className="flex items-center rounded-md border border-slate-300 bg-white">
-                        <Button onClick={() => { setPreviewHtml(generateDocumentHTML(form.getValues())); setIsPreviewOpen(true); }} variant="ghost" className="rounded-r-none border-r"><Eye className="mr-2 h-4 w-4"/> Önizle</Button>
-                        <Button onClick={() => handleExport(form.getValues())} className="rounded-l-none bg-orange-600 hover:bg-orange-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
+                        <Button onClick={handlePreview} variant="ghost" className="rounded-r-none border-r"><Eye className="mr-2 h-4 w-4"/> Önizle</Button>
+                        <Button onClick={handleExport} className="rounded-l-none bg-orange-600 hover:bg-orange-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto p-6 space-y-8">
+            <main className="max-w-5xl mx-auto p-6 space-y-8">
                 <Form {...form}>
                     <form className="space-y-8">
-                        {/* 1. TOPLANTI KÜNYESİ */}
                         <Card>
                             <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                <FormField control={form.control} name="donem" render={({ field }: any) => (
-                                    <FormItem>
-                                        <FormLabel>Dönem</FormLabel>
-                                        <FormControl>
-                                            <select 
-                                                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                                                {...field}
-                                            >
-                                                <option value="1. Dönem">1. Dönem</option>
-                                                <option value="2. Dönem">2. Dönem</option>
-                                            </select>
-                                        </FormControl>
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} placeholder="Örn: 9-A" /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="donem" render={({ field }: any) => (<FormItem><FormLabel>Dönem</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="tarih" render={({ field }: any) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="saat" render={({ field }: any) => (<FormItem><FormLabel>Saat</FormLabel><FormControl><Input type="time" {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
@@ -500,125 +533,42 @@ export default function SokTab() {
                                 <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Müdür Yardımcısı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             </CardContent>
                         </Card>
-
-                        {/* 2. KATILIMCILAR */}
                         <Card>
-                            <CardHeader><CardTitle>Toplantı Katılımcıları (Öğretmenler)</CardTitle></CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {katilimciFields.map((item, index) => (
-                                        <div key={item.id} className="flex gap-2 items-end border p-3 rounded bg-slate-50">
-                                            <div className="w-full grid grid-cols-2 gap-2">
-                                                <FormField control={form.control} name={`katilimcilar.${index}.brans`} render={({ field }: any) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Branş</FormLabel><FormControl><Input className="h-8 text-sm" {...field} /></FormControl></FormItem>)} />
-                                                <FormField control={form.control} name={`katilimcilar.${index}.adSoyad`} render={({ field }: any) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Ad Soyad</FormLabel><FormControl><Input className="h-8 text-sm" {...field} /></FormControl></FormItem>)} />
-                                            </div>
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => removeKatilimci(index)}><Trash2 className="h-4 w-4"/></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <Button type="button" variant="secondary" className="mt-4 w-full border-dashed border-2" onClick={() => appendKatilimci({ brans: '', adSoyad: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Öğretmen Ekle</Button>
-                            </CardContent>
-                        </Card>
-                        
-                         {/* GÜNDEM */}
-                         <Card>
-                            <CardHeader className="flex flex-row justify-between items-center">
-                                <CardTitle>Gündem ve Görüşmeler</CardTitle>
-                                <Button type="button" variant="outline" size="sm" onClick={() => setIsAgendaLibraryOpen(true)}><Library className="mr-2 h-4 w-4"/> Kütüphane</Button>
-                            </CardHeader>
+                            <CardHeader><CardTitle>Gündem ve Görüşmeler</CardTitle></CardHeader>
                             <CardContent className="space-y-6">
                                 {gundemFields.map((item, index) => (
-                                     <div key={item.id} className={`space-y-4 border p-4 rounded-lg bg-white transition-all ${draggedItem.current === index ? 'opacity-50 ring-2 ring-orange-200' : ''}`} draggable onDragStart={() => (draggedItem.current = index)} onDragEnter={() => (draggedOverItem.current = index)} onDragEnd={handleSortEnd} onDragOver={(e) => e.preventDefault()}>
+                                     <div key={item.id} className={`space-y-4 border p-4 rounded-lg bg-white transition-all ${draggedItem.current === index ? 'opacity-50' : ''}`} draggable onDragStart={() => (draggedItem.current = index)} onDragEnter={() => (draggedOverItem.current = index)} onDragEnd={handleSortEnd} onDragOver={(e) => e.preventDefault()}>
                                         <div className="flex items-center gap-2">
                                             <GripVertical className="cursor-grab text-slate-300" />
-                                            <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold text-lg border-transparent focus:border-slate-300 px-0 shadow-none" placeholder="Gündem Maddesi..." />
+                                            <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold" />
                                             <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                         <div className="pl-8 relative">
                                             <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px] pr-8" placeholder="Görüşme detayları..." />
-                                            <div className="absolute bottom-2 right-2 flex gap-1">
-                                                <Button type="button" variant="ghost" size="icon" className={`h-6 w-6 ${listeningId === `detay-${index}` ? 'text-red-600 animate-pulse' : 'text-slate-400'}`} onClick={() => toggleListening(index, 'detay')}><Mic className="h-4 w-4"/></Button>
-                                            </div>
                                         </div>
                                         <div className="flex justify-end gap-2 pl-8">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => { setActiveGundemIndex(index); setIsScenarioModalOpen(true); }}><BookOpen className="mr-2 h-3 w-3"/> Hazır Şablon</Button>
-                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)}><Zap className="mr-2 h-3 w-3"/> Otomatik Doldur</Button>
+                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index}>
+                                                {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
+                                                Yapay Zeka ile Doldur
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
-                                <Button type="button" variant="outline" className="w-full py-4 border-dashed" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                                <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                             </CardContent>
                         </Card>
-
-
-                        {/* 4. KARARLAR */}
                         <Card>
                             <CardHeader className="flex flex-row justify-between">
                                 <CardTitle>Alınan Kararlar</CardTitle>
-                                <Button type="button" variant="secondary" size="sm" onClick={() => { setIsGeneratingDecisions(true); setTimeout(() => { form.setValue('kararlar', SOK_VARSAYILAN_KARARLAR.join('\n')); setIsGeneratingDecisions(false); }, 500); }} disabled={isGeneratingDecisions}>{isGeneratingDecisions ? <Zap className="animate-spin mr-2 h-3 w-3"/> : <Zap className="mr-2 h-3 w-3"/>} Örnek Kararlar</Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={generateDecisionsWithAI} disabled={isGeneratingDecisions}>{isGeneratingDecisions ? <Zap className="animate-spin mr-2 h-3 w-3"/> : <ListChecks className="mr-2 h-3 w-3"/>} Örnek Kararlar</Button>
                             </CardHeader>
                             <CardContent>
                                 <Textarea {...form.register('kararlar')} rows={6} className="font-mono text-sm" />
                             </CardContent>
                         </Card>
-
                     </form>
                 </Form>
             </main>
-            
-            {/* --- MODALLAR --- */}
-
-            {/* Arşiv Listesi */}
-            {isArchiveListOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
-                        <div className="flex justify-between items-center p-4 border-b">
-                            <h3 className="font-semibold">Arşiv</h3><button onClick={() => setIsArchiveListOpen(false)}><X className="h-4 w-4"/></button>
-                        </div>
-                        <div className="p-4 overflow-y-auto flex-1 bg-slate-50">
-                            {archives.length === 0 ? <p className="text-center text-slate-400">Arşiv boş.</p> : archives.map(doc => (
-                                <div key={doc.id} className="bg-white p-3 mb-2 rounded border flex justify-between items-center">
-                                    <div><p className="font-bold">{doc.name}</p><p className="text-xs text-slate-500">{doc.createdAt}</p></div>
-                                    <div className="flex gap-2">
-                                        <Button size="sm" onClick={() => { if(confirm("Yüklensin mi?")) { form.reset(doc.data); setIsArchiveListOpen(false); toast({title:"Yüklendi", variant:"success"}); } }}>Yükle</Button>
-                                        <Button size="sm" variant="destructive" onClick={() => { if(confirm("Sil?")) { setArchives(prev => { const n = prev.filter(a => a.id !== doc.id); localStorage.setItem("sok_archives", JSON.stringify(n)); return n; }); } }}>Sil</Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Önizleme */}
-            {isPreviewOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                    <div className="bg-slate-100 rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
-                        <div className="p-4 bg-white border-b flex justify-between items-center">
-                           <h3>Önizleme</h3>
-                           <div className="flex gap-2">
-                               <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Yazdır</Button>
-                               <button onClick={() => setIsPreviewOpen(false)}><X className="h-5 w-5"/></button>
-                           </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-8"><div className="bg-white shadow-lg mx-auto p-12 w-[21cm] min-h-[29.7cm]" dangerouslySetInnerHTML={{ __html: previewHtml }} /></div>
-                    </div>
-                </div>
-            )}
-
-            {/* Kaydet */}
-            {isSaveDialogOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                     <div className="bg-white rounded-lg w-full max-w-sm p-4">
-                        <h3 className="font-bold mb-4">Arşive Kaydet</h3>
-                        <Input value={saveNameInput} onChange={(e:any) => setSaveNameInput(e.target.value)} className="mb-4" />
-                        <div className="flex justify-end gap-2">
-                            <Button variant="ghost" onClick={() => setIsSaveDialogOpen(false)}>İptal</Button>
-                            <Button onClick={handleSaveArchive}>Kaydet</Button>
-                        </div>
-                    </div>
-                </div>
-             )}
         </div>
     );
 }
