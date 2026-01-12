@@ -36,7 +36,8 @@ const turkishToRTF = (text: any) => {
 };
 
 
-// --- Yıllık Plan Ana Bileşeni ---
+// --- BİLEŞENLER ---
+
 function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   const [activeSubject, setActiveSubject] = useState(Object.keys(ALL_PLANS)[0]);
   const initialGrade = currentClass?.name?.match(/\d+/)?.[0] || ALL_PLANS[activeSubject]?.grades[0] || '9';
@@ -165,12 +166,12 @@ ${processTextContent}\\par
   useEffect(() => {
     // Sınıf değiştiğinde veya konu seçildiğinde aktif sınıfı güncelle
     const gradeFromClass = currentClass?.name?.match(/\d+/)?.[0];
-    if (gradeFromClass && subjectData.grades.includes(gradeFromClass)) {
+    if (gradeFromClass && subjectData?.grades.includes(gradeFromClass)) {
       setActiveGrade(gradeFromClass);
     } else {
-      setActiveGrade(subjectData.grades[0]);
+      setActiveGrade(subjectData?.grades[0]);
     }
-  }, [currentClass, activeSubject, subjectData.grades]);
+  }, [currentClass, activeSubject, subjectData?.grades]);
   
   useEffect(() => {
     const saved = localStorage.getItem(`planCompleted_${activeSubject}_${activeGrade}`);
@@ -199,7 +200,7 @@ ${processTextContent}\\par
   };
   const progress = calculateProgress();
 
-  const gradeConfig = subjectData.data[activeGrade];
+  const gradeConfig = subjectData?.data[activeGrade];
 
   const filteredWeeks = useMemo(() => {
     if (!gradeConfig || !gradeConfig.data) return [];
@@ -252,7 +253,7 @@ ${processTextContent}\\par
   };
 
   if(!subjectData) {
-    return <div>Ders verisi yüklenemedi.</div>
+    return <div>Ders verisi yüklenemedi. Lütfen bir ders seçin.</div>
   }
 
   return (
@@ -345,32 +346,27 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [gorusmeText, setGorusmeText] = useState("");
-  const [yapilamayanText, setYapilamayanText] = useState("");
-  const [genelDurumText, setGenelDurumText] = useState("Sınıf içi iletişim ve arkadaşlık ilişkileri olumlu düzeydedir. Akademik başarı takibi düzenli olarak yapılmıştır.");
   const [yonlendirilenText, setYonlendirilenText] = useState("");
   const [veliGorusmeText, setVeliGorusmeText] = useState("");
-  const [beklentiText, setBeklentiText] = useState("");
 
-  const handleGenerateReportContent = async (reportType: 'term' | 'year') => {
+  const handleGenerateReportContent = async (reportType: 'term' | 'year', field: 'gorusme' | 'yonlendirilen' | 'veli') => {
     setIsGenerating(true);
     let agendaTitle = "";
-    if (reportType === 'term') {
-      agendaTitle = `${selectedGrade}. Sınıf 1. Dönem Sonu Sınıf Rehberlik Faaliyet Raporu Değerlendirmesi`;
-    } else if (reportType === 'year') {
-      agendaTitle = `${selectedGrade}. Sınıf Yıl Sonu Sınıf Rehberlik Faaliyet Raporu Değerlendirmesi`;
-    }
+    if (field === 'gorusme') agendaTitle = `${selectedGrade}. Sınıf Dönem Sonu Sınıf Genel Durumu Değerlendirmesi`;
+    if (field === 'yonlendirilen') agendaTitle = `Rehberlik Servisine Yönlendirilen Öğrenciler ve Genel Durumları`;
+    if (field === 'veli') agendaTitle = `Yapılan Veli Görüşmeleri ve Alınan Kararlar`;
+    
 
     try {
       const response = await generateMeetingAgendaItem({
-        meetingType: 'ŞÖK', // Using as a generic report generation context
+        meetingType: 'ŞÖK',
         agendaTitle: agendaTitle,
         classInfo: `${selectedGrade}. Sınıf`,
       });
-      if (reportType === 'term') {
-        setGenelDurumText(response.generatedText);
-      } else {
-        setGenelDurumText(response.generatedText); // Can be different if prompt is adjusted
-      }
+      if (field === 'gorusme') setGorusmeText(response.generatedText);
+      if (field === 'yonlendirilen') setYonlendirilenText(response.generatedText);
+      if (field === 'veli') setVeliGorusmeText(response.generatedText);
+
     } catch (error) {
       console.error("AI Rapor oluşturma hatası:", error);
     } finally {
@@ -379,8 +375,7 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
   };
 
 
-  // Yüklenen dosyalardan ve MEB çerçeve planından derlenmiş TAM YIL VERİ TABANI (2025-2026)
-  const plans = {
+  const plans: Record<string, { month: string; week: string; kazanim: string; tur: string; }[]> = {
     '9': [
       { month: 'Eylül', week: '1', kazanim: 'Okulunun ve sınıfının bir üyesi olduğunu fark eder. (Çimento Duygular)', tur: 'Oryantasyon' },
       { month: 'Eylül', week: '2', kazanim: 'Okulun yakın çevresini, bölümlerini ve çalışanları tanır. (Hoş Geldin Dostum)', tur: 'Oryantasyon' },
@@ -543,7 +538,6 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
     ]
   };
 
-  // Word İndirme Fonksiyonu
   const downloadWord = (content, filename) => {
     // ... Word indirme fonksiyonu (kısaltıldı)
   };
@@ -555,7 +549,7 @@ function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
   const exportActivityReport = () => {
     // ... Etkinlik Raporu dışa aktarma (kısaltıldı)
   };
-
+  
   const exportTermReport = () => {
     // ... Dönem Raporu dışa aktarma (kısaltıldı)
   };
