@@ -1,16 +1,21 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { FileDown } from 'lucide-react';
+import { exportDetailedGradesToRtf } from '@/lib/word-export'; // Yeni import
+import { useToast } from '@/hooks/use-toast';
 
 interface StudentGradesDetailTabProps {
   students: Student[];
   teacherProfile: TeacherProfile | null;
+  currentClass: Class | null; // currentClass eklendi
 }
 
 const calculateAverageForCriteria = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
@@ -40,7 +45,8 @@ const GradeCell = ({ grade }: { grade: number | undefined | null }) => {
     );
 };
 
-export function StudentGradesDetailTab({ students, teacherProfile }: StudentGradesDetailTabProps) {
+export function StudentGradesDetailTab({ students, teacherProfile, currentClass }: StudentGradesDetailTabProps) {
+    const { toast } = useToast();
 
     const calculateTermAverage = (student: Student, termGrades?: GradingScores): number => {
         if (!termGrades || !teacherProfile) return 0;
@@ -80,6 +86,25 @@ export function StudentGradesDetailTab({ students, teacherProfile }: StudentGrad
         return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
     }, [students]);
 
+    const handleExport = () => {
+        if (!currentClass || !teacherProfile) {
+            toast({
+                title: "Hata",
+                description: "Rapor oluşturmak için gerekli sınıf ve öğretmen bilgileri eksik.",
+                variant: "destructive"
+            });
+            return;
+        }
+        exportDetailedGradesToRtf({
+            students: sortedStudents,
+            currentClass,
+            teacherProfile,
+            studentAverages,
+            perfCriteria: teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA,
+            projCriteria: teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA,
+        });
+    };
+
     if (!teacherProfile) {
         return <p>Öğretmen profili yükleniyor...</p>;
     }
@@ -87,8 +112,15 @@ export function StudentGradesDetailTab({ students, teacherProfile }: StudentGrad
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Detaylı Not Listesi</CardTitle>
-                <CardDescription>Tüm sınıfın her iki döneme ait sınav, performans ve proje notlarını bir arada görüntüleyin.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Detaylı Not Listesi</CardTitle>
+                        <CardDescription>Tüm sınıfın her iki döneme ait sınav, performans ve proje notlarını bir arada görüntüleyin.</CardDescription>
+                    </div>
+                    <Button onClick={handleExport} variant="outline">
+                        <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="max-h-[70vh] w-full">
@@ -120,6 +152,13 @@ export function StudentGradesDetailTab({ students, teacherProfile }: StudentGrad
                             const term1 = student.term1Grades || {};
                             const term2 = student.term2Grades || {};
                             const averages = studentAverages.find(a => a.studentId === student.id);
+                            const perf1_1 = calculateAverageForCriteria(term1.scores1, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
+                            const perf1_2 = calculateAverageForCriteria(term1.scores2, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
+                            const proj1 = calculateAverageForCriteria(term1.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);
+                            const perf2_1 = calculateAverageForCriteria(term2.scores1, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
+                            const perf2_2 = calculateAverageForCriteria(term2.scores2, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
+                            const proj2 = calculateAverageForCriteria(term2.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);
+
                             return (
                                 <TableRow key={student.id}>
                                     <TableCell className="sticky left-0 bg-background z-20 font-medium">
@@ -132,9 +171,9 @@ export function StudentGradesDetailTab({ students, teacherProfile }: StudentGrad
                                     {/* Term 1 Grades */}
                                     <GradeCell grade={term1.exam1} />
                                     <GradeCell grade={term1.exam2} />
-                                    <GradeCell grade={term1.perf1} />
-                                    <GradeCell grade={term1.perf2} />
-                                    <GradeCell grade={student.hasProject ? term1.projectGrade : undefined} />
+                                    <GradeCell grade={perf1_1} />
+                                    <GradeCell grade={perf1_2} />
+                                    <GradeCell grade={student.hasProject ? proj1 : undefined} />
                                     <TableCell className={cn("text-center font-bold", getGradeColor(averages?.term1Avg || 0))}>
                                         {averages?.term1Avg.toFixed(2)}
                                     </TableCell>
@@ -142,9 +181,9 @@ export function StudentGradesDetailTab({ students, teacherProfile }: StudentGrad
                                     {/* Term 2 Grades */}
                                     <GradeCell grade={term2.exam1} />
                                     <GradeCell grade={term2.exam2} />
-                                    <GradeCell grade={term2.perf1} />
-                                    <GradeCell grade={term2.perf2} />
-                                    <GradeCell grade={student.hasProject ? term2.projectGrade : undefined} />
+                                    <GradeCell grade={perf2_1} />
+                                    <GradeCell grade={perf2_2} />
+                                    <GradeCell grade={student.hasProject ? proj2 : undefined} />
                                     <TableCell className={cn("text-center font-bold", getGradeColor(averages?.term2Avg || 0))}>
                                         {averages?.term2Avg.toFixed(2)}
                                     </TableCell>

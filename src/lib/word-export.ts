@@ -16,7 +16,7 @@ const generateHtmlShell = (content: string, title: string) => {
       <title>${title}</title>
       <style>
         @page {
-          size: A4 portrait;
+          size: A4 landscape;
           margin: 0.5in;
         }
         body {
@@ -1026,8 +1026,8 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
         <table style="width: 100%;">
             <tr><td style="width: 30%;"><b>Anne Durumu:</b></td><td>${infoForm?.motherStatus || 'Belirtilmemiş'}</td></tr>
             <tr><td><b>Anne Eğitim / Meslek:</b></td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
-            <tr><td><b>Baba Durumu:</b></td><td>${infoForm?.fatherStatus || 'Belirtilmemiş'}</td></tr>
-            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
+            <tr><td><b>Baba Durumu:</b></td><td>${form.fatherStatus || 'N/A'}</td></tr>
+            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(form.fatherEducation || 'N/A') + ' / ' + (form.fatherJob || 'N/A')}</td></tr>
             <tr><td><b>Kardeş Bilgileri:</b></td><td>${infoForm?.siblingsInfo || 'Belirtilmemiş'}</td></tr>
             <tr><td><b>Ekonomik Durum:</b></td><td>${infoForm?.economicStatus || 'Belirtilmemiş'}</td></tr>
         </table>
@@ -1679,6 +1679,85 @@ export function exportSociogramToRtf({ students, analysis, currentClass, teacher
         ${footer}
     `;
 
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DETAILED GRADES EXPORT ---
+interface ExportDetailedGradesArgs {
+    students: Student[];
+    currentClass: Class;
+    teacherProfile: TeacherProfile;
+    studentAverages: { studentId: string; term1Avg: number; term2Avg: number; }[];
+    perfCriteria: Criterion[];
+    projCriteria: Criterion[];
+}
+
+export function exportDetailedGradesToRtf({ students, currentClass, teacherProfile, studentAverages, perfCriteria, projCriteria }: ExportDetailedGradesArgs) {
+    const reportTitle = "DETAYLI DÖNEM SONU NOT ÇİZELGESİ";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - Detaylı Not Listesi`;
+
+    const tableHeader = `
+        <tr>
+            <th rowspan="2">S.No</th>
+            <th rowspan="2">Okul No</th>
+            <th rowspan="2">Adı Soyadı</th>
+            <th colspan="6">1. Dönem</th>
+            <th colspan="6">2. Dönem</th>
+        </tr>
+        <tr>
+            <th>1.S</th><th>2.S</th><th>1.P</th><th>2.P</th><th>Proje</th><th class="bold">Ort.</th>
+            <th>1.S</th><th>2.S</th><th>1.P</th><th>2.P</th><th>Proje</th><th class="bold">Ort.</th>
+        </tr>
+    `;
+    
+    const calculateAverage = (grades: GradingScores | undefined, criteria: Criterion[]) => {
+        if (!grades) return null;
+        const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+        if (totalMax === 0) return 0;
+        const totalScore = Object.values(grades).reduce((sum, score) => sum + (score as number || 0), 0);
+        return (totalScore / totalMax) * 100;
+    };
+    
+    const displayGrade = (grade: number | undefined | null) => (grade === -1 ? 'G' : (grade !== null && grade !== undefined) ? grade.toFixed(2) : '-');
+
+    const dataRows = students.map((s, index) => {
+        const term1 = s.term1Grades || {};
+        const term2 = s.term2Grades || {};
+        const averages = studentAverages.find(a => a.studentId === s.id);
+        
+        const perf1_1 = calculateAverage(term1.scores1, perfCriteria);
+        const perf1_2 = calculateAverage(term1.scores2, perfCriteria);
+        const proj1 = calculateAverage(term1.projectScores, projCriteria);
+        
+        const perf2_1 = calculateAverage(term2.scores1, perfCriteria);
+        const perf2_2 = calculateAverage(term2.scores2, perfCriteria);
+        const proj2 = calculateAverage(term2.projectScores, projCriteria);
+        
+        return `
+            <tr>
+                <td class="center">${index + 1}</td>
+                <td class="center">${s.number}</td>
+                <td>${s.name}</td>
+                <td class="center">${displayGrade(term1.exam1)}</td>
+                <td class="center">${displayGrade(term1.exam2)}</td>
+                <td class="center">${displayGrade(perf1_1)}</td>
+                <td class="center">${displayGrade(perf1_2)}</td>
+                <td class="center">${s.hasProject ? displayGrade(proj1) : 'N/A'}</td>
+                <td class="center bold">${averages?.term1Avg.toFixed(2)}</td>
+                <td class="center">${displayGrade(term2.exam1)}</td>
+                <td class="center">${displayGrade(term2.exam2)}</td>
+                <td class="center">${displayGrade(perf2_1)}</td>
+                <td class="center">${displayGrade(perf2_2)}</td>
+                <td class="center">${s.hasProject ? displayGrade(proj2) : 'N/A'}</td>
+                <td class="center bold">${averages?.term2Avg.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
