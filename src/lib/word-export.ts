@@ -748,7 +748,7 @@ export function exportInfoFormsStatusToRtf({ students, infoForms, currentClass, 
 }
 
 // --- STUDENT INFO FORM EXPORT ---
-export function exportStudentInfoToRtf(student: Student, form: InfoForm, teacher: TeacherProfile) {
+export function exportStudentInfoToRtf(student: Student, infoForm: InfoForm, teacher: TeacherProfile) {
     const content = `
         <div class="center">
             <p class="bold">ÖĞRENCİ BİLGİ FORMU</p>
@@ -759,26 +759,26 @@ export function exportStudentInfoToRtf(student: Student, form: InfoForm, teacher
         <br>
         <h3>KİŞİSEL BİLGİLER</h3>
         <table>
-            <tr><td style="width: 30%;">Doğum Tarihi</td><td>${form.birthDate ? format(form.birthDate.toDate(), 'dd.MM.yyyy') : 'N/A'}</td></tr>
-            <tr><td>Doğum Yeri</td><td>${form.birthPlace || 'N/A'}</td></tr>
-            <tr><td>Adres</td><td>${form.address || 'N/A'}</td></tr>
-            <tr><td>Sürekli Hastalığı / Alerjisi</td><td>${form.healthIssues || 'Yok'}</td></tr>
-            <tr><td>İlgi Alanları / Hobileri</td><td>${form.hobbies || 'N/A'}</td></tr>
-            <tr><td>Günlük Teknoloji Kullanımı</td><td>${form.techUsage || 'N/A'}</td></tr>
+            <tr><td style="width: 30%;">Doğum Tarihi</td><td>${infoForm.birthDate ? format(infoForm.birthDate.toDate(), 'dd.MM.yyyy') : 'N/A'}</td></tr>
+            <tr><td>Doğum Yeri</td><td>${infoForm.birthPlace || 'N/A'}</td></tr>
+            <tr><td>Adres</td><td>${infoForm.address || 'N/A'}</td></tr>
+            <tr><td>Sürekli Hastalığı / Alerjisi</td><td>${infoForm.healthIssues || 'Yok'}</td></tr>
+            <tr><td>İlgi Alanları / Hobileri</td><td>${infoForm.hobbies || 'N/A'}</td></tr>
+            <tr><td>Günlük Teknoloji Kullanımı</td><td>${infoForm.techUsage || 'N/A'}</td></tr>
         </table>
         <br>
         <h3>VELİ BİLGİLERİ</h3>
         <table>
-            <tr><td style="width: 30%;">Anne Durumu</td><td>${form.motherStatus || 'N/A'}</td></tr>
-            <tr><td>Anne Eğitim / Meslek</td><td>${(form.motherEducation || 'N/A') + ' / ' + (form.motherJob || 'N/A')}</td></tr>
-            <tr><td>Baba Durumu</td><td>${form.fatherStatus || 'N/A'}</td></tr>
-            <tr><td>Baba Eğitim / Meslek</td><td>${(form.fatherEducation || 'N/A') + ' / ' + (form.fatherJob || 'N/A')}</td></tr>
+            <tr><td style="width: 30%;">Anne Durumu</td><td>${infoForm.motherStatus || 'N/A'}</td></tr>
+            <tr><td>Anne Eğitim / Meslek</td><td>${(infoForm.motherEducation || 'N/A') + ' / ' + (infoForm.motherJob || 'N/A')}</td></tr>
+            <tr><td>Baba Durumu</td><td>${infoForm.fatherStatus || 'N/A'}</td></tr>
+            <tr><td>Baba Eğitim / Meslek</td><td>${(infoForm.fatherEducation || 'N/A') + ' / ' + (infoForm.fatherJob || 'N/A')}</td></tr>
         </table>
         <br>
         <h3>AİLE BİLGİLERİ</h3>
         <table>
-            <tr><td style="width: 30%;">Kardeş Sayısı / Bilgileri</td><td>${form.siblingsInfo || 'N/A'}</td></tr>
-            <tr><td>Ailenin Ekonomik Durumu</td><td>${form.economicStatus || 'N/A'}</td></tr>
+            <tr><td style="width: 30%;">Kardeş Sayısı / Bilgileri</td><td>${infoForm.siblingsInfo || 'N/A'}</td></tr>
+            <tr><td>Ailenin Ekonomik Durumu</td><td>${infoForm.economicStatus || 'N/A'}</td></tr>
         </table>
     `;
     const finalHtml = generateHtmlShell(content, "Öğrenci Bilgi Formu");
@@ -1026,8 +1026,8 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
         <table style="width: 100%;">
             <tr><td style="width: 30%;"><b>Anne Durumu:</b></td><td>${infoForm?.motherStatus || 'Belirtilmemiş'}</td></tr>
             <tr><td><b>Anne Eğitim / Meslek:</b></td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
-            <tr><td><b>Baba Durumu:</b></td><td>${form.fatherStatus || 'N/A'}</td></tr>
-            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(form.fatherEducation || 'N/A') + ' / ' + (form.fatherJob || 'N/A')}</td></tr>
+            <tr><td><b>Baba Durumu:</b></td><td>${infoForm?.fatherStatus || 'N/A'}</td></tr>
+            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
             <tr><td><b>Kardeş Bilgileri:</b></td><td>${infoForm?.siblingsInfo || 'Belirtilmemiş'}</td></tr>
             <tr><td><b>Ekonomik Durum:</b></td><td>${infoForm?.economicStatus || 'Belirtilmemiş'}</td></tr>
         </table>
@@ -1434,10 +1434,10 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
         return `
 \\line\\line\\line
 {\\pard\\qc
-{\\trowd \\trgaph108 \\trleft-108
-\\clbrdrb\\brdrs\\brdrw10 \\cellx3166
-\\clbrdrb\\brdrs\\brdrw10 \\cellx6332
-\\clbrdrb\\brdrs\\brdrw10 \\cellx9500
+{\\trowd \\trgaph108 \\trleft-108 \\trbrdrt\\brdrs\\brdrw10
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10 \\cellx3166
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10 \\cellx6332
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10 \\cellx9500
 ${teacherSig}
 ${deptHeadSig}
 ${principalSig}
@@ -1728,13 +1728,13 @@ export function exportDetailedGradesToRtf({ students, currentClass, teacherProfi
         const term2 = s.term2Grades || {};
         const averages = studentAverages.find(a => a.studentId === s.id);
         
-        const perf1_1 = calculateAverage(term1.scores1, perfCriteria);
-        const perf1_2 = calculateAverage(term1.scores2, perfCriteria);
-        const proj1 = calculateAverage(term1.projectScores, projCriteria);
+        const perf1_1 = calculateAverageForCriteria(term1.scores1, perfCriteria);
+        const perf1_2 = calculateAverageForCriteria(term1.scores2, perfCriteria);
+        const proj1 = calculateAverageForCriteria(term1.projectScores, projCriteria);
         
-        const perf2_1 = calculateAverage(term2.scores1, perfCriteria);
-        const perf2_2 = calculateAverage(term2.scores2, perfCriteria);
-        const proj2 = calculateAverage(term2.projectScores, projCriteria);
+        const perf2_1 = calculateAverageForCriteria(term2.scores1, perfCriteria);
+        const perf2_2 = calculateAverageForCriteria(term2.scores2, perfCriteria);
+        const proj2 = calculateAverageForCriteria(term2.projectScores, projCriteria);
         
         return `
             <tr>
