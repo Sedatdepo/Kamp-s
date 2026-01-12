@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X } from 'lucide-react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X, Wand2 } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL_PLANS } from '@/lib/plans';
@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
+
 
 // --- YARDIMCI FONKSİYONLAR ---
 
@@ -337,9 +340,45 @@ function GuidanceAnnualPlan() {
   const [activeTab, setActiveTab] = useState('plan');
   const [selectedGrade, setSelectedGrade] = useState('9');
   const [selectedActivityIndex, setSelectedActivityIndex] = useState(0);
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [gorusmeText, setGorusmeText] = useState("");
+  const [yapilamayanText, setYapilamayanText] = useState("");
+  const [genelDurumText, setGenelDurumText] = useState("Sınıf içi iletişim ve arkadaşlık ilişkileri olumlu düzeydedir. Akademik başarı takibi düzenli olarak yapılmıştır.");
+  const [yonlendirilenText, setYonlendirilenText] = useState("");
+  const [veliGorusmeText, setVeliGorusmeText] = useState("");
+  const [beklentiText, setBeklentiText] = useState("");
+
+  const handleGenerateReportContent = async (reportType) => {
+    setIsGenerating(true);
+    let agendaTitle = "";
+    if (reportType === 'term') {
+      agendaTitle = `${selectedGrade}. Sınıf 1. Dönem Sonu Sınıf Rehberlik Faaliyet Raporu Değerlendirmesi`;
+    } else if (reportType === 'year') {
+      agendaTitle = `${selectedGrade}. Sınıf Yıl Sonu Sınıf Rehberlik Faaliyet Raporu Değerlendirmesi`;
+    }
+
+    try {
+      const response = await generateMeetingAgendaItem({
+        meetingType: 'ŞÖK', // Using as a generic report generation context
+        agendaTitle: agendaTitle,
+        classInfo: `${selectedGrade}. Sınıf`,
+      });
+      if (reportType === 'term') {
+        setGenelDurumText(response.generatedText);
+      } else {
+        setGenelDurumText(response.generatedText); // Can be different if prompt is adjusted
+      }
+    } catch (error) {
+      console.error("AI Rapor oluşturma hatası:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   // Yüklenen dosyalardan ve MEB çerçeve planından derlenmiş TAM YIL VERİ TABANI (2025-2026)
-  const plans: Record<string, { month: string; week: string; kazanim: string; tur: string; }[]> = {
+  const plans = {
     '9': [
       { month: 'Eylül', week: '1', kazanim: 'Okulunun ve sınıfının bir üyesi olduğunu fark eder. (Çimento Duygular)', tur: 'Oryantasyon' },
       { month: 'Eylül', week: '2', kazanim: 'Okulun yakın çevresini, bölümlerini ve çalışanları tanır. (Hoş Geldin Dostum)', tur: 'Oryantasyon' },
@@ -683,6 +722,7 @@ function GuidanceAnnualPlan() {
       <p style="text-align: justify;">2025-2026 Eğitim Öğretim Yılı boyunca sınıf rehberlik programı çerçevesinde planlanan etkinlikler, MEB Rehberlik ve Psikolojik Danışma Hizmetleri Yönetmeliği esas alınarak titizlikle yürütülmüştür.</p>
       <p style="text-align: justify;"><strong>1. Dönem:</strong> Oryantasyon, risk haritası analizi, verimli ders çalışma teknikleri, akran zorbalığı ve kişisel güvenlik konularına ağırlık verilmiştir.</p>
       <p style="text-align: justify;"><strong>2. Dönem:</strong> Mesleki rehberlik kapsamında; alan seçimi (9. ve 10. sınıflar için), üst öğrenim kurumlarının tanıtımı, sınav sistemleri ve hedef belirleme (11. ve 12. sınıflar için) çalışmaları yapılmıştır. Ayrıca Rehberlik İhtiyaçları Belirleme Anketi (RİBA) uygulanmış, teknoloji bağımlılığı, stresle baş etme ve sağlıklı yaşam becerileri üzerine etkinlikler gerçekleştirilmiştir.</p>
+      <p style="text-align: justify;">Aşağıda eğitim öğretim yılı boyunca (Eylül-Haziran) gerçekleştirilen tüm etkinliklerin ayrıntılı dökümü sunulmuştur:</p>
       
       <h4 style="margin-top:20px;">2025-2026 EĞİTİM YILI GERÇEKLEŞTİRİLEN ETKİNLİKLER ÇİZELGESİ</h4>
       <table border="1" cellpadding="5" style="font-size: 11px;">
@@ -750,7 +790,7 @@ function GuidanceAnnualPlan() {
             </tr>
           </thead>
           <tbody>
-            {plans[selectedGrade as '9'|'10'|'11'|'12'].map((item: any, index: number) => (
+            {plans[selectedGrade].map((item, index) => (
               <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${item.kazanim.includes('TATİL') ? 'bg-orange-50' : ''}`}>
                 <td className="p-3 text-gray-800">{item.month}</td>
                 <td className="p-3 text-gray-600">{item.week}. Hafta</td>
@@ -784,7 +824,7 @@ function GuidanceAnnualPlan() {
   );
 
   const renderActivityReport = () => {
-    const currentActivity = plans[selectedGrade as '9' | '10' | '11' | '12'][selectedActivityIndex];
+    const currentActivity = plans[selectedGrade][selectedActivityIndex];
     
     return (
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
@@ -798,25 +838,21 @@ function GuidanceAnnualPlan() {
         <div className="grid grid-cols-2 gap-6 mb-6">
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tarih</label>
-                <Input type="date" className="w-full p-2 border rounded" />
+                <input type="date" className="w-full p-2 border rounded" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hafta Seçimi</label>
-                <Select 
-                    value={selectedActivityIndex.toString()} 
-                    onValueChange={(val) => setSelectedActivityIndex(Number(val))}
+                <select 
+                    value={selectedActivityIndex} 
+                    onChange={(e) => setSelectedActivityIndex(Number(e.target.value))}
+                    className="w-full p-2 border rounded"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plans[selectedGrade as '9' | '10' | '11' | '12'].map((p, index) => (
-                        <SelectItem key={index} value={index.toString()}>
+                    {plans[selectedGrade].map((p, index) => (
+                        <option key={index} value={index}>
                            {p.month} - {p.week}. Hafta - {p.kazanim.length > 50 ? p.kazanim.substring(0,50) + "..." : p.kazanim}
-                        </SelectItem>
+                        </option>
                     ))}
-                  </SelectContent>
-                </Select>
+                </select>
             </div>
         </div>
 
@@ -829,20 +865,20 @@ function GuidanceAnnualPlan() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 border rounded">
                     <span className="block text-sm font-bold text-gray-700">Sınıfa Katılan Öğrenci Sayısı</span>
-                    <Input type="number" className="w-full mt-2 p-1 border-b focus:outline-none focus:border-indigo-500" placeholder="Örn: 24" />
+                    <input type="number" className="w-full mt-2 p-1 border-b focus:outline-none focus:border-indigo-500" placeholder="Örn: 24" />
                 </div>
                 <div className="p-4 border rounded">
                      <span className="block text-sm font-bold text-gray-700">Katılmayan Öğrenci Sayısı</span>
-                     <Input type="number" className="w-full mt-2 p-1 border-b focus:outline-none focus:border-indigo-500" placeholder="Örn: 2" />
+                     <input type="number" className="w-full mt-2 p-1 border-b focus:outline-none focus:border-indigo-500" placeholder="Örn: 2" />
                 </div>
             </div>
 
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Değerlendirme / Gözlemler</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-24 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     defaultValue={currentActivity.kazanim.includes('TATİL') ? "Tatil nedeniyle etkinlik yapılmamıştır." : "Etkinlik plana uygun olarak işlenmiş, öğrencilerin derse katılımı sağlanmıştır."}
-                ></Textarea>
+                ></textarea>
             </div>
         </div>
       </div>
@@ -875,42 +911,41 @@ function GuidanceAnnualPlan() {
 
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">B) Yapılamayan Etkinlikler ve Mazeretleri</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Varsa yapılamayan etkinlikleri ve sebeplerini buraya not alabilirsiniz..."
-                ></Textarea>
+                ></textarea>
             </div>
 
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">C) Sınıfın Genel Durumu</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     defaultValue="Sınıf içi iletişim ve arkadaşlık ilişkileri olumlu düzeydedir. Akademik başarı takibi düzenli olarak yapılmıştır."
-                ></Textarea>
+                ></textarea>
             </div>
-
-            <div>
+             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Öğrenci adı ve yönlendirme nedeni..."
-                ></Textarea>
+                ></textarea>
             </div>
             
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
-                ></Textarea>
+                ></textarea>
             </div>
 
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">F) Rehberlik Servisinden Beklentiler</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Varsa beklentilerinizi yazınız..."
-                ></Textarea>
+                ></textarea>
             </div>
         </div>
     </div>
@@ -942,42 +977,40 @@ function GuidanceAnnualPlan() {
 
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">B) Yapılamayan Etkinlikler ve Mazeretleri</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Tüm yıl boyunca yapılamayan etkinlik varsa not ediniz..."
-                ></Textarea>
+                ></textarea>
             </div>
 
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">C) Sınıfın Genel Değerlendirmesi</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     defaultValue="Yıl boyunca sınıfın genel uyumu, arkadaşlık ilişkileri ve derse katılım düzeyleri olumlu seyretmiştir."
-                ></Textarea>
+                ></textarea>
             </div>
-
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Öğrenci adı ve yönlendirme nedeni..."
-                ></Textarea>
+                ></textarea>
             </div>
             
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
-                ></Textarea>
+                ></textarea>
             </div>
-
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">F) Gelecek Yıl İçin Öneriler</label>
-                <Textarea 
+                <textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     placeholder="Gelecek yıl için önerilerinizi yazınız..."
-                ></Textarea>
+                ></textarea>
             </div>
         </div>
     </div>
@@ -1052,22 +1085,5 @@ function GuidanceAnnualPlan() {
             {activeTab === 'endyear' && renderEndYearReport()}
           </div>
         </div>
-    );
-}
-
-export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
-  return (
-    <Tabs defaultValue="subject-plan">
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="subject-plan"><BookOpen className="mr-2 h-4 w-4" />Ders Yıllık Planı</TabsTrigger>
-            <TabsTrigger value="guidance"><FolderHeart className="mr-2 h-4 w-4" />Rehberlik Yıllık Planı</TabsTrigger>
-        </TabsList>
-        <TabsContent value="subject-plan" className="mt-4">
-            <SubjectAnnualPlan teacherProfile={teacherProfile} currentClass={currentClass} />
-        </TabsContent>
-        <TabsContent value="guidance" className="mt-4">
-            <GuidanceAnnualPlan />
-        </TabsContent>
-    </Tabs>
-  );
-}
+      );
+};
