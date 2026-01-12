@@ -317,7 +317,7 @@ export const KAZANIMLAR: { [key: string]: any[] } = {
           konu: "Dirençlerin bağlanma türüne göre eşdeğer direncin büyüklüğüne ilişkin bilimsel çıkarım yapabilme",
           kazanimlar: [
             "Dirençlerin seri, paralel ve birleşik bağlanma türlerini tanımlar.",
-            "Dirençlerin seri, paralel ve birleşik bağlanması ile eşdeğer direncin büyüklüğü arasındaki ilişkiyi belirlemek üzere veri toplar ve kaydeder.",
+            "Dirençlerin seri, paralel ve birleşik bağlanması ile eşdeğer direncin büyüklüğü arasındaki ilişkiyi belirlemek üzere veri toplayarak kaydeder.",
             "Elde ettiği verileri yorumlayarak ulaştığı çıkarımları matematiksel modellemeleri kullanarak test eder."
           ]
         },
@@ -861,6 +861,104 @@ export const KAZANIMLAR: { [key: string]: any[] } = {
             "Nükleer enerjiye ilişkin toplanan bilgiler üzerinden çıkarımlar yapar."
           ]
         }
+      ]
+    }
+  ],
+  "Edebiyat": [
+    {
+      unite: "Hazırlık Sınıfı",
+      konular: [
+        { konu: "Edebiyat ve Sanat", kazanimlar: ["TDE1.1. Metinlerde dinlemeyi/izlemeyi yönetebilme"] },
+        { konu: "Şiir", kazanimlar: ["TDE2.2. Metinlerde anlam oluşturabilme"] },
+        { konu: "Şiir Tahlili", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Anı (Hatıra)", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Söyleşi (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Konuşma Atölyesi", kazanimlar: ["TDE3.1. Konuşma sürecini yönetebilme"] },
+        { konu: "Yazma Atölyesi", kazanimlar: ["TDE4.1. Yazma sürecini yönetebilme"] },
+        { konu: "Tiyatro", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Tiyatro Tahlili", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Gezi Yazısı", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Şiir (Dinleme)", kazanimlar: ["TDE1.1. Dinlemeyi yönetebilme"] },
+        { konu: "Hikâye", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Deneme", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Belgesel (İzleme)", kazanimlar: ["TDE1.3. Çözümleyebilme"] },
+        { konu: "Roman", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Fıkra (Köşe Yazısı)", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Mektup (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] }
+      ]
+    },
+    {
+      unite: "9. Sınıf",
+      konular: [
+        { konu: "Şiir", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Şiir Tahlili", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Deneme", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Mülakat (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Hikâye", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Hikâye (Yapı)", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Anı (Hatıra)", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Gezi Yazısı", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Belgesel (İzleme)", kazanimlar: ["TDE1.3. Çözümleyebilme"] },
+        { konu: "Roman", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Roman Tahlili", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Eleştiri", kazanimlar: ["TDE2.4. Değerlendirme"] },
+        { konu: "Otobiyografi (İzleme)", kazanimlar: ["TDE1.3. Çözümleyebilme"] }
+      ]
+    },
+    {
+      unite: "10. Sınıf",
+      konular: [
+        { konu: "Koşuk", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Türkü", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Masal (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Gazel", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Gazel Tahlili", kazanimlar: ["TDE2.4. Değerlendirme"] },
+        { konu: "Saf Şiir", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Söyleşi (Dinleme)", kazanimlar: ["TDE1.3. Çözümleyebilme"] },
+        { konu: "Destan", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Halk Hikâyesi", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Mesnevi", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Fabl (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Dede Korkut Hikâyeleri", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Tanzimat Şiiri", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Servetifünun ve Fecriati", kazanimlar: ["TDE2.4. Değerlendirme"] },
+        { konu: "Millî Edebiyat Hikâyesi (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] }
+      ]
+    },
+    {
+      unite: "11. Sınıf",
+      konular: [
+        { konu: "Karagöz", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Karagöz Tahlili", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Mektup", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "İletişim (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Türk Dünyası Hikâyesi", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Orhun Abideleri", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Ara Metinler", kazanimlar: ["TDE2.4. Değerlendirme"] },
+        { konu: "Âşık Atışması (Dinleme)", kazanimlar: ["TDE1.3. Çözümleyebilme"] },
+        { konu: "Roman", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Biyografi", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Radyo Tiyatrosu (Dinleme)", kazanimlar: ["TDE1.1. Dinlemeyi yönetebilme"] },
+        { konu: "Tiyatro", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Küçürek Hikâye", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Belgesel (İzleme)", kazanimlar: ["TDE1.4. Görüşlerini yansıtabilme"] }
+      ]
+    },
+    {
+      unite: "12. Sınıf",
+      konular: [
+        { konu: "Günlük", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Şiir", kazanimlar: ["TDE2.1. Okumayı yönetebilme"] },
+        { konu: "Kişisel Gelişim (Dinleme)", kazanimlar: ["TDE1.4. Yansıtabilme"] },
+        { konu: "Roman", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Makale", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Haber Metni (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] },
+        { konu: "Gezi Yazısı", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Hikâye", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Teknoloji ve Çevre (Dinleme)", kazanimlar: ["TDE1.4. Yansıtabilme"] },
+        { konu: "Makale (Meslek)", kazanimlar: ["TDE2.2. Anlam oluşturabilme"] },
+        { konu: "Hikâye (Gelecek)", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
+        { konu: "Mülakat (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] }
       ]
     }
   ]

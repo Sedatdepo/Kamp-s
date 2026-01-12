@@ -4,6 +4,7 @@ import React from 'react';
 import { BookOpen, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Import Tabs
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 
 export default function KazanımlarTab() {
@@ -21,44 +22,44 @@ export default function KazanımlarTab() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                    {Object.entries(KAZANIMLAR).map(([ders, uniteler]) => (
-                        <AccordionItem value={ders} key={ders}>
-                            <AccordionTrigger className="text-xl font-bold text-primary hover:no-underline">
-                                {ders}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                <Accordion type="single" collapsible className="w-full pl-4">
-                                    {(uniteler as any[]).map(unite => (
-                                        <AccordionItem value={`${ders}-${unite.unite}`} key={unite.unite}>
-                                            <AccordionTrigger className="text-lg font-semibold">
-                                                {unite.unite}
-                                            </AccordionTrigger>
-                                            <AccordionContent>
-                                                <Accordion type="single" collapsible className="w-full pl-4">
-                                                    {unite.konular.map((konu: any) => (
-                                                        <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}`} key={konu.konu}>
-                                                            <AccordionTrigger className="text-md font-medium hover:no-underline">
-                                                                {konu.konu}
-                                                            </AccordionTrigger>
-                                                            <AccordionContent className="pl-4 border-l">
-                                                                <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                                                                    {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                                        <li key={i}>{kazanimText}</li>
-                                                                    ))}
-                                                                </ul>
-                                                            </AccordionContent>
-                                                        </AccordionItem>
-                                                    ))}
-                                                </Accordion>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </AccordionContent>
-                        </AccordionItem>
+                <Tabs defaultValue="Fizik" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="Fizik">Fizik</TabsTrigger>
+                        <TabsTrigger value="Edebiyat">Türk Dili ve Edebiyatı</TabsTrigger>
+                    </TabsList>
+                    
+                    {Object.keys(KAZANIMLAR).map(ders => (
+                        <TabsContent key={ders} value={ders} className="mt-4">
+                            <Accordion type="single" collapsible className="w-full">
+                                {KAZANIMLAR[ders].map((unite: any) => (
+                                    <AccordionItem value={`${ders}-${unite.unite}`} key={`${ders}-${unite.unite}`}>
+                                        <AccordionTrigger className="text-xl font-bold text-primary hover:no-underline">
+                                            {unite.unite}
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <Accordion type="single" collapsible className="w-full pl-4">
+                                                {unite.konular.map((konu: any) => (
+                                                    <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}`} key={`${ders}-${unite.unite}-${konu.konu}`}>
+                                                        <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                                            {konu.konu}
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="pl-4 border-l">
+                                                            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                                                                {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                                    <li key={i}>{kazanimText}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                ))}
+                                            </Accordion>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        </TabsContent>
                     ))}
-                </Accordion>
+                </Tabs>
             </CardContent>
         </Card>
     );
