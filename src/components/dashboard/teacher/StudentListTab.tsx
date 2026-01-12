@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, GradingScores, Criterion } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,8 @@ import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode, ClipboardPaste } from 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { cn } from '@/lib/utils';
 
 
 interface StudentListTabProps {
@@ -26,6 +28,15 @@ interface StudentListTabProps {
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
 }
+
+const calculateAverageForCriteria = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+    if (!scores || !criteria || criteria.length === 0 || Object.keys(scores).length === 0) return null;
+    const totalMax = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0);
+    if (totalMax === 0) return 0;
+    const totalScore = Object.values(scores).reduce((sum, score) => sum + (Number(score) || 0), 0);
+    return (totalScore / totalMax) * 100;
+};
+
 
 export function StudentListTab({ classId, students, currentClass, teacherProfile }: StudentListTabProps) {
   const { db, appUser } = useAuth();
@@ -41,6 +52,41 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
+  const calculateTermAverage = (student: Student, termGrades?: GradingScores): number => {
+    if (!termGrades || !teacherProfile) return 0;
+    const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
+    const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
+
+    const exam1 = termGrades.exam1;
+    const exam2 = termGrades.exam2;
+    const perf1 = calculateAverageForCriteria(termGrades.scores1, perfCriteria);
+    const perf2 = calculateAverageForCriteria(termGrades.scores2, perfCriteria);
+    const projAvg = student.hasProject ? calculateAverageForCriteria(termGrades.projectScores, projCriteria) : null;
+
+    const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
+      (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
+    );
+
+    if (allScores.length === 0) return 0;
+
+    const sum = allScores.reduce((acc, score) => acc + score, 0);
+    return sum / allScores.length;
+  };
+
+  const studentAverages = useMemo(() => {
+    return students.map(student => {
+      const term1Avg = calculateTermAverage(student, student.term1Grades);
+      const term2Avg = calculateTermAverage(student, student.term2Grades);
+      const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+      return {
+        studentId: student.id,
+        term1Avg,
+        term2Avg,
+        finalAverage,
+      };
+    });
+  }, [students, teacherProfile]);
+
   const sortedStudents = useMemo(() => {
     if (!students) return [];
     return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
@@ -53,7 +99,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         name: newStudentName,
         number: newStudentNumber,
         classId: classId,
-        teacherId: teacherId, // ADDED
+        teacherId: teacherId,
         risks: [],
         projectPreferences: [],
         assignedLesson: null,
@@ -171,6 +217,14 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
     setIsDetailModalOpen(true);
   }
 
+  const getGradeColor = (grade: number) => {
+    if (grade >= 85) return 'text-green-600';
+    if (grade >= 70) return 'text-blue-600';
+    if (grade >= 50) return 'text-orange-600';
+    if (grade > 0) return 'text-red-600';
+    return 'text-muted-foreground';
+  }
+
   return (
     <div>
       <Card>
@@ -221,16 +275,21 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
               <TableRow>
                 <TableHead className="w-[100px]">Okul No</TableHead>
                 <TableHead>Adı Soyadı</TableHead>
-                <TableHead className="w-[120px]">Proje Ödevi</TableHead>
+                <TableHead className="text-center">1. Dönem Ort.</TableHead>
+                <TableHead className="text-center">2. Dönem Ort.</TableHead>
+                <TableHead className="text-center">Yıl Sonu Ort.</TableHead>
+                <TableHead className="w-[120px] text-center">Proje Ödevi</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStudents.map(student => (
-                editingStudent?.id === student.id ? (
+              {sortedStudents.map(student => {
+                const averages = studentAverages.find(avg => avg.studentId === student.id);
+                return editingStudent?.id === student.id ? (
                   <TableRow key={student.id}>
                     <TableCell><Input value={editingStudent.number} onChange={(e) => setEditingStudent({ ...editingStudent, number: e.target.value })} /></TableCell>
                     <TableCell><Input value={editingStudent.name} onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })} /></TableCell>
+                    <TableCell colSpan={3}></TableCell>
                     <TableCell className="text-center"><Checkbox checked={editingStudent.hasProject} onCheckedChange={(checked) => setEditingStudent({ ...editingStudent, hasProject: !!checked })} /></TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" onClick={handleUpdateStudent} className="mr-2"><Save className="h-4 w-4" /></Button>
@@ -241,6 +300,15 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
                   <TableRow key={student.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleOpenDetailModal(student)}>
                     <TableCell>{student.number}</TableCell>
                     <TableCell>{student.name}</TableCell>
+                    <TableCell className={cn("text-center font-bold", getGradeColor(averages?.term1Avg || 0))}>
+                        {averages?.term1Avg.toFixed(2)}
+                    </TableCell>
+                    <TableCell className={cn("text-center font-bold", getGradeColor(averages?.term2Avg || 0))}>
+                        {averages?.term2Avg.toFixed(2)}
+                    </TableCell>
+                    <TableCell className={cn("text-center font-bold text-lg", getGradeColor(averages?.finalAverage || 0))}>
+                        {averages?.finalAverage.toFixed(2)}
+                    </TableCell>
                     <TableCell className="text-center"><Checkbox checked={student.hasProject} disabled /></TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingStudent(student); }}><Edit className="h-4 w-4" /></Button>
@@ -248,11 +316,11 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
                     </TableCell>
                   </TableRow>
                 )
-              ))}
+              })}
               <TableRow>
                 <TableCell><Input placeholder="Okul No" value={newStudentNumber} onChange={(e) => setNewStudentNumber(e.target.value)} /></TableCell>
                 <TableCell><Input placeholder="Adı Soyadı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} /></TableCell>
-                <TableCell></TableCell>
+                <TableCell colSpan={4}></TableCell>
                 <TableCell className="text-right">
                   <Button onClick={handleAddStudent}><UserPlus className="mr-2 h-4 w-4" /> Ekle</Button>
                 </TableCell>
