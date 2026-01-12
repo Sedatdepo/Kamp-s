@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL_PLANS } from '@/lib/plans';
@@ -503,7 +503,7 @@ function GuidanceAnnualPlan() {
   };
 
   // Word İndirme Fonksiyonu
-  const downloadWord = (content: any, filename: any) => {
+  const downloadWord = (content, filename) => {
     const preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word Document with JavaScript</title><style>body{font-family: Arial, sans-serif;} table{border-collapse: collapse; width: 100%;} td, th{border: 1px solid #000; padding: 8px; text-align: left;} .header{text-align:center; font-weight:bold; margin-bottom:20px;} .footer{margin-top:50px; display:flex; justify-content:space-between;}</style></head><body>`;
     const postHtml = "</body></html>";
     const html = preHtml + content + postHtml;
@@ -524,7 +524,7 @@ function GuidanceAnnualPlan() {
   };
 
   const exportAnnualPlan = () => {
-    let tableRows = plans[selectedGrade as '9' | '10' | '11' | '12'].map(item => 
+    let tableRows = plans[selectedGrade].map(item => 
       `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`
     ).join('');
 
@@ -552,7 +552,7 @@ function GuidanceAnnualPlan() {
   };
 
   const exportActivityReport = () => {
-    const currentActivity = plans[selectedGrade as '9' | '10' | '11' | '12'][selectedActivityIndex];
+    const currentActivity = plans[selectedGrade][selectedActivityIndex];
     const content = `
       <div class="header">
         <h2>HAFTALIK SINIF REHBERLİK ETKİNLİK RAPORU</h2>
@@ -589,7 +589,7 @@ function GuidanceAnnualPlan() {
   const exportTermReport = () => {
     // 1. Dönem ayları
     const term1Months = ['Eylül', 'Ekim', 'Kasım', 'Aralık', 'Ocak'];
-    const term1Activities = plans[selectedGrade as '9' | '10' | '11' | '12'].filter(item => term1Months.includes(item.month));
+    const term1Activities = plans[selectedGrade].filter(item => term1Months.includes(item.month));
     
     // Etkinlik listesi tablosu
     const activitiesTableRows = term1Activities.map(item => 
@@ -642,7 +642,13 @@ function GuidanceAnnualPlan() {
       <h3>C) SINIFIN GENEL DURUMU</h3>
       <p style="text-align: justify;">Sınıf içi iletişim, arkadaşlık ilişkileri ve sınıf iklimi genel olarak olumlu düzeydedir. Öğrencilerin derslere katılımı ve akademik sorumluluk bilinçleri takip edilmektedir. Risk grubunda olduğu tespit edilen öğrencilerle ilgili olarak Okul Rehberlik Servisi ve velilerle iş birliği sağlanmıştır.</p>
       <br>
-      <h3>D) REHBERLİK SERVİSİNDEN BEKLENTİLER</h3>
+      <h3>D) REHBERLİK SERVİSİNE YÖNLENDİRİLEN ÖĞRENCİLER VE NEDENLERİ</h3>
+      <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
+      <br>
+      <h3>E) YAPILAN VELİ GÖRÜŞMELERİ VE SONUÇLARI</h3>
+      <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
+      <br>
+      <h3>F) REHBERLİK SERVİSİNDEN BEKLENTİLER</h3>
       <p>..........................................................................................................................................................................</p>
       <div style="margin-top:50px;">
         <p style="text-align:center;">................................<br>Sınıf Rehber Öğretmeni</p>
@@ -653,7 +659,7 @@ function GuidanceAnnualPlan() {
 
   const exportEndYearReport = () => {
     // Tüm yıl (planın tamamı)
-    const allActivities = plans[selectedGrade as '9' | '10' | '11' | '12'];
+    const allActivities = plans[selectedGrade];
     
     // Etkinlik listesi tablosu
     const activitiesTableRows = allActivities.map(item => 
@@ -677,7 +683,6 @@ function GuidanceAnnualPlan() {
       <p style="text-align: justify;">2025-2026 Eğitim Öğretim Yılı boyunca sınıf rehberlik programı çerçevesinde planlanan etkinlikler, MEB Rehberlik ve Psikolojik Danışma Hizmetleri Yönetmeliği esas alınarak titizlikle yürütülmüştür.</p>
       <p style="text-align: justify;"><strong>1. Dönem:</strong> Oryantasyon, risk haritası analizi, verimli ders çalışma teknikleri, akran zorbalığı ve kişisel güvenlik konularına ağırlık verilmiştir.</p>
       <p style="text-align: justify;"><strong>2. Dönem:</strong> Mesleki rehberlik kapsamında; alan seçimi (9. ve 10. sınıflar için), üst öğrenim kurumlarının tanıtımı, sınav sistemleri ve hedef belirleme (11. ve 12. sınıflar için) çalışmaları yapılmıştır. Ayrıca Rehberlik İhtiyaçları Belirleme Anketi (RİBA) uygulanmış, teknoloji bağımlılığı, stresle baş etme ve sağlıklı yaşam becerileri üzerine etkinlikler gerçekleştirilmiştir.</p>
-      <p style="text-align: justify;">Aşağıda eğitim öğretim yılı boyunca (Eylül-Haziran) gerçekleştirilen tüm etkinliklerin ayrıntılı dökümü sunulmuştur:</p>
       
       <h4 style="margin-top:20px;">2025-2026 EĞİTİM YILI GERÇEKLEŞTİRİLEN ETKİNLİKLER ÇİZELGESİ</h4>
       <table border="1" cellpadding="5" style="font-size: 11px;">
@@ -707,7 +712,13 @@ function GuidanceAnnualPlan() {
       <h3>C) SINIFIN GENEL DEĞERLENDİRMESİ</h3>
       <p style="text-align: justify;">Yıl boyunca sınıfın genel uyumu, arkadaşlık ilişkileri ve derse katılım düzeyleri olumlu seyretmiştir. Akademik anlamda desteklenmesi gereken öğrencilerle bireysel görüşmeler yapılmış, veli iş birliği sağlanmıştır. Rehberlik servisi ile koordineli çalışılarak risk durumundaki öğrencilere gerekli yönlendirmeler yapılmıştır.</p>
       <br>
-      <h3>D) GELECEK YIL İÇİN ÖNERİLER</h3>
+      <h3>D) REHBERLİK SERVİSİNE YÖNLENDİRİLEN ÖĞRENCİLER VE NEDENLERİ</h3>
+       <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
+      <br>
+      <h3>E) YAPILAN VELİ GÖRÜŞMELERİ VE SONUÇLARI</h3>
+       <textarea style="width:100%; height:80px; border: 1px solid #ccc;"></textarea>
+      <br>
+      <h3>F) GELECEK YIL İÇİN ÖNERİLER</h3>
       <p>..........................................................................................................................................................................</p>
       <div style="margin-top:50px;">
         <p style="text-align:center;">................................<br>Sınıf Rehber Öğretmeni</p>
@@ -877,6 +888,30 @@ function GuidanceAnnualPlan() {
                     defaultValue="Sınıf içi iletişim ve arkadaşlık ilişkileri olumlu düzeydedir. Akademik başarı takibi düzenli olarak yapılmıştır."
                 ></Textarea>
             </div>
+
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Öğrenci adı ve yönlendirme nedeni..."
+                ></Textarea>
+            </div>
+            
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
+                ></Textarea>
+            </div>
+
+             <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">F) Rehberlik Servisinden Beklentiler</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Varsa beklentilerinizi yazınız..."
+                ></Textarea>
+            </div>
         </div>
     </div>
   );
@@ -918,6 +953,30 @@ function GuidanceAnnualPlan() {
                 <Textarea 
                     className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
                     defaultValue="Yıl boyunca sınıfın genel uyumu, arkadaşlık ilişkileri ve derse katılım düzeyleri olumlu seyretmiştir."
+                ></Textarea>
+            </div>
+
+             <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">D) Rehberlik Servisine Yönlendirilen Öğrenciler ve Nedenleri</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Öğrenci adı ve yönlendirme nedeni..."
+                ></Textarea>
+            </div>
+            
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">E) Yapılan Veli Görüşmeleri ve Sonuçları</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Veli adı, görüşme tarihi ve görüşme sonucu..."
+                ></Textarea>
+            </div>
+
+             <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">F) Gelecek Yıl İçin Öneriler</label>
+                <Textarea 
+                    className="w-full p-3 border rounded h-20 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+                    placeholder="Gelecek yıl için önerilerinizi yazınız..."
                 ></Textarea>
             </div>
         </div>
