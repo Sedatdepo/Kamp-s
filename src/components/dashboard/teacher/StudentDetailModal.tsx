@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson, PerformanceGradeOutput } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson, PerformanceGradeOutput, StudentReportOutput } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { generateStudentReport, StudentReportInput, StudentReportOutput } from '@/ai/flows/generate-student-report-flow';
+import { generateStudentReport, StudentReportInput } from '@/ai/flows/generate-student-report-flow';
 import { generatePerformanceGrade, PerformanceGradeInput } from '@/ai/flows/generate-performance-grade-flow';
 
 
@@ -392,7 +392,8 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
             homeworks,
             submissions,
             disciplineRecords,
-            lessons
+            lessons,
+            aiReport,
         });
     };
     

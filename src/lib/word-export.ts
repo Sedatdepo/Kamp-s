@@ -1,5 +1,6 @@
+
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -957,8 +958,9 @@ interface StudentDevelopmentReportArgs {
     submissions: Submission[];
     disciplineRecords: DisciplineRecord[];
     lessons: Lesson[];
+    aiReport: StudentReportOutput | null;
 }
-export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass, homeworks, submissions, disciplineRecords, lessons }: StudentDevelopmentReportArgs) {
+export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass, homeworks, submissions, disciplineRecords, lessons, aiReport }: StudentDevelopmentReportArgs) {
     const reportTitle = "ÖĞRENCİ GELİŞİM VE DEĞERLENDİRME RAPORU";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
     const footer = generateReportFooter(teacherProfile);
@@ -1024,12 +1026,12 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     const familyInfoSection = `
         <h3>B. AİLE BİLGİLERİ</h3>
         <table style="width: 100%;">
-            <tr><td style="width: 30%;"><b>Anne Durumu:</b></td><td>${infoForm?.motherStatus || 'Belirtilmemiş'}</td></tr>
-            <tr><td><b>Anne Eğitim / Meslek:</b></td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
-            <tr><td><b>Baba Durumu:</b></td><td>${infoForm?.fatherStatus || 'N/A'}</td></tr>
-            <tr><td><b>Baba Eğitim / Meslek:</b></td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
-            <tr><td><b>Kardeş Bilgileri:</b></td><td>${infoForm?.siblingsInfo || 'Belirtilmemiş'}</td></tr>
-            <tr><td><b>Ekonomik Durum:</b></td><td>${infoForm?.economicStatus || 'Belirtilmemiş'}</td></tr>
+            <tr><td style="width: 30%;">Anne Durumu:</td><td>${infoForm?.motherStatus || 'N/A'}</td></tr>
+            <tr><td>Anne Eğitim / Meslek:</td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
+            <tr><td>Baba Durumu:</td><td>${infoForm?.fatherStatus || 'N/A'}</td></tr>
+            <tr><td>Baba Eğitim / Meslek:</td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
+            <tr><td>Kardeş Bilgileri:</td><td>${infoForm?.siblingsInfo || 'N/A'}</td></tr>
+            <tr><td>Ailenin Ekonomik Durumu:</td><td>${infoForm?.economicStatus || 'N/A'}</td></tr>
         </table>
     `;
 
@@ -1137,7 +1139,15 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
 
     const observationSection = `
         <h3>G. ÖĞRETMEN GÖZLEM VE DEĞERLENDİRMELERİ</h3>
-        <div style="border: 1px solid black; height: 200px; padding: 5px;"></div>
+        ${aiReport ? `
+            <p><b>Akademik Durum:</b> ${aiReport.academicStatus}</p>
+            <p><b>Sosyal ve Davranışsal Durum:</b> ${aiReport.socialAndBehavioralStatus}</p>
+            <p><b>Risk Analizi:</b> ${aiReport.riskAnalysis}</p>
+            <p><b>Güçlü Yönler:</b></p>
+            <p>${aiReport.strengths.replace(/\n/g, '<br>')}</p>
+            <p><b>Tavsiyeler:</b></p>
+            <p>${aiReport.recommendations.replace(/\n/g, '<br>')}</p>
+        ` : '<div style="border: 1px solid black; height: 200px; padding: 5px;"></div>'}
     `;
 
     const content = `
