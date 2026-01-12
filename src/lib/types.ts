@@ -421,6 +421,8 @@ export interface DisciplineRecord extends Archivable {
     studentName?: string; // Add studentName for easy access
     currentPhase?: number;
     formData?: {
+        studentInfo?: any; // Add studentInfo to formData
+        phase1Data?: any;
         incidentDate: string;
         incidentTime: string;
         location: string;

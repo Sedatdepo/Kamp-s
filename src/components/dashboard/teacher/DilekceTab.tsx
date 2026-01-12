@@ -4,7 +4,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { FileDown, FileSignature, PlusCircle, Trash2, Eye, ToggleLeft, ToggleRight, Search, BookOpen, Copy, Save } from 'lucide-react';
+import { 
+  FileDown, FileSignature, PlusCircle, Trash2, Eye, ToggleLeft, ToggleRight, Search, BookOpen, Copy, Save 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TeacherProfile, DilekceDocument } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';

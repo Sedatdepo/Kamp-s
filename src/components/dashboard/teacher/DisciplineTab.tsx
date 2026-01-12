@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -15,6 +14,7 @@ import { DisciplineRecord, TeacherProfile, Student, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RecordManager } from './RecordManager';
 
 // --- YÖNETMELİK MADDELERİ ---
 const DISCIPLINE_ARTICLES = [
@@ -93,26 +93,40 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
     const { disciplineRecords = [] } = localDb;
     const { toast } = useToast();
 
+    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
     const [currentRecord, setCurrentRecord] = useState<DisciplineRecord | null>(null);
     const [phase, setPhase] = useState(1);
     const [formData, setFormData] = useState<any>({});
     
-    const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveName, setSaveName] = useState('');
 
      const startNewProcess = useCallback(() => {
-        setCurrentRecord(null);
-        setPhase(1);
-        setFormData({
-             studentInfo: { schoolName: teacherProfile?.schoolName || '' }
+        const newId = `discipline_${Date.now()}`;
+        setSelectedRecordId(newId);
+        setCurrentRecord({
+            id: newId,
+            name: '',
+            date: new Date().toISOString(),
+            classId: currentClass?.id,
+            currentPhase: 1,
+            formData: { studentInfo: { schoolName: teacherProfile?.schoolName || '' } }
         });
-    }, [teacherProfile?.schoolName]);
+    }, [teacherProfile?.schoolName, currentClass?.id]);
+    
+    useEffect(() => {
+        if(selectedRecordId) {
+            const record = disciplineRecords.find(r => r.id === selectedRecordId);
+            setCurrentRecord(record || null);
+        } else {
+            startNewProcess();
+        }
+    }, [selectedRecordId, disciplineRecords, startNewProcess]);
 
     useEffect(() => {
         if (currentRecord) {
-            setPhase(currentRecord.currentPhase);
-            setFormData(currentRecord.formData);
+            setPhase(currentRecord.currentPhase || 1);
+            setFormData(currentRecord.formData || {});
         } else {
             startNewProcess();
         }
@@ -167,87 +181,66 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
         toast({ title: "Kaydedildi", description: "Disiplin süreci arşive kaydedildi." });
     };
 
-    const loadProcess = (recordId: string) => {
-        const record = disciplineRecords.find(r => r.id === recordId);
-        if (record) {
-            setCurrentRecord(record);
-            setIsArchiveOpen(false);
-            toast({ title: "Yüklendi", description: `'${record.name}' süreci yüklendi.` });
-        }
-    };
+    const handleNewRecord = useCallback(() => {
+        startNewProcess();
+    }, [startNewProcess]);
 
-    const deleteProcess = (recordId: string) => {
+    const handleDeleteRecord = useCallback(() => {
+        if (!selectedRecordId) return;
         setDb(prev => ({
             ...prev,
-            disciplineRecords: (prev.disciplineRecords || []).filter(r => r.id !== recordId),
+            disciplineRecords: (prev.disciplineRecords || []).filter(r => r.id !== selectedRecordId),
         }));
-        if (currentRecord?.id === recordId) {
-            startNewProcess();
-        }
+        startNewProcess();
         toast({ title: "Silindi", description: "Kayıt arşivden silindi.", variant: "destructive" });
-    };
+    }, [selectedRecordId, setDb, startNewProcess, toast]);
     
     return (
         <main className="p-1">
-            <Card>
-                <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-red-600 text-white flex items-center justify-center rounded-xl text-2xl font-bold">
-                                ⚖️
-                            </div>
-                            <div>
-                                <CardTitle>Okul Disiplin Süreci Yönetim Sistemi</CardTitle>
-                                <CardDescription>MEB Yönetmeliğine uygun disiplin süreçleri</CardDescription>
-                            </div>
-                        </div>
-                         <div className="flex flex-wrap gap-2">
-                             <Button onClick={startNewProcess} variant="secondary"><UserPlus className="mr-2"/>Yeni Süreç</Button>
-                             <Button onClick={() => setIsArchiveOpen(true)} variant="outline"><History className="mr-2"/> Arşiv</Button>
-                             <Button onClick={saveProcess}><Save className="mr-2"/> Kaydet</Button>
-                         </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <PhaseIndicator currentPhase={phase} />
-
-                    <div className='mt-8'>
-                        <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateFormData={updateFormData} students={students} teacherProfile={teacherProfile} currentClass={currentClass} />
-                        <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} />
-                        <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
-                        <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
-                        <Phase5 isVisible={phase === 5} onPrev={handlePrevPhase} data={formData} teacherProfile={teacherProfile} />
-                    </div>
-
-                </CardContent>
-            </Card>
-
-            <Dialog open={isArchiveOpen} onOpenChange={setIsArchiveOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Disiplin Süreci Arşivi</DialogTitle>
-                        <DialogDescription>Kaydedilmiş süreçleri buradan yükleyebilir veya silebilirsiniz.</DialogDescription>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-96">
-                        {(disciplineRecords.filter(r => r.classId === currentClass?.id) || []).length > 0 ? (
-                            (disciplineRecords.filter(r => r.classId === currentClass?.id) || []).map(record => (
-                                <div key={record.id} className="flex justify-between items-center p-2 border-b group">
-                                    <div>
-                                        <p className="font-semibold">{record.name}</p>
-                                        <p className="text-sm text-muted-foreground">{new Date(record.date).toLocaleDateString('tr-TR')}</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="md:col-span-1">
+                    <RecordManager 
+                        records={disciplineRecords.filter(r => r.classId === currentClass?.id)}
+                        selectedRecordId={selectedRecordId}
+                        onSelectRecord={setSelectedRecordId}
+                        onNewRecord={handleNewRecord}
+                        onDeleteRecord={handleDeleteRecord}
+                        noun="Disiplin Kaydı"
+                    />
+                </div>
+                <div className="md:col-span-3">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-red-600 text-white flex items-center justify-center rounded-xl text-2xl font-bold">
+                                        ⚖️
                                     </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                                        <Button size="sm" onClick={() => loadProcess(record.id)}>Yükle</Button>
-                                        <Button size="sm" variant="destructive" onClick={() => deleteProcess(record.id)}><Trash2 size={16}/></Button>
+                                    <div>
+                                        <CardTitle>Okul Disiplin Süreci Yönetim Sistemi</CardTitle>
+                                        <CardDescription>MEB Yönetmeliğine uygun disiplin süreçleri</CardDescription>
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-center text-muted-foreground p-8">Bu sınıfa ait arşiv kaydı boş.</p>
-                        )}
-                    </ScrollArea>
-                </DialogContent>
-            </Dialog>
+                                 <div className="flex flex-wrap gap-2">
+                                     <Button onClick={saveProcess}><Save className="mr-2"/> Kaydet</Button>
+                                 </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <PhaseIndicator currentPhase={phase} />
+
+                            <div className='mt-8'>
+                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateFormData={updateFormData} students={students} teacherProfile={teacherProfile} currentClass={currentClass} />
+                                <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} />
+                                <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
+                                <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
+                                <Phase5 isVisible={phase === 5} onPrev={handlePrevPhase} data={formData} teacherProfile={teacherProfile} />
+                            </div>
+
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
             
             <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                 <DialogContent>
