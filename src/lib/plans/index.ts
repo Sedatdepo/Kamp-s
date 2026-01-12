@@ -1,13 +1,13 @@
 import { fizikPlan } from './fizik';
+import { edebiyatPlan } from './edebiyat';
 
 export const ALL_PLANS: Record<string, any> = {
   'Fizik': {
     grades: ['9', '10', '11', '12'],
     data: fizikPlan,
   },
-  // Gelecekte yeni dersler buraya eklenebilir.
-  // 'Edebiyat': {
-  //   grades: ['9', '10'],
-  //   data: edebiyatPlan
-  // }
+  'Edebiyat': {
+    grades: ['0', '9', '10', '11', '12'],
+    data: edebiyatPlan
+  }
 };
