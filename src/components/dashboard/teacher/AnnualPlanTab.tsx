@@ -367,42 +367,82 @@ ${processTextContent}\\par
   );
 }
 
-function GuidanceAnnualPlan({ currentClass }: { currentClass: Class | null }) {
-  const [activeTab, setActiveTab] = useState('plan');
-  const [selectedGrade, setSelectedGrade] = useState('9');
-  const [isGenerating, setIsGenerating] = useState<number | null>(null);
+function GuidanceAnnualPlan({ currentClass, teacherProfile }: { currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
+    const [dsonuReport, setDSonuReport] = useState("");
+    const [ysonuReport, setYSonuReport] = useState("");
+    const [isGenerating, setIsGenerating] = useState<string | null>(null);
 
-  const handleGenerateReportContent = async (index: number) => {
-    setIsGenerating(index);
-    const agendaTitle = "Sınıf Durum Değerlendirmesi"; // Example title
-    try {
-      const response = await generateMeetingAgendaItem({
-        meetingType: 'ŞÖK',
-        agendaTitle: agendaTitle,
-        classInfo: `${selectedGrade}. Sınıf`,
-      });
-      // Here you would update the relevant textarea
-    } catch (error) {
-      console.error("AI Rapor oluşturma hatası:", error);
-    } finally {
-      setIsGenerating(null);
-    }
-  };
-
-  return (
-    <Card className="animate-in fade-in">
-        <CardHeader>
-            <CardTitle>Rehberlik Yıllık Planı ve Raporları</CardTitle>
-            <CardDescription>Sınıf rehberlik etkinliklerini takip edin ve dönem sonu raporlarını oluşturun.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {/* Rehberlik planı içeriği buraya gelecek */}
-            <p>Rehberlik planı bölümü yapım aşamasındadır.</p>
-        </CardContent>
-    </Card>
-  );
+    const handleGenerateReportContent = async (reportType: 'dsonu' | 'ysonu', agendaTitle: string) => {
+        setIsGenerating(reportType);
+        try {
+            const response = await generateMeetingAgendaItem({
+                meetingType: 'ŞÖK', // ŞÖK veya genel bir raporlama
+                agendaTitle: agendaTitle,
+                classInfo: currentClass?.name || "",
+                teacherInfo: teacherProfile?.name || "",
+            });
+            if (reportType === 'dsonu') {
+                setDSonuReport(response.generatedText);
+            } else {
+                setYSonuReport(response.generatedText);
+            }
+        } catch (error) {
+            console.error("AI Rapor oluşturma hatası:", error);
+            // Burada kullanıcıya bir toast mesajı gösterilebilir.
+        } finally {
+            setIsGenerating(null);
+        }
+    };
+    
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Dönem Sonu Raporu</CardTitle>
+                    <CardDescription>Sınıfın dönem sonu genel durumunu değerlendirin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea 
+                        placeholder="Yapay zeka ile doldurmak için butona tıklayın veya manuel olarak yazın..." 
+                        rows={10}
+                        value={dsonuReport}
+                        onChange={e => setDSonuReport(e.target.value)}
+                    />
+                    <Button 
+                        onClick={() => handleGenerateReportContent('dsonu', 'Dönem Sonu Sınıf Genel Durumu')} 
+                        disabled={isGenerating === 'dsonu'}
+                        className="mt-4 w-full"
+                    >
+                        {isGenerating === 'dsonu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
+                        Yapay Zeka ile Doldur
+                    </Button>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Yıl Sonu Raporu</CardTitle>
+                    <CardDescription>Sınıfın yıl sonu genel durumunu değerlendirin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea 
+                        placeholder="Yapay zeka ile doldurmak için butona tıklayın veya manuel olarak yazın..." 
+                        rows={10}
+                        value={ysonuReport}
+                        onChange={e => setYSonuReport(e.target.value)}
+                    />
+                    <Button 
+                        onClick={() => handleGenerateReportContent('ysonu', 'Yıl Sonu Sınıf Genel Durumu')} 
+                        disabled={isGenerating === 'ysonu'}
+                        className="mt-4 w-full"
+                    >
+                        {isGenerating === 'ysonu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
+                        Yapay Zeka ile Doldur
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
 }
-
 
 export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   return (
@@ -415,8 +455,10 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
         <SubjectAnnualPlan teacherProfile={teacherProfile} currentClass={currentClass} />
       </TabsContent>
       <TabsContent value="rehberlik-plani" className="mt-4">
-        <GuidanceAnnualPlan currentClass={currentClass} />
+        <GuidanceAnnualPlan currentClass={currentClass} teacherProfile={teacherProfile} />
       </TabsContent>
     </Tabs>
   );
 }
+
+    
