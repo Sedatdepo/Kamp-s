@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Submission, Homework } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X } from 'lucide-react';
+import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X, Check } from 'lucide-react';
 import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,6 +29,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Badge } from '@/components/ui/badge';
 
 
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: any) => {
@@ -71,7 +71,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
             if (!studentScores) continue;
 
             let submission = submissions.find((s: Submission) => s.studentId === studentId);
-            const totalScore = Object.values(studentScores).reduce((sum, val) => sum + val, 0);
+            const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
 
             if (submission) {
                 // Update existing submission
@@ -116,6 +116,28 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
             setEditingHomework(null);
         } catch (error) {
             toast({ variant: 'destructive', title: "Güncelleme hatası", description: (error as Error).message });
+        }
+    };
+
+    const handleMarkAsSubmitted = async (student: Student) => {
+        if (!db || !classId) return;
+        
+        const newSubmissionRef = doc(collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`));
+        const submissionData: Partial<Submission> = {
+            studentId: student.id,
+            studentName: student.name,
+            studentNumber: student.number,
+            homeworkId: homework.id,
+            submittedAt: new Date().toISOString(),
+            feedback: 'Öğretmen tarafından teslim edildi olarak işaretlendi.'
+        };
+
+        try {
+            await setDoc(newSubmissionRef, submissionData);
+            toast({ title: "Teslim Edildi", description: `${student.name} için ödev teslim edilmiş sayıldı.` });
+            onScoresUpdated();
+        } catch (error) {
+            toast({ title: "Hata", description: "İşlem kaydedilemedi.", variant: 'destructive' });
         }
     };
 
@@ -202,10 +224,12 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                 <TableHead key={item.label} className="text-center">{item.label} ({item.score}p)</TableHead>
                             ))}
                             <TableHead className="text-center w-[100px]">Toplam</TableHead>
+                            <TableHead className="text-center w-[150px]">Durum</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {assignedStudents.map((student: Student) => {
+                            const submission = submissions.find((s: Submission) => s.studentId === student.id);
                             const studentScores = scores[student.id] || {};
                             const totalScore = homework.rubric.reduce((sum: number, c: any) => sum + (Number(studentScores[c.label]) || 0), 0);
                             return (
@@ -224,6 +248,15 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
+                                    <TableCell className="text-center">
+                                        {submission ? (
+                                            <Badge>Teslim Edildi</Badge>
+                                        ) : (
+                                            <Button size="sm" variant="outline" onClick={() => handleMarkAsSubmitted(student)}>
+                                                <Check className="mr-1 h-3 w-3" /> Teslim Et
+                                            </Button>
+                                        )}
+                                    </TableCell>
                                 </TableRow>
                             );
                         })}
@@ -285,7 +318,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
             toast({ title: "Ödev silindi." });
             // forceRefresh is not available from useCollection, you might need to implement it or refetch
         } catch (error) {
-            toast({ variant: 'destructive', title: "Hata", description: "Ödev silinemedi." });
+            toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }
     }
 
