@@ -3,3 +3,4 @@
 import './flows/generate-questions-flow';
 import './flows/generate-student-report-flow';
 import './flows/analyze-sociogram-flow';
+import './flows/generate-performance-grade-flow';

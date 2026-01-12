@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson, PerformanceGradeOutput } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +21,7 @@ import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { generateStudentReport, StudentReportInput, StudentReportOutput } from '@/ai/flows/generate-student-report-flow';
+import { generatePerformanceGrade, PerformanceGradeInput } from '@/ai/flows/generate-performance-grade-flow';
 
 
 interface StudentDetailModalProps {
@@ -271,6 +272,92 @@ const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentR
 };
 
 
+const PerformanceAssistantTab = ({ student, teacherProfile, currentClass }: { student: Student; teacherProfile: TeacherProfile; currentClass: Class | null }) => {
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [report, setReport] = useState<PerformanceGradeOutput | null>(null);
+
+    const calculateTermAverage = (termGrades?: GradingScores) => {
+        if (!termGrades) return null;
+        const examScores = [termGrades.exam1, termGrades.exam2].filter((s): s is number => s !== null && s !== undefined && s >= 0);
+        if (examScores.length === 0) return null;
+        return examScores.reduce((a, b) => a + b, 0) / examScores.length;
+    };
+
+    const handleAnalyze = async () => {
+        if (!currentClass) return;
+        setIsLoading(true);
+        setReport(null);
+
+        const input: PerformanceGradeInput = {
+            studentName: student.name,
+            exam1Average: calculateTermAverage(student.term1Grades) ?? undefined,
+            exam2Average: calculateTermAverage(student.term2Grades) ?? undefined,
+            homeworkSubmissionRate: "N/A", // This needs to be calculated
+            attendanceCount: student.attendance?.filter(a => a.status === 'absent').length || 0,
+            behaviorScore: student.behaviorScore,
+            riskFactors: [], // This needs to be fetched
+        };
+
+        try {
+            const result = await generatePerformanceGrade(input);
+            setReport(result);
+        } catch(e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Analiz başarısız oldu', description: 'Yapay zeka ile iletişim kurulamadı.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    const PerfGradeCard = ({ title, grade, reason }: { title: string, grade: number, reason: string }) => (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">{title}</CardTitle>
+                <CardDescription className="text-3xl font-bold text-primary">{grade}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-xs text-muted-foreground">{reason}</p>
+            </CardContent>
+        </Card>
+    );
+
+
+    return (
+        <div className="space-y-4">
+            {!report && !isLoading && (
+                <div className="text-center p-10 border-2 border-dashed rounded-lg">
+                    <Button onClick={handleAnalyze} disabled={isLoading}>
+                         <Wand2 className="mr-2 h-4 w-4" /> Performans Notlarını Analiz Et ve Öner
+                    </Button>
+                </div>
+            )}
+             {isLoading && (
+                <div className="flex justify-center p-10"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+            )}
+            {report && (
+                 <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <PerfGradeCard title="1. Dönem 1. Performans" grade={report.term1_perf1_grade} reason={report.term1_perf1_reason} />
+                        <PerfGradeCard title="1. Dönem 2. Performans" grade={report.term1_perf2_grade} reason={report.term1_perf2_reason} />
+                        <PerfGradeCard title="2. Dönem 1. Performans" grade={report.term2_perf1_grade} reason={report.term2_perf1_reason} />
+                        <PerfGradeCard title="2. Dönem 2. Performans" grade={report.term2_perf2_grade} reason={report.term2_perf2_reason} />
+                    </div>
+                     <Card className="bg-green-50 border-green-200">
+                        <CardHeader>
+                            <CardTitle className="text-green-800">Nihai Tavsiye</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-green-700">{report.finalRecommendation}</p>
+                        </CardContent>
+                    </Card>
+                 </div>
+            )}
+        </div>
+    )
+};
+
+
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -392,8 +479,9 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                  <AIReportDisplay report={aiReport} onRegenerate={handleGenerateAIReport} isLoading={isGeneratingReport} />
              </div>
              <Tabs defaultValue="overview">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
+                    <TabsTrigger value="performance">Performans Asistanı</TabsTrigger>
                     <TabsTrigger value="homeworks">Ödevler</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="mt-4">
@@ -415,6 +503,9 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                             <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} student={student} />
                         </TabsContent>
                     </Tabs>
+                </TabsContent>
+                <TabsContent value="performance" className="mt-4">
+                    <PerformanceAssistantTab student={student} teacherProfile={teacherProfile} currentClass={currentClass} />
                 </TabsContent>
                 <TabsContent value="homeworks" className="mt-4">
                    <HomeworkStatusTab student={student} currentClass={currentClass} />
