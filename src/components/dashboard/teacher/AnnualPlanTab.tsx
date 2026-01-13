@@ -368,83 +368,21 @@ ${processTextContent}\\par
 }
 
 const ClassGuidanceAssistant = ({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) => {
-  const [activeTab, setActiveTab] = useState('donem1');
-  const [reportData1, setReportData1] = useState(() => {
-    if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('guidanceReport_term1');
-        return saved ? JSON.parse(saved) : { schoolName: teacherProfile?.schoolName || '', className: currentClass?.name || '', kazanimDurumu: 'evet' };
-    }
-    return { schoolName: teacherProfile?.schoolName || '', className: currentClass?.name || '', kazanimDurumu: 'evet' };
-  });
-  const [reportData2, setReportData2] = useState(() => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('guidanceReport_term2');
-        return saved ? JSON.parse(saved) : { schoolName: teacherProfile?.schoolName || '', className: currentClass?.name || '', kazanimDurumu: 'evet' };
-      }
-      return { schoolName: teacherProfile?.schoolName || '', className: currentClass?.name || '', kazanimDurumu: 'evet' };
-  });
-
-  const getReportContent = (tabId: string) => {
-    return tabId === 'donem1' ? reportData1 : reportData2;
-  }
-  
-  const handleInputChange = (field: string, value: string, tabId: string) => {
-    const updater = tabId === 'donem1' ? setReportData1 : setReportData2;
-    updater((prev: any) => ({ ...prev, [field]: value }));
-  };
-
-  useEffect(() => {
-    localStorage.setItem('guidanceReport_term1', JSON.stringify(reportData1));
-  }, [reportData1]);
-
-  useEffect(() => {
-    localStorage.setItem('guidanceReport_term2', JSON.stringify(reportData2));
-  }, [reportData2]);
-
-  const renderReportUI = (tabId: 'donem1' | 'yilsonu') => {
-      // Bu fonksiyon, sağlanan HTML yapısını temel alarak bir React bileşeni döndürecektir.
-      // Karmaşıklığı azaltmak için şimdilik bir yer tutucu döndürüyoruz.
-      // Gerçek implementasyon, HTML'nin JSX'e dönüştürülmesini ve state yönetimine bağlanmasını gerektirir.
-      const data = getReportContent(tabId);
-      const setData = tabId === 'donem1' ? setReportData1 : setReportData2;
-
-      return (
-          <div id={`${tabId}-content`} className={activeTab === tabId ? 'report-content max-w-[21cm] mx-auto bg-white p-[1cm] shadow-lg' : 'hidden'}>
-               {/* Başlık */}
-                <div className="text-center font-bold mb-6">
-                    <Input value={data.academicYear || '2025-2026'} onChange={e => handleInputChange('academicYear', e.target.value, tabId)} className="text-center font-bold" />
-                    <Input value={data.schoolName || ''} onChange={e => handleInputChange('schoolName', e.target.value, tabId)} className="text-center w-full uppercase font-bold text-lg mt-1" placeholder="OKUL ADINI GİRİNİZ" />
-                    <span>{tabId === 'donem1' ? 'SINIF REHBERLİK ÇALIŞMALARI 1.DÖNEM SONU FAALİYET RAPORU' : 'SINIF REHBERLİK ÇALIŞMALARI YIL SONU FAALİYET RAPORU'}</span>
-                </div>
-                 <div className="mb-4">
-                    <strong>Sınıf/Şube:</strong>
-                    <Input value={data.className || ''} onChange={e => handleInputChange('className', e.target.value, tabId)} className="w-32 inline-block ml-2"/>
-                </div>
-                {/* Diğer alanlar da benzer şekilde Input/Textarea bileşenlerine dönüştürülecek. */}
-          </div>
-      )
-  }
-
   return (
-    <div>
-        <div className="max-w-[21cm] mx-auto bg-white p-4 mb-4 rounded shadow flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h2 className="text-lg font-bold text-gray-700 font-sans">Rapor Oluşturucu</h2>
-                <p className="text-sm text-gray-500 font-sans">Dönem seçin, doldurun ve Word olarak indirin.</p>
-            </div>
-            <div className="flex gap-2 font-sans">
-                <Button onClick={() => setActiveTab('donem1')} variant={activeTab === 'donem1' ? 'default' : 'outline'}>1. Dönem Raporu</Button>
-                <Button onClick={() => setActiveTab('yilsonu')} variant={activeTab === 'yilsonu' ? 'default' : 'outline'}>Yıl Sonu Raporu</Button>
-            </div>
-             <Button variant="secondary" className="flex items-center gap-2 font-bold">
-                <Download className="h-5 w-5" />
-                Word İndir
-            </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>Rehberlik Yıllık Planı</CardTitle>
+        <CardDescription>
+          Bu modül geliştirme aşamasındadır. Yeni kodlarınızı bekliyorum.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-10 border-2 border-dashed rounded-lg">
+          <Settings className="h-12 w-12 mb-4 animate-spin" />
+          <p>Yeni kodlar buraya entegre edilecek.</p>
         </div>
-        
-        {renderReportUI('donem1')}
-        {renderReportUI('yilsonu')}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
