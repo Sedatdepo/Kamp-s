@@ -40,6 +40,7 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 ## PROJE KAYIT NOKTALARI
 
 * **Kayıt Noktası 1:** 2024-07-26 15:00 - Kullanıcı tarafından oluşturulan ilk geri yükleme noktası. Sınıf kartlarına sürükle-bırak özelliği ve gezinme butonları eklendikten sonraki stabil durum.
+* **Versiyon 2:** 2024-07-28 12:00 - Çok kullanıcılı (multi-tenant) yapıya geçiş öncesi son stabil durum. Rehberlik modülü entegre edilmiş ve tüm bilinen derleme hataları giderilmiştir.
 
 ---
 
