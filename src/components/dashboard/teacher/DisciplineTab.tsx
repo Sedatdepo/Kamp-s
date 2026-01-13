@@ -94,55 +94,53 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
     const { toast } = useToast();
 
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-    const [currentRecord, setCurrentRecord] = useState<DisciplineRecord | null>(null);
-    const [phase, setPhase] = useState(1);
-    const [formData, setFormData] = useState<any>({});
-    
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveName, setSaveName] = useState('');
 
-     const startNewProcess = useCallback(() => {
-        const newId = `discipline_${Date.now()}`;
-        setSelectedRecordId(newId);
-        setCurrentRecord({
-            id: newId,
-            name: '',
-            date: new Date().toISOString(),
-            classId: currentClass?.id,
-            currentPhase: 1,
-            formData: { studentInfo: { schoolName: teacherProfile?.schoolName || '' } }
-        });
-    }, [teacherProfile?.schoolName, currentClass?.id]);
+    const createNewRecord = useCallback((): DisciplineRecord => ({
+        id: `discipline_${Date.now()}`,
+        name: 'Yeni Disiplin Süreci',
+        date: new Date().toISOString(),
+        classId: currentClass?.id,
+        currentPhase: 1,
+        formData: { 
+            studentInfo: { schoolName: teacherProfile?.schoolName || '' },
+            phase1Data: { teacherName: teacherProfile?.name || ''}
+        }
+    }), [currentClass?.id, teacherProfile]);
+
+    const [currentRecord, setCurrentRecord] = useState<DisciplineRecord>(createNewRecord());
     
+    const phase = currentRecord?.currentPhase || 1;
+    const formData = currentRecord?.formData || {};
+
     useEffect(() => {
         if(selectedRecordId) {
             const record = disciplineRecords.find(r => r.id === selectedRecordId);
-            setCurrentRecord(record || null);
+            setCurrentRecord(record || createNewRecord());
         } else {
-            startNewProcess();
+            setCurrentRecord(createNewRecord());
         }
-    }, [selectedRecordId, disciplineRecords, startNewProcess]);
+    }, [selectedRecordId, disciplineRecords, createNewRecord]);
 
-    useEffect(() => {
-        if (currentRecord) {
-            setPhase(currentRecord.currentPhase || 1);
-            setFormData(currentRecord.formData || {});
-        } else {
-            startNewProcess();
-        }
-    }, [currentRecord, startNewProcess]);
 
-    const updateFormData = useCallback((data: any) => {
-        setFormData((prev: any) => ({ ...prev, ...data }));
+    const updateCurrentRecord = useCallback((data: Partial<DisciplineRecord['formData']>, newPhase?: number) => {
+        setCurrentRecord(prev => ({
+            ...prev,
+            currentPhase: newPhase || prev.currentPhase,
+            formData: {
+                ...prev.formData,
+                ...data
+            }
+        }));
     }, []);
 
     const handleNextPhase = (currentPhaseData: any) => {
-        updateFormData(currentPhaseData);
-        setPhase(prev => Math.min(prev + 1, 5));
+        updateCurrentRecord(currentPhaseData, phase + 1);
     };
     
     const handlePrevPhase = () => {
-        setPhase(prev => Math.max(prev - 1, 1));
+        setCurrentRecord(prev => ({...prev, currentPhase: Math.max(prev.currentPhase - 1, 1)}));
     };
 
     const saveProcess = () => {
@@ -156,12 +154,9 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
 
     const handleSaveConfirm = () => {
         const recordToSave: DisciplineRecord = {
-            id: currentRecord?.id || `discipline_${Date.now()}`,
+            ...currentRecord,
             name: saveName,
             date: new Date().toISOString(),
-            currentPhase: phase,
-            formData: formData,
-            classId: currentClass?.id || ''
         };
 
         setDb(prev => {
@@ -176,14 +171,13 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
             return { ...prev, disciplineRecords: newRecords };
         });
 
-        setCurrentRecord(recordToSave);
         setIsSaveDialogOpen(false);
         toast({ title: "Kaydedildi", description: "Disiplin süreci arşive kaydedildi." });
     };
 
     const handleNewRecord = useCallback(() => {
-        startNewProcess();
-    }, [startNewProcess]);
+        setSelectedRecordId(null);
+    }, []);
 
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
@@ -191,9 +185,9 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
             ...prev,
             disciplineRecords: (prev.disciplineRecords || []).filter(r => r.id !== selectedRecordId),
         }));
-        startNewProcess();
+        handleNewRecord();
         toast({ title: "Silindi", description: "Kayıt arşivden silindi.", variant: "destructive" });
-    }, [selectedRecordId, setDb, startNewProcess, toast]);
+    }, [selectedRecordId, setDb, handleNewRecord, toast]);
     
     return (
         <main className="p-1">
@@ -230,10 +224,10 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
                             <PhaseIndicator currentPhase={phase} />
 
                             <div className='mt-8'>
-                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateFormData={updateFormData} students={students} teacherProfile={teacherProfile} currentClass={currentClass} />
-                                <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} />
-                                <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
-                                <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateFormData={updateFormData} teacherProfile={teacherProfile} />
+                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateRecord={updateCurrentRecord} students={students} teacherProfile={teacherProfile} currentClass={currentClass} />
+                                <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} />
+                                <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />
+                                <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />
                                 <Phase5 isVisible={phase === 5} onPrev={handlePrevPhase} data={formData} teacherProfile={teacherProfile} />
                             </div>
 
@@ -262,7 +256,7 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
     );
 };
 
-const Phase1 = ({ isVisible, onNext, data, updateFormData, students, teacherProfile, currentClass }: any) => {
+const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfile, currentClass }: any) => {
     const [localData, setLocalData] = useState(data.phase1Data || {});
     const [studentInfo, setStudentInfo] = useState(data.studentInfo || {});
     
@@ -377,7 +371,7 @@ const Phase1 = ({ isVisible, onNext, data, updateFormData, students, teacherProf
     );
 };
 
-const Phase2 = ({ isVisible, onNext, onPrev, data, updateFormData }: any) => {
+const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord }: any) => {
     const [localData, setLocalData] = useState(data.phase2Data || {});
     useEffect(() => setLocalData(data.phase2Data || {}), [data.phase2Data]);
 
@@ -385,12 +379,12 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateFormData }: any) => {
     const handleChange = (e: any) => setLocalData((prev: any) => ({ ...prev, [e.target.id]: e.target.value }));
     
     const handleNext = () => {
-        updateFormData({ phase2Data: localData });
+        updateRecord({ phase2Data: localData });
         onNext();
     };
 
     const handleProcessDecision = (decision: 'end' | 'refer') => {
-        updateFormData({ phase2Data: { ...localData, processDecision: decision } });
+        updateRecord({ phase2Data: { ...localData, processDecision: decision } });
         if (decision === 'refer') {
             onNext({ phase2Data: { ...localData, processDecision: decision } });
         } else {
@@ -448,14 +442,14 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateFormData }: any) => {
     );
 };
 
-const Phase3 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfile }: any) => {
+const Phase3 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile }: any) => {
     const [localData, setLocalData] = useState(data.phase3Data || {});
     useEffect(() => setLocalData(data.phase3Data || {}), [data.phase3Data]);
 
     if (!isVisible) return null;
     const handleChange = (e: any) => setLocalData((prev: any) => ({ ...prev, [e.target.id]: e.target.value }));
     const handleSave = () => {
-        updateFormData({ phase3Data: localData });
+        updateRecord({ phase3Data: localData });
         onNext();
     };
     
@@ -514,7 +508,7 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
     );
 };
 
-const Phase4 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfile }: any) => {
+const Phase4 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile }: any) => {
     const [localData, setLocalData] = useState(data.phase4Data || {});
     useEffect(() => setLocalData(data.phase4Data || {disciplinaryMembers: `${teacherProfile?.name || ''} (Rehber Öğrt.)`}), [data.phase4Data, teacherProfile]);
 
@@ -523,7 +517,7 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateFormData, teacherProfil
     const handleChange = (e: any) => setLocalData((prev: any) => ({ ...prev, [e.target.id]: e.target.value }));
     const handleSelectChange = (id: string, value: string) => setLocalData((prev: any) => ({ ...prev, [id]: value }));
     const handleSave = () => {
-        updateFormData({ phase4Data: localData });
+        updateRecord({ phase4Data: localData });
         onNext();
     };
 

@@ -64,18 +64,18 @@ export function RecordManager({
                     <span className="truncate">{record.name || 'İsimsiz'}</span>
                   </div>
                   {selectedRecordId === record.id && (
-                    <AlertDialog onOpenChange={(open) => !open && event?.preventDefault()}>
+                    <AlertDialog>
                        <AlertDialogTrigger asChild>
                          <Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 shrink-0 opacity-70 hover:opacity-100 group-hover:text-destructive-foreground hover:bg-destructive/50"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()} // Prevent row click
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                        </AlertDialogTrigger>
-                       <AlertDialogContent>
+                       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                           <AlertDialogHeader>
                               <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                               <AlertDialogDescription>
