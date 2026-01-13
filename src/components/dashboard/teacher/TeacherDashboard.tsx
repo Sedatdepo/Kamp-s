@@ -388,24 +388,21 @@ export function TeacherDashboard() {
   
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
 
+  // Combined query for students from all classes of the teacher
   const allStudentsQuery = useMemoFirebase(() => {
     return classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null;
   }, [db, classIds]);
-  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
-  
-  const lessonsQuery = useMemoFirebase(() => {
-      return teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null
-  }, [db, teacherId]);
+  const { data: allStudentsData, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
+  const allStudents = useMemo(() => allStudentsData || [], [allStudentsData]);
+
+  // Centralized data fetching for other teacher-specific collections
+  const lessonsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
   
-  const clubsQuery = useMemoFirebase(() => {
-      return teacherId && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null
-  }, [db, teacherId]);
+  const clubsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
-  const riskFactorsQuery = useMemoFirebase(() => {
-      return teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null
-  }, [db, teacherId]);
+  const riskFactorsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
