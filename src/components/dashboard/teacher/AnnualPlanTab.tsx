@@ -595,27 +595,27 @@ const ClassGuidanceAssistant = () => {
   };
 
   // Madde Ekleme/Çıkarma/Güncelleme Fonksiyonları
-  const addCustomItem = (reportType: string) => {
+  const addCustomItem = (reportType) => {
     const newItem = { id: Date.now(), title: '', content: '' };
     if (reportType === 'term') setTermReportContent(prev => ({ ...prev, customItems: [...prev.customItems, newItem] }));
     else setEndYearReportContent(prev => ({ ...prev, customItems: [...prev.customItems, newItem] }));
   };
 
-  const removeCustomItem = (reportType: string, id: any) => {
-    if (reportType === 'term') setTermReportContent(prev => ({ ...prev, customItems: prev.customItems.filter((i: any) => i.id !== id) }));
-    else setEndYearReportContent(prev => ({ ...prev, customItems: prev.customItems.filter((i: any) => i.id !== id) }));
+  const removeCustomItem = (reportType, id) => {
+    if (reportType === 'term') setTermReportContent(prev => ({ ...prev, customItems: prev.customItems.filter(i => i.id !== id) }));
+    else setEndYearReportContent(prev => ({ ...prev, customItems: prev.customItems.filter(i => i.id !== id) }));
   };
 
-  const updateCustomItem = (reportType: string, id: any, field: string, value: string) => {
+  const updateCustomItem = (reportType, id, field, value) => {
     const updater = reportType === 'term' ? setTermReportContent : setEndYearReportContent;
-    updater((prev: any) => ({
+    updater(prev => ({
       ...prev,
-      customItems: prev.customItems.map((item: any) => item.id === id ? { ...item, [field]: value } : item)
+      customItems: prev.customItems.map(item => item.id === id ? { ...item, [field]: value } : item)
     }));
   };
 
   // AI İçerik Üretme
-  const generateAIContent = (field: string, reportType: string, customTitle = '') => {
+  const generateAIContent = (field, reportType, customTitle = '') => {
     setIsGenerating({ type: field, id: customTitle || 'main' });
     
     setTimeout(() => {
@@ -633,16 +633,16 @@ const ClassGuidanceAssistant = () => {
       const updater = reportType === 'term' ? setTermReportContent : setEndYearReportContent;
       if (field === 'custom') {
          const currentReport = reportType === 'term' ? termReportContent : endYearReportContent;
-         const targetItem = currentReport.customItems.find((i: any) => i.id === customTitle); 
+         const targetItem = currentReport.customItems.find(i => i.id === customTitle); 
          if(targetItem) updateCustomItem(reportType, customTitle, 'content', content);
       } else {
-         updater((prev: any) => ({ ...prev, [field]: content }));
+         updater(prev => ({ ...prev, [field]: content }));
       }
       setIsGenerating({ type: '', id: '' });
     }, 1000);
   };
 
-  const downloadWord = (content: string, filename: string) => {
+  const downloadWord = (content, filename) => {
     const preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Doc</title><style>body{font-family: 'Times New Roman', serif; font-size:12pt;} table{border-collapse: collapse; width: 100%;} td, th{border: 1px solid #000; padding: 5px; text-align: left;} .header{text-align:center; font-weight:bold; margin-bottom:20px;} .footer{margin-top:50px; display:flex; justify-content:space-between;} .signature-block{text-align:center; width: 30%;}</style></head><body>`;
     const postHtml = "</body></html>";
     const blob = new Blob(['\ufeff', preHtml + content + postHtml], { type: 'application/msword' });
@@ -655,7 +655,7 @@ const ClassGuidanceAssistant = () => {
   };
 
   // Dinamik Başlık ve İmza Bloğu
-  const getDocumentHeader = (title: string) => `
+  const getDocumentHeader = (title) => `
     <div class="header">
       <p>T.C.<br>${schoolDetails.city ? schoolDetails.city.toUpperCase() + ' KAYMAKAMLIĞI' : '................... KAYMAKAMLIĞI'}<br>${schoolDetails.schoolName ? schoolDetails.schoolName.toUpperCase() : '.........................'} MÜDÜRLÜĞÜ</p>
       <br>
@@ -709,15 +709,15 @@ const ClassGuidanceAssistant = () => {
     downloadWord(content, `Etkinlik_Raporu_${currentActivity.month}_${currentActivity.week}`);
   };
 
-  const generateReportHTML = (title: string, reportContent: any, isTerm: boolean) => {
+  const generateReportHTML = (title, reportContent, isTerm) => {
     const term1Months = ['Eylül', 'Ekim', 'Kasım', 'Aralık', 'Ocak'];
     const term2Months = ['Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'];
     const targetMonths = isTerm ? term1Months : [...term1Months, ...term2Months];
     const listTitle = isTerm ? '1. DÖNEM' : 'YIL BOYUNCA';
-    const activities = plans[selectedGrade].filter((i: any) => targetMonths.includes(i.month));
+    const activities = plans[selectedGrade].filter(i => targetMonths.includes(i.month));
     const activitiesTable = activities.map(item => `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`).join('');
     
-    let customItemsHTML = reportContent.customItems.map((item: any, index: any) => `<h3>${String.fromCharCode(70 + index)}) ${item.title.toUpperCase()}</h3><p style="text-align: justify;">${item.content || '...'}</p><br>`).join('');
+    let customItemsHTML = reportContent.customItems.map((item, index) => `<h3>${String.fromCharCode(70 + index)}) ${item.title.toUpperCase()}</h3><p style="text-align: justify;">${item.content || '...'}</p><br>`).join('');
 
     return `
       ${getDocumentHeader(title)}
@@ -750,7 +750,7 @@ const ClassGuidanceAssistant = () => {
     `;
   };
 
-  const renderReportUI = (reportType: string) => {
+  const renderReportUI = (reportType) => {
     const isTerm = reportType === 'term';
     const contentState = isTerm ? termReportContent : endYearReportContent;
     const setContentState = isTerm ? setTermReportContent : setEndYearReportContent;
@@ -875,9 +875,7 @@ const ClassGuidanceAssistant = () => {
             </div>
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Sınıf Şubesi</label>
-                <select className="w-full p-2 border rounded" value={schoolDetails.classBranch} onChange={(e) => setSchoolDetails({...schoolDetails, classBranch: e.target.value})}>
-                    {['A','B','C','D','E','F','G'].map(b => <option key={b} value={b}>{b} Şubesi</option>)}
-                </select>
+                <input type="text" className="w-full p-2 border rounded" placeholder="Örn: A, B, C..." value={schoolDetails.classBranch} onChange={(e) => setSchoolDetails({...schoolDetails, classBranch: e.target.value})} />
             </div>
             <div className="md:col-span-2 border-t pt-4 mt-2"><h3 className="font-bold text-gray-600 mb-4">İmza Bilgileri</h3></div>
             <div>
@@ -976,6 +974,7 @@ const ClassGuidanceAssistant = () => {
     </div>
   );
 };
+
 
 
 export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
