@@ -24,7 +24,7 @@ import MebClubTab from './MebClubTab';
 import { SocialClubTab } from './SocialClubTab';
 import { SociogramTab } from './SociogramTab'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2 } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
@@ -49,9 +49,10 @@ import { ProfileDialog } from './ProfileDialog';
 import ExamBuilder from './ExamBuilder';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { SinifKahramanlariTab } from './SinifKahramanlariTab';
+import { DiscussionBoardTab } from './DiscussionBoardTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -149,33 +150,37 @@ function ClassSelectionScreen({
         try {
             const batch = writeBatch(db);
 
-            // 1. Sınıfa ait öğrencileri bul
             const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
             const studentsSnapshot = await getDocs(studentsQuery);
             studentsSnapshot.forEach(studentDoc => {
                 batch.delete(studentDoc.ref);
             });
 
-            // 2. Sınıfa ait ödevleri ve teslimleri bul
-            const homeworksQuery = query(collection(db, `classes/${classId}/homeworks`));
-            const homeworksSnapshot = await getDocs(homeworksQuery);
-            for (const homeworkDoc of homeworksSnapshot.docs) {
-                // Her ödevin teslimlerini sil
-                const submissionsQuery = query(collection(db, `classes/${classId}/homeworks/${homeworkDoc.id}/submissions`));
-                const submissionsSnapshot = await getDocs(submissionsQuery);
-                submissionsSnapshot.forEach(subDoc => batch.delete(subDoc.ref));
-                // Ödevi sil
-                batch.delete(homeworkDoc.ref);
+            const subcollections = ['homeworks', 'discussionTopics'];
+            for (const sub of subcollections) {
+                const subQuery = query(collection(db, `classes/${classId}/${sub}`));
+                const subSnapshot = await getDocs(subQuery);
+                 for (const itemDoc of subSnapshot.docs) {
+                    if(sub === 'homeworks') {
+                        const submissionsQuery = query(collection(db, `classes/${classId}/homeworks/${itemDoc.id}/submissions`));
+                        const submissionsSnapshot = await getDocs(submissionsQuery);
+                        submissionsSnapshot.forEach(subDoc => batch.delete(subDoc.ref));
+                    }
+                     if(sub === 'discussionTopics') {
+                        const postsQuery = query(collection(db, `classes/${classId}/discussionTopics/${itemDoc.id}/posts`));
+                        const postsSnapshot = await getDocs(postsQuery);
+                        postsSnapshot.forEach(postDoc => batch.delete(postDoc.ref));
+                    }
+                    batch.delete(itemDoc.ref);
+                }
             }
-
-            // 3. Sınıf belgesini sil
+            
             const classRef = doc(db, 'classes', classId);
             batch.delete(classRef);
 
-            // Toplu işlemi gerçekleştir
             await batch.commit();
 
-            toast({ title: 'Sınıf Tamamen Silindi', description: 'Sınıf ve ona ait tüm öğrenciler, ödevler ve diğer veriler silindi.', variant: 'destructive' });
+            toast({ title: 'Sınıf Tamamen Silindi', description: 'Sınıf ve ona ait tüm veriler silindi.', variant: 'destructive' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinirken bir hata oluştu.' });
         } finally {
@@ -390,6 +395,7 @@ const TABS_CONFIG = {
   "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
   "gamification": { label: "Rozetler", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
+  "discussion": { label: "Tartışma Panosu", icon: MessagesSquare },
 } as const;
 
 
@@ -555,6 +561,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
                 <MenuCard icon={<Trophy />} title="Rozetler" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
+                <MenuCard icon={<MessagesSquare />} title="Tartışma Panosu" description="Sınıf içi konuları tartışmaya açın." onClick={() => setActiveTab('discussion')} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımları analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
@@ -588,6 +595,7 @@ export function TeacherDashboard() {
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;
         case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
+        case 'discussion': tabContent = <DiscussionBoardTab classId={selectedClassId!} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 

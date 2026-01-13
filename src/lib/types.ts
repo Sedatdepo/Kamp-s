@@ -163,6 +163,28 @@ export interface SurveyResponse {
   }[];
 }
 
+// NEW: Discussion Forum Types
+export interface DiscussionTopic {
+    id: string;
+    classId: string;
+    teacherId: string;
+    title: string;
+    content: string;
+    createdAt: Timestamp;
+    studentPostCount?: number;
+}
+
+export interface DiscussionPost {
+    id: string;
+    topicId: string;
+    parentId: string | null; // For replies
+    studentId: string;
+    studentName: string;
+    studentNumber: string;
+    content: string;
+    createdAt: Timestamp;
+}
+
 
 export interface Class {
   id: string;
