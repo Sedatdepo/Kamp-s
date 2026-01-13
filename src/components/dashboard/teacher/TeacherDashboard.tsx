@@ -381,27 +381,32 @@ export function TeacherDashboard() {
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
   
   // MERKEZİ VERİ ÇEKME İŞLEMİ
-  const { data: classes, isLoading: classesLoading } = useCollection<Class>(
-    useMemoFirebase(() => teacherId && db ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
-  );
+  const classesQuery = useMemoFirebase(() => {
+    return teacherId && db ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null;
+  }, [db, teacherId]);
+  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
 
-  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(
-    useMemoFirebase(() => classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null, [db, classIds])
-  );
-
-  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(
-    useMemoFirebase(() => teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
-  );
+  const allStudentsQuery = useMemoFirebase(() => {
+    return classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null;
+  }, [db, classIds]);
+  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
   
-  const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(
-    useMemoFirebase(() => teacherId && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
-  );
+  const lessonsQuery = useMemoFirebase(() => {
+      return teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null
+  }, [db, teacherId]);
+  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
+  
+  const clubsQuery = useMemoFirebase(() => {
+      return teacherId && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null
+  }, [db, teacherId]);
+  const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
-  const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(
-    useMemoFirebase(() => teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
-  );
+  const riskFactorsQuery = useMemoFirebase(() => {
+      return teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null
+  }, [db, teacherId]);
+  const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
@@ -555,7 +560,7 @@ export function TeacherDashboard() {
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />; break;
+        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} students={allStudents || []} lessons={lessons || []} />; break;
         case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
         case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
         case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
@@ -611,7 +616,7 @@ export function TeacherDashboard() {
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
       <Header />
       <main className="flex-1 p-4 sm:p-6">
-        {isLoading ? (
+        {isLoading && !appUser ? (
           <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : renderContent()}
       </main>

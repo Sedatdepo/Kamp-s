@@ -115,27 +115,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (firebaseUser) {
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
-        const studentQuery = query(collection(db, 'students'), where('authUid', '==', firebaseUser.uid));
         
+        // Check if the user is a teacher first
         const teacherSnap = await getDoc(teacherRef);
         
         if (teacherSnap.exists()) {
+          // It's a teacher. Seed the database and set up a listener.
           await seedDatabase(db, firebaseUser.uid);
-          // Set up a real-time listener for the teacher document
+          
           teacherUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
             if (docSnap.exists()) {
-                const profile = { id: docSnap.id, ...docSnap.data() } as TeacherProfile;
-                 // CRITICAL FIX: Only set AppUser if profile is fully loaded
-                if (profile) {
+                const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
+                if (profile.name && profile.schoolName) { // Ensure profile is fully loaded
                     setAppUser({ type: 'teacher', data: firebaseUser, profile });
                 }
             } else {
-                 signOut();
+                 signOut(); // Teacher doc deleted, sign out.
             }
           });
 
         } else {
+            // Not a teacher, check if it's a student with authUid
+            const studentQuery = query(collection(db, 'students'), where('authUid', '==', firebaseUser.uid));
             const studentSnapshot = await getDocs(studentQuery);
+
             if (!studentSnapshot.empty) {
                 const studentDoc = studentSnapshot.docs[0];
                 
@@ -146,19 +149,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         setAppUser(userPayload);
                         localStorage.setItem('appUser', JSON.stringify(userPayload));
                     } else {
-                        signOut();
+                        signOut(); // Student doc deleted, sign out.
                     }
                 });
             } else {
+                // Not a recognized teacher or student, sign out.
                 await signOut();
             }
         }
       } else {
+        // No firebaseUser, check for anonymous student in localStorage
         const storedUser = localStorage.getItem('appUser');
         if (storedUser) {
           try {
               const parsedUser = JSON.parse(storedUser);
-              if(parsedUser.type === 'student'){
+              if(parsedUser.type === 'student' && !parsedUser.data.authUid){ // only for anonymous students
                   setAppUser(parsedUser);
               } else {
                   setAppUser(null);
@@ -190,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (appUser) {
             const targetDashboard = `/dashboard/${appUser.type}`;
-            if (appUser.type === 'teacher' && !appUser.profile) {
+            if (appUser.type === 'teacher' && !appUser.profile?.id) {
                 // Teacher profile is still loading, don't redirect yet
                 return;
             }
