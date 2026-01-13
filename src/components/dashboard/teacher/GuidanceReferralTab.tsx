@@ -1,4 +1,3 @@
-
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -8,37 +7,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Home, FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { GuidanceReferralRecord, SchoolInfo } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useDatabase } from '@/hooks/use-database';
-
-// Define types locally if not in a central types file
-interface GuidanceReferralRecord {
-  id: string;
-  studentName: string;
-  className?: string;
-  date: string;
-  studentNumber?: string;
-  reason?: string;
-  observations?: string;
-  otherInfo?: string;
-  studiesDone?: string;
-  referrerName?: string;
-  referrerTitle?: string;
-  referrerSignature?: string;
-}
-
-interface SchoolInfo {
-  schoolName?: string;
-  className?: string;
-  classTeacherName?: string;
-}
 
 const formSchema = z.object({
   id: z.string(),
@@ -85,7 +64,7 @@ const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo
         (doc as any).autoTable({
             startY: currentY,
             head: [[section.title]],
-            body: [[section.content]],
+            body: [[section.content || ' ']],
             theme: 'grid',
             headStyles: { fontStyle: 'bold', fillColor: [240, 240, 240] },
              bodyStyles: { minCellHeight: 30 }
@@ -97,17 +76,15 @@ const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo
     const finalY = (doc as any).lastAutoTable.finalY;
     doc.setFontSize(10);
     doc.text('Yönlendiren', doc.internal.pageSize.getWidth() - 20, finalY + 20, { align: 'right' });
-    doc.text(`Ad-Soyad: ${data.referrerName}`, doc.internal.pageSize.getWidth() - 20, finalY + 25, { align: 'right' });
-    doc.text(`Unvan: ${data.referrerTitle}`, doc.internal.pageSize.getWidth() - 20, finalY + 30, { align: 'right' });
+    doc.text(`Ad-Soyad: ${data.referrerName || ''}`, doc.internal.pageSize.getWidth() - 20, finalY + 25, { align: 'right' });
+    doc.text(`Unvan: ${data.referrerTitle || ''}`, doc.internal.pageSize.getWidth() - 20, finalY + 30, { align: 'right' });
     doc.text(`İmza: ${data.referrerSignature || ''}`, doc.internal.pageSize.getWidth() - 20, finalY + 35, { align: 'right' });
 };
 
 
 export function GuidanceReferralTab() {
   const { db, setDb } = useDatabase();
-  const schoolInfo = db?.schoolInfo;
-  const records = db?.guidanceReferralRecords || [];
-
+  const { schoolInfo, guidanceReferralRecords: records } = db;
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
@@ -136,6 +113,18 @@ export function GuidanceReferralTab() {
     defaultValues: defaultFormValues,
   });
 
+  const handleNewRecord = React.useCallback(() => {
+    const newId = `record-${Date.now()}`;
+    setSelectedRecordId(null);
+    form.reset({
+       ...defaultFormValues,
+       id: newId,
+       date: new Date().toISOString().split('T')[0],
+       className: schoolInfo?.className || '',
+       referrerName: schoolInfo?.classTeacherName || '',
+    });
+  }, [form, defaultFormValues, schoolInfo]);
+
   useEffect(() => {
     if (selectedRecordId) {
       const recordData = records.find(r => r.id === selectedRecordId); 
@@ -145,8 +134,7 @@ export function GuidanceReferralTab() {
     } else {
       handleNewRecord();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRecordId, records, form.reset]);
+  }, [selectedRecordId, records, form, handleNewRecord]);
 
   const onSubmit = (values: GuidanceReferralRecord) => {
     setDb(prevDb => {
@@ -165,17 +153,6 @@ export function GuidanceReferralTab() {
     toast({ title: 'Kaydedildi', description: 'Yönlendirme formu başarıyla kaydedildi.' });
   };
   
-  const handleNewRecord = () => {
-    const newId = `record-${Date.now()}`;
-    setSelectedRecordId(null);
-    form.reset({
-       ...defaultFormValues,
-       id: newId,
-       date: new Date().toISOString().split('T')[0],
-       className: schoolInfo?.className || '',
-       referrerName: schoolInfo?.classTeacherName || '',
-    });
-  }
 
   const handleDeleteRecord = () => {
     if (!selectedRecordId) return;
@@ -219,12 +196,11 @@ export function GuidanceReferralTab() {
   }
   
   return (
-    <div className="grid md:grid-cols-4 gap-8">
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="p-4 sm:p-6 md:p-8 grid md:grid-cols-4 gap-8">
         <div className="md:col-span-1 space-y-4">
              <Card>
-                <CardHeader>
-                    <CardTitle>Yönlendirme Kayıtları</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                      <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
                     <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
