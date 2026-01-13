@@ -8,8 +8,7 @@ import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClassGuidanceAssistant } from './ClassGuidanceAssistant'; // YENİ IMPORT
+import { ClassGuidanceAssistant } from './ClassGuidanceAssistant';
 
 // --- YARDIMCI FONKSİYONLAR ---
 
@@ -362,6 +361,7 @@ ${processTextContent}\\par
   );
 }
 
+
 export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   return (
     <Tabs defaultValue="ders-plani">
@@ -371,8 +371,8 @@ export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile
       </TabsList>
       <TabsContent value="ders-plani" className="mt-4">
         <SubjectAnnualPlan teacherProfile={teacherProfile} currentClass={currentClass} />
-      </HsTabsContent>
-      <TabsContent value="rehberlik-plani" className="mt-4">
+      </TabsContent>
+       <TabsContent value="rehberlik-plani" className="mt-4">
          <div>Ders yıllık planı modülü geliştirme aşamasındadır.</div>
       </TabsContent>
     </Tabs>
