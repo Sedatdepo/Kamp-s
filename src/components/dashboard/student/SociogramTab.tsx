@@ -29,7 +29,6 @@ export function SociogramTab() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
-  // CORRECTED: Fetch students from the main /students collection based on classId
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'students'), where('classId', '==', classId));
@@ -38,7 +37,6 @@ export function SociogramTab() {
   
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
   
-  // CORRECTED: Filter out the current student from the correctly fetched classmates list
   const otherClassmates = useMemo(() => {
     if (!classmates || !student) return [];
     return classmates.filter(c => c.id !== student.id);
@@ -95,7 +93,6 @@ export function SociogramTab() {
       if (q.type === 'leadership') allLeadership.push(...questionAnswers);
     });
 
-    // CORRECTED: Save to the correct student document in the 'students' collection
     const studentRef = doc(db, 'students', student.id);
     try {
         await updateDoc(studentRef, {

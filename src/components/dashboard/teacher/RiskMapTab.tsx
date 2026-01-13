@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, RiskFactor, TeacherProfile, RiskMapDocument } from '@/lib/types';
 import { collection, query, where, doc, updateDoc, addDoc, deleteDoc, getDocs } from 'firebase/firestore';
@@ -61,7 +62,7 @@ interface RiskMapTabProps {
 function RiskFactorManager({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const riskFactorsQuery = useMemoFirebase(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
+  const riskFactorsQuery = useMemoFirebase(() => (db && teacherId ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: riskFactors, isLoading: riskFactorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -225,7 +226,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: liveStudents, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
-  const riskFactorsQuery = useMemoFirebase(() => (db ? query(collection(db, 'riskFactors')) : null), [db]);
+  const riskFactorsQuery = useMemoFirebase(() => (db && teacherProfile?.id ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id)) : null), [db, teacherProfile?.id]);
   const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
   const displayedStudents = useMemo(() => {
@@ -424,7 +425,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
        <div>
             <div className="space-y-4">
                  <RecordManager
-                    records={(riskMapDocuments || []).filter(d => d.classId === classId).map(r => ({ id: r.id, name: r.name }))}
+                    records={(riskMapDocuments || []).filter(d => d.classId === classId)}
                     selectedRecordId={selectedRecordId}
                     onSelectRecord={setSelectedRecordId}
                     onNewRecord={handleNewRecord}
