@@ -1,5 +1,3 @@
-
-
 import type { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
@@ -492,8 +490,9 @@ export interface Database {
     surveyDocuments?: SurveyDocument[];
     infoFormsStatusDocuments?: InfoFormsStatusDocument[];
     guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
+    observationDocuments?: ObservationDocument[]; // NEW
     schoolInfo?: SchoolInfo; // NEW
-    studentInfoForms: StudentInfoFormData[]; // NEW
+    studentInfoForms: StudentInfoFormData[];
 }
 
 
@@ -568,6 +567,23 @@ export interface GuidanceReferralRecord extends Archivable {
     referrerName?: string;
     referrerTitle?: string;
     referrerSignature?: string;
+}
+
+export interface ObservationDocument extends Archivable {
+    data: {
+        id: string;
+        name: string;
+        classId: string;
+        observations: {
+            studentId: string;
+            observationDate: string;
+            academicObservation?: string;
+            socialObservation?: string;
+            behavioralObservation?: string;
+            teacherNotes?: string;
+            recommendations?: string;
+        }[];
+    }
 }
 
 export interface SchoolInfo {

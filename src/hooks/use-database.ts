@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData
+    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -32,6 +30,7 @@ export interface Database {
   surveyDocuments?: SurveyDocument[];
   infoFormsStatusDocuments?: InfoFormsStatusDocument[];
   guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
+  observationDocuments?: ObservationDocument[]; // NEW
   schoolInfo?: SchoolInfo; // NEW
   studentInfoForms: StudentInfoFormData[];
 }
@@ -55,6 +54,7 @@ const initialDb: Database = {
   surveyDocuments: [],
   infoFormsStatusDocuments: [],
   guidanceReferralRecords: [], // NEW
+  observationDocuments: [], // NEW
   schoolInfo: { schoolName: '', className: '', classTeacherName: ''}, // NEW
   studentInfoForms: [],
 };
