@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, SurveyDocument
+    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -23,13 +24,15 @@ export interface Database {
   riskMapDocuments: RiskMapDocument[];
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
-  disciplineRecords: DisciplineRecord[]; // Added
-  zumreDocuments: any[]; // Added - define proper type if available
+  disciplineRecords: DisciplineRecord[];
+  zumreDocuments: any[];
   userScenarios: Record<string, string[]>; 
   examAnalysisDocuments?: ExamAnalysisDocument[];
   homeworkStatusDocuments?: HomeworkStatusDocument[];
   surveyDocuments?: SurveyDocument[];
   infoFormsStatusDocuments?: InfoFormsStatusDocument[];
+  guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
+  schoolInfo?: SchoolInfo; // NEW
 }
 
 // Varsayılan boş veritabanı
@@ -43,13 +46,15 @@ const initialDb: Database = {
   riskMapDocuments: [],
   communicationDocuments: [],
   homeworkDocuments: [],
-  disciplineRecords: [], // Added
-  zumreDocuments: [], // Added
+  disciplineRecords: [],
+  zumreDocuments: [],
   userScenarios: {}, 
   examAnalysisDocuments: [],
   homeworkStatusDocuments: [],
   surveyDocuments: [],
   infoFormsStatusDocuments: [],
+  guidanceReferralRecords: [], // NEW
+  schoolInfo: { schoolName: '', className: '', classTeacherName: ''}, // NEW
 };
 
 export const useDatabase = () => {

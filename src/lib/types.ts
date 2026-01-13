@@ -491,6 +491,8 @@ export interface Database {
     homeworkStatusDocuments?: HomeworkStatusDocument[];
     surveyDocuments?: SurveyDocument[];
     infoFormsStatusDocuments?: InfoFormsStatusDocument[];
+    guidanceReferralRecords?: GuidanceReferralRecord[]; // NEW
+    schoolInfo?: SchoolInfo; // NEW
 }
 
 
@@ -551,3 +553,25 @@ export interface InfoFormsStatusDocument extends Archivable {
         infoForms: { studentId: string, submitted: boolean }[];
     };
 }
+
+
+// NEW TYPES for GuidanceReferralTab
+export interface GuidanceReferralRecord extends Archivable {
+    studentName: string;
+    className?: string;
+    studentNumber?: string;
+    reason?: string;
+    observations?: string;
+    otherInfo?: string;
+    studiesDone?: string;
+    referrerName?: string;
+    referrerTitle?: string;
+    referrerSignature?: string;
+}
+
+export interface SchoolInfo {
+    schoolName?: string;
+    className?: string;
+    classTeacherName?: string;
+}
+
