@@ -1,16 +1,24 @@
+
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter, Download, CheckCircle, Circle } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X, Wand2, Save, Settings, Plus, Trash2, Home, List, Mic, Paperclip, Pencil, Video, LayoutTemplate, CaseUpper, KeySquare, FileQuestion, Sparkles, Binary, Shuffle, AlignLeft, ChevronDown, Star, GripVertical, Archive, BookmarkPlus, Library, AlertCircle } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 
 // --- YARDIMCI FONKSİYONLAR ---
+
 const turkishToRTF = (text: any) => {
   if (!text) return "";
   return text.toString()
@@ -30,6 +38,8 @@ const turkishToRTF = (text: any) => {
     .replace(/\n/g, "\\par ");
 };
 
+
+// --- BİLEŞENLER ---
 
 export function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   const [activeSubject, setActiveSubject] = useState(Object.keys(ALL_PLANS)[0]);
@@ -357,21 +367,3 @@ ${processTextContent}\\par
     </div>
   );
 }
-
-export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
-  return (
-    <Tabs defaultValue="ders-plani">
-      <TabsList>
-        <TabsTrigger value="ders-plani">Ders Yıllık Planı</TabsTrigger>
-        <TabsTrigger value="rehberlik-plani" disabled>Rehberlik Yıllık Planı</TabsTrigger>
-      </TabsList>
-      <TabsContent value="ders-plani" className="mt-4">
-        <SubjectAnnualPlan teacherProfile={teacherProfile} currentClass={currentClass} />
-      </TabsContent>
-       <TabsContent value="rehberlik-plani" className="mt-4">
-         <div>Ders yıllık planı modülü geliştirme aşamasındadır.</div>
-      </TabsContent>
-    </Tabs>
-  );
-}
-```
