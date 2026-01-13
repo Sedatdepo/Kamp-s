@@ -427,11 +427,61 @@ const ClassGuidanceAssistant = () => {
     link.click();
     document.body.removeChild(link);
   };
-  
-  // Önceki fonksiyonlar (exportAnnualPlan, exportActivityReport) referans olarak korunabilir
-  const exportAnnualPlan = () => {/* ... */};
-  const exportActivityReport = () => {/* ... */};
 
+  // --- ÖNCEKİ FONKSİYONLAR (Yıllık Plan, Etkinlik Raporu vb.) ---
+  const exportAnnualPlan = () => {
+    // Yıllık plan verileri eksikse örnek veri kullan (hata almamak için)
+    const currentPlans = plans[selectedGrade] || [];
+    let tableRows = currentPlans.map(item => `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`).join('');
+    const content = `
+      <div style="text-align:center; font-weight:bold; margin-bottom:20px;">
+        <p>T.C.<br>${schoolDetails.city ? schoolDetails.city.toUpperCase() + ' KAYMAKAMLIĞI' : '................... KAYMAKAMLIĞI'}<br>${schoolDetails.schoolName ? schoolDetails.schoolName.toUpperCase() : '.........................'} MÜDÜRLÜĞÜ</p>
+        <br><p>${schoolDetails.year} EĞİTİM ÖĞRETİM YILI<br>${selectedGrade}/${schoolDetails.classBranch} SINIFI REHBERLİK YILLIK PLANI</p>
+      </div>
+      <table border="1" style="border-collapse:collapse; width:100%;">
+        <thead><tr style="background-color:#f0f0f0;"><th>Ay</th><th>Hafta</th><th>Kazanım / Etkinlik</th><th>Alan</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div style="margin-top:50px; display:flex; justify-content:space-between;">
+        <div style="text-align:center;"><p>${schoolDetails.teacherName || '................................'}<br>Sınıf Rehber Öğretmeni</p></div>
+        <div style="text-align:center;"><p>${schoolDetails.principalName || '................................'}<br>Okul Müdürü</p></div>
+      </div>
+    `;
+    const blob = new Blob(['\ufeff', `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Yıllık Plan</title></head><body>${content}</body></html>`], { type: 'application/msword' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Yillik_Plan.doc";
+    link.click();
+  };
+
+  const exportActivityReport = () => {
+    const currentPlans = plans[selectedGrade] || [{ month: 'Eylül', week: '1', kazanim: 'Plan Yükleniyor...', tur: '' }];
+    const currentActivity = currentPlans[selectedActivityIndex] || currentPlans[0];
+    const content = `
+      <div style="text-align:center; font-weight:bold; margin-bottom:20px;">HAFTALIK SINIF REHBERLİK ETKİNLİK RAPORU</div>
+      <p><strong>Tarih:</strong> ..............................</p>
+      <p><strong>Sınıf:</strong> ${selectedGrade}/${schoolDetails.classBranch}</p>
+      <p><strong>Hafta:</strong> ${currentActivity.month} - ${currentActivity.week}. Hafta</p>
+      <br>
+      <table border="1" cellpadding="10" style="border-collapse:collapse; width:100%;">
+        <tr><td width="30%" bgcolor="#f0f0f0"><strong>Kazanım / Etkinlik Adı</strong></td><td>${currentActivity.kazanim}</td></tr>
+        <tr><td bgcolor="#f0f0f0"><strong>Katılan Öğrenci Sayısı</strong></td><td></td></tr>
+        <tr><td bgcolor="#f0f0f0"><strong>Katılmayan Öğrenci Sayısı</strong></td><td></td></tr>
+        <tr><td bgcolor="#f0f0f0"><strong>Değerlendirme</strong></td><td height="100">Etkinlik plana uygun olarak işlenmiş, öğrencilerin derse katılımı sağlanmıştır.</td></tr>
+      </table>
+      <br>
+      <div style="text-align:center; margin-left:auto; width:200px;">
+        <p>${schoolDetails.teacherName || '................................'}<br>Sınıf Rehber Öğretmeni</p>
+      </div>
+    `;
+    const blob = new Blob(['\ufeff', `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Etkinlik Raporu</title></head><body>${content}</body></html>`], { type: 'application/msword' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Etkinlik_Raporu.doc";
+    link.click();
+  };
+
+  // --- YENİ FORM RENDER FONKSİYONU ---
   const renderReportForm = (reportType) => {
     const isTerm = reportType === 'term';
     const data = isTerm ? termReportData : endYearReportData;
@@ -448,7 +498,8 @@ const ClassGuidanceAssistant = () => {
             <Download className="w-4 h-4" /> Word İndir
           </Button>
         </div>
-        
+
+        {/* 1. KAZANIM DURUMU */}
         <section className="mb-8">
           <h3 className="font-bold text-gray-800 underline mb-4 text-sm uppercase">Sınıf Rehberlik Planında Yer Alan Kazanımlar</h3>
           <div className="flex flex-wrap items-center gap-6 mb-4 p-4 border rounded-lg bg-gray-50">
@@ -482,6 +533,7 @@ const ClassGuidanceAssistant = () => {
           )}
         </section>
 
+        {/* 2. TABLOLAR (Envanter, Rehberlik, Veli) */}
         {['envanterler', 'rehberlik', 'veli'].map((tableName) => {
           const isVeli = tableName === 'veli';
           const headers = isVeli ? ['YAPILAN ÇALIŞMA', 'ANNE', 'BABA', 'DİĞER', 'TOPLAM'] : ['YAPILAN ÇALIŞMA', 'KIZ', 'ERKEK', 'TOPLAM'];
@@ -508,7 +560,7 @@ const ClassGuidanceAssistant = () => {
                   </thead>
                   <tbody className="divide-y">
                     {data[tableName].map((row, index) => {
-                      const total = (parseInt(row.col1||0) || 0) + (parseInt(row.col2||0) || 0) + (isVeli ? (parseInt(row.col3||0) || 0) : 0);
+                      const total = (parseInt(row.col1)||0) + (parseInt(row.col2)||0) + (isVeli ? (parseInt(row.col3)||0) : 0);
                       return (
                         <tr key={row.id} className="group hover:bg-gray-50 transition-colors">
                           <td className="p-2 text-center text-gray-500">{index + 1}</td>
@@ -528,6 +580,7 @@ const ClassGuidanceAssistant = () => {
           );
         })}
 
+        {/* 3. GÜÇLÜKLER VE ÖNERİLER */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-gray-700 font-bold"><FileText className="w-4 h-4"/> Karşılaşılan Güçlükler</Label>
@@ -541,8 +594,8 @@ const ClassGuidanceAssistant = () => {
       </Card>
     );
   };
-  
-    const renderSettings = () => (
+
+  const renderSettings = () => (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Settings className="text-indigo-600"/>Genel Okul ve Öğretmen Bilgileri</h2>
@@ -615,7 +668,7 @@ const ClassGuidanceAssistant = () => {
                     <thead className="sticky top-0 z-10"><tr className="bg-indigo-50 border-b border-indigo-100 shadow-sm"><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Ay</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Hafta</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Kazanım / Etkinlik Adı</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Alan</th></tr></thead>
                     <tbody>
                         {(plans[selectedGrade] || []).map((item, index) => (
-                            <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${item.tur === 'Tatil' ? 'bg-orange-50' : ''}`}>
+                            <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${item.kazanim.includes('TATİL') ? 'bg-orange-50' : ''}`}>
                                 <td className="p-3 text-gray-800">{item.month}</td>
                                 <td className="p-3 text-gray-600">{item.week}. Hafta</td>
                                 <td className="p-3 text-gray-800 font-medium">{item.kazanim}</td>
@@ -640,7 +693,7 @@ const ClassGuidanceAssistant = () => {
                 <div className="space-y-4">
                     <div className={`p-4 rounded border border-gray-200 ${(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim.includes('TATİL') ? 'bg-orange-50' : 'bg-gray-50'}`}><span className="block text-xs text-gray-500 uppercase font-bold tracking-wider">Kazanım</span><p className="text-lg font-medium text-gray-900 mt-1">{(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim}</p></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="p-4 border rounded"><Label className="block mb-2">Sınıfa Katılan</Label><Input type="number" placeholder="Örn: 24" /></div><div className="p-4 border rounded"><Label className="block mb-2">Katılmayan</Label><Input type="number" placeholder="Örn: 2" /></div></div>
-                    <div><Label className="block mb-2">Değerlendirme</Label><Textarea defaultValue="Etkinlik plana uygun işlenmiştir." /></div>
+                    <div><Label className="block mb-2">Değerlendirme</Label><Textarea defaultValue="Etkinlik plana uygun olarak işlenmiştir." /></div>
                 </div>
             </div>
         )}
@@ -651,11 +704,10 @@ const ClassGuidanceAssistant = () => {
   );
 };
 
-
 // Main Export for the Tab
 const AnnualPlanTab = ({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) => {
     return (
-        <Tabs defaultValue="ders-plani">
+        <Tabs defaultValue="rehberlik-plani">
             <TabsList>
                 <TabsTrigger value="ders-plani" disabled>Ders Yıllık Planı (Geliştirilecek)</TabsTrigger>
                 <TabsTrigger value="rehberlik-plani">Rehberlik Yıllık Planı</TabsTrigger>
