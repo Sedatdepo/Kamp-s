@@ -1,14 +1,20 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle } from 'lucide-react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X, Wand2, Save, Settings, Plus, Trash2, Home, List, Mic, Paperclip, Pencil, Video, LayoutTemplate, CaseUpper, KeySquare, FileQuestion, Sparkles, Binary, Shuffle, AlignLeft, ChevronDown, Star, GripVertical, Archive, BookmarkPlus, Library, AlertCircle } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { ClassGuidanceAssistant } from './ClassGuidanceAssistant';
+
 
 // --- YARDIMCI FONKSİYONLAR ---
 
@@ -360,7 +366,6 @@ ${processTextContent}\\par
     </div>
   );
 }
-
 
 export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   return (
