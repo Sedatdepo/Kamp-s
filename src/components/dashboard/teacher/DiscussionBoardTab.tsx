@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { DiscussionTopic, DiscussionPost, Class } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,16 +17,27 @@ import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-const TopicList = ({ topics, onSelectTopic, onNewTopic }: { topics: DiscussionTopic[], onSelectTopic: (topic: DiscussionTopic) => void, onNewTopic: () => void }) => (
+const TopicList = ({ topics, onSelectTopic, onNewTopic, currentClass, onToggleActive }: { topics: DiscussionTopic[], onSelectTopic: (topic: DiscussionTopic) => void, onNewTopic: () => void, currentClass: Class | null, onToggleActive: (checked: boolean) => void }) => (
     <Card>
         <CardHeader>
             <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2"><MessagesSquare /> Tartışma Başlıkları</CardTitle>
-                <Button onClick={onNewTopic}><Plus className="mr-2 h-4 w-4" /> Yeni Başlık</Button>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="discussion-active"
+                            checked={currentClass?.isDiscussionBoardActive || false}
+                            onCheckedChange={onToggleActive}
+                        />
+                        <Label htmlFor="discussion-active">Aktif</Label>
+                    </div>
+                    <Button onClick={onNewTopic}><Plus className="mr-2 h-4 w-4" /> Yeni Başlık</Button>
+                </div>
             </div>
             <CardDescription>Sınıfınız için tartışma konuları oluşturun ve yönetin.</CardDescription>
         </CardHeader>
@@ -166,6 +177,7 @@ const NewTopicForm = ({ onBack, classId }: { onBack: () => void, classId: string
 
 export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string; currentClass: Class | null; }) => {
     const { db } = useAuth();
+    const { toast } = useToast();
     const [view, setView] = useState<'list' | 'topic' | 'new'>('list');
     const [selectedTopic, setSelectedTopic] = useState<DiscussionTopic | null>(null);
 
@@ -179,6 +191,17 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         setSelectedTopic(topic);
         setView('topic');
     }
+
+    const handleToggleActive = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', classId);
+        try {
+            await updateDoc(classRef, { isDiscussionBoardActive: checked });
+            toast({ title: 'Başarılı!', description: `Tartışma panosu öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
+        }
+    };
     
     if(isLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
@@ -190,5 +213,5 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} />
     }
     
-    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} />
+    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} currentClass={currentClass} onToggleActive={handleToggleActive} />
 };

@@ -3,9 +3,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc } from 'firebase/firestore';
-import { DiscussionTopic, DiscussionPost } from '@/lib/types';
+import { DiscussionTopic, DiscussionPost, Class } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -123,14 +123,30 @@ export const DiscussionBoardTab = () => {
     const classId = appUser?.type === 'student' ? appUser.data.classId : null;
     const [selectedTopic, setSelectedTopic] = useState<DiscussionTopic | null>(null);
 
+    const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+    const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
+
     const topicsQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, `classes/${classId}/discussionTopics`), orderBy('createdAt', 'desc'));
     }, [db, classId]);
 
-    const { data: topics, isLoading } = useCollection<DiscussionTopic>(topicsQuery);
+    const { data: topics, isLoading: topicsLoading } = useCollection<DiscussionTopic>(topicsQuery);
     
-    if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (classLoading || topicsLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    
+    if (!currentClass?.isDiscussionBoardActive) {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Tartışma Panosu</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-center text-muted-foreground py-6">Tartışma panosu şu anda aktif değil.</p>
+                </CardContent>
+            </Card>
+        )
+    }
 
     if (selectedTopic) {
         return <TopicView topic={selectedTopic} onBack={() => setSelectedTopic(null)} />
@@ -138,4 +154,3 @@ export const DiscussionBoardTab = () => {
     
     return <TopicList topics={topics || []} onSelectTopic={setSelectedTopic} />
 };
-

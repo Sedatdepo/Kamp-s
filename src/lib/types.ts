@@ -195,8 +195,9 @@ export interface Class {
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
-  isClubSelectionActive?: boolean; // NEW
-  isSociogramActive?: boolean; // NEW for Sociogram
+  isClubSelectionActive?: boolean;
+  isSociogramActive?: boolean;
+  isDiscussionBoardActive?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -204,7 +205,10 @@ export interface Class {
   seatingPlan?: { [key: string]: string }; // key: 'r-c-s', value: studentId
   seatingPlanRows?: number;
   seatingPlanCols?: number;
-  sociogramSurvey?: SociogramSurvey; // NEW
+  sociogramSurvey?: SociogramSurvey;
+  discussionBoard?: {
+      blockedStudentIds?: string[];
+  };
 }
 
 export type GradingScores = {
