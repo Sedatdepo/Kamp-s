@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
@@ -20,8 +20,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
-import { MEVZUAT_OZETLERI, MevzuatOzet } from '@/lib/mevzuat/mevzuat-ozetleri';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import { exportDilekceToRtf } from '@/lib/word-export';
 
@@ -196,7 +194,6 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
 
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [showOfficialFields, setShowOfficialFields] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const defaultFormValues: FormData = useMemo(() => ({
       id: `dilekce_${Date.now()}`,
@@ -297,58 +294,6 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
       toast({ title: "Şablon Uygulandı", description: `"${selectedTemplate.label}" şablonu forma yüklendi.` });
     }
   };
-  
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-        toast({ title: "Kopyalandı", description: "Mevzuat metni panoya kopyalandı." });
-    }).catch(err => {
-        console.error('Kopyalama hatası:', err);
-        toast({ title: "Hata", description: "Metin kopyalanamadı.", variant: 'destructive' });
-    });
-  };
-  
-  const normalizeText = (text: string) => text.toLowerCase().replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
-  
-  const filteredAndGroupedMevzuat = useMemo(() => {
-    const normalizedSearchTerm = normalizeText(searchTerm);
-    if (!normalizedSearchTerm.trim()) {
-      return MEVZUAT_OZETLERI.reduce((acc, item) => {
-        (acc[item.kategori] = acc[item.kategori] || []).push(item);
-        return acc;
-      }, {} as { [key: string]: MevzuatOzet[] });
-    }
-    const filtered = MEVZUAT_OZETLERI.filter(item => {
-      const searchableText = [item.baslik, item.madde, item.ozet, item.kategori, ...(item.anahtarKelimeler || [])].join(' ');
-      return normalizeText(searchableText).includes(normalizedSearchTerm);
-    });
-    return filtered.reduce((acc, item) => {
-      (acc[item.kategori] = acc[item.kategori] || []).push(item);
-      return acc;
-    }, {} as { [key: string]: MevzuatOzet[] });
-  }, [searchTerm]);
-
-
-  const highlightText = (text: string) => {
-    if (!searchTerm.trim()) return <span>{text}</span>;
-    const normalizedSearchTerm = normalizeText(searchTerm);
-    const normalizedText = normalizeText(text);
-    let lastIndex = 0;
-    const parts = [];
-    const regex = new RegExp(normalizedSearchTerm, 'gi');
-    let match;
-    while ((match = regex.exec(normalizedText)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(<span key={lastIndex}>{text.substring(lastIndex, match.index)}</span>);
-      }
-      const highlighted = text.substring(match.index, match.index + searchTerm.length);
-      parts.push(<mark key={match.index} className="bg-yellow-300 px-1 rounded">{highlighted}</mark>);
-      lastIndex = match.index + searchTerm.length;
-    }
-    if (lastIndex < text.length) {
-      parts.push(<span key={lastIndex}>{text.substring(lastIndex)}</span>);
-    }
-    return <>{parts}</>;
-  };
 
   if (loading) return <div>Yükleniyor...</div>;
 
@@ -380,10 +325,10 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
               />
               <Card>
                   <CardHeader>
-                      <CardTitle>Şablon ve Mevzuat</CardTitle>
-                      <CardDescription>Sık kullandığınız dilekçe türünü seçin veya mevzuattan dayanak bulun.</CardDescription>
+                      <CardTitle>Hızlı Başlangıç</CardTitle>
+                      <CardDescription>Sık kullandığınız dilekçe türünü seçerek formu doldurun.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent>
                       <Select onValueChange={handleTemplateSelect}>
                           <SelectTrigger className="w-full">
                               <SelectValue placeholder="Bir dilekçe şablonu seçin..." />
@@ -396,56 +341,6 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
                               ))}
                           </SelectContent>
                       </Select>
-                       <Dialog>
-                          <DialogTrigger asChild>
-                              <Button variant="outline" className="w-full">
-                                  <BookOpen className="mr-2" /> Mevzuat Kütüphanesini Aç
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-                              <DialogHeader>
-                                  <DialogTitle>Mevzuat Kütüphanesi</DialogTitle>
-                                  <DialogDescription>Dilekçenize dayanak göstermek için ilgili mevzuatı aratın.</DialogDescription>
-                              </DialogHeader>
-                               <div className="relative">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input 
-                                    placeholder="Kanun, madde veya anahtar kelime ara..."
-                                    className="pl-10"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                  />
-                              </div>
-                              <ScrollArea className="flex-1 mt-4">
-                                  {Object.keys(filteredAndGroupedMevzuat).length > 0 ? (
-                                      <Accordion type="multiple" className="w-full" defaultValue={searchTerm.trim() ? Object.keys(filteredAndGroupedMevzuat) : [Object.keys(filteredAndGroupedMevzuat)[0]]}>
-                                          {Object.entries(filteredAndGroupedMevzuat).map(([kategori, items]) => (
-                                              <AccordionItem key={kategori} value={kategori}>
-                                                  <AccordionTrigger className="text-left font-semibold">{highlightText(kategori)} ({items.length})</AccordionTrigger>
-                                                  <AccordionContent>
-                                                      <div className="space-y-2 pl-2">
-                                                          {items.map(item => (
-                                                               <div key={item.id} className="p-3 border rounded-md text-sm group">
-                                                                  <p className="font-bold text-primary">{highlightText(item.baslik)} - {highlightText(item.madde)}</p>
-                                                                  <p className="text-muted-foreground mt-1">{highlightText(item.ozet)}</p>
-                                                                  <div className="flex justify-end items-center mt-2">
-                                                                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleCopyText(`${item.ozet} (${item.baslik}, ${item.madde})`)}>
-                                                                          <Copy className="mr-2 h-3 w-3"/> Kopyala
-                                                                      </Button>
-                                                                  </div>
-                                                              </div>
-                                                          ))}
-                                                      </div>
-                                                  </AccordionContent>
-                                              </AccordionItem>
-                                          ))}
-                                      </Accordion>
-                                  ) : (
-                                      <p className="text-center text-muted-foreground p-8">Aramanızla eşleşen sonuç bulunamadı.</p>
-                                  )}
-                              </ScrollArea>
-                          </DialogContent>
-                      </Dialog>
                   </CardContent>
               </Card>
             </div>
