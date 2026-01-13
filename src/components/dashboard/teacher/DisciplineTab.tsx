@@ -329,7 +329,7 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
                 break;
         }
 
-        const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm; }</style></head><body>${docHtml}</body></html>`;
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title></head><body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">${docHtml}</body></html>`;
         const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -366,8 +366,8 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
                 </FormItem>
                 <FormItem id="incidentDetails" label="Olayın Meydana Geldiği Yer ve Zaman, Şahitler, Detaylar *" value={localData.incidentDetails} onChange={handleChange} isTextarea />
             </CardContent>
-            <CardFooter className="flex justify-between items-center flex-wrap gap-2">
-                <div className="flex gap-2">
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => generateWordDocument('olay')}><FileDown className="mr-2" /> Olay Tutanağı</Button>
                     <Button variant="outline" onClick={() => generateWordDocument('tanik')}><FileDown className="mr-2" /> Tanık İfade</Button>
                     <Button variant="outline" onClick={() => generateWordDocument('savunma')}><FileDown className="mr-2" /> Savunma İstemi</Button>
@@ -437,9 +437,9 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord }: any) => {
                 <FormItem id="counselorName" label="Rehberlik Görevlisi" value={localData.counselorName} onChange={handleChange} />
                 <FormItem id="counselingSummary" label="Görüşme Özeti" value={localData.counselingSummary} onChange={handleChange} isTextarea />
             </CardContent>
-            <CardFooter className="flex justify-between flex-wrap gap-2">
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={generateDocument}><FileDown className="mr-2" /> Tutanak Oluştur</Button>
                     <Button variant="outline" onClick={() => handleProcessDecision('end')}>Süreci Sonlandır</Button>
                     <Button onClick={() => handleProcessDecision('refer')}>Disiplin Kuruluna Sevk Et <ArrowRight className="ml-2" /></Button>
@@ -504,10 +504,10 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
                 <StudentInfoDisplay studentInfo={data.studentInfo} />
                 <FormItem id="referralReason" label="Sevk Gerekçesi / Amirin Görüşü" value={localData.referralReason} onChange={handleChange} isTextarea />
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
-                 <div>
-                    <Button variant="outline" onClick={generateDocument} className="mr-2"><FileDown className="mr-2" /> Sevk Yazısı Oluştur</Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={generateDocument}><FileDown className="mr-2" /> Sevk Yazısı Oluştur</Button>
                     <Button onClick={handleSave}>Kaydet ve İlerle <ArrowRight className="ml-2" /></Button>
                 </div>
             </CardFooter>
@@ -590,10 +590,10 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
                 <FormItem label="Oylama Sonucu"><Select value={localData.voteResult || ''} onValueChange={(val) => handleSelectChange('voteResult', val)}><SelectTrigger><SelectValue placeholder="Sonuç seçin..." /></SelectTrigger><SelectContent><SelectItem value="Oy Birliği">Oy Birliği</SelectItem><SelectItem value="Oy Çokluğu">Oy Çokluğu</SelectItem></SelectContent></Select></FormItem>
                 <FormItem id="decisionDetails" label="Kararın Gerekçesi" value={localData.decisionDetails} onChange={handleChange} isTextarea />
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
-                <div>
-                     <Button variant="outline" onClick={generateDocument} className="mr-2"><FileDown className="mr-2" /> Karar Tutanağı Oluştur</Button>
+                <div className="flex flex-wrap gap-2">
+                     <Button variant="outline" onClick={generateDocument}><FileDown className="mr-2" /> Karar Tutanağı Oluştur</Button>
                     <Button onClick={handleSave}>Kaydet ve İlerle <ArrowRight className="ml-2" /></Button>
                 </div>
             </CardFooter>
@@ -653,7 +653,7 @@ const Phase5 = ({ isVisible, onPrev, data, teacherProfile }: any) => {
                  <FormItem label="Bildirim Yöntemi"><Select value={localData.notificationMethod || ''} onValueChange={(val) => handleSelectChange('notificationMethod', val)}><SelectTrigger><SelectValue placeholder="Yöntem seçin..." /></SelectTrigger><SelectContent><SelectItem value="elden">Elden İmza Karşılığı</SelectItem><SelectItem value="posta">İadeli Taahhütlü Posta</SelectItem><SelectItem value="e-posta">E-Posta</SelectItem></SelectContent></Select></FormItem>
                  <FormItem id="eokulEntry" label="e-Okul İşlemleri" value="Karar e-Okul sistemine işlendi." isTextarea readOnly />
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
                 <Button variant="destructive" onClick={generateDocument}><FileDown className="mr-2" /> Veli Tebligatı Oluştur</Button>
             </CardFooter>
@@ -689,5 +689,3 @@ const StudentInfoDisplay = ({ studentInfo }: any) => {
         </Card>
     );
 };
-
-    

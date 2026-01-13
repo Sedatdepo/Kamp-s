@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -112,12 +113,12 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
     return (
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <CardTitle>Detaylı Not Listesi</CardTitle>
                         <CardDescription>Tüm sınıfın her iki döneme ait sınav, performans ve proje notlarını bir arada görüntüleyin.</CardDescription>
                     </div>
-                    <Button onClick={handleExport} variant="outline">
+                    <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
                         <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
                     </Button>
                 </div>
@@ -155,6 +156,7 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
                             const perf1_1 = calculateAverageForCriteria(term1.scores1, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
                             const perf1_2 = calculateAverageForCriteria(term1.scores2, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
                             const proj1 = calculateAverageForCriteria(term1.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);
+                            
                             const perf2_1 = calculateAverageForCriteria(term2.scores1, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
                             const perf2_2 = calculateAverageForCriteria(term2.scores2, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
                             const proj2 = calculateAverageForCriteria(term2.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);

@@ -29,7 +29,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
     return (
         <Tabs defaultValue="student-list">
             <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-                <TabsList className="w-full justify-start">
+                <TabsList>
                     <TabsTrigger value="student-list"><Users className="mr-2 h-4 w-4" />Öğrenci Listesi</TabsTrigger>
                     <TabsTrigger value="grades-detail"><GraduationCap className="mr-2 h-4 w-4" />Detaylı Not Listesi</TabsTrigger>
                     <TabsTrigger value="attendance"><CalendarIconLucide className="mr-2 h-4 w-4" />Yoklama</TabsTrigger>
@@ -65,5 +65,3 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
         </Tabs>
     );
 }
-
-    
