@@ -8,12 +8,8 @@ import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
-import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { ClassGuidanceAssistant } from './ClassGuidanceAssistant'; // YENİ IMPORT
 
 // --- YARDIMCI FONKSİYONLAR ---
 
@@ -366,25 +362,18 @@ ${processTextContent}\\par
   );
 }
 
-const ClassGuidanceAssistant = () => {
-    // This component is now empty as requested, to be replaced.
-    return <div></div>;
-};
-
-
-
 export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   return (
     <Tabs defaultValue="ders-plani">
       <TabsList>
         <TabsTrigger value="ders-plani">Ders Yıllık Planı</TabsTrigger>
-        <TabsTrigger value="rehberlik-plani">Rehberlik Yıllık Planı</TabsTrigger>
+        <TabsTrigger value="rehberlik-plani" disabled>Rehberlik Yıllık Planı (Geliştirilecek)</TabsTrigger>
       </TabsList>
       <TabsContent value="ders-plani" className="mt-4">
         <SubjectAnnualPlan teacherProfile={teacherProfile} currentClass={currentClass} />
-      </TabsContent>
+      </HsTabsContent>
       <TabsContent value="rehberlik-plani" className="mt-4">
-        <ClassGuidanceAssistant />
+         <div>Ders yıllık planı modülü geliştirme aşamasındadır.</div>
       </TabsContent>
     </Tabs>
   );
