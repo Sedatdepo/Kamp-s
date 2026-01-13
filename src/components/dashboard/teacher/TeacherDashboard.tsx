@@ -147,10 +147,37 @@ function ClassSelectionScreen({
         if (!db) return;
         setDeletingClassId(classId);
         try {
-            await deleteDoc(doc(db, 'classes', classId));
-            toast({ title: 'Sınıf silindi', description: 'Not: Bu sınıfa ait öğrenciler veritabanından ayrıca silinmelidir.', variant: 'destructive' });
+            const batch = writeBatch(db);
+
+            // 1. Sınıfa ait öğrencileri bul
+            const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+            const studentsSnapshot = await getDocs(studentsQuery);
+            studentsSnapshot.forEach(studentDoc => {
+                batch.delete(studentDoc.ref);
+            });
+
+            // 2. Sınıfa ait ödevleri ve teslimleri bul
+            const homeworksQuery = query(collection(db, `classes/${classId}/homeworks`));
+            const homeworksSnapshot = await getDocs(homeworksQuery);
+            for (const homeworkDoc of homeworksSnapshot.docs) {
+                // Her ödevin teslimlerini sil
+                const submissionsQuery = query(collection(db, `classes/${classId}/homeworks/${homeworkDoc.id}/submissions`));
+                const submissionsSnapshot = await getDocs(submissionsQuery);
+                submissionsSnapshot.forEach(subDoc => batch.delete(subDoc.ref));
+                // Ödevi sil
+                batch.delete(homeworkDoc.ref);
+            }
+
+            // 3. Sınıf belgesini sil
+            const classRef = doc(db, 'classes', classId);
+            batch.delete(classRef);
+
+            // Toplu işlemi gerçekleştir
+            await batch.commit();
+
+            toast({ title: 'Sınıf Tamamen Silindi', description: 'Sınıf ve ona ait tüm öğrenciler, ödevler ve diğer veriler silindi.', variant: 'destructive' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinemedi.' });
+            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Sınıf silinirken bir hata oluştu.' });
         } finally {
             setDeletingClassId(null);
         }
@@ -303,7 +330,7 @@ function ClassSelectionScreen({
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            Bu sınıfı ({cls.name}) kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz! Sınıfa ait öğrenciler silinmeyecektir, ancak elle başka bir sınıfa atanmaları gerekir.
+                                                            Bu sınıfı ({cls.name}) ve içindeki TÜM ÖĞRENCİLERİ kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
