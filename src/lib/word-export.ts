@@ -89,22 +89,25 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
     const principal = config?.principalName || "...........................";
     const date = config?.date || new Date().toLocaleDateString('tr-TR');
 
-     return `
+    return `
         <br><br><br>
         <table class="no-border" style="width:100%;">
             <tr>
-                <td class="no-border center" style="width:33%;"></td>
-                <td class="no-border center" style="width:34%;">
-                    Uygundur<br/>${date}<br/><br/><br/>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
                     <span class="bold">${teacher}</span><br/>
                     Ders Öğretmeni
                 </td>
-                <td class="no-border" style="width:33%;"></td>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">...........................</span><br/>
+                    Zümre Başkanı
+                </td>
             </tr>
             <tr>
-                <td colspan="3" class="no-border center">
-                    <br/><br/>
-                    Tasdik Olunur<br/>${date}<br/><br/><br/>
+                <td colspan="2" class="no-border center">
+                    <br/><br/><br/>
+                    Uygundur<br/>${date}<br/><br/><br/>
                     <span class="bold">${principal}</span><br/>
                     Okul Müdürü
                 </td>
@@ -202,15 +205,18 @@ export function exportDailyPlanToRtf({ dailyPlan, annualPlanEntry, currentClass,
         </table>
         <br><br><br>
         <table class="no-border" style="width:100%;">
-            <tr>
-                <td class="no-border center" style="width:50%;">
+             <tr>
+                <td class="no-border center" style="width:100%;">
                     <br/><br/>
                     <span class="bold">${teacherProfile.name}</span><br/>
                     Ders Öğretmeni
                 </td>
-                <td class="no-border center" style="width:50%;">
-                    <br/>Uygundur<br/>
-                    <span class="bold">${config.date || new Date().toLocaleDateString('tr-TR')}</span><br/><br/>
+            </tr>
+            <tr>
+                <td class="no-border center" style="width:100%;">
+                    <br/><br/><br/>
+                    Uygundur<br/>
+                    <span class="bold">${config.date || new Date().toLocaleDateString('tr-TR')}</span><br/><br/><br/>
                     <span class="bold">${config.principalName || '...'}</span><br/>
                     Okul Müdürü
                 </td>
@@ -470,7 +476,7 @@ export function exportProjectDistributionToRtf({ students, lessons, currentClass
 
 // --- PROJECT PETITIONS EXPORT ---
 interface ExportProjectPetitionsArgs {
-    students: Student[];
+    students: Partial<Student>[];
     lessons: Lesson[];
     currentClass: Class;
     teacherProfile?: TeacherProfile | null;
