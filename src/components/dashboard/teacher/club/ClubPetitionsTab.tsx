@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -87,42 +86,42 @@ export function ClubPetitionsTab({ classId, teacherProfile, currentClass, clubs,
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
-                    <div>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
+                      <div>
                         <Label className="text-xs font-semibold">Okul Adı</Label>
                         <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
-                    </div>
-                    <div>
+                      </div>
+                       <div>
                         <Label className="text-xs font-semibold">Eğitim Yılı</Label>
                         <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} />
-                    </div>
-                    <div>
+                      </div>
+                       <div>
                         <Label className="text-xs font-semibold">Sınıf Rehber Öğretmeni</Label>
                         <Input value={teacherName} onChange={(e) => setTeacherName(e.target.value)} />
-                    </div>
+                      </div>
                 </div>
                 <div className="flex justify-end">
                     <Button onClick={importClassList}><Users className="mr-2"/>Sınıf Listesini Aktar</Button>
                 </div>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-24">No</TableHead>
-                            <TableHead>Ad Soyad</TableHead>
-                            <TableHead className="w-32">Sınıf</TableHead>
-                            <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {students.map((student) => (
-                            <TableRow key={student.id}>
-                                <TableCell><Input value={student.number} onChange={(e) => updateStudentRow(student.id!, 'number', e.target.value)} placeholder="No" /></TableCell>
-                                <TableCell><Input value={student.name} onChange={(e) => updateStudentRow(student.id!, 'name', e.target.value)} placeholder="İsim" /></TableCell>
-                                <TableCell><Input value={student.className} onChange={(e) => updateStudentRow(student.id!, 'className', e.target.value)} placeholder="Sınıf" /></TableCell>
-                                <TableCell><Button variant="ghost" size="icon" onClick={() => removeStudentRow(student.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
+                 <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24">No</TableHead>
+                      <TableHead>Ad Soyad</TableHead>
+                      <TableHead className="w-32">Sınıf</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell><Input value={student.number} onChange={(e) => updateStudentRow(student.id!, 'number', e.target.value)} placeholder="No" /></TableCell>
+                        <TableCell><Input value={student.name} onChange={(e) => updateStudentRow(student.id!, 'name', e.target.value)} placeholder="İsim" /></TableCell>
+                        <TableCell><Input value={student.className} onChange={(e) => updateStudentRow(student.id!, 'className', e.target.value)} placeholder="Sınıf" /></TableCell>
+                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeStudentRow(student.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
                 <Button variant="outline" onClick={addStudentRow} className="w-full border-dashed"><Plus className="mr-2"/>Öğrenci Ekle</Button>
             </CardContent>
