@@ -7,7 +7,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo
+    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -33,6 +33,7 @@ export interface Database {
   infoFormsStatusDocuments?: InfoFormsStatusDocument[];
   guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
   schoolInfo?: SchoolInfo; // NEW
+  studentInfoForms: StudentInfoFormData[];
 }
 
 // Varsayılan boş veritabanı
@@ -55,6 +56,7 @@ const initialDb: Database = {
   infoFormsStatusDocuments: [],
   guidanceReferralRecords: [], // NEW
   schoolInfo: { schoolName: '', className: '', classTeacherName: ''}, // NEW
+  studentInfoForms: [],
 };
 
 export const useDatabase = () => {

@@ -491,8 +491,9 @@ export interface Database {
     homeworkStatusDocuments?: HomeworkStatusDocument[];
     surveyDocuments?: SurveyDocument[];
     infoFormsStatusDocuments?: InfoFormsStatusDocument[];
-    guidanceReferralRecords?: GuidanceReferralRecord[]; // NEW
+    guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
     schoolInfo?: SchoolInfo; // NEW
+    studentInfoForms: StudentInfoFormData[]; // NEW
 }
 
 
@@ -575,3 +576,43 @@ export interface SchoolInfo {
     classTeacherName?: string;
 }
 
+export interface StudentInfoFormData {
+    formDate: string;
+    studentName: string;
+    studentGender: string;
+    studentClassAndNumber: string;
+    studentBirthPlaceAndDate: string;
+    studentSchool: string;
+    studentAddress: string;
+    studentPreschool: string;
+    studentHealthDevice: string;
+    studentHobbies: string;
+    studentChronicIllness: string;
+    studentRecentMove: string;
+    studentExtracurricular: string;
+    studentTechUsage: string;
+    studentMemorableEvent: string;
+    guardianKinship: string;
+    guardianPhone: string;
+    guardianEducation: string;
+    guardianOccupation: string;
+    motherName: string;
+    motherBirthPlaceAndDate: string;
+    motherIsAlive: string;
+    motherIsHealthy: string;
+    motherHasDisability: string;
+    motherEducation: string;
+    motherOccupation: string;
+    fatherName: string;
+    fatherBirthPlaceAndDate: string;
+    fatherIsAlive: string;
+    fatherIsHealthy: string;
+    fatherHasDisability: string;
+    fatherEducation: string;
+    fatherOccupation: string;
+    siblingCount: string;
+    birthOrder: string;
+    familyLivesWith: string;
+    familyMemberWithDisability: string;
+    familyFinancialIssues: string;
+}

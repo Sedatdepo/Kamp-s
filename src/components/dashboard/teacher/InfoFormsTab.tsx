@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,7 +22,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { Class, Student } from '@/lib/types';
+import { Class, Student, TeacherProfile } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
 

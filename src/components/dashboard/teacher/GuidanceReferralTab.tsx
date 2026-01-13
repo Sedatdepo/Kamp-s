@@ -5,19 +5,50 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
+import { Home, FileDown, Save, Trash2, PlusCircle, Send, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { GuidanceReferralRecord, SchoolInfo } from '@/lib/types';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { StudentInfoFormData, SchoolInfo, GuidanceReferralRecord } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useDatabase } from '@/hooks/use-database';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useDatabase } from '@/hooks/use-database';
+
 
 const formSchema = z.object({
   id: z.string(),
@@ -35,12 +66,12 @@ const formSchema = z.object({
 });
 
 
-const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo, doc: jsPDF) => {
+const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo | undefined, doc: jsPDF) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('REHBERLİK SERVİSİNE ÖĞRENCİ YÖNLENDİRME FORMU', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
     doc.setFontSize(11);
-    doc.text(`${schoolInfo.schoolName || '...'} OKULU`, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+    doc.text(`${schoolInfo?.schoolName || '...'} OKULU`, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
     (doc as any).autoTable({
         startY: 40,
@@ -136,6 +167,7 @@ export function GuidanceReferralTab() {
     }
   }, [selectedRecordId, records, form, handleNewRecord]);
 
+
   const onSubmit = (values: GuidanceReferralRecord) => {
     setDb(prevDb => {
         let updatedRecords;
@@ -196,72 +228,72 @@ export function GuidanceReferralTab() {
   }
   
   return (
-    <main className="grid md:grid-cols-4 gap-8">
-    <div className="md:col-span-1 space-y-4">
-         <Card>
-            <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-                 <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
-                <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kayıtlı formu seç..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı form yok.</p>}
-                    {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.date).toLocaleDateString('tr-TR')}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
-            </CardContent>
-         </Card>
-         <Card>
-            <CardHeader>
-                <CardTitle>İşlemler</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId} className="w-full"><FileDown className="mr-2"/> PDF Çıktı Al</Button>
-            </CardContent>
-         </Card>
-    </div>
-    <div className="md:col-span-3">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-                <CardTitle>Yönlendirme Formu</CardTitle>
-                <CardDescription>
-                  {schoolInfo?.schoolName}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {renderField('studentName', 'Öğrencinin Adı Soyadı')}
-                  <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {renderField('className', 'Sınıfı')}
-                    {renderField('studentNumber', 'Numarası')}
-                 </div>
-                  
-                  {renderField('reason', 'Öğrencinin rehberlik servisine yönlendirilme nedeni', true)}
-                  {renderField('observations', 'Öğrenciyle ilgili gözlem ve düşünceler', true)}
-                  {renderField('otherInfo', 'Öğrenciyle ilgili edinilen diğer bilgiler', true)}
-                  {renderField('studiesDone', 'Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar', true)}
+    <div className="grid md:grid-cols-4 gap-8">
+        <div className="md:col-span-1 space-y-4">
+             <Card>
+                <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                     <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
+                    <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kayıtlı formu seç..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı form yok.</p>}
+                        {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.date).toLocaleDateString('tr-TR')}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
+                </CardContent>
+             </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>İşlemler</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId} className="w-full"><FileDown className="mr-2"/> PDF Çıktı Al</Button>
+                </CardContent>
+             </Card>
+        </div>
+        <div className="md:col-span-3">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <Card>
+                <CardHeader>
+                    <CardTitle>Yönlendirme Formu</CardTitle>
+                    <CardDescription>
+                      {schoolInfo?.schoolName}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderField('studentName', 'Öğrencinin Adı Soyadı')}
+                      <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {renderField('className', 'Sınıfı')}
+                        {renderField('studentNumber', 'Numarası')}
+                     </div>
+                      
+                      {renderField('reason', 'Öğrencinin rehberlik servisine yönlendirilme nedeni', true)}
+                      {renderField('observations', 'Öğrenciyle ilgili gözlem ve düşünceler', true)}
+                      {renderField('otherInfo', 'Öğrenciyle ilgili edinilen diğer bilgiler', true)}
+                      {renderField('studiesDone', 'Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar', true)}
 
-                 <p className="font-bold text-lg border-b pb-2 pt-6">Yönlendiren</p>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {renderField('referrerName', 'Adı Soyadı')}
-                    {renderField('referrerTitle', 'Unvanı')}
-                 </div>
-                  {renderField('referrerSignature', 'İmza')}
-            </CardContent>
-            <CardFooter>
-                <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
-            </CardFooter>
-          </Card>
-        </form>
-      </Form>
+                     <p className="font-bold text-lg border-b pb-2 pt-6">Yönlendiren</p>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {renderField('referrerName', 'Adı Soyadı')}
+                        {renderField('referrerTitle', 'Unvanı')}
+                     </div>
+                      {renderField('referrerSignature', 'İmza')}
+                </CardContent>
+                <CardFooter>
+                    <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </div>
     </div>
-  </main>
   );
 }
