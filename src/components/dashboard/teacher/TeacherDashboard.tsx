@@ -405,7 +405,8 @@ export function TeacherDashboard() {
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
   
   const classesQuery = useMemoFirebase(() => {
-    return teacherId && db ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null;
+    if (!teacherId || !db) return null;
+    return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
   }, [db, teacherId]);
 
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
@@ -413,7 +414,8 @@ export function TeacherDashboard() {
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
 
   const allStudentsQuery = useMemoFirebase(() => {
-    return classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null;
+    if (!classIds || classIds.length === 0 || !db) return null;
+    return query(collection(db, 'students'), where('classId', 'in', classIds));
   }, [db, classIds]);
   const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
   
@@ -513,7 +515,7 @@ export function TeacherDashboard() {
         return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
     }
     
-    if (centralDataLoading) {
+    if (centralDataLoading && activeTab !== 'dashboard') {
         return <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
     
@@ -564,7 +566,6 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Drama />} title="Sosyal Kulüpler" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve veli/öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
-                <MenuCard icon={<User />} title="Kullanıcı Bilgileri" description="Profilinizi düzenleyin ve çıkış yapın." onClick={() => setIsProfileOpen(true)} />
             </div>
         </div>
       );
