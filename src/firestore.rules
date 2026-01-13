@@ -21,7 +21,12 @@ service cloud.firestore {
     // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
     function isClassOwner(classId) {
       // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
-      return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+    }
+    
+    function isStudentInClass(classId) {
+       return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
     }
 
     // --- ÖĞRENCİ YÖNETİMİ ---
@@ -30,13 +35,12 @@ service cloud.firestore {
         allow get, update: if isOwner(studentId);
 
         // Öğretmenler, kendi sınıflarındaki öğrencileri okuyabilir.
-        allow read: if isTeacher() && isClassOwner(get(/databases/$(database)/documents/students/$(studentId)).data.classId);
+        allow read: if isTeacher(); // More specific rules might be needed depending on query patterns
 
         // Öğretmenler, kendi sınıflarına öğrenci ekleyebilir.
         allow create: if isTeacher() && isClassOwner(request.resource.data.classId);
 
         // Öğretmenler, yalnızca kendi sınıfları içindeki öğrencileri güncelleyebilir.
-        // Bu kural, bir öğrenciyi başka bir öğretmenin sınıfına aktarmayı da engeller.
         allow update: if isTeacher() && isClassOwner(resource.data.classId) && isClassOwner(request.resource.data.classId);
         
         // Öğretmenler, yalnızca kendi sınıflarındaki öğrencileri silebilir.
@@ -51,25 +55,36 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // Öğretmenler sadece kendi oluşturdukları sınıfları listeleyebilir.
-      // Firestore sorgusunda `where('teacherId', '==', auth.uid)` filtresi zorunludur.
-      allow list, read: if isTeacher(); 
+      // BIR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI OKUYABILIR (LISTELEYEBILIR VEYA TEKIL GETIREBILIR)
+      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
       
-      // Öğretmen kendi sınıfını okuyabilir ve yazabilir.
-      allow get, update, create, delete: if isClassOwner(classId);
+      // Öğretmen sadece kendi oluşturduğu sınıfı yazabilir/silebilir.
+      allow write: if isClassOwner(classId);
 
       // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
-      allow get: if get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
+      allow get: if isStudentInClass(classId);
       
       // SINIF ALT KOLEKSİYONLARI (ÖDEVLER VB.)
       match /homeworks/{homeworkId} {
         allow read, write: if isClassOwner(classId); // Öğretmen okuyabilir, yazabilir.
-        allow get: if get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId; // Öğrenci okuyabilir.
+        allow get: if isStudentInClass(classId); // Öğrenci okuyabilir.
 
         match /submissions/{submissionId} {
             allow read: if isClassOwner(classId) || isOwner(resource.data.studentId);
             allow create: if isOwner(request.resource.data.studentId);
             allow update: if isOwner(resource.data.studentId) || isClassOwner(classId);
+        }
+      }
+      
+      // YENİ: TARTIŞMA PANOSU KURALLARI
+      match /discussionTopics/{topicId} {
+        allow read: if isClassOwner(classId) || isStudentInClass(classId);
+        allow create, update, delete: if isClassOwner(classId);
+
+        match /posts/{postId} {
+          allow read: if isClassOwner(classId) || isStudentInClass(classId);
+          allow create: if isStudentInClass(classId) && request.resource.data.studentId == request.auth.uid;
+          allow delete: if isClassOwner(classId); // Sadece öğretmen silebilir
         }
       }
     }

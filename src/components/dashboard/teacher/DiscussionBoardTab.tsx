@@ -59,7 +59,6 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
     const { data: posts, isLoading } = useCollection<DiscussionPost>(postsQuery);
 
     const handleDeletePost = async (postId: string) => {
-        if (!confirm('Bu yanıtı silmek istediğinizden emin misiniz?')) return;
         try {
             await deleteDoc(doc(db, `classes/${classId}/discussionTopics/${topic.id}/posts`, postId));
             toast({ title: "Yanıt silindi." });
@@ -97,13 +96,13 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
                                                      <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive"/></Button></AlertDialogTrigger>
                                                      <AlertDialogContent>
                                                          <AlertDialogHeader><AlertDialogTitle>Yanıtı Sil</AlertDialogTitle><AlertDialogDescription>Bu yanıtı kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
-                                                         <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)}>Sil</AlertDialogAction></AlertDialogFooter>
+                                                         <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
                                                      </AlertDialogContent>
                                                  </AlertDialog>
                                             </div>
                                             <p className="text-sm mt-1">{post.content}</p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr })}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : ''}</p>
                                     </div>
                                 </div>
                             ))}
@@ -191,6 +190,5 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} />
     }
     
-    return <TopicList topics={topics} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} />
+    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} />
 };
-
