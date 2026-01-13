@@ -24,6 +24,10 @@ service cloud.firestore {
       let classDoc = get(/databases/$(database)/documents/classes/$(classId));
       return isTeacher() && classDoc.data.teacherId == request.auth.uid;
     }
+    
+    function isStudentInClass(classId) {
+       return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
+    }
 
     // --- ÖĞRENCİ YÖNETİMİ ---
     match /students/{studentId} {
@@ -58,17 +62,29 @@ service cloud.firestore {
       allow write: if isClassOwner(classId);
 
       // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
-      allow get: if get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
+      allow get: if isStudentInClass(classId);
       
       // SINIF ALT KOLEKSİYONLARI (ÖDEVLER VB.)
       match /homeworks/{homeworkId} {
         allow read, write: if isClassOwner(classId); // Öğretmen okuyabilir, yazabilir.
-        allow get: if get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId; // Öğrenci okuyabilir.
+        allow get: if isStudentInClass(classId); // Öğrenci okuyabilir.
 
         match /submissions/{submissionId} {
             allow read: if isClassOwner(classId) || isOwner(resource.data.studentId);
             allow create: if isOwner(request.resource.data.studentId);
             allow update: if isOwner(resource.data.studentId) || isClassOwner(classId);
+        }
+      }
+      
+      // YENİ: TARTIŞMA PANOSU KURALLARI
+      match /discussionTopics/{topicId} {
+        allow read: if isClassOwner(classId) || isStudentInClass(classId);
+        allow create, update, delete: if isClassOwner(classId);
+
+        match /posts/{postId} {
+          allow read: if isClassOwner(classId) || isStudentInClass(classId);
+          allow create: if isStudentInClass(classId) && request.resource.data.studentId == request.auth.uid;
+          allow delete: if isClassOwner(classId); // Sadece öğretmen silebilir
         }
       }
     }
