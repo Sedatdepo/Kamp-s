@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -57,6 +56,8 @@ interface RiskMapTabProps {
   classId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
+  students: Student[];
+  riskFactors: RiskFactor[];
 }
 
 function RiskFactorManager({ teacherId }: { teacherId: string }) {
@@ -215,7 +216,7 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
 }
 
 
-export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTabProps) {
+export function RiskMapTab({ classId, teacherProfile, currentClass, students, riskFactors }: RiskMapTabProps) {
   const { appUser, db } = useAuth();
   const { toast } = useToast();
   const { db: localDb, setDb: setLocalDb, loading: localDbLoading } = useDatabase();
@@ -223,18 +224,12 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: liveStudents, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-
-  const riskFactorsQuery = useMemoFirebase(() => (db && teacherProfile?.id ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id)) : null), [db, teacherProfile?.id]);
-  const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
-
   const displayedStudents = useMemo(() => {
-    if (!liveStudents) return [];
+    if (!students) return [];
     if (selectedRecordId) {
       const record = riskMapDocuments.find(d => d.id === selectedRecordId);
       if (record) {
-        return liveStudents.map(student => {
+        return students.map(student => {
           const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
           return {
             ...student,
@@ -243,8 +238,8 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
         });
       }
     }
-    return liveStudents;
-  }, [selectedRecordId, riskMapDocuments, liveStudents]);
+    return students;
+  }, [selectedRecordId, riskMapDocuments, students]);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -292,9 +287,9 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   };
   
   const handleSaveToArchive = () => {
-    if (!currentClass || !liveStudents) return;
+    if (!currentClass || !students) return;
 
-    const studentRisks = liveStudents.map(student => ({
+    const studentRisks = students.map(student => ({
       studentId: student.id,
       risks: student.risks,
     }));
@@ -330,7 +325,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass }: RiskMapTab
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
 
-  const isLoading = studentsLoading || factorsLoading || localDbLoading;
+  const isLoading = students.length === 0 || localDbLoading;
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   return (

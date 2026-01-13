@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -5,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Student, Club, Class } from '@/lib/types';
-import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -27,16 +27,13 @@ interface ClubAssignmentTabProps {
   students: Student[];
   teacherId: string;
   currentClass: Class | null;
+  clubs: Club[];
 }
 
-export function ClubAssignmentTab({ students, teacherId, currentClass }: ClubAssignmentTabProps) {
+export function ClubAssignmentTab({ students, teacherId, currentClass, clubs }: ClubAssignmentTabProps) {
     const { appUser, db } = useAuth();
-    const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
     const { toast } = useToast();
     const [localStudents, setLocalStudents] = useState<Student[]>(students);
-    
-    const clubsQuery = useMemoFirebase(() => (db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-    const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
     useEffect(() => {
         setLocalStudents(students);
@@ -96,6 +93,7 @@ export function ClubAssignmentTab({ students, teacherId, currentClass }: ClubAss
     };
 
     const handleExportDistribution = () => {
+        const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
         if (!currentClass || !teacherProfile || !students || !clubs) return;
         exportClubDistributionToRtf({ students, clubs, currentClass, teacherProfile });
     };
@@ -133,7 +131,7 @@ export function ClubAssignmentTab({ students, teacherId, currentClass }: ClubAss
                         <CardDescription>Öğrencilerin tercihlerine göre kulüp atamalarını yapın.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {clubsLoading ? <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" /> : (
+                        {!clubs ? <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" /> : (
                             <Table>
                                 <TableHeader>
                                     <TableRow>

@@ -79,40 +79,53 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
     const handleAssignConfirm = async (details: { studentIds: string[], date: string }) => {
         if (!db || !selectedProject) return;
     
-        const studentIds = details.studentIds;
+        const { studentIds, date } = details;
         const rubricType = getRubricType(selectedProject.formats);
         const rubric = rubrics[rubricType];
-
+    
         try {
             const batch = writeBatch(db);
     
-            for (const studentId of studentIds) {
-                const studentRef = doc(db, 'students', studentId);
-                 batch.update(studentRef, { 
-                    assignedLesson: `project_${selectedProject.id}`,
-                    hasProject: true,
-                    // Embed rubric into student's project grade data
-                    'term1Grades.projectScores': {}, // Initialize project scores
-                    'term2Grades.projectScores': {}
-                 });
+            // Group students by class to create separate homework docs for each class
+            const studentsByClass: { [classId: string]: string[] } = {};
+            studentIds.forEach(studentId => {
+                const student = students.find(s => s.id === studentId);
+                if (student && student.classId) {
+                    if (!studentsByClass[student.classId]) {
+                        studentsByClass[student.classId] = [];
+                    }
+                    studentsByClass[student.classId].push(studentId);
+                }
+            });
+    
+            for (const classId in studentsByClass) {
+                // Assign project as 'assignedLesson' for each student in this class
+                for (const studentId of studentsByClass[classId]) {
+                    const studentRef = doc(db, 'students', studentId);
+                    batch.update(studentRef, { 
+                        assignedLesson: `project_${selectedProject.id}`,
+                        hasProject: true 
+                    });
+                }
+                
+                // Create one homework doc per class
+                const newHomeworkDoc: Partial<Homework> = {
+                    classId: classId,
+                    text: selectedProject.title,
+                    assignedDate: new Date().toISOString(),
+                    dueDate: date ? new Date(date).toISOString() : undefined,
+                    teacherName: teacherProfile?.name,
+                    lessonName: teacherProfile?.branch,
+                    rubric: rubric.items, 
+                    assignedStudents: studentsByClass[classId],
+                    seenBy: [],
+                    instructions: selectedProject.instructions,
+                    assignmentType: 'project', // Set assignment type to 'project'
+                };
+                const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+                const newDocRef = doc(homeworksColRef, `project_${selectedProject.id}`);
+                batch.set(newDocRef, newHomeworkDoc);
             }
-            
-            // Also add a record in homeworks to track this.
-             const newHomeworkDoc: Partial<Homework> = {
-                classId: classId,
-                text: selectedProject.title,
-                assignedDate: new Date().toISOString(),
-                dueDate: details.date ? new Date(details.date).toISOString() : undefined,
-                teacherName: teacherProfile?.name,
-                lessonName: teacherProfile?.branch,
-                rubric: rubric.items, 
-                assignedStudents: studentIds,
-                seenBy: [],
-                instructions: selectedProject.instructions,
-            };
-            const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-            batch.set(doc(homeworksColRef), newHomeworkDoc);
-
     
             await batch.commit();
             
@@ -127,7 +140,8 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             setSuccessModalOpen(true);
     
         } catch (error) {
-            toast({variant: 'destructive', title: 'Hata', description: 'Proje atanamadı.'});
+            console.error("Assignment Error:", error);
+            toast({variant: 'destructive', title: 'Hata', description: 'Proje atanamadı. Lütfen konsolu kontrol edin.'});
         }
     };
     
@@ -141,6 +155,13 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
         setSelectedProject(project);
         setEditProjectModalOpen(true);
     };
+
+    const handleDeleteProject = (projectId: number) => {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setFavorites(prev => prev.filter(id => id !== projectId));
+        toast({ title: 'Proje Silindi', description: 'Proje kütüphaneden kaldırıldı.', variant: 'destructive'});
+    };
+
 
     const handlePrintProject = (project: any) => {
         setSelectedProject(project);
@@ -235,6 +256,7 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
                     onAssign={handleAssignClick}
                     onShowRubric={handleShowRubric}
                     onEdit={handleEditProject}
+                    onDelete={handleDeleteProject}
                     isFavorite={favorites.includes(item.id)}
                     onToggleFavorite={toggleFavorite}
                     onPrint={handlePrintProject}

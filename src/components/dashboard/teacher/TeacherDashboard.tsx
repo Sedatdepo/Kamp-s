@@ -27,7 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { Class, Student, TeacherProfile } from '@/lib/types';
+import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -377,28 +377,33 @@ export function TeacherDashboard() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [initialMainTab, setInitialMainTab] = useState<'classes' | 'documents'>('classes');
-
-  const teacherQuery = useMemoFirebase(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
-  const { data: teacherData, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
-  const teacherProfile = teacherData ?? null;
   
-  const classesQuery = useMemoFirebase(() => {
-    if (!db || !teacherId) return null;
-    return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
-  }, [db, teacherId]);
-
-  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
+  const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
   
-  const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
-
+  // MERKEZİ VERİ ÇEKME İŞLEMİ
+  const { data: classes, isLoading: classesLoading } = useCollection<Class>(
+    useMemoFirebase(() => teacherId && db ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
+  );
+  
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
 
-  const allStudentsForTeacherQuery = useMemoFirebase(() => {
-    if (!teacherId || !db || classIds.length === 0) return null;
-    return query(collection(db, 'students'), where('classId', 'in', classIds));
-  }, [teacherId, db, classIds]);
+  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(
+    useMemoFirebase(() => classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null, [db, classIds])
+  );
+
+  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(
+    useMemoFirebase(() => teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
+  );
   
-  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsForTeacherQuery);
+  const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(
+    useMemoFirebase(() => teacherId && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
+  );
+
+  const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(
+    useMemoFirebase(() => teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null, [db, teacherId])
+  );
+
+  const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
   useEffect(() => {
     if (classes) {
@@ -433,7 +438,7 @@ export function TeacherDashboard() {
     return allStudents.filter(s => s.classId === selectedClassId);
   }, [selectedClassId, allStudents]);
 
-  const isLoading = teacherLoading || classesLoading || allStudentsLoading;
+  const isLoading = classesLoading || allStudentsLoading || lessonsLoading || factorsLoading || clubsLoading;
   
   const handleBackToDashboard = () => {
     setActiveTab("dashboard");
@@ -552,13 +557,13 @@ export function TeacherDashboard() {
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} />; break;
         case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
-        case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+        case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
         case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} />; break;
+        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;
         case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;

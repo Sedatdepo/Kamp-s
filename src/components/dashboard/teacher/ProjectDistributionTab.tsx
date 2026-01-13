@@ -1,45 +1,36 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { LessonManager } from './LessonManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { exportProjectDistributionToRtf } from '@/lib/word-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
+import { LessonManager } from './LessonManager';
 
-
-interface DistributionAssignmentTabProps {
+interface ProjectDistributionTabProps {
   classId: string;
   teacherId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
   classes: Class[];
+  students: Student[];
+  lessons: Lesson[];
 }
 
-function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClass, classes }: DistributionAssignmentTabProps) {
+function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClass, classes, students, lessons }: ProjectDistributionTabProps) {
   const { db } = useAuth();
   const { toast } = useToast();
-
-  const lessonsQuery = useMemoFirebase(() => (teacherProfile?.id && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null), [teacherProfile?.id, db]);
-  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
-  
-  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-
 
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
   const [filterLessonId, setFilterLessonId] = useState<string>('all');
@@ -119,7 +110,7 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
   }, [localStudents, filterLessonId]);
 
-  const isLoading = lessonsLoading || studentsLoading;
+  const isLoading = !students || !lessons;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -138,19 +129,19 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {teacherProfile && students && <LessonManager teacherId={teacherProfile.id} students={students} />}
+                    <LessonManager teacherId={teacherId} students={students} />
                 </CardContent>
             </Card>
         </div>
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                    <div className="flex flex-wrap justify-between items-center gap-4">
+                    <div className="flex justify-between items-center">
                         <div>
                             <CardTitle className="font-headline">Proje Atama</CardTitle>
                             <CardDescription>Öğrenci tercihlerine göre proje dersi ataması yapın.</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                             <Button onClick={handleExportDistribution} variant="outline">
                                 <FileDown className="mr-2 h-4 w-4" /> Atama Listesini İndir
                             </Button>
@@ -236,14 +227,7 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
   );
 }
 
-export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
-  const { db } = useAuth();
-  const lessonsQuery = useMemoFirebase(() => (props.teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', props.teacherId)) : null), [props.teacherId, db]);
-  const { data: lessons } = useCollection<Lesson>(lessonsQuery);
-  
-  const studentsQuery = useMemoFirebase(() => (props.classId && db ? query(collection(db, 'students'), where('classId', '==', props.classId)) : null), [props.classId, db]);
-  const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-
+export function ProjectDistributionTab(props: Omit<ProjectDistributionTabProps, 'students' | 'lessons'> & { students: Student[], lessons: Lesson[]}) {
   return (
     <Tabs defaultValue="assignment">
       <TabsList className="grid w-full grid-cols-2">
@@ -258,8 +242,8 @@ export function ProjectDistributionTab(props: DistributionAssignmentTabProps) {
           classId={props.classId}
           teacherProfile={props.teacherProfile}
           currentClass={props.currentClass}
-          lessons={lessons || []}
-          students={students || []}
+          lessons={props.lessons || []}
+          students={props.students || []}
         />
       </TabsContent>
     </Tabs>

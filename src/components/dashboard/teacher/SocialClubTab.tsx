@@ -1,8 +1,9 @@
+
 'use client';
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, Club } from '@/lib/types';
 import { ClubAssignmentTab } from './club/ClubAssignmentTab';
 import { ClubPetitionsTab } from './club/ClubPetitionsTab';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,9 +12,10 @@ interface SocialClubTabProps {
   students: Student[];
   teacherId: string;
   currentClass: Class | null;
+  clubs: Club[];
 }
 
-export function SocialClubTab({ students, teacherId, currentClass }: SocialClubTabProps) {
+export function SocialClubTab({ students, teacherId, currentClass, clubs }: SocialClubTabProps) {
     const { appUser } = useAuth();
     const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
 
@@ -28,6 +30,7 @@ export function SocialClubTab({ students, teacherId, currentClass }: SocialClubT
                     students={students} 
                     teacherId={teacherId} 
                     currentClass={currentClass} 
+                    clubs={clubs}
                 />
             </TabsContent>
             <TabsContent value="petitions" className="mt-4">
@@ -35,6 +38,7 @@ export function SocialClubTab({ students, teacherId, currentClass }: SocialClubT
                     classId={currentClass?.id || ''}
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
+                    clubs={clubs}
                 />
             </TabsContent>
         </Tabs>

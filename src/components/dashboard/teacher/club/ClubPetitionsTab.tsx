@@ -1,39 +1,32 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { Student, Class, TeacherProfile, Club } from '@/lib/types';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, FileDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, FileDown, Users } from 'lucide-react';
+import { Student, Class, TeacherProfile, Club } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 import { exportClubPetitionsToRtf } from '@/lib/word-export';
+import { Label } from '@/components/ui/label';
 
 interface ClubPetitionsTabProps {
     classId: string;
     teacherProfile: TeacherProfile | null;
     currentClass: Class | null;
+    clubs: Club[];
+    students: Student[];
 }
 
-export function ClubPetitionsTab({ classId, teacherProfile, currentClass }: ClubPetitionsTabProps) {
-    const { db } = useAuth();
+export function ClubPetitionsTab({ classId, teacherProfile, currentClass, clubs, students: initialStudents }: ClubPetitionsTabProps) {
     const { toast } = useToast();
 
     const [teacherName, setTeacherName] = useState('');
     const [schoolName, setSchoolName] = useState('');
     const [academicYear, setAcademicYear] = useState('2025-2026');
     const [students, setStudents] = useState<Partial<Student>[]>([]);
-
-    const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-    const { data: initialStudents } = useCollection<Student>(studentsQuery);
-    
-    const clubsQuery = useMemoFirebase(() => (teacherProfile?.id && db ? query(collection(db, 'clubs'), where('teacherId', '==', teacherProfile.id)) : null), [teacherProfile?.id, db]);
-    const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
     useEffect(() => {
         if (teacherProfile) {
@@ -44,9 +37,9 @@ export function ClubPetitionsTab({ classId, teacherProfile, currentClass }: Club
 
     const importClassList = () => {
         if (!initialStudents) {
-            toast({ variant: 'destructive', title: 'Öğrenci listesi yüklenemedi.'});
+            toast({ variant: 'destructive', title: 'Öğrenci listesi yüklenemedi.' });
             return;
-        };
+        }
         const classStudents = initialStudents.map(s => ({
             id: s.id,
             number: s.number,
