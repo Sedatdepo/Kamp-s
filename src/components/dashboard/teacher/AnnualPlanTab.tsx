@@ -1,6 +1,7 @@
-'use client';
 
-import React, { useState, useEffect } from 'react';
+"use client";
+
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { FileText, Calendar, Download, BookOpen, CheckCircle, ClipboardCheck, Sparkles, Loader2, Plus, Trash2, Settings, Save, School } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -252,7 +253,7 @@ const ClassGuidanceAssistant = () => {
       { month: 'Şubat', week: '4', kazanim: 'Meslek seçiminde karar verme becerisini kullanır.', tur: 'Kariyer' },
       { month: 'Mart', week: '1', kazanim: 'Mesleki bilgi kaynaklarını aktif kullanır.', tur: 'Kariyer' },
       { month: 'Mart', week: '2', kazanim: 'Değişim ve belirsizlikle baş eder.', tur: 'Kişisel' },
-      { month: 'Mart', week: '3', kazanim: 'Seçmeyi düşündüğü mesleklerle ilgili kariyer planlaması yapar.', tur: 'Kariyer' },
+      { month: 'Mart', week: '3', kazanim: 'Seçmeyi düşündüğü mesleklerle ilgili kariyer planlaması yapar. (Kariyerimi Planlıyorum)', tur: 'Kariyer' },
       { month: 'Mart', week: '4', kazanim: 'Sınavlara ilişkin yoğun duygularını yönetir (Sınav Kaygısı).', tur: 'Duygusal' },
       { month: 'Nisan', week: '1', kazanim: 'Üst öğretim kurumuna ya da iş yaşamına ilişkin kariyer kararını verir.', tur: 'Kariyer' },
       { month: 'Nisan', week: '2', kazanim: 'ARA TATİL', tur: 'Tatil' },
@@ -263,7 +264,7 @@ const ClassGuidanceAssistant = () => {
       { month: 'Mayıs', week: '3', kazanim: 'Tercih süreci hakkında bilgi edinir.', tur: 'Kariyer' },
       { month: 'Mayıs', week: '4', kazanim: 'Üniversite yaşamına uyum.', tur: 'Oryantasyon' },
       { month: 'Haziran', week: '1', kazanim: 'Bir üst öğretim kurumuna ilişkin ön bilgiler edinir.', tur: 'Kariyer' },
-      { month: 'Haziran', week: '2', kazanim: 'Yıl sonu değerlendirmesi ve mezuniyet.', tur: 'Değerlendirme' }
+      { month: 'Haziran', week: '2', kazanim: 'Yıl sonu değerlendirmesi ve kapanış.', tur: 'Değerlendirme' }
     ]
   };
 
@@ -693,19 +694,19 @@ const ClassGuidanceAssistant = () => {
                 <div className="space-y-4">
                     <div className={`p-4 rounded border border-gray-200 ${(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim.includes('TATİL') ? 'bg-orange-50' : 'bg-gray-50'}`}><span className="block text-xs text-gray-500 uppercase font-bold tracking-wider">Kazanım</span><p className="text-lg font-medium text-gray-900 mt-1">{(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim}</p></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="p-4 border rounded"><Label className="block mb-2">Sınıfa Katılan</Label><Input type="number" placeholder="Örn: 24" /></div><div className="p-4 border rounded"><Label className="block mb-2">Katılmayan</Label><Input type="number" placeholder="Örn: 2" /></div></div>
-                    <div><Label className="block mb-2">Değerlendirme</Label><Textarea defaultValue="Etkinlik plana uygun olarak işlenmiştir." /></div>
+                    <div><Label className="block mb-2">Değerlendirme</Label><Textarea defaultValue="Etkinlik plana uygun işlenmiştir." /></div>
                 </div>
             </div>
         )}
-        {activeTab === 'termReport' && renderReportForm('term')}
-        {activeTab === 'endyear' && renderReportForm('year')}
+        {activeTab === 'termReport' && renderReportUI('term')}
+        {activeTab === 'endyear' && renderReportUI('year')}
       </div>
     </div>
   );
 };
 
 // Main Export for the Tab
-const AnnualPlanTab = ({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) => {
+export function AnnualPlanTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
     return (
         <Tabs defaultValue="rehberlik-plani">
             <TabsList>
@@ -721,5 +722,3 @@ const AnnualPlanTab = ({ teacherProfile, currentClass }: { teacherProfile: Teach
         </Tabs>
     );
 };
-
-export { AnnualPlanTab };
