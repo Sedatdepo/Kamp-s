@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Exam, Badge as BadgeType } from '@/lib/types';
+import { Homework, Submission, Question, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
@@ -13,31 +13,42 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ExamPaper } from '../teacher/ExamPaper';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+    const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
-      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
-    }, [db, classId, homework.id]);
+      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
+    }, [db, classId, homework.id, student.id]);
 
     const { data: submissions, forceRefresh } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
-        return submissions?.find(s => s.studentId === student.id);
-    }, [submissions, student.id]);
+        return submissions?.[0];
+    }, [submissions]);
 
-    const handleAnswerChange = (questionId: string | number, answer: string) => {
-        setAnswers(prev => ({...prev, [questionId]: answer }));
+    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
+        setAnswers(prev => {
+            const currentAnswer = prev[questionId];
+            if (isMulti) {
+                const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+                if (currentArr.includes(answer)) {
+                    return { ...prev, [questionId]: currentArr.filter(a => a !== answer) };
+                } else {
+                    return { ...prev, [questionId]: [...currentArr, answer] };
+                }
+            }
+            return { ...prev, [questionId]: answer };
+        });
     }
 
     const handleSubmit = async (isCheckboxMark: boolean = false) => {
@@ -68,7 +79,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 const studentRef = doc(db, 'students', student.id);
                 const currentBadges: string[] = student.badges || [];
                 
-                const updates: any = { behaviorScore: increment(10) }; // XP yerine behaviorScore artırılıyor.
+                const updates: any = { behaviorScore: increment(10) };
                 
                 if (!currentBadges.includes('hw-master')) {
                     updates.badges = [...currentBadges, 'hw-master'];
@@ -116,6 +127,20 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                                             ))}
                                         </RadioGroup>
                                     )}
+                                     {q.type === 'checkbox' && q.options && (
+                                        <div className="space-y-2">
+                                          {q.options.map((opt, i) => (
+                                            <div key={i} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`${q.id}-${i}`}
+                                                onCheckedChange={(checked) => handleAnswerChange(q.id, opt, true)}
+                                                disabled={!!existingSubmission}
+                                              />
+                                              <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                    )}
                                     {q.type === 'open-ended' && (
                                         <Textarea 
                                             placeholder="Cevabınızı buraya yazın..."
@@ -158,7 +183,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                  </Button>
             ) : (
                 <div className="flex items-center space-x-2">
-                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={() => handleSubmit(true)} disabled={isSubmitting} />
+                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={(checked) => handleSubmit(!!checked)} disabled={isSubmitting} />
                     <Label htmlFor={`hw-done-${homework.id}`} className="text-sm font-medium">Bu ödevi tamamladım olarak işaretle.</Label>
                 </div>
             )}
@@ -170,7 +195,6 @@ function RegularHomeworkTabContent({ student, classId }: { student: any, classId
     const { db } = useAuth();
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
     
@@ -201,17 +225,19 @@ function RegularHomeworkTabContent({ student, classId }: { student: any, classId
             <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            {sortedHomeworks.length > 0 ? (
-                sortedHomeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                ))
-            ) : (
-                <div className="text-center py-10 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+            <ScrollArea className="h-[60vh] pr-2">
+                <div className="space-y-4">
+                    {sortedHomeworks.length > 0 ? (
+                        sortedHomeworks.map((hw) => (
+                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
+                        ))
+                    ) : (
+                        <div className="text-center py-10 bg-muted/50 rounded-lg">
+                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                        </div>
+                    )}
                 </div>
-            )}
-            </div>
+            </ScrollArea>
         </CardContent>
         </Card>
     );

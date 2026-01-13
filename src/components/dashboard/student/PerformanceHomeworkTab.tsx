@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
@@ -228,17 +229,19 @@ export function PerformanceHomeworkTab() {
         <CardDescription>Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {sortedHomeworks.length > 0 ? (
-            sortedHomeworks.map((hw) => (
-              <HomeworkItem key={hw.id} homework={hw} student={appUser.data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
-            ))
-          ) : (
-            <div className="text-center py-10 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
+        <ScrollArea className="h-[60vh] pr-2">
+            <div className="space-y-4">
+            {sortedHomeworks.length > 0 ? (
+                sortedHomeworks.map((hw) => (
+                <HomeworkItem key={hw.id} homework={hw} student={appUser.data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
+                ))
+            ) : (
+                <div className="text-center py-10 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
+                </div>
+            )}
             </div>
-          )}
-        </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );
