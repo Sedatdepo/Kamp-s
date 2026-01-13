@@ -377,10 +377,10 @@ export function TeacherDashboard() {
   
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
   
-  // MERKEZİ VERİ ÇEKME İŞLEMİ
   const classesQuery = useMemoFirebase(() => {
     return teacherId && db ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null;
   }, [db, teacherId]);
+
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
@@ -389,7 +389,7 @@ export function TeacherDashboard() {
     return classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null;
   }, [db, classIds]);
   const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
-
+  
   const lessonsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
   
@@ -620,4 +620,3 @@ export function TeacherDashboard() {
   );
 }
 
-    
