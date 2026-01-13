@@ -51,6 +51,7 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
                 <StudentGradesDetailTab
                     students={students}
                     teacherProfile={teacherProfile}
+                    currentClass={currentClass}
                 />
             </TabsContent>
             <TabsContent value="attendance" className="mt-4">
