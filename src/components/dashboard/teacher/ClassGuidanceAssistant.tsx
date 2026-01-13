@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, Check, X, Wand2, Save, Settings, Plus, Trash2, Home, List, Mic, Paperclip, Pencil, Video, LayoutTemplate, CaseUpper, KeySquare, FileQuestion, Sparkles, Binary, Shuffle, AlignLeft, ChevronDown, Star, GripVertical, Archive, BookmarkPlus, Library, AlertCircle } from 'lucide-react';
@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { exportDilekceToRtf } from '@/lib/word-export';
 
 
-const ClassGuidanceAssistant = () => {
+export const ClassGuidanceAssistant = () => {
   const [activeTab, setActiveTab] = useState('plan');
   const [selectedGrade, setSelectedGrade] = useState('9');
   const [selectedActivityIndex, setSelectedActivityIndex] = useState(0);
@@ -250,80 +250,51 @@ const ClassGuidanceAssistant = () => {
 
   // --- YARDIMCI FONKSİYONLAR (Form İşlemleri) ---
 
-  const updateReportField = (reportType, field, value) => {
+  const updateReportField = (reportType: 'term' | 'endYear', field: string, value: any) => {
     const setter = reportType === 'term' ? setTermReportData : setEndYearReportData;
     setter(prev => ({ ...prev, [field]: value }));
   };
 
-  const updateTableItem = (reportType, table, id, field, value) => {
+  const updateTableItem = (reportType: 'term' | 'endYear', table: 'envanterler' | 'rehberlik' | 'veli', id: number, field: string, value: any) => {
     const currentData = reportType === 'term' ? termReportData : endYearReportData;
     const setter = reportType === 'term' ? setTermReportData : setEndYearReportData;
     
+    // @ts-ignore
     const newData = currentData[table].map(item => 
       item.id === id ? { ...item, [field]: value } : item
     );
+    // @ts-ignore
     setter(prev => ({ ...prev, [table]: newData }));
   };
 
-  const addRow = (reportType, table) => {
+  const addRow = (reportType: 'term' | 'endYear', table: 'envanterler' | 'rehberlik' | 'veli') => {
     const currentData = reportType === 'term' ? termReportData : endYearReportData;
     const setter = reportType === 'term' ? setTermReportData : setEndYearReportData;
-
+    
+    // @ts-ignore
     const newId = currentData[table].length > 0 ? Math.max(...currentData[table].map(i => i.id)) + 1 : 1;
     const newItem = table === 'veli' 
       ? { id: newId, name: '', col1: 0, col2: 0, col3: 0 } 
       : { id: newId, name: '', col1: 0, col2: 0 };
-    
+    // @ts-ignore
     setter(prev => ({ ...prev, [table]: [...prev[table], newItem] }));
   };
 
-  const removeRow = (reportType, table, id) => {
+  const removeRow = (reportType: 'term' | 'endYear', table: 'envanterler' | 'rehberlik' | 'veli', id: number) => {
     const setter = reportType === 'term' ? setTermReportData : setEndYearReportData;
+    // @ts-ignore
     setter(prev => ({ ...prev, [table]: prev[table].filter(item => item.id !== id) }));
   };
 
-  // AI İçerik Üretme
-  const generateAIContent = (field, reportType, customTitle = '') => {
-    setIsGenerating({ type: field, id: customTitle || 'main' });
-    
-    setTimeout(() => {
-      let content = '';
-      if (field === 'referredStudents') content = "Sınıf rehber öğretmeni ve branş öğretmenlerinin gözlemleri neticesinde; akademik başarısızlık, devam devamsızlık ve uyum sorunları yaşayan toplam ... öğrenci ile ön görüşme yapılmış, detaylı inceleme ve destek için Okul Rehberlik Servisine yönlendirilmiştir.";
-      else if (field === 'parentMeetings') content = "Dönem boyunca genel veli toplantısının yanı sıra, risk grubunda bulunan ve akademik takibi gereken öğrencilerin velileriyle bireysel görüşmeler gerçekleştirilmiştir. Bu görüşmelerde iş birliğinin önemi vurgulanmış ve öğrenci gelişimleri hakkında düzenli bilgilendirme yapılmıştır.";
-      else if (field === 'custom') content = `${customTitle} konusunda sınıf genelinde bilgilendirme çalışmaları yapılmış, öğrencilerin farkındalık kazanmaları hedeflenmiştir. Süreç titizlikle takip edilmiştir.`;
-      else if (field === 'summary') {
-         if (selectedGrade === '9') content = "2025-2026 eğitim yılında 9. sınıflar için uyum çalışmaları ve risk analizleri ön planda tutulmuştur. Oryantasyon süreci başarıyla tamamlanmıştır.";
-         else if (selectedGrade === '12') content = "YKS hazırlık süreci, hedef belirleme ve motivasyon çalışmaları yoğun bir şekilde sürdürülmüştür. Sınav kaygısı ile baş etme seminerleri verilmiştir.";
-         else content = "Dönem boyunca planlanan rehberlik etkinlikleri, öğrencilerin yaş gelişim özellikleri dikkate alınarak uygulanmıştır. Akademik ve sosyal gelişimleri takip edilmiştir.";
-      }
-      else if (field === 'generalStatus') content = "Sınıfın genel başarı grafiği ve disiplin durumu olumlu seyretmektedir. Öğrenciler arası iletişim sağlıklı bir düzeydedir.";
 
-      const updater = reportType === 'term' ? setTermReportData : setEndYearReportData;
-      if (field === 'custom') {
-         const currentReport = reportType === 'term' ? termReportData : endYearReportData;
-         const targetItem = currentReport.customItems.find(i => i.id === customTitle); 
-         if(targetItem) updateCustomItem(reportType, customTitle, 'content', content);
-      } else {
-         updater(prev => ({ ...prev, [field]: content }));
-      }
-      setIsGenerating({ type: '', id: '' });
-    }, 1000);
-  };
+  // --- WORD ÇIKTISI OLUŞTURMA (Yeni Formata Göre) ---
+  const exportReportToWord = (reportType: 'term' | 'endYear') => {
+    const isTerm = reportType === 'term';
+    const data = isTerm ? termReportData : endYearReportData;
+    const title = isTerm ? '1. DÖNEM SONU FAALİYET RAPORU' : 'YIL SONU FAALİYET RAPORU';
+    const periodText = isTerm ? '1.DÖNEM' : 'YIL';
 
-  const downloadWord = (content, filename) => {
-    const preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Doc</title><style>body{font-family: 'Times New Roman', serif; font-size:12pt;} table{border-collapse: collapse; width: 100%;} td, th{border: 1px solid #000; padding: 5px; text-align: left;} .header{text-align:center; font-weight:bold; margin-bottom:20px;} .footer{margin-top:50px; display:flex; justify-content:space-between;} .signature-block{text-align:center; width: 30%;}</style></head><body>`;
-    const postHtml = "</body></html>";
-    const blob = new Blob(['\ufeff', preHtml + content + postHtml], { type: 'application/msword' });
-    const downloadLink = document.createElement("a");
-    document.body.appendChild(downloadLink);
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = filename + ".doc";
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
-
-  // Dinamik Başlık ve İmza Bloğu
-  const getDocumentHeader = (title) => `
+    const getDocumentHeader = (title: string) => `
     <div class="header">
       <p>T.C.<br>${schoolDetails.city ? schoolDetails.city.toUpperCase() + ' KAYMAKAMLIĞI' : '................... KAYMAKAMLIĞI'}<br>${schoolDetails.schoolName ? schoolDetails.schoolName.toUpperCase() : '.........................'} MÜDÜRLÜĞÜ</p>
       <br>
@@ -345,80 +316,165 @@ const ClassGuidanceAssistant = () => {
     </div>
   `;
 
-  const exportAnnualPlan = () => {
-    let tableRows = plans[selectedGrade].map(item => `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`).join('');
-    const content = `
-      ${getDocumentHeader(`${selectedGrade}/${schoolDetails.classBranch} SINIFI REHBERLİK YILLIK PLANI`)}
-      <table><thead><tr style="background-color:#f0f0f0;"><th>Ay</th><th>Hafta</th><th>Kazanım / Etkinlik</th><th>Alan</th></tr></thead><tbody>${tableRows}</tbody></table>
-      ${getDocumentFooter()}
+    const contentHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><meta charset='utf-8'><title>${title}</title>
+      <style>
+        body { font-family: 'Times New Roman', serif; font-size: 11pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        td, th { border: 1px solid black; padding: 5px; text-align: left; vertical-align: middle; }
+        th { background-color: #f3f4f6; text-align: center; font-weight: bold; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .header { text-align: center; margin-bottom: 20px; }
+        h3 { font-size: 12pt; margin-top: 15px; margin-bottom: 5px; text-decoration: underline; }
+        .footer{margin-top:50px; display:flex; justify-content:space-between;} .signature-block{text-align:center; width: 30%;}
+      </style>
+      </head>
+      <body>
+        ${getDocumentHeader(title)}
+
+        <p><strong>Sınıf/Şube:</strong> ${selectedGrade} / ${schoolDetails.classBranch}</p>
+
+        <h3>Sınıf Rehberlik Planında Yer Alan Kazanımlar:</h3>
+        <p>Tüm kazanımlar gerçekleştirilebildi mi? &nbsp;&nbsp;
+           <strong>${data.kazanimStatus === 'evet' ? '(X) Evet' : '( ) Evet'}</strong> &nbsp;&nbsp;
+           <strong>${data.kazanimStatus === 'kismen' ? '(X) Kısmen' : '( ) Kısmen'}</strong> &nbsp;&nbsp;
+           <strong>${data.kazanimStatus === 'hayir' ? '(X) Hayır' : '( ) Hayır'}</strong>
+        </p>
+        
+        ${data.kazanimStatus !== 'evet' ? `
+          <table>
+            <thead><tr><th width="50">No</th><th>Gerçekleştirilemeyen Kazanım ve Nedeni</th></tr></thead>
+            <tbody>
+              ${data.kazanimlar.map((k: any, i: number) => `<tr><td class="text-center">${i+1}</td><td>${k.text || '&nbsp;'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        ` : ''}
+
+        <h3>Uygulanan Envanterler:</h3>
+        <table>
+          <thead><tr><th width="40">SN</th><th>YAPILAN ÇALIŞMA</th><th width="60">KIZ</th><th width="60">ERKEK</th><th width="60">TOPLAM</th></tr></thead>
+          <tbody>
+            ${data.envanterler.map((row: any, i: number) => `
+              <tr>
+                <td class="text-center">${i+1}</td>
+                <td>${row.name || '&nbsp;'}</td>
+                <td class="text-center">${row.col1}</td>
+                <td class="text-center">${row.col2}</td>
+                <td class="text-center"><strong>${parseInt(row.col1||'0') + parseInt(row.col2||'0')}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h3>Rehberlik Faaliyetleri:</h3>
+        <table>
+          <thead><tr><th width="40">SN</th><th>YAPILAN ÇALIŞMA</th><th width="60">KIZ</th><th width="60">ERKEK</th><th width="60">TOPLAM</th></tr></thead>
+          <tbody>
+            ${data.rehberlik.map((row: any, i: number) => `
+              <tr>
+                <td class="text-center">${i+1}</td>
+                <td>${row.name || '&nbsp;'}</td>
+                <td class="text-center">${row.col1}</td>
+                <td class="text-center">${row.col2}</td>
+                <td class="text-center"><strong>${parseInt(row.col1||'0') + parseInt(row.col2||'0')}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h3>Veli Faaliyetleri:</h3>
+        <table>
+          <thead><tr><th width="40">SN</th><th>YAPILAN ÇALIŞMA</th><th width="60">ANNE</th><th width="60">BABA</th><th width="60">DİĞER</th><th width="60">TOPLAM</th></tr></thead>
+          <tbody>
+            ${data.veli.map((row: any, i: number) => `
+              <tr>
+                <td class="text-center">${i+1}</td>
+                <td>${row.name || '&nbsp;'}</td>
+                <td class="text-center">${row.col1}</td>
+                <td class="text-center">${row.col2}</td>
+                <td class="text-center">${row.col3}</td>
+                <td class="text-center"><strong>${parseInt(row.col1||'0') + parseInt(row.col2||'0') + parseInt(row.col3||'0')}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h3>Güçlükler ve Öneriler:</h3>
+        <p><strong>Karşılaşılan Güçlükler:</strong><br>${data.guclukler || 'Belirtilmedi.'}</p>
+        <p><strong>Çözüm Önerileri:</strong><br>${data.oneriler || 'Belirtilmedi.'}</p>
+
+        ${getDocumentFooter()}
+      </body>
+      </html>
     `;
-    downloadWord(content, `${selectedGrade}-${schoolDetails.classBranch}_Yillik_Plan`);
+
+    const blob = new Blob(['\ufeff', contentHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${selectedGrade}_${schoolDetails.classBranch}_${isTerm ? '1_Donem' : 'Yil_Sonu'}_Raporu.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+
+  const exportAnnualPlan = () => {
+    // Yıllık plan verileri eksikse örnek veri kullan (hata almamak için)
+    const currentPlans = plans[selectedGrade] || [];
+    let tableRows = currentPlans.map(item => `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`).join('');
+    const content = `
+      <div style="text-align:center; font-weight:bold; margin-bottom:20px;">
+        <p>T.C.<br>${schoolDetails.city ? schoolDetails.city.toUpperCase() + ' KAYMAKAMLIĞI' : '................... KAYMAKAMLIĞI'}<br>${schoolDetails.schoolName ? schoolDetails.schoolName.toUpperCase() : '.........................'} MÜDÜRLÜĞÜ</p>
+        <br><p>${schoolDetails.year} EĞİTİM ÖĞRETİM YILI<br>${selectedGrade}/${schoolDetails.classBranch} SINIFI REHBERLİK YILLIK PLANI</p>
+      </div>
+      <table border="1" style="border-collapse:collapse; width:100%;">
+        <thead><tr style="background-color:#f0f0f0;"><th>Ay</th><th>Hafta</th><th>Kazanım / Etkinlik</th><th>Alan</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div style="margin-top:50px; display:flex; justify-content:space-between;">
+        <div style="text-align:center;"><p>${schoolDetails.teacherName || '................................'}<br>Sınıf Rehber Öğretmeni</p></div>
+        <div style="text-align:center;"><p>${schoolDetails.principalName || '................................'}<br>Okul Müdürü</p></div>
+      </div>
+    `;
+    const blob = new Blob(['\ufeff', `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Yıllık Plan</title></head><body>${content}</body></html>`], { type: 'application/msword' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Yillik_Plan.doc";
+    link.click();
   };
 
   const exportActivityReport = () => {
-    const currentActivity = plans[selectedGrade][selectedActivityIndex];
+    const currentPlans = plans[selectedGrade] || [{ month: 'Eylül', week: '1', kazanim: 'Plan Yükleniyor...', tur: '' }];
+    const currentActivity = currentPlans[selectedActivityIndex] || currentPlans[0];
     const content = `
-      ${getDocumentHeader('HAFTALIK SINIF REHBERLİK ETKİNLİK RAPORU')}
+      <div style="text-align:center; font-weight:bold; margin-bottom:20px;">HAFTALIK SINIF REHBERLİK ETKİNLİK RAPORU</div>
       <p><strong>Tarih:</strong> ..............................</p>
       <p><strong>Sınıf:</strong> ${selectedGrade}/${schoolDetails.classBranch}</p>
       <p><strong>Hafta:</strong> ${currentActivity.month} - ${currentActivity.week}. Hafta</p>
       <br>
-      <table border="1" cellpadding="10">
+      <table border="1" cellpadding="10" style="border-collapse:collapse; width:100%;">
         <tr><td width="30%" bgcolor="#f0f0f0"><strong>Kazanım / Etkinlik Adı</strong></td><td>${currentActivity.kazanim}</td></tr>
         <tr><td bgcolor="#f0f0f0"><strong>Katılan Öğrenci Sayısı</strong></td><td></td></tr>
         <tr><td bgcolor="#f0f0f0"><strong>Katılmayan Öğrenci Sayısı</strong></td><td></td></tr>
         <tr><td bgcolor="#f0f0f0"><strong>Değerlendirme</strong></td><td height="100">Etkinlik plana uygun olarak işlenmiş, öğrencilerin derse katılımı sağlanmıştır.</td></tr>
       </table>
       <br>
-      <div style="text-align:center; width:200px; margin-left:auto;">
+      <div style="text-align:center; margin-left:auto; width:200px;">
         <p>${schoolDetails.teacherName || '................................'}<br>Sınıf Rehber Öğretmeni</p>
       </div>
     `;
-    downloadWord(content, `Etkinlik_Raporu_${currentActivity.month}_${currentActivity.week}`);
+    const blob = new Blob(['\ufeff', `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Etkinlik Raporu</title></head><body>${content}</body></html>`], { type: 'application/msword' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Etkinlik_Raporu.doc";
+    link.click();
   };
 
-  const generateReportHTML = (title, reportContent, isTerm) => {
-    const term1Months = ['Eylül', 'Ekim', 'Kasım', 'Aralık', 'Ocak'];
-    const term2Months = ['Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'];
-    const targetMonths = isTerm ? term1Months : [...term1Months, ...term2Months];
-    const listTitle = isTerm ? '1. DÖNEM' : 'YIL BOYUNCA';
-    const activities = plans[selectedGrade].filter(i => targetMonths.includes(i.month));
-    const activitiesTable = activities.map(item => `<tr><td>${item.month}</td><td>${item.week}. Hafta</td><td>${item.kazanim}</td><td>${item.tur}</td></tr>`).join('');
-    
-    let customItemsHTML = reportContent.customItems.map((item, index) => `<h3>${String.fromCharCode(70 + index)}) ${item.title.toUpperCase()}</h3><p style="text-align: justify;">${item.content || '...'}</p><br>`).join('');
 
-    return `
-      ${getDocumentHeader(title)}
-      <p><strong>Sınıf:</strong> ${selectedGrade}/${schoolDetails.classBranch}</p>
-      <p><strong>Dönem:</strong> ${isTerm ? '1. Dönem' : 'Yıl Sonu'}</p>
-      <br>
-      <h3>A) YAPILAN ÇALIŞMALARIN ÖZETİ</h3>
-      <p style="text-align: justify;">${reportContent.summary || '...'}</p>
-      <br>
-      <h4>${listTitle} GERÇEKLEŞTİRİLEN ETKİNLİKLER ÇİZELGESİ</h4>
-      <table border="1" cellpadding="5" style="font-size: 11px;"><thead><tr bgcolor="#f0f0f0"><th>Ay</th><th>Hafta</th><th>Kazanım</th><th>Alan</th></tr></thead><tbody>${activitiesTable}</tbody></table>
-      <br>
-      <h3>B) YAPILAMAYAN ETKİNLİKLER VE NEDENLERİ</h3>
-      <table border="1" cellpadding="5"><tr><td width="50%" bgcolor="#f0f0f0"><strong>Yapılamayan Etkinlik</strong></td><td width="50%" bgcolor="#f0f0f0"><strong>Nedeni</strong></td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table>
-      <br>
-      <h3>C) SINIFIN GENEL DURUMU</h3>
-      <p style="text-align: justify;">${reportContent.generalStatus || '...'}</p>
-      <br>
-      <h3>D) REHBERLİK SERVİSİNE YÖNLENDİRİLEN ÖĞRENCİLER</h3>
-      <p style="text-align: justify;">${reportContent.referredStudents || '...'}</p>
-      <br>
-      <h3>E) VELİ GÖRÜŞMELERİ</h3>
-      <p style="text-align: justify;">${reportContent.parentMeetings || '...'}</p>
-      <br>
-      ${customItemsHTML}
-      <h3>${String.fromCharCode(70 + reportContent.customItems.length)}) REHBERLİK SERVİSİNDEN BEKLENTİLER</h3>
-      <p>..........................................................................................................................................................................</p>
-      <br>
-      ${getDocumentFooter()}
-    `;
-  };
-
-  const renderReportForm = (reportType) => {
+  const renderReportUI = (reportType: 'term' | 'endYear') => {
     const isTerm = reportType === 'term';
     const data = isTerm ? termReportData : endYearReportData;
     const title = isTerm ? '1. Dönem Sonu Faaliyet Raporu' : 'Yıl Sonu Faaliyet Raporu';
@@ -430,30 +486,108 @@ const ClassGuidanceAssistant = () => {
             <h2 className="text-xl font-bold text-gray-800">{title}</h2>
             <p className="text-sm text-gray-500">{isTerm ? 'Ocak ayı' : 'Haziran ayı'} teslim edilir.</p>
           </div>
-          <button onClick={() => downloadWord(generateReportHTML(title.toUpperCase(), data, isTerm), `${selectedGrade}_Sinif_${isTerm ? 'Donem' : 'Yil'}_Sonu_Raporu`)} className="flex items-center gap-2 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-600 shadow-sm transition-colors">
-            <Download size={18} /> Word İndir
-          </button>
+          <Button onClick={() => exportReportToWord(reportType)} className="gap-2 bg-green-600 hover:bg-green-700">
+            <Download className="w-4 h-4" /> Word İndir
+          </Button>
         </div>
     
-        {/* FORM CONTENT */}
-        <div className="space-y-6">
-            <div className="p-4 bg-gray-50 rounded border">
-                <div className="flex justify-between items-start mb-3">
-                   <h3 className="font-bold text-gray-800">A) Yapılan Çalışmaların Özeti</h3>
-                   <button onClick={() => generateAIContent('summary', reportType)} disabled={isGenerating.type === 'summary'} className="flex items-center gap-1.5 text-xs font-bold bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full hover:bg-purple-200 border border-purple-200">
-                       {isGenerating.type === 'summary' ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />} {isGenerating.type === 'summary' ? 'Yazılıyor...' : 'Yapay Zeka'}
-                   </button>
-                </div>
-                <Textarea value={data.summary} onChange={(e) => updateReportField(reportType, 'summary', e.target.value)} className="w-full p-3 border rounded h-24 focus:ring-2 focus:ring-indigo-200 focus:outline-none text-sm" placeholder="Özet metni..." ></Textarea>
+        {/* 1. KAZANIM DURUMU */}
+        <section className="mb-8">
+          <h3 className="font-bold text-gray-800 underline mb-4 text-sm uppercase">Sınıf Rehberlik Planında Yer Alan Kazanımlar</h3>
+          <div className="flex flex-wrap items-center gap-6 mb-4 p-4 border rounded-lg bg-gray-50">
+             <span className="text-sm font-medium">Tüm kazanımlar gerçekleştirilebildi mi?</span>
+             <div className="flex gap-4">
+               {['evet', 'kismen', 'hayir'].map((opt) => (
+                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                   <input type="radio" name={`status-${reportType}`} checked={data.kazanimStatus === opt} onChange={() => updateReportField(reportType, 'kazanimStatus', opt)} className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"/>
+                   <span className="capitalize text-sm">{opt === 'kismen' ? 'Kısmen' : opt}</span>
+                 </label>
+               ))}
+             </div>
+          </div>
+          {data.kazanimStatus !== 'evet' && (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100"><tr><th className="p-2 border-r w-16 text-center">No</th><th className="p-2 text-left">Gerçekleştirilemeyen Kazanım ve Nedeni</th></tr></thead>
+                <tbody>
+                  {data.kazanimlar.map((k: any, index: number) => (
+                    <tr key={k.id} className="border-t">
+                      <td className="p-2 text-center text-gray-500 font-medium">{index + 1}</td>
+                      <td className="p-1"><Input value={k.text} onChange={(e) => {
+                          const newK = [...data.kazanimlar]; newK[index].text = e.target.value; updateReportField(reportType, 'kazanimlar', newK);
+                        }} className="border-0 focus-visible:ring-0 px-2 h-8" placeholder="..." />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {/* Diğer form alanları ve tablolar buraya gelecek */}
-        </div>
+          )}
+        </section>
+
+        {/* 2. TABLOLAR (Envanter, Rehberlik, Veli) */}
+        {['envanterler', 'rehberlik', 'veli'].map((tableName) => {
+          const isVeli = tableName === 'veli';
+          const headers = isVeli ? ['YAPILAN ÇALIŞMA', 'ANNE', 'BABA', 'DİĞER', 'TOPLAM'] : ['YAPILAN ÇALIŞMA', 'KIZ', 'ERKEK', 'TOPLAM'];
+          const sectionTitle = tableName === 'envanterler' ? 'Uygulanan Envanterler' : tableName === 'rehberlik' ? 'Rehberlik Faaliyetleri' : 'Veli Faaliyetleri';
+
+          return (
+            <section key={tableName} className="mb-8">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-gray-800 underline text-sm uppercase">{sectionTitle}</h3>
+                <Button variant="outline" onClick={() => addRow(reportType, tableName)} className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"><Plus className="w-3 h-3" /> Ekle</Button>
+              </div>
+              <div className="border rounded-lg overflow-hidden shadow-sm">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 text-gray-700 font-semibold">
+                    <tr>
+                      <th className="p-2 w-12 text-center border-r">SN</th>
+                      <th className="p-2 border-r text-left">{headers[0]}</th>
+                      <th className="p-2 w-20 text-center border-r">{headers[1]}</th>
+                      <th className="p-2 w-20 text-center border-r">{headers[2]}</th>
+                      {isVeli && <th className="p-2 w-20 text-center border-r">{headers[3]}</th>}
+                      <th className="p-2 w-20 text-center bg-gray-200">{isVeli ? headers[4] : headers[3]}</th>
+                      <th className="p-2 w-10 text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {data[tableName].map((row: any, index: number) => {
+                      const total = (parseInt(row.col1||'0')) + (parseInt(row.col2||'0')) + (isVeli ? (parseInt(row.col3||'0')) : 0);
+                      return (
+                        <tr key={row.id} className="group hover:bg-gray-50 transition-colors">
+                          <td className="p-2 text-center text-gray-500">{index + 1}</td>
+                          <td className="p-1"><Input value={row.name} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'name', e.target.value)} className="border-0 bg-transparent focus-visible:ring-0 h-8" placeholder="Çalışma adı..." /></td>
+                          <td className="p-1"><Input type="number" min="0" value={row.col1} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col1', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
+                          <td className="p-1"><Input type="number" min="0" value={row.col2} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col2', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
+                          {isVeli && <td className="p-1"><Input type="number" min="0" value={row.col3} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col3', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>}
+                          <td className="p-2 text-center font-bold text-gray-700 bg-gray-50/50">{total}</td>
+                          <td className="p-1 text-center"><button onClick={() => removeRow(reportType, tableName, row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-4 h-4" /></button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })}
+
+        {/* 3. GÜÇLÜKLER VE ÖNERİLER */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700 font-bold"><FileText className="w-4 h-4"/> Karşılaşılan Güçlükler</Label>
+            <Textarea value={data.guclukler} onChange={(e) => updateReportField(reportType, 'guclukler', e.target.value)} className="min-h-[100px] resize-none bg-yellow-50/30 border-yellow-200 focus-visible:ring-yellow-400" placeholder="Bu dönem karşılaşılan zorluklar..." />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700 font-bold"><FileText className="w-4 h-4"/> Çözüm Önerileri</Label>
+            <Textarea value={data.oneriler} onChange={(e) => updateReportField(reportType, 'oneriler', e.target.value)} className="min-h-[100px] resize-none bg-green-50/30 border-green-200 focus-visible:ring-green-400" placeholder="Gelecek dönem için öneriler..." />
+          </div>
+        </section>
       </Card>
     );
   };
   
-
-  const renderSettings = () => (
+    const renderSettings = () => (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Settings className="text-indigo-600"/>Genel Okul ve Öğretmen Bilgileri</h2>
@@ -515,25 +649,16 @@ const ClassGuidanceAssistant = () => {
         </header>
 
         {activeTab === 'settings' && renderSettings()}
-        {activeTab === 'plan' && exportAnnualPlan && (
+        {activeTab === 'plan' && exportAnnualPlan && ( // Conditional render fix
              <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                 <div className="flex justify-between items-center mb-6">
                     <div><h3 className="text-xl text-indigo-600">{selectedGrade}. Sınıf Yıllık Planı</h3></div>
-                    <Button onClick={exportAnnualPlan} className="gap-2 bg-blue-600 hover:bg-blue-700"><Download className="w-4 h-4" /> Word İndir</Button>
+                    <button onClick={exportAnnualPlan} className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600 shadow-sm transition-colors"><Download size={18} /> Word İndir</button>
                 </div>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                     <table className="w-full text-left border-collapse relative">
                     <thead className="sticky top-0 z-10"><tr className="bg-indigo-50 border-b border-indigo-100 shadow-sm"><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Ay</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Hafta</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Kazanım / Etkinlik Adı</th><th className="p-3 font-semibold text-gray-700 bg-indigo-50">Alan</th></tr></thead>
-                    <tbody>
-                        {(plans[selectedGrade] || []).map((item, index) => (
-                            <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${item.kazanim.includes('TATİL') ? 'bg-orange-50' : ''}`}>
-                                <td className="p-3 text-gray-800">{item.month}</td>
-                                <td className="p-3 text-gray-600">{item.week}. Hafta</td>
-                                <td className="p-3 text-gray-800 font-medium">{item.kazanim}</td>
-                                <td className="p-3"><span className={`px-2 py-1 text-xs rounded-full border ${item.tur === 'Tatil' ? 'bg-orange-100 text-orange-700 border-orange-200' : item.tur === 'Risk Belirleme' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>{item.tur}</span></td>
-                            </tr>
-                        ))}
-                    </tbody>
+                    <tbody>{plans[selectedGrade].map((item: any, index: any) => (<tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${item.kazanim.includes('TATİL') ? 'bg-orange-50' : ''}`}><td className="p-3 text-gray-800">{item.month}</td><td className="p-3 text-gray-600">{item.week}. Hafta</td><td className="p-3 text-gray-800 font-medium">{item.kazanim}</td><td className="p-3"><span className={`px-2 py-1 text-xs rounded-full border ${item.tur === 'Tatil' ? 'bg-orange-100 text-orange-700 border-orange-200' : item.tur === 'Risk Belirleme' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>{item.tur}</span></td></tr>))}</tbody>
                     </table>
                 </div>
              </div>
@@ -542,24 +667,27 @@ const ClassGuidanceAssistant = () => {
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Haftalık Etkinlik Raporu</h2>
-                <Button onClick={exportActivityReport} className="gap-2 bg-blue-600 hover:bg-blue-700"><Download className="w-4 h-4" /> Word İndir</Button>
+                <button onClick={exportActivityReport} className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600 shadow-sm transition-colors"><Download size={18} /> Word İndir</button>
                 </div>
                 <div className="grid grid-cols-2 gap-6 mb-6">
                     <div><Label className="mb-1 block">Tarih</Label><Input type="date" /></div>
-                    <div><Label className="mb-1 block">Hafta Seçimi</Label><select className="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm" value={selectedActivityIndex} onChange={(e) => setSelectedActivityIndex(Number(e.target.value))}>{(plans[selectedGrade] || []).map((p, index) => (<option key={index} value={index}>{p.month} - {p.week}. Hafta - {p.kazanim.substring(0,50)}...</option>))}</select></div>
+                    <div><Label className="mb-1 block">Hafta Seçimi</Label><select value={selectedActivityIndex} onChange={(e) => setSelectedActivityIndex(Number(e.target.value))} className="w-full p-2 border rounded">{plans[selectedGrade].map((p: any, index: any) => (<option key={index} value={index}>{p.month} - {p.week}. Hafta - {p.kazanim.length > 50 ? p.kazanim.substring(0,50) + "..." : p.kazanim}</option>))}</select></div>
                 </div>
                 <div className="space-y-4">
-                    <div className={`p-4 rounded border border-gray-200 ${(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim.includes('TATİL') ? 'bg-orange-50' : 'bg-gray-50'}`}><span className="block text-xs text-gray-500 uppercase font-bold tracking-wider">Kazanım</span><p className="text-lg font-medium text-gray-900 mt-1">{(plans[selectedGrade] || [])[selectedActivityIndex]?.kazanim}</p></div>
+                    <div className={`p-4 rounded border border-gray-200 ${plans[selectedGrade][selectedActivityIndex].kazanim.includes('TATİL') ? 'bg-orange-50' : 'bg-gray-50'}`}><span className="block text-xs text-gray-500 uppercase font-bold tracking-wider">Kazanım</span><p className="text-lg font-medium text-gray-900 mt-1">{plans[selectedGrade][selectedActivityIndex].kazanim}</p></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="p-4 border rounded"><Label className="block mb-2">Sınıfa Katılan</Label><Input type="number" placeholder="Örn: 24" /></div><div className="p-4 border rounded"><Label className="block mb-2">Katılmayan</Label><Input type="number" placeholder="Örn: 2" /></div></div>
                     <div><Label className="block mb-2">Değerlendirme</Label><Textarea defaultValue="Etkinlik plana uygun işlenmiştir." /></div>
                 </div>
             </div>
         )}
-        {activeTab === 'termReport' && renderReportForm('term')}
-        {activeTab === 'endyear' && renderReportForm('year')}
+        {activeTab === 'termReport' && renderReportUI('term')}
+        {activeTab === 'endyear' && renderReportUI('year')}
       </div>
     </div>
   );
 };
 
-export default ClassGuidanceAssistant;
+// Default export if needed, but not strictly necessary for this file structure
+// export default ClassGuidanceAssistant;
+
+    
