@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -18,8 +18,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { useDoc, useMemoFirebase } from '@/firebase';
+import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Class, Student } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
@@ -263,13 +264,14 @@ const InfoFormEditor = ({ student, currentClass, onBack }: { student: Student; c
 
 interface InfoFormsTabProps {
   classId: string;
+  teacherProfile: TeacherProfile | null;
+  currentClass: Class | null;
 }
 
-export function InfoFormsTab({ classId }: InfoFormsTabProps) {
+export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
     const { db } = useAuth();
     const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
     const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-    const { data: currentClass } = useDoc<Class>(useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]));
 
     return (
         <Tabs defaultValue="student-info-forms">
@@ -281,7 +283,7 @@ export function InfoFormsTab({ classId }: InfoFormsTabProps) {
                  {studentsLoading ? (
                     <Loader2 className="animate-spin" />
                 ) : (
-                    <StudentInfoFormList students={students} currentClass={currentClass} />
+                    <StudentInfoFormList students={students || []} currentClass={currentClass} />
                 )}
             </TabsContent>
             <TabsContent value="guidance-referral" className="mt-4">
