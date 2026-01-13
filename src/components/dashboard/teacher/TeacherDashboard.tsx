@@ -22,11 +22,11 @@ import VeliToplantisiTab from './VeliToplantisiTab';
 import SokTab from './SokTab';
 import MebClubTab from './MebClubTab';
 import { SocialClubTab } from './SocialClubTab';
-import { SociogramTab } from './SociogramTab'; // Sosyogram import
+import { SociogramTab } from './SociogramTab'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
@@ -147,9 +147,6 @@ function ClassSelectionScreen({
         if (!db) return;
         setDeletingClassId(classId);
         try {
-            // Firestore does not support deleting subcollections from the client-side SDK directly.
-            // This will only delete the class document itself. 
-            // Subcollections (like students, homeworks) need to be deleted manually or with a backend function.
             await deleteDoc(doc(db, 'classes', classId));
             toast({ title: 'Sınıf silindi', description: 'Not: Bu sınıfa ait öğrenciler veritabanından ayrıca silinmelidir.', variant: 'destructive' });
         } catch (error: any) {
@@ -388,14 +385,11 @@ export function TeacherDashboard() {
   
   const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
 
-  // Combined query for students from all classes of the teacher
   const allStudentsQuery = useMemoFirebase(() => {
     return classIds.length > 0 && db ? query(collection(db, 'students'), where('classId', 'in', classIds)) : null;
   }, [db, classIds]);
-  const { data: allStudentsData, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
-  const allStudents = useMemo(() => allStudentsData || [], [allStudentsData]);
+  const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
 
-  // Centralized data fetching for other teacher-specific collections
   const lessonsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
   
@@ -434,13 +428,13 @@ export function TeacherDashboard() {
   }, [teacherId]);
 
   const currentClass = useMemo(() => classes?.find((c: Class) => c.id === selectedClassId), [classes, selectedClassId]);
-
+  
   const studentsForSelectedClass = useMemo(() => {
     if (!selectedClassId || !allStudents) return [];
     return allStudents.filter(s => s.classId === selectedClassId);
   }, [selectedClassId, allStudents]);
 
-  const isLoading = classesLoading || allStudentsLoading || lessonsLoading || factorsLoading || clubsLoading;
+  const centralDataLoading = classesLoading || allStudentsLoading || lessonsLoading || factorsLoading || clubsLoading;
   
   const handleBackToDashboard = () => {
     setActiveTab("dashboard");
@@ -454,12 +448,11 @@ export function TeacherDashboard() {
   
   const handleBackToDocuments = () => {
     setSelectedClassId(null);
-    setActiveTab('dashboard'); // This will trigger ClassSelectionScreen
+    setActiveTab('dashboard'); 
     setInitialMainTab('documents');
   };
 
   const renderContent = () => {
-    // Standalone document tabs (no class selected)
     const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         let tabContent;
@@ -493,7 +486,7 @@ export function TeacherDashboard() {
         return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
     }
     
-    if (isLoading) {
+    if (centralDataLoading) {
         return <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
     
@@ -550,7 +543,6 @@ export function TeacherDashboard() {
       );
     }
     
-    // Individual tab view
     let tabContent;
     switch(activeTab) {
         case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
@@ -613,7 +605,7 @@ export function TeacherDashboard() {
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
       <Header />
       <main className="flex-1 p-4 sm:p-6">
-        {isLoading && !appUser ? (
+        {centralDataLoading && !appUser ? (
           <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : renderContent()}
       </main>
@@ -627,3 +619,5 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
+    

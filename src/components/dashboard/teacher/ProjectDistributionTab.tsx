@@ -110,7 +110,6 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
   }, [localStudents, filterLessonId]);
 
-  const isLoading = !students || !lessons;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -166,11 +165,6 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
                      </div>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? (
-                    <div className="flex justify-center items-center h-40">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                    ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -219,7 +213,6 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
                         )}
                         </TableBody>
                     </Table>
-                    )}
                 </CardContent>
             </Card>
         </div>
@@ -249,3 +242,5 @@ export function ProjectDistributionTab(props: Omit<ProjectDistributionTabProps, 
     </Tabs>
   );
 }
+
+    

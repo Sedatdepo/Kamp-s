@@ -10,8 +10,7 @@ import { StudentListTab } from './StudentListTab';
 import { AttendanceTab } from './AttendanceTab';
 import NobetciListesi from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
-import { StudentGradesDetailTab } from './StudentGradesDetailTab'; // Yeni import
-import { useAuth } from '@/hooks/useAuth';
+import { StudentGradesDetailTab } from './StudentGradesDetailTab';
 
 interface StudentManagementTabProps {
   students: Student[];
@@ -26,7 +25,6 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
     }
 
     const DutyRosterTab = NobetciListesi;
-
 
     return (
         <Tabs defaultValue="student-list">
@@ -67,3 +65,5 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
         </Tabs>
     );
 }
+
+    

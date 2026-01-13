@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -44,3 +45,5 @@ export function SocialClubTab({ students, teacherId, currentClass, clubs }: Soci
         </Tabs>
     );
 }
+
+    

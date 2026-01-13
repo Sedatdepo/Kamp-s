@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -88,7 +89,7 @@ const PhaseIndicator = ({ currentPhase }: { currentPhase: number }) => {
     );
 };
 
-export const DisciplineTab = ({ students, currentClass, teacherProfile }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
+export function DisciplineTab({ students, currentClass, teacherProfile }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
     const { db: localDb, setDb } = useDatabase();
     const { disciplineRecords = [] } = localDb;
     const { toast } = useToast();
@@ -105,7 +106,13 @@ export const DisciplineTab = ({ students, currentClass, teacherProfile }: { stud
         currentPhase: 1,
         formData: { 
             studentInfo: { schoolName: teacherProfile?.schoolName || '' },
-            phase1Data: { teacherName: teacherProfile?.name || ''}
+            phase1Data: { teacherName: teacherProfile?.name || ''},
+            incidentDate: '',
+            incidentTime: '',
+            location: '',
+            description: '',
+            witnesses: '',
+            evidence: '',
         }
     }), [currentClass?.id, teacherProfile]);
 
@@ -682,3 +689,5 @@ const StudentInfoDisplay = ({ studentInfo }: any) => {
         </Card>
     );
 };
+
+    

@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 const commonRiskFactors = [
     "Parçalanmış Aile",
@@ -325,7 +326,6 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
 
-  const isLoading = students.length === 0 || localDbLoading;
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
   return (
@@ -356,12 +356,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center items-center h-40">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-                <TooltipProvider>
+            <TooltipProvider>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -413,7 +408,6 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
                 </TableBody>
               </Table>
               </TooltipProvider>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -428,7 +422,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
                     noun="Risk Haritası"
                 />
                 <div className="flex items-center gap-2">
-                    <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700">
+                    <Button onClick={handleSaveToArchive} className="w-full bg-green-600 hover:bg-green-700" disabled={!!selectedRecordId}>
                         <Save className="mr-2 h-4 w-4" /> Arşive Kaydet
                     </Button>
                     <Button variant="outline" onClick={handleExport} className="w-full">
@@ -441,3 +435,5 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
     </div>
   );
 }
+
+    
