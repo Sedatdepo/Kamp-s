@@ -11,7 +11,7 @@ import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA
 import { useFirebase } from '@/firebase';
 
 export type AppUser = 
-  | { type: 'teacher'; data: User; profile: TeacherProfile | null }
+  | { type: 'teacher'; data: User; profile: TeacherProfile }
   | { type: 'student'; data: Student };
 
 interface AuthContextType {
@@ -67,12 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Keep track of student snapshot listener
   const studentUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
+  const teacherUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   const signOut = useCallback(async () => {
-    // Unsubscribe from any active student listener
+    // Unsubscribe from any active listener
     if (studentUnsubscribeRef.current) {
         studentUnsubscribeRef.current();
         studentUnsubscribeRef.current = null;
+    }
+     if (teacherUnsubscribeRef.current) {
+        teacherUnsubscribeRef.current();
+        teacherUnsubscribeRef.current = null;
     }
     if (auth) {
         await firebaseSignOut(auth);
@@ -102,11 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       
-      // Clean up previous student listener if it exists
-      if (studentUnsubscribeRef.current) {
-          studentUnsubscribeRef.current();
-          studentUnsubscribeRef.current = null;
-      }
+      // Clean up previous listeners
+      if (studentUnsubscribeRef.current) studentUnsubscribeRef.current();
+      if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
+      studentUnsubscribeRef.current = null;
+      teacherUnsubscribeRef.current = null;
 
       if (firebaseUser) {
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
@@ -116,22 +121,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (teacherSnap.exists()) {
           await seedDatabase(db, firebaseUser.uid);
-          const profile = { id: teacherSnap.id, ...teacherSnap.data() } as TeacherProfile;
-          setAppUser({ type: 'teacher', data: firebaseUser, profile });
+          // Set up a real-time listener for the teacher document
+          teacherUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const profile = { id: docSnap.id, ...docSnap.data() } as TeacherProfile;
+                 // CRITICAL FIX: Only set AppUser if profile is fully loaded
+                if (profile) {
+                    setAppUser({ type: 'teacher', data: firebaseUser, profile });
+                }
+            } else {
+                 signOut();
+            }
+          });
+
         } else {
             const studentSnapshot = await getDocs(studentQuery);
             if (!studentSnapshot.empty) {
                 const studentDoc = studentSnapshot.docs[0];
                 
-                // Set up a real-time listener for the student document
                 studentUnsubscribeRef.current = onSnapshot(doc(db, 'students', studentDoc.id), (docSnap) => {
                     if (docSnap.exists()) {
                         const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
                         const userPayload = { type: 'student' as 'student', data: studentData };
                         setAppUser(userPayload);
-                        localStorage.setItem('appUser', JSON.stringify(userPayload)); // Keep local storage in sync
+                        localStorage.setItem('appUser', JSON.stringify(userPayload));
                     } else {
-                        // Student document was deleted, sign out
                         signOut();
                     }
                 });
@@ -145,7 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
               const parsedUser = JSON.parse(storedUser);
               if(parsedUser.type === 'student'){
-                  // Student with no authUid, keep them logged in
                   setAppUser(parsedUser);
               } else {
                   setAppUser(null);
@@ -164,9 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
         unsubscribeAuth();
-        if (studentUnsubscribeRef.current) {
-            studentUnsubscribeRef.current();
-        }
+        if (studentUnsubscribeRef.current) studentUnsubscribeRef.current();
+        if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
     };
   }, [auth, db, signOut]);
 
@@ -178,6 +190,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (appUser) {
             const targetDashboard = `/dashboard/${appUser.type}`;
+            if (appUser.type === 'teacher' && !appUser.profile) {
+                // Teacher profile is still loading, don't redirect yet
+                return;
+            }
             if (!pathname.startsWith(targetDashboard)) {
                  router.push(targetDashboard);
             }
@@ -190,19 +206,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInTeacher = async (email: string, password: string) => {
         if (!auth || !db) throw new Error("Kimlik doğrulama başlatılamadı.");
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        const teacherRef = doc(db, 'teachers', user.uid);
-        const teacherSnap = await getDoc(teacherRef);
-        if (teacherSnap.exists()) {
-            const profile = { id: teacherSnap.id, ...teacherSnap.data() } as TeacherProfile;
-            setAppUser({ type: 'teacher', data: user, profile });
-            router.push('/dashboard/teacher');
-        } else {
-            await firebaseSignOut(auth);
-            throw new Error("Öğretmen profili bulunamadı.");
-        }
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle the rest
     };
 
     const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
@@ -233,10 +238,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                  throw new Error("Bu öğrenci hesabı için şifre gereklidir. Şifrenizi unuttuysanız öğretmeninizle görüşün.");
             }
              const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-             
-             // The onAuthStateChanged listener will handle setting the appUser.
-             router.push('/dashboard/student');
+             await signInWithEmailAndPassword(auth, email, password);
+             // onAuthStateChanged handles the rest
              return true; 
         } else {
             const studentUser: AppUser = { type: 'student', data: studentData };
