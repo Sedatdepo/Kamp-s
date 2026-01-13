@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -45,8 +46,8 @@ const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSub
     if (!homework.questions || homework.questions.length === 0) {
         return (
             <div className="flex items-center space-x-2">
-                <Checkbox id={`mark-${student.id}`} onCheckedChange={() => onMarkAsSubmitted(student.id, homework.id)} />
-                <Label htmlFor={`mark-${student.id}`} className="text-xs">Teslim Etti</Label>
+                <Checkbox id={`mark-${student.id}-${homework.id}`} onCheckedChange={() => onMarkAsSubmitted(student.id, homework.id)} />
+                <Label htmlFor={`mark-${student.id}-${homework.id}`} className="text-xs">Teslim Etti</Label>
             </div>
         );
     }
@@ -61,14 +62,15 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
-    const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
-
+    
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
     const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(liveHomeworksQuery);
+    
+    const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     
     const fetchSubmissions = useCallback(async () => {
         if (!db || !classId || !liveHomeworks || liveHomeworks.length === 0) return;
@@ -89,6 +91,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     useEffect(() => {
         fetchSubmissions();
     }, [fetchSubmissions]);
+    
     
     const handleAddOrUpdateHomework = async () => {
         if (!db || !classId || !text.trim()) return;
@@ -118,7 +121,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             setText('');
             setDueDate(undefined);
             setEditingHomework(null);
-            // forceRefresh(); // This would be ideal if useCollection supported it.
+            forceRefresh();
         } catch (error) {
             console.error("Homework error:", error);
             toast({ variant: "destructive", title: "İşlem sırasında bir sorun oluştu." });
@@ -135,7 +138,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             batch.delete(homeworkRef);
             await batch.commit();
             toast({ title: "Ödev ve tüm teslimler silindi." });
-            // forceRefresh();
+            forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }

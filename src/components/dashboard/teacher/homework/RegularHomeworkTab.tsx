@@ -1,13 +1,12 @@
 
-
 "use client";
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Exam } from '@/lib/types';
+import { Homework, Submission, Question, Exam, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
-import { collection, doc, addDoc, query, where } from 'firebase/firestore';
+import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -18,30 +17,42 @@ import { ExamPaper } from '../ExamPaper';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+    const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
-      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
-    }, [db, classId, homework.id]);
+      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
+    }, [db, classId, homework.id, student.id]);
 
-    const { data: submissions } = useCollection<Submission>(submissionsQuery);
+    const { data: submissions, forceRefresh } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
-        return submissions?.find(s => s.studentId === student.id);
-    }, [submissions, student.id]);
+        return submissions?.[0];
+    }, [submissions]);
 
-    const handleAnswerChange = (questionId: string | number, answer: string) => {
-        setAnswers(prev => ({...prev, [questionId]: answer }));
+    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
+        setAnswers(prev => {
+            const currentAnswer = prev[questionId];
+            if (isMulti) {
+                const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+                if (currentArr.includes(answer)) {
+                    return { ...prev, [questionId]: currentArr.filter(a => a !== answer) };
+                } else {
+                    return { ...prev, [questionId]: [...currentArr, answer] };
+                }
+            }
+            return { ...prev, [questionId]: answer };
+        });
     }
 
-    const handleSubmit = async () => {
-        if (homework.questions && homework.questions.some(q => q.required && !answers[q.id])) {
+    const handleSubmit = async (isCheckboxMark: boolean = false) => {
+        if (homework.questions && homework.questions.length > 0 && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
@@ -56,12 +67,31 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
           answers: answers,
+          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : undefined,
         };
     
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
-            toast({ title: "Ödev başarıyla teslim edildi!" });
+            
+            const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
+            if (!isLate) {
+                const studentRef = doc(db, 'students', student.id);
+                const currentBadges: string[] = student.badges || [];
+                
+                const updates: any = { behaviorScore: increment(10) };
+                
+                if (!currentBadges.includes('hw-master')) {
+                    updates.badges = [...currentBadges, 'hw-master'];
+                }
+
+                await updateDoc(studentRef, updates);
+                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
+            } else {
+                 toast({ title: "Ödev başarıyla teslim edildi!" });
+            }
+            forceRefresh();
+
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
@@ -86,24 +116,32 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                             <h2 className="text-2xl font-bold text-center mb-4">{homework.text}</h2>
                             {homework.questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
-                                    <div className="font-semibold mb-3">
-                                      {q.image ? (
-                                        <img src={q.image} alt={`Soru ${index + 1}`} className="mt-2 rounded-md border max-w-full" />
-                                      ) : (
-                                        <p>{index + 1}. {q.text}</p>
-                                      )}
-                                    </div>
+                                    <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
                                     {q.type === 'multiple-choice' && q.options && (
                                         <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
                                             {q.options.map((opt, i) => (
                                                 <div key={i} className="flex items-center space-x-2">
                                                     <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
-                                                    <Label htmlFor={`${q.id}-${i}`}>{String.fromCharCode(65 + i)}) {opt}</Label>
+                                                    <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
                                                 </div>
                                             ))}
                                         </RadioGroup>
                                     )}
-                                    {(q.type === 'open' || q.type === 'short-answer') && (
+                                     {q.type === 'checkbox' && q.options && (
+                                        <div className="space-y-2">
+                                          {q.options.map((opt, i) => (
+                                            <div key={i} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`${q.id}-${i}`}
+                                                onCheckedChange={(checked) => handleAnswerChange(q.id, opt, true)}
+                                                disabled={!!existingSubmission}
+                                              />
+                                              <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                    )}
+                                    {q.type === 'open-ended' && (
                                         <Textarea 
                                             placeholder="Cevabınızı buraya yazın..."
                                             onChange={(e) => handleAnswerChange(q.id, e.target.value)}
@@ -139,11 +177,16 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                 </div>
             ) : homework.questions && homework.questions.length > 0 ? (
-                 <Button onClick={handleSubmit} disabled={isSubmitting}>
+                 <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Ödevi Teslim Et
                  </Button>
-            ) : null}
+            ) : (
+                <div className="flex items-center space-x-2">
+                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={(checked) => handleSubmit(!!checked)} disabled={isSubmitting} />
+                    <Label htmlFor={`hw-done-${homework.id}`} className="text-sm font-medium">Bu ödevi tamamladım olarak işaretle.</Label>
+                </div>
+            )}
         </div>
     )
 }
@@ -227,5 +270,3 @@ export function RegularHomeworkTab() {
 
   return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
-
-    
