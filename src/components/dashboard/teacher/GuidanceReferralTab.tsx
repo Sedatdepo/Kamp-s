@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -113,7 +113,7 @@ export function GuidanceReferralTab() {
     defaultValues: defaultFormValues,
   });
 
-  const handleNewRecord = React.useCallback(() => {
+  const handleNewRecord = useCallback(() => {
     const newId = `record-${Date.now()}`;
     setSelectedRecordId(null);
     form.reset({
@@ -132,7 +132,7 @@ export function GuidanceReferralTab() {
         form.reset(recordData);
       }
     } else {
-      handleNewRecord();
+        handleNewRecord();
     }
   }, [selectedRecordId, records, form, handleNewRecord]);
 
@@ -196,74 +196,72 @@ export function GuidanceReferralTab() {
   }
   
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="p-4 sm:p-6 md:p-8 grid md:grid-cols-4 gap-8">
-        <div className="md:col-span-1 space-y-4">
-             <Card>
-                <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                     <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
-                    <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kayıtlı formu seç..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı form yok.</p>}
-                        {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.date).toLocaleDateString('tr-TR')}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
-                </CardContent>
-             </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>İşlemler</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId} className="w-full"><FileDown className="mr-2"/> PDF Çıktı Al</Button>
-                </CardContent>
-             </Card>
-        </div>
-        <div className="md:col-span-3">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <Card>
-                <CardHeader>
-                    <CardTitle>Yönlendirme Formu</CardTitle>
-                    <CardDescription>
-                      {schoolInfo?.schoolName}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {renderField('studentName', 'Öğrencinin Adı Soyadı')}
-                      <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                    </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {renderField('className', 'Sınıfı')}
-                        {renderField('studentNumber', 'Numarası')}
-                     </div>
-                      
-                      {renderField('reason', 'Öğrencinin rehberlik servisine yönlendirilme nedeni', true)}
-                      {renderField('observations', 'Öğrenciyle ilgili gözlem ve düşünceler', true)}
-                      {renderField('otherInfo', 'Öğrenciyle ilgili edinilen diğer bilgiler', true)}
-                      {renderField('studiesDone', 'Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar', true)}
-
-                     <p className="font-bold text-lg border-b pb-2 pt-6">Yönlendiren</p>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {renderField('referrerName', 'Adı Soyadı')}
-                        {renderField('referrerTitle', 'Unvanı')}
-                     </div>
-                      {renderField('referrerSignature', 'İmza')}
-                </CardContent>
-                <CardFooter>
-                    <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
-                </CardFooter>
-              </Card>
-            </form>
-          </Form>
-        </div>
-      </main>
+    <main className="grid md:grid-cols-4 gap-8">
+    <div className="md:col-span-1 space-y-4">
+         <Card>
+            <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+                 <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
+                <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Kayıtlı formu seç..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı form yok.</p>}
+                    {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.date).toLocaleDateString('tr-TR')}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
+            </CardContent>
+         </Card>
+         <Card>
+            <CardHeader>
+                <CardTitle>İşlemler</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId} className="w-full"><FileDown className="mr-2"/> PDF Çıktı Al</Button>
+            </CardContent>
+         </Card>
     </div>
+    <div className="md:col-span-3">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Card>
+            <CardHeader>
+                <CardTitle>Yönlendirme Formu</CardTitle>
+                <CardDescription>
+                  {schoolInfo?.schoolName}
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {renderField('studentName', 'Öğrencinin Adı Soyadı')}
+                  <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderField('className', 'Sınıfı')}
+                    {renderField('studentNumber', 'Numarası')}
+                 </div>
+                  
+                  {renderField('reason', 'Öğrencinin rehberlik servisine yönlendirilme nedeni', true)}
+                  {renderField('observations', 'Öğrenciyle ilgili gözlem ve düşünceler', true)}
+                  {renderField('otherInfo', 'Öğrenciyle ilgili edinilen diğer bilgiler', true)}
+                  {renderField('studiesDone', 'Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar', true)}
+
+                 <p className="font-bold text-lg border-b pb-2 pt-6">Yönlendiren</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderField('referrerName', 'Adı Soyadı')}
+                    {renderField('referrerTitle', 'Unvanı')}
+                 </div>
+                  {renderField('referrerSignature', 'İmza')}
+            </CardContent>
+            <CardFooter>
+                <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </Form>
+    </div>
+  </main>
   );
 }
