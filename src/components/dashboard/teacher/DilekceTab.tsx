@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, FormProvider, Controller } from 'react-hook-form';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
@@ -302,7 +302,7 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 sm:p-0">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-headline flex items-center gap-2"><FileSignature /> Dilekçe Oluşturucu</h1>
+            <h1 className="text-2xl font-headline flex items-center gap-2"><FileSignature /> Dilekçe Sihirbazı</h1>
             <p className="text-muted-foreground">{teacherProfile?.schoolName || 'Okul Bilgisi Yükleniyor'}</p>
           </div>
         </div>
