@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
@@ -381,8 +381,12 @@ export function TeacherDashboard() {
   const teacherQuery = useMemoFirebase(() => (teacherId && db) ? doc(db, 'teachers', teacherId) : null, [teacherId, db]);
   const { data: teacherData, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherQuery);
   const teacherProfile = teacherData ?? null;
+  
+  const classesQuery = useMemoFirebase(() => {
+    if (!db || !teacherId) return null;
+    return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
+  }, [db, teacherId]);
 
-  const classesQuery = useMemoFirebase(() => (teacherId && db) ? query(collection(db, 'classes'), where('teacherId', '==', teacherId)) : null, [teacherId, db]);
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
