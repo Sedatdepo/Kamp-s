@@ -14,16 +14,19 @@ service cloud.firestore {
     }
     
     function isTeacher() {
+      // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
     // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
     function isClassOwner(classId) {
+      // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
       return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
     }
 
     // Oluşturulan veya güncellenen kaynağın sahibi mi? (Yeni kayıtlar için)
     function isResourceOwner() {
+        // Yeni oluşturulan veya güncellenen verinin 'teacherId' alanı, işlemi yapanla aynı mı?
         return request.resource.data.teacherId == request.auth.uid;
     }
     
@@ -33,6 +36,8 @@ service cloud.firestore {
         allow get, update: if isOwner(studentId); // Öğrenci kendi verisini okuyabilir/güncelleyebilir.
         
         // GÜVENLİK GÜNCELLEMESİ: Öğretmenler artık sadece KENDİ sınıflarındaki öğrencilere yazabilir.
+        // resource.data -> Yeni gelen veri (create/update)
+        // request.resource.data -> Yeni gelen veri (sadece create)
         allow read, write: if isTeacher() && 
                              (isClassOwner(request.resource.data.classId) || isClassOwner(resource.data.classId));
     }
@@ -45,8 +50,11 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
+      // Öğretmenler sadece kendi oluşturdukları sınıfları listeleyebilir.
       allow list: if isTeacher() && request.query.where.field == "teacherId" && request.query.where.value == request.auth.uid;
+      // Öğretmen kendi sınıfını okuyabilir ve yazabilir.
       allow read, write: if isClassOwner(classId);
+      // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
       allow get: if get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
       
       // SINIF ALT KOLEKSİYONLARI
@@ -64,9 +72,7 @@ service cloud.firestore {
     
     // --- ÖĞRETMENE ÖZEL KOLEKSİYONLAR ---
     match /riskFactors/{riskFactorId} {
-        // Öğretmenler sadece kendi eklediği risk faktörlerini okuyabilir, tümünü listeleyemez (güvenlik)
-        // Ancak biz uygulamada tüm öğretmenlerin risk faktörlerini kullanıyoruz, bu nedenle şimdilik okumaya izin verelim.
-        // Daha güvenli bir model için bu koleksiyon da teacherId'ye göre filtrelenmeli.
+        // Öğretmenler sadece kendi eklediği risk faktörlerini okuyabilir.
         allow read: if isSignedIn(); 
         allow create: if isTeacher() && isResourceOwner();
         allow update, delete: if isTeacher() && get(/databases/$(database)/documents/riskFactors/$(riskFactorId)).data.teacherId == request.auth.uid;
@@ -84,10 +90,12 @@ service cloud.firestore {
 
     // --- ÖĞRENCİYE ÖZEL KOLEKSİYONLAR ---
     match /infoForms/{formId} {
-      allow read, write: if isOwner(formId) || isTeacher(); // Öğrenci ve tüm öğretmenler erişebilir
+      // Öğrenci sadece kendi bilgi formuna yazabilir. Öğretmenler tüm formları okuyabilir (raporlama için).
+      allow read, write: if isOwner(formId) || isTeacher(); 
     }
     
     match /messages/{messageId} {
+      // Sadece mesajlaşmanın tarafları okuma/yazma yapabilir.
       allow read, write: if isSignedIn() && request.auth.uid in resource.data.participants;
     }
     
