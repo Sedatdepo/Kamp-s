@@ -223,8 +223,7 @@ export interface Student {
   
   behaviorScore: number;
   xp?: number; // Gamification experience points
-  badges?: string[]; // Gamification badge IDs - should be an array of badge IDs (string)
-  customBadges?: CustomBadge[]; // Custom, one-off badges
+  badges?: string[]; // Gamification badge IDs
 
   hasProject?: boolean;
   
@@ -478,12 +477,9 @@ export interface Badge {
   name: string;
   description: string;
   icon: string;
-  dateAwarded?: string; 
   cost?: number; 
 }
 
-export interface CustomBadge extends Badge {
-}
 
 // Mock Database interface to satisfy type checker if needed, 
 // though typically this should be handled by Firestore types.

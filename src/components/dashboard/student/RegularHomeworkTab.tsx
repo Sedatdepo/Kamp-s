@@ -66,24 +66,16 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
-                // The 'badges' field needs to be of type BadgeType[] to satisfy the type.
-                const currentBadges: BadgeType[] = (student.badges || []).map((b: any) => typeof b === 'string' ? { id: b, name: 'Bilinmeyen', description: '', icon: ''} : b);
+                const currentBadges: string[] = student.badges || [];
                 
-                const updates: any = { xp: increment(10) };
+                const updates: any = { behaviorScore: increment(10) }; // XP yerine behaviorScore artırılıyor.
                 
-                if (!currentBadges.some(b => b.id === 'hw-master')) {
-                    const newBadge: BadgeType = {
-                        id: 'hw-master',
-                        name: 'Ödev Ustası',
-                        description: 'Bir ödevi zamanında teslim etti.',
-                        icon: 'BookCheck',
-                        dateAwarded: new Date().toISOString(),
-                    };
-                    updates.badges = [...currentBadges, newBadge];
+                if (!currentBadges.includes('hw-master')) {
+                    updates.badges = [...currentBadges, 'hw-master'];
                 }
 
-                // await updateDoc(studentRef, updates);
-                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 XP ve 'Ödev Ustası' rozeti kazanıldı!" });
+                await updateDoc(studentRef, updates);
+                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
             } else {
                  toast({ title: "Ödev başarıyla teslim edildi!" });
             }
