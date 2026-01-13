@@ -118,12 +118,17 @@
         "quota": {
           "type": "number",
           "description": "The maximum number of students that can be assigned to this lesson."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "The ID of the teacher who created this lesson."
         }
       },
       "required": [
         "id",
         "name",
-        "quota"
+        "quota",
+        "teacherId"
       ]
     },
     "RiskFactor": {
@@ -143,12 +148,17 @@
         "weight": {
           "type": "number",
           "description": "A numerical weight representing the severity of the risk factor."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "The ID of the teacher who created this risk factor."
         }
       },
       "required": [
         "id",
         "label",
-        "weight"
+        "weight",
+        "teacherId"
       ]
     },
     "InfoForm": {
