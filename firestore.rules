@@ -31,7 +31,10 @@ service cloud.firestore {
     match /students/{studentId} {
         allow list: if !isSignedIn(); // Giriş yapmamış kullanıcılar sadece sınıf kodu ve numara ile sorgu yapabilir.
         allow get, update: if isOwner(studentId); // Öğrenci kendi verisini okuyabilir/güncelleyebilir.
-        allow read, write: if isTeacher(); // Öğretmenler tüm öğrencilere erişebilir (kendi sınıfı olup olmadığı sınıf sorgusunda kontrol edilecek)
+        
+        // GÜVENLİK GÜNCELLEMESİ: Öğretmenler artık sadece KENDİ sınıflarındaki öğrencilere yazabilir.
+        allow read, write: if isTeacher() && 
+                             (isClassOwner(request.resource.data.classId) || isClassOwner(resource.data.classId));
     }
     
     // --- ÖĞRETMEN PROFİLİ ---
