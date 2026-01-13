@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, FileDown, Save, Trash2, PlusCircle, Send, Copy } from 'lucide-react';
+import { Home, FileText, Save, Trash2, PlusCircle, Copy, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -46,8 +46,6 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDatabase } from '@/hooks/use-database';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 
 const formSchema = z.object({
@@ -66,7 +64,7 @@ const formSchema = z.object({
 });
 
 
-const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo | undefined, doc: jsPDF) => {
+const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo | undefined, doc: any) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('REHBERLİK SERVİSİNE ÖĞRENCİ YÖNLENDİRME FORMU', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
@@ -202,9 +200,18 @@ export function GuidanceReferralTab() {
       toast({ title: 'Eksik Bilgi', description: 'Lütfen formu yazdırmak için önce formu kaydedin.', variant: 'destructive' });
       return;
     }
-    const doc = new jsPDF();
-    generatePdfContent(values, schoolInfo, doc);
-    doc.save(`yonlendirme-formu-${values.studentName}.pdf`);
+    // Dynamically import jspdf and jspdf-autotable to avoid server-side errors
+    Promise.all([import('jspdf'), import('jspdf-autotable')]).then(([jspdfModule, autoTableModule]) => {
+        const jsPDF = jspdfModule.default;
+        // The default export might be nested under `default` in some bundlers
+        const autoTable = (autoTableModule as any).default || autoTableModule;
+        const doc = new jsPDF();
+        generatePdfContent(values, schoolInfo, doc);
+        doc.save(`yonlendirme-formu-${values.studentName}.pdf`);
+    }).catch(error => {
+        console.error("Failed to load PDF libraries", error);
+        toast({ title: "PDF Oluşturma Hatası", description: "Gerekli kütüphaneler yüklenemedi.", variant: "destructive" });
+    });
   };
   
   const renderField = (name: keyof GuidanceReferralRecord, label: string, isTextArea = false) => (

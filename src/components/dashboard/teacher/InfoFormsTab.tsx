@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { Class, Student, TeacherProfile } from '@/lib/types';
+import { Class, Student, TeacherProfile, GuidanceReferralRecord } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
 
