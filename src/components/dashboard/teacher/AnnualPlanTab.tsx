@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { TeacherProfile, Class } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TeacherProfile, Class } from '@/lib/types';
 import { SubjectAnnualPlan } from './SubjectAnnualPlan';
 import { ClassGuidanceAssistant } from './ClassGuidanceAssistant';
 
