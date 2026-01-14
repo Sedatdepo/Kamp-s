@@ -1,10 +1,10 @@
+
 'use client';
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
 import { StudentObservationFormTab } from './StudentObservationFormTab';
-import { UserSettingsTab } from './UserSettingsTab'; 
 import { Class, TeacherProfile } from '@/lib/types';
 
 interface InfoFormsTabProps {
@@ -15,16 +15,12 @@ interface InfoFormsTabProps {
 
 export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
     return (
-        <Tabs defaultValue="user-settings">
-            <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="user-settings">Kullanıcı Bilgileri</TabsTrigger>
+        <Tabs defaultValue="guidance-referral">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="guidance-referral">Rehberliğe Yönlendirme</TabsTrigger>
                 <TabsTrigger value="student-observation-form">Öğrenci Gözlem Formu</TabsTrigger>
                 <TabsTrigger value="student-info-forms" disabled>Öğrenci Bilgi Formları</TabsTrigger>
             </TabsList>
-            <TabsContent value="user-settings" className="mt-4">
-                 <UserSettingsTab />
-            </TabsContent>
             <TabsContent value="guidance-referral" className="mt-4">
                  <GuidanceReferralTab />
             </TabsContent>
