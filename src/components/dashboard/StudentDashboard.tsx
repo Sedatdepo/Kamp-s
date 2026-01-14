@@ -82,7 +82,6 @@ export function StudentDashboard() {
   const { appUser, db } = useAuth();
   const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
   
-  // appUser is guaranteed to be a student and have a classId by the time this component renders.
   const classId = (appUser?.type === 'student' && appUser.data.classId) ? appUser.data.classId : null;
   
   const classQuery = useMemoFirebase(() => {

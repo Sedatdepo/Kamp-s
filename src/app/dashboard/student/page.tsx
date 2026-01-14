@@ -5,7 +5,6 @@ import React from 'react';
 import { useAuth } from "@/hooks/useAuth";
 import { StudentDashboard } from "@/components/dashboard/StudentDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Header } from '@/components/dashboard/teacher/Header';
 
 export default function StudentPage() {
     const { appUser, loading } = useAuth();
@@ -15,17 +14,14 @@ export default function StudentPage() {
     // We must wait for loading to be false AND for the appUser object and its critical data (like classId) to be fully available.
     if (loading || !appUser || appUser.type !== 'student' || !appUser.data.classId) {
         return (
-            <>
-                {/* We render a static Header here to avoid layout shifts, but the main content is skeleton */}
-                <div className="grid gap-6">
-                    <Skeleton className="h-24 w-full" />
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                            <Skeleton key={i} className="h-28 w-full" />
-                        ))}
-                    </div>
+            <div className="grid gap-6">
+                <Skeleton className="h-24 w-full" />
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                        <Skeleton key={i} className="h-28 w-full" />
+                    ))}
                 </div>
-            </>
+            </div>
         );
     }
     
