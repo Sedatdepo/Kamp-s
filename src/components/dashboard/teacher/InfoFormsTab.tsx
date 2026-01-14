@@ -3,8 +3,8 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
-import { StudentObservationFormTab } from './StudentObservationFormTab'; // YENİ EKLENDİ
-import { UserSettingsTab } from './UserSettingsTab'; // YENİ EKLENDİ
+import { StudentObservationFormTab } from './StudentObservationFormTab';
+import { UserSettingsTab } from './UserSettingsTab'; 
 import { Class, TeacherProfile } from '@/lib/types';
 
 interface InfoFormsTabProps {
