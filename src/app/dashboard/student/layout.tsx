@@ -21,6 +21,8 @@ export default function StudentDashboardLayout({
     }
   }, [appUser, loading, router]);
 
+  // This layout now only gates access. If loading or not a student, it shows a skeleton.
+  // The actual data-dependent rendering is now handled by the page.tsx component.
   if (loading || !appUser || appUser.type !== 'student') {
     return (
       <div className="flex flex-col min-h-screen">
@@ -39,6 +41,7 @@ export default function StudentDashboardLayout({
     );
   }
   
+  // Once the user is confirmed to be a student, render the page component.
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
         <Header />

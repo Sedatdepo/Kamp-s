@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/dashboard/teacher/Header';
 import { GradesTab } from './student/GradesTab';
-import { RiskFormTab } from './student/RiskFormTab';
-import { InfoFormTab } from './student/InfoFormTab';
+import { ProjectTab } from './student/ProjectTab';
+import { BadgesTab } from './student/BadgesTab';
 import { StudentCommunicationTab } from './student/StudentCommunicationTab';
 import { TeacherChatsTab } from './student/TeacherChatsTab';
 import { PerformanceHomeworkTab } from './student/PerformanceHomeworkTab';
@@ -15,8 +15,9 @@ import { DutyRosterTab } from './student/DutyRosterTab';
 import { SeatingPlanTab } from './student/SeatingPlanTab';
 import { StudentSurveyTab } from './student/StudentSurveyTab';
 import { AccountSettingsTab } from './student/AccountSettingsTab';
-import { ProjectTab } from './student/ProjectTab';
-import { BadgesTab } from './student/BadgesTab';
+import { RiskFormTab } from './student/RiskFormTab';
+import { InfoFormTab } from './student/InfoFormTab';
+import { StudentClubTab } from './student/StudentClubTab';
 import { SociogramTab as StudentSociogramTab } from './student/SociogramTab';
 import { DiscussionBoardTab as StudentDiscussionBoardTab } from './student/DiscussionBoardTab';
 import { useNotification } from '@/hooks/useNotification';
@@ -34,23 +35,20 @@ import {
   Grid,
   ClipboardCheck,
   Settings,
-  UserCheck,
   GraduationCap,
-  Trophy,
   Award,
   Share2,
   MessagesSquare,
+  Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AuthContext } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
-import { StudentClubTab } from './student/StudentClubTab';
-import { useAuth } from '@/hooks/useAuth';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -84,7 +82,8 @@ export function StudentDashboard() {
   const { appUser, db } = useAuth();
   const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
   
-  const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+  // appUser is guaranteed to be a student and have a classId by the time this component renders.
+  const classId = (appUser?.type === 'student' && appUser.data.classId) ? appUser.data.classId : null;
   
   const classQuery = useMemoFirebase(() => {
     if (!classId || !db) return null;
@@ -221,7 +220,7 @@ export function StudentDashboard() {
                     title="Kulüp" 
                     description="Kulüp tercihi yap veya atamanı gör." 
                     onClick={() => setActiveTab('club')} 
-                    isDisabled={false}
+                    isDisabled={!currentClass?.isClubSelectionActive}
                 />
 
                 <MenuCard 
