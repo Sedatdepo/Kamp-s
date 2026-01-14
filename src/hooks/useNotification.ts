@@ -31,10 +31,13 @@ export const useNotification = () => {
     messages: false,
   });
   
-  const studentId = appUser?.type === 'student' ? appUser.data.id : null;
-  const classId = appUser?.type === 'student' ? appUser.data.classId : null;
+  const studentId = useMemo(() => appUser?.type === 'student' ? appUser.data.id : null, [appUser]);
+  const classId = useMemo(() => appUser?.type === 'student' ? appUser.data.classId : null, [appUser]);
 
-  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  const classQuery = useMemoFirebase(() => {
+    if (!db || !classId) return null;
+    return doc(db, 'classes', classId);
+  }, [db, classId]);
   const { data: currentClass } = useDoc<Class>(classQuery);
 
   const surveysQuery = useMemoFirebase(() => {
@@ -63,7 +66,14 @@ export const useNotification = () => {
 
 
   const checkNotifications = useCallback(async () => {
-    if (!currentClass || !studentId || !db) return;
+    if (!currentClass || !studentId || !db) {
+        // If critical data is not ready, ensure all notifications are false.
+        setNotifications({
+            announcements: false, riskForm: false, infoForm: false, 
+            homeworks: false, election: false, surveys: false, messages: false
+        });
+        return;
+    }
 
     // 1. Duyuru Kontrolü
     const hasNewAnnouncement = currentClass.announcements?.some(
