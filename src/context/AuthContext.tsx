@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = `${studentData.number}-ito`;
+        const password = studentData.number;
 
         try {
             await signInWithEmailAndPassword(auth, studentEmail, password);
