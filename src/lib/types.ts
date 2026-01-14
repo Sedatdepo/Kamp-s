@@ -68,6 +68,8 @@ export interface TeacherProfile {
   branch: string;
   schoolName: string;
   principalName: string;
+  departmentHeadName?: string;
+  guidanceCounselorName?: string;
   fcmTokens?: string[];
   // Grading Tool Data
   reportConfig?: ReportConfig;

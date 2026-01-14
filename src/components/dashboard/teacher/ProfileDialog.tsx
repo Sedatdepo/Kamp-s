@@ -91,7 +91,9 @@ export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDial
             name: profile.name,
             branch: profile.branch,
             schoolName: profile.schoolName,
-            principalName: profile.principalName
+            principalName: profile.principalName,
+            departmentHeadName: profile.departmentHeadName || "",
+            guidanceCounselorName: profile.guidanceCounselorName || "",
         });
         toast({ title: 'Profil güncellendi.'});
         setIsOpen(false);
@@ -123,6 +125,11 @@ export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDial
                         <Label htmlFor="branch" className="text-right">Branş</Label>
                         <Input id="branch" value={profile.branch} onChange={(e) => handleInputChange('branch', e.target.value)} className="col-span-3" />
                     </div>
+                </div>
+            </div>
+             <div>
+                <h3 className="text-md font-semibold mb-4 border-b pb-2">Okul Bilgileri</h3>
+                 <div className="space-y-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="schoolName" className="text-right">Okul Adı</Label>
                         <Input id="schoolName" value={profile.schoolName} onChange={(e) => handleInputChange('schoolName', e.target.value)} className="col-span-3" />
@@ -131,7 +138,15 @@ export function ProfileDialog({ isOpen, setIsOpen, teacherProfile }: ProfileDial
                         <Label htmlFor="principalName" className="text-right">Müdür Adı</Label>
                         <Input id="principalName" value={profile.principalName} onChange={(e) => handleInputChange('principalName', e.target.value)} className="col-span-3" />
                     </div>
-                </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="departmentHeadName" className="text-right">Zümre Başkanı</Label>
+                        <Input id="departmentHeadName" value={profile.departmentHeadName || ''} onChange={(e) => handleInputChange('departmentHeadName', e.target.value)} className="col-span-3" />
+                    </div>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="guidanceCounselorName" className="text-right">Rehber Öğretmen</Label>
+                        <Input id="guidanceCounselorName" value={profile.guidanceCounselorName || ''} onChange={(e) => handleInputChange('guidanceCounselorName', e.target.value)} className="col-span-3" />
+                    </div>
+                 </div>
             </div>
 
             <Separator />

@@ -23,6 +23,8 @@ const formSchema = z.object({
   branch: z.string().min(2, 'Branş gereklidir.'),
   schoolName: z.string().min(3, 'Okul adı gereklidir.'),
   principalName: z.string().min(3, 'Müdür adı gereklidir.'),
+  departmentHeadName: z.string().optional(),
+  guidanceCounselorName: z.string().optional(),
 });
 
 export function RegisterForm() {
@@ -40,6 +42,8 @@ export function RegisterForm() {
       branch: '',
       schoolName: '',
       principalName: '',
+      departmentHeadName: '',
+      guidanceCounselorName: '',
     },
   });
 
@@ -61,6 +65,8 @@ export function RegisterForm() {
         branch: values.branch,
         schoolName: values.schoolName,
         principalName: values.principalName,
+        departmentHeadName: values.departmentHeadName,
+        guidanceCounselorName: values.guidanceCounselorName,
       });
 
       toast({
@@ -156,6 +162,30 @@ export function RegisterForm() {
               </FormItem>
             )}
           />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="departmentHeadName"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Zümre Başkanı Adı (İsteğe Bağlı)</FormLabel>
+                    <FormControl><Input placeholder="Mehmet Öztürk" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="guidanceCounselorName"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Rehber Öğretmen Adı (İsteğe Bağlı)</FormLabel>
+                    <FormControl><Input placeholder="Fatma Demir" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
         </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
