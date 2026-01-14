@@ -60,7 +60,7 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     
-    const isLiteratureTeacher = teacherProfile.branch === 'Edebiyat';
+    const isLiteratureTeacher = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
 
     const getExamAverage = (written?: number, speaking?: number, listening?: number, standard?: number): number | null => {
         if(isLiteratureTeacher) {
@@ -442,7 +442,7 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     
     const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;
-        const isLiterature = teacherProfile.branch === 'Edebiyat';
+        const isLiterature = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
 
         const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
             if(isLiterature) {

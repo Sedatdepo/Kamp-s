@@ -29,7 +29,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   const { toast } = useToast();
   const { db } = useAuth();
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
-  const isLiteratureTeacher = teacherBranch === 'Edebiyat';
+  const isLiteratureTeacher = teacherBranch === 'Edebiyat' || teacherBranch === 'Türk Dili ve Edebiyatı';
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
@@ -171,9 +171,9 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
     if (isLiteratureTeacher) {
         return (
             <>
-                <TableCell className="p-1 align-top"><Textarea placeholder="1. Yazılı..." {...commonProps(activeTerm === 1 ? 'writtenExam1' : 'writtenExam2')} /></TableCell>
-                <TableCell className="p-1 align-top"><Textarea placeholder="1. Konuşma..." {...commonProps(activeTerm === 1 ? 'speakingExam1' : 'speakingExam2')} /></TableCell>
-                <TableCell className="p-1 align-top"><Textarea placeholder="1. Dinleme..." {...commonProps(activeTerm === 1 ? 'listeningExam1' : 'listeningExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Yazılı..." {...commonProps('writtenExam1')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Konuşma..." {...commonProps('speakingExam1')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Dinleme..." {...commonProps('listeningExam1')} /></TableCell>
                 <TableCell className="p-1 align-top"><Textarea placeholder="2. Yazılı..." {...commonProps('writtenExam2')} /></TableCell>
                 <TableCell className="p-1 align-top"><Textarea placeholder="2. Konuşma..." {...commonProps('speakingExam2')} /></TableCell>
                 <TableCell className="p-1 align-top"><Textarea placeholder="2. Dinleme..." {...commonProps('listeningExam2')} /></TableCell>

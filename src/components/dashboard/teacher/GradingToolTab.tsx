@@ -481,6 +481,7 @@ export function GradingToolTab({
         setIsOpen={setBulkEntryOpen}
         students={students}
         activeTerm={activeTerm}
+        teacherBranch={teacherProfile?.branch || ''}
         onBulkUpdate={(updatedStudents) => setStudents(updatedStudents)}
       />
 
