@@ -16,13 +16,15 @@ export default function StudentDashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // This effect ensures that only authenticated students can access this route.
+    // If not, it redirects them.
     if (!loading && (!appUser || appUser.type !== 'student')) {
       router.push('/');
     }
   }, [appUser, loading, router]);
 
-  // This layout now only gates access. If loading or not a student, it shows a skeleton.
-  // The actual data-dependent rendering is now handled by the page.tsx component.
+  // While loading, or if the user is not a valid student, show a skeleton UI.
+  // This prevents any child components from rendering and making premature data requests.
   if (loading || !appUser || appUser.type !== 'student') {
     return (
       <div className="flex flex-col min-h-screen">
@@ -42,6 +44,7 @@ export default function StudentDashboardLayout({
   }
   
   // Once the user is confirmed to be a student, render the page component.
+  // The actual data fetching logic is now safely inside the `children` (page.tsx).
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
         <Header />
