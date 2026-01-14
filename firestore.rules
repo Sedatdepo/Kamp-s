@@ -32,7 +32,8 @@ service cloud.firestore {
     
     // --- SINIF KODLARI (GİRİŞ İÇİN) ---
     match /classCodes/{classCode} {
-        // Herkes (kimliksiz kullanıcılar dahil) sınıf kodunun varlığını kontrol edebilir.
+        // GÜNCELLEME: Herkes (kimliksiz kullanıcılar dahil) sınıf kodunun varlığını kontrol edebilir.
+        // Bu, öğrenci girişinin ilk adımı için gereklidir.
         allow get: if true;
         // Sadece öğretmenler sınıf kodu oluşturabilir/güncelleyebilir/silebilir.
         allow write: if isTeacher();
@@ -65,7 +66,7 @@ service cloud.firestore {
     // --- SINIFLAR ---
     match /classes/{classId} {
       // BİR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI OKUYABILIR (LISTELEYEBILIR VEYA TEKIL GETIREBILIR)
-      allow list, read: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
       
       // Öğretmen sadece kendi oluşturduğu sınıfı yazabilir/silebilir.
       allow update, delete: if isClassOwner(classId);
