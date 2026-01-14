@@ -202,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
+        // 1. Get the actual class ID from the public class code
         let classId;
         try {
             console.log('Checking class code:', classCode);
@@ -212,6 +213,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw new Error("Sınıf kodu bulunamadı.");
             }
             classId = classCodeSnap.data().classId;
+            console.log(`Class code ${classCode} resolved to classId: ${classId}`);
+
         } catch (error: any) {
              if (error.code === 'unavailable' || (error.message && error.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
                 throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
@@ -219,17 +222,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Re-throw other errors
             throw error;
         }
-        
+
+        // 2. Find the student using the REAL classId and studentNumber
+        console.log(`Querying students collection with classId: ${classId} and number: ${studentNumber}`);
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
+            console.log("No student found with that number in this class.");
             throw new Error("Sınıf kodu veya öğrenci numarası hatalı.");
         }
 
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
+        // 3. Proceed with authentication
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
         const password = studentData.number;
 
