@@ -26,12 +26,13 @@ service cloud.firestore {
     }
     
     function isStudentInClass(classId) {
+       // DOĞRU YAPI: Öğrencinin kendi belgesindeki classId'ye bak.
        return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
     }
     
-    // --- YENİ: SINIF KODLARI ---
+    // --- SINIF KODLARI (GİRİŞ İÇİN) ---
     match /classCodes/{classCode} {
-        // Herkes sınıf kodlarını okuyabilir. Bu, öğrencinin giriş yapabilmesi için gereklidir.
+        // Herkes (kimliksiz kullanıcılar dahil) sınıf kodunun varlığını kontrol edebilir.
         allow get: if true;
         // Sadece öğretmenler sınıf kodu oluşturabilir/güncelleyebilir/silebilir.
         allow write: if isTeacher();
@@ -63,8 +64,8 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // BIR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI OKUYABILIR (LISTELEYEBILIR VEYA TEKIL GETIREBILIR)
-      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      // BİR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI OKUYABILIR (LISTELEYEBILIR VEYA TEKIL GETIREBILIR)
+      allow list, read: if isTeacher() && resource.data.teacherId == request.auth.uid;
       
       // Öğretmen sadece kendi oluşturduğu sınıfı yazabilir/silebilir.
       allow update, delete: if isClassOwner(classId);
@@ -73,7 +74,7 @@ service cloud.firestore {
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
       // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
-      allow get: if isSignedIn() && isStudentInClass(classId);
+      allow get: if isStudentInClass(classId);
       
       // SINIF ALT KOLEKSİYONLARI (ÖDEVLER VB.)
       match /homeworks/{homeworkId} {
@@ -149,7 +150,7 @@ service cloud.firestore {
         // Oturum açmış herkes (öğrenciler) anket cevabı oluşturabilir.
         allow create: if isSignedIn();
         // Sadece öğretmenler tüm cevapları okuyabilir.
-        allow read, list: if isTeacher();
+        allow read: if isTeacher();
     }
   }
 }
