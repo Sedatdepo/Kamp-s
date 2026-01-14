@@ -35,7 +35,7 @@ export function StudentLoginForm() {
 
   useEffect(() => {
     if (classCodeFromUrl) {
-      form.setValue('classCode', classCodeFromUrl.toUpperCase());
+      form.setValue('classCode', classCodeFromUrl.trim().toUpperCase());
     }
   }, [classCodeFromUrl, form]);
 
@@ -43,7 +43,13 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
+      // Sanitize input before sending to the auth function
+      const cleanClassCode = values.classCode.trim().toUpperCase();
+      const cleanStudentNumber = values.studentNumber.trim();
+      
+      console.log('Attempting login with Class Code:', cleanClassCode, 'and Student Number:', cleanStudentNumber);
+      
+      await signInStudent(cleanClassCode, cleanStudentNumber);
       // On success, AuthContext will handle navigation.
     } catch (error: any) {
       toast({

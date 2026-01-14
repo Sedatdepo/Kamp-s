@@ -202,7 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        const classCodeRef = doc(db, "classCodes", classCode.toUpperCase());
+        console.log('Checking class code:', classCode);
+        const classCodeRef = doc(db, "classCodes", classCode);
         const classCodeSnap = await getDoc(classCodeRef);
 
         if (!classCodeSnap.exists()) {
@@ -221,21 +222,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
+        // This is the student's "login" not their "email". It's just a unique identifier for Firebase Auth.
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = studentData.number;
+        const password = studentData.number; // Password is the student number.
 
         try {
-            if (studentData.authUid) {
-                await signInWithEmailAndPassword(auth, studentEmail, password);
-            } else {
-                 const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
-                 await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
-            }
+            // Try to sign in. If it fails, the user likely doesn't exist yet.
+            await signInWithEmailAndPassword(auth, studentEmail, password);
         } catch (error: any) {
-             if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                throw new Error('Okul numaranız aynı zamanda şifrenizdir. Eğer daha önce değiştirdiyseniz lütfen doğru şifreyi girin veya şifre sıfırlama isteyin.');
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                // User doesn't exist, so create them.
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
+                    // Link the new auth UID to the student document.
+                    await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
+                } catch (creationError) {
+                    console.error("Student account creation failed:", creationError);
+                    throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
+                }
+            } else if (error.code === 'auth/wrong-password') {
+                 throw new Error('Okul numaranız şifrenizdir. Eğer daha önce değiştirdiyseniz lütfen doğru şifreyi girin veya şifre sıfırlama isteyin.');
             } else {
-                console.error("Öğrenci giriş/kayıt hatası:", error);
+                console.error("Student sign-in error:", error);
                 throw new Error("Giriş yapılırken beklenmedik bir hata oluştu.");
             }
         }
