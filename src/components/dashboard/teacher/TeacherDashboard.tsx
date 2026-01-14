@@ -28,7 +28,7 @@ import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, Boo
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
-import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -114,18 +114,34 @@ function ClassSelectionScreen({
 
     const handleAddClass = async () => {
         if (!newClassName.trim() || !teacherId || !db) return;
+        
+        const newClassCode = generateClassCode();
+        const newClassRef = doc(collection(db, 'classes'));
+        const classCodeRef = doc(db, 'classCodes', newClassCode);
+
         try {
-            await addDoc(collection(db, 'classes'), {
+            const batch = writeBatch(db);
+            
+            // 1. Set the new class document
+            batch.set(newClassRef, {
                 name: newClassName,
-                teacherId: teacherId, // This was missing
+                teacherId: teacherId,
                 isProjectSelectionActive: false,
                 isRiskFormActive: false,
                 isInfoFormActive: false,
                 isElectionActive: false,
-                code: generateClassCode(),
+                code: newClassCode,
                 announcements: [],
                 homeworks: [],
             });
+
+            // 2. Set the class code lookup document
+            batch.set(classCodeRef, {
+                classId: newClassRef.id,
+            });
+
+            await batch.commit();
+            
             toast({ title: 'Sınıf oluşturuldu!' });
             setNewClassName('');
         } catch (error) {
@@ -655,3 +671,5 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
+    
