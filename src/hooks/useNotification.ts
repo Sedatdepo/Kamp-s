@@ -67,7 +67,7 @@ export const useNotification = () => {
 
   const checkNotifications = useCallback(async () => {
     if (!currentClass || !studentId || !db) {
-        // If critical data is not ready, ensure all notifications are false.
+        // Eğer kritik data hazır değilse, tüm bildirimleri false yap.
         setNotifications({
             announcements: false, riskForm: false, infoForm: false, 
             homeworks: false, election: false, surveys: false, messages: false
@@ -123,8 +123,11 @@ export const useNotification = () => {
   }, [currentClass, studentId, appUser, db, hasUnansweredSurvey, unreadMessages]);
 
   useEffect(() => {
-    checkNotifications();
-  }, [checkNotifications]);
+    // Sadece gerekli bilgiler hazır olduğunda bildirimleri kontrol et
+    if (appUser && studentId && classId && db) {
+        checkNotifications();
+    }
+  }, [appUser, studentId, classId, db, checkNotifications]);
 
   const markAsSeen = useCallback(async (type: NotificationType) => {
     if (!studentId || !currentClass || !classId || !db) return;

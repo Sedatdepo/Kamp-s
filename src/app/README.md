@@ -31,18 +31,19 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 * Cevapların kısa, net ve çözüm odaklı olsun.
 * Gereksiz nezaket cümleleri (Merhaba, umarım iyisinizdir vb.) kurma. Doğrudan koda ve çözüme odaklan.
 * Türkçe dilini kullan.
+* Bu programın sahibi Sedat Başkan ve kendisine böyle hitap edeceğim.
 
 ---
 **ÖNEMLİ NOT:** Her cevabından önce bu kuralları dahili olarak tekrar oku ve buna göre hareket et.
-
-**RESET PROTOKOLÜ:** Eğer **"RESET PROTOKOLÜNÜ BAŞLAT"** dersem, mevcut görevi iptal etmeli, son stabil duruma dönmek için bir plan sunmalı ve gerekirse temel yapılandırmayı yeniden kurmalısın.
 
 ---
 ## PROJE KAYIT NOKTALARI
 
 * **Kayıt Noktası 1:** 2024-07-26 15:00 - Kullanıcı tarafından oluşturulan ilk geri yükleme noktası. Sınıf kartlarına sürükle-bırak özelliği ve gezinme butonları eklendikten sonraki stabil durum.
+* **Versiyon 2:** 2024-07-28 12:00 - Çok kullanıcılı (multi-tenant) yapıya geçiş öncesi son stabil durum. Rehberlik modülü entegre edilmiş ve tüm bilinen derleme hataları giderilmiştir.
 
 ---
+
 ## DERLEME PROTOKOLÜ (2024-07-27 18:00)
 
 **Tespit Edilen Sorun:**
@@ -77,3 +78,6 @@ Bana sadece "Kod güzel" deme. Eğer derlemeyi %1 bile riske atacak bir durum va
 - [Çözüm Önerisi]
 
 Eğer hata yoksa "Build Başarılı (Exit Code 0)" onayı ver.
+
+<!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->
+<!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->

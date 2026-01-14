@@ -84,6 +84,8 @@ export function StudentDashboard() {
   
   const classId = (appUser?.type === 'student' && appUser.data.classId) ? appUser.data.classId : null;
   
+  // Buradaki sorgu, `classId`'nin varlığından emin olunduktan sonra çalışır,
+  // çünkü `StudentDashboard` bileşeni `page.tsx` içinde bu kontrolle render edilir.
   const classQuery = useMemoFirebase(() => {
     if (!classId || !db) return null;
     return doc(db, 'classes', classId);

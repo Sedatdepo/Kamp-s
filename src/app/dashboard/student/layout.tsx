@@ -16,15 +16,16 @@ export default function StudentDashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    // This effect ensures that only authenticated students can access this route.
-    // If not, it redirects them.
+    // Bu effect, yalnızca oturum açmış ve "student" tipindeki kullanıcıların
+    // bu yola erişebilmesini sağlar. Aksi takdirde ana sayfaya yönlendirir.
     if (!loading && (!appUser || appUser.type !== 'student')) {
       router.push('/');
     }
   }, [appUser, loading, router]);
 
-  // While loading, or if the user is not a valid student, show a skeleton UI.
-  // This prevents any child components from rendering and making premature data requests.
+  // Kimlik doğrulama durumu yüklenirken veya kullanıcı geçerli bir öğrenci değilse,
+  // herhangi bir alt bileşenin (ve onların veri sorgularının) render edilmesini engellemek için
+  // tam sayfa bir iskelet arayüz göster.
   if (loading || !appUser || appUser.type !== 'student') {
     return (
       <div className="flex flex-col min-h-screen">
@@ -43,8 +44,8 @@ export default function StudentDashboardLayout({
     );
   }
   
-  // Once the user is confirmed to be a student, render the page component.
-  // The actual data fetching logic is now safely inside the `children` (page.tsx).
+  // Kimlik doğrulama başarılı ve kullanıcı bir öğrenci ise,
+  // asıl sayfa içeriğini (`children`, yani page.tsx) render et.
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
         <Header />

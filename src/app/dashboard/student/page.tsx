@@ -9,9 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function StudentPage() {
     const { appUser, loading } = useAuth();
 
-    // The layout only ensures the user is a student type.
-    // This page component provides the final gate before rendering the data-heavy dashboard.
-    // We must wait for loading to be false AND for the appUser object and its critical data (like classId) to be fully available.
+    // Üst layout, kullanıcının 'student' tipinde olduğunu garanti eder.
+    // Bu sayfa bileşeni ise, veri-yoğun dashboard'u render etmeden önce son bir kontrol sağlar.
+    // Yüklemenin bitmesini VE appUser nesnesinin ve onun kritik verisi olan classId'nin
+    // tamamen hazır olmasını beklemeliyiz.
     if (loading || !appUser || appUser.type !== 'student' || !appUser.data.classId) {
         return (
             <div className="grid gap-6">
@@ -25,6 +26,7 @@ export default function StudentPage() {
         );
     }
     
-    // By the time we render StudentDashboard, we are certain that appUser and appUser.data.classId exist.
+    // StudentDashboard'u render ettiğimizde, hem `appUser` hem de `appUser.data.classId`'nin
+    // varlığından ve geçerliliğinden kesinlikle eminiz.
     return <StudentDashboard />;
 }

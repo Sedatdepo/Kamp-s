@@ -34,6 +34,8 @@ export function Header() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // Bu effect, bileşenin yalnızca istemci tarafında "hydrate" edildikten sonra çalışır.
+    // Bu, sunucu ve istemci arasındaki hydration uyuşmazlığı hatalarını önler.
     setIsClient(true);
   }, []);
 
