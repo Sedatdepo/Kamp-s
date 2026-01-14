@@ -15,16 +15,21 @@ interface BulkGradeEntryDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   students: Student[];
+  teacherBranch: string;
   activeTerm: 1 | 2;
-  onBulkUpdate: (updatedStudents: Student[]) => void; // Callback to update parent state
+  onBulkUpdate: (updatedStudents: Student[]) => void;
 }
 
-export type GradeType = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
+export type GradeType = 
+    | 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade'
+    | 'writtenExam1' | 'speakingExam1' | 'listeningExam1'
+    | 'writtenExam2' | 'speakingExam2' | 'listeningExam2';
 
-export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, onBulkUpdate }: BulkGradeEntryDialogProps) {
+export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
   const { db } = useAuth();
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+  const isLiteratureTeacher = teacherBranch === 'Edebiyat';
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
@@ -66,7 +71,6 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, 
                 const gradeField = `${termGradesKey}.${gradeType}`;
                 batch.update(studentRef, { [gradeField]: grade });
 
-                // Update local state copy
                 const studentIndexInOriginalArray = updatedStudents.findIndex(s => s.id === student.id);
                 if (studentIndexInOriginalArray !== -1) {
                     const studentToUpdate = { ...updatedStudents[studentIndexInOriginalArray] };
@@ -84,13 +88,11 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, 
 
     try {
         await batch.commit();
-        onBulkUpdate(updatedStudents); // Update parent component's state
+        onBulkUpdate(updatedStudents);
         toast({
             title: 'Notlar Kaydedildi',
             description: `${updatedCount} öğrencinin notu başarıyla güncellendi.`
         });
-        // Optionally close dialog after success
-        // setIsOpen(false); 
     } catch (error: any) {
         toast({
             variant: 'destructive',
@@ -110,9 +112,88 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, 
     return grade;
   }
 
+  const renderGradeHeaders = () => {
+    if (isLiteratureTeacher) {
+      return (
+        <>
+          <TableHead>1. Yazılı</TableHead>
+          <TableHead>1. Konuşma</TableHead>
+          <TableHead>1. Dinleme</TableHead>
+          <TableHead>2. Yazılı</TableHead>
+          <TableHead>2. Konuşma</TableHead>
+          <TableHead>2. Dinleme</TableHead>
+        </>
+      );
+    }
+    return (
+      <>
+        <TableHead>1. Sınav</TableHead>
+        <TableHead>2. Sınav</TableHead>
+        <TableHead>1. Performans</TableHead>
+        <TableHead>2. Performans</TableHead>
+        {activeTerm === 2 && <TableHead>Proje</TableHead>}
+      </>
+    );
+  };
+
+  const renderStudentGradeCells = (student: Student) => {
+    const termGrades = student[termGradesKey];
+    if (isLiteratureTeacher) {
+        return (
+            <>
+                <TableCell>{displayGrade(termGrades?.writtenExam1)}</TableCell>
+                <TableCell>{displayGrade(termGrades?.speakingExam1)}</TableCell>
+                <TableCell>{displayGrade(termGrades?.listeningExam1)}</TableCell>
+                <TableCell>{displayGrade(termGrades?.writtenExam2)}</TableCell>
+                <TableCell>{displayGrade(termGrades?.speakingExam2)}</TableCell>
+                <TableCell>{displayGrade(termGrades?.listeningExam2)}</TableCell>
+            </>
+        )
+    }
+    return (
+        <>
+            <TableCell>{displayGrade(termGrades?.exam1)}</TableCell>
+            <TableCell>{displayGrade(termGrades?.exam2)}</TableCell>
+            <TableCell>{displayGrade(termGrades?.perf1)}</TableCell>
+            <TableCell>{displayGrade(termGrades?.perf2)}</TableCell>
+            {activeTerm === 2 && <TableCell>{displayGrade(termGrades?.projectGrade)}</TableCell>}
+        </>
+    )
+  }
+
+  const renderPasteAreas = () => {
+    const commonProps = (gradeType: GradeType) => ({
+        className:"h-full min-h-[40px] resize-none text-xs p-1 font-mono",
+        onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => handlePaste(e, gradeType),
+        onChange:(e: React.ChangeEvent<HTMLTextAreaElement>) => e.target.value = ''
+    });
+
+    if (isLiteratureTeacher) {
+        return (
+            <>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Yazılı..." {...commonProps(activeTerm === 1 ? 'writtenExam1' : 'writtenExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Konuşma..." {...commonProps(activeTerm === 1 ? 'speakingExam1' : 'speakingExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="1. Dinleme..." {...commonProps(activeTerm === 1 ? 'listeningExam1' : 'listeningExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="2. Yazılı..." {...commonProps('writtenExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="2. Konuşma..." {...commonProps('speakingExam2')} /></TableCell>
+                <TableCell className="p-1 align-top"><Textarea placeholder="2. Dinleme..." {...commonProps('listeningExam2')} /></TableCell>
+            </>
+        )
+    }
+     return (
+        <>
+            <TableCell className="p-1 align-top"><Textarea placeholder="1. Sınav..." {...commonProps('exam1')} /></TableCell>
+            <TableCell className="p-1 align-top"><Textarea placeholder="2. Sınav..." {...commonProps('exam2')} /></TableCell>
+            <TableCell className="p-1 align-top"><Textarea placeholder="1. Perf..." {...commonProps('perf1')} /></TableCell>
+            <TableCell className="p-1 align-top"><Textarea placeholder="2. Perf..." {...commonProps('perf2')} /></TableCell>
+            {activeTerm === 2 && <TableCell className="p-1 align-top"><Textarea placeholder="Proje..." {...commonProps('projectGrade')} /></TableCell>}
+        </>
+     )
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+      <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Toplu Not Girişi ({activeTerm}. Dönem)</DialogTitle>
           <DialogDescription>
@@ -125,72 +206,20 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, 
               <TableRow>
                 <TableHead className="w-[50px]">No</TableHead>
                 <TableHead className="w-1/4">Öğrenci Adı</TableHead>
-                <TableHead>1. Sınav</TableHead>
-                <TableHead>2. Sınav</TableHead>
-                <TableHead>1. Performans</TableHead>
-                <TableHead>2. Performans</TableHead>
-                {activeTerm === 2 && <TableHead>Proje</TableHead>}
+                {renderGradeHeaders()}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStudents.map((student) => {
-                const termGrades = student[termGradesKey];
-                return (
+              {sortedStudents.map((student) => (
                     <TableRow key={student.id}>
                         <TableCell>{student.number}</TableCell>
                         <TableCell className="font-medium">{student.name}</TableCell>
-                        <TableCell>{displayGrade(termGrades?.exam1)}</TableCell>
-                        <TableCell>{displayGrade(termGrades?.exam2)}</TableCell>
-                        <TableCell>{displayGrade(termGrades?.perf1)}</TableCell>
-                        <TableCell>{displayGrade(termGrades?.perf2)}</TableCell>
-                         {activeTerm === 2 && <TableCell>{displayGrade(termGrades?.projectGrade)}</TableCell>}
+                        {renderStudentGradeCells(student)}
                     </TableRow>
-                )
-              })}
+              ))}
               <TableRow>
                 <TableCell colSpan={2} className="font-bold p-1 text-right pr-4 align-top pt-3">Yapıştırma Alanı:</TableCell>
-                <TableCell className="p-1 align-top">
-                  <Textarea
-                    placeholder="1. Sınav..."
-                    className="h-full min-h-[40px] resize-none text-xs p-1 font-mono"
-                    onPaste={(e) => handlePaste(e, 'exam1')}
-                    onChange={(e) => e.target.value = ''} 
-                  />
-                </TableCell>
-                <TableCell className="p-1 align-top">
-                  <Textarea
-                    placeholder="2. Sınav..."
-                    className="h-full min-h-[40px] resize-none text-xs p-1 font-mono"
-                    onPaste={(e) => handlePaste(e, 'exam2')}
-                    onChange={(e) => e.target.value = ''}
-                  />
-                </TableCell>
-                <TableCell className="p-1 align-top">
-                  <Textarea
-                    placeholder="1. Perf..."
-                    className="h-full min-h-[40px] resize-none text-xs p-1 font-mono"
-                    onPaste={(e) => handlePaste(e, 'perf1')}
-                    onChange={(e) => e.target.value = ''}
-                  />
-                </TableCell>
-                <TableCell className="p-1 align-top">
-                  <Textarea
-                    placeholder="2. Perf..."
-                    className="h-full min-h-[40px] resize-none text-xs p-1 font-mono"
-                    onPaste={(e) => handlePaste(e, 'perf2')}
-                    onChange={(e) => e.target.value = ''}
-                  />
-                </TableCell>
-                 {activeTerm === 2 && (
-                    <TableCell className="p-1 align-top">
-                        <Textarea
-                        placeholder="Proje..."
-                        className="h-full min-h-[40px] resize-none text-xs p-1 font-mono"
-                        onPaste={(e) => handlePaste(e, 'projectGrade')}
-                        onChange={(e) => e.target.value = ''} 
-                        />
-                    </TableCell>
-                 )}
+                {renderPasteAreas()}
               </TableRow>
             </TableBody>
           </Table>
@@ -199,3 +228,5 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, activeTerm, 
     </Dialog>
   );
 }
+
+    

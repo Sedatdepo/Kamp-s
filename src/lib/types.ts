@@ -214,16 +214,29 @@ export interface Class {
 }
 
 export type GradingScores = {
+  // Standard exam score (for non-literature teachers OR final calculated score)
   exam1?: number;
   exam2?: number;
+
+  // Literature teacher specific scores
+  writtenExam1?: number;
+  speakingExam1?: number;
+  listeningExam1?: number;
+  writtenExam2?: number;
+  speakingExam2?: number;
+  listeningExam2?: number;
+
+  // Performance and project scores
   perf1?: number;
   perf2?: number;
   projectGrade?: number;
+  
   scores1?: { [key: string]: number };
   scores2?: { [key: string]: number };
   projectScores?: { [key: string]: number };
   behaviorScores?: { [key: string]: number };
 };
+
 
 export interface Student {
   id: string;
@@ -659,3 +672,5 @@ export interface StudentInfoFormData {
     familyMemberWithDisability: string;
     familyFinancialIssues: string;
 }
+
+    

@@ -60,13 +60,56 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     
-    const exam1 = grades.exam1;
-    const exam2 = grades.exam2;
+    const isLiteratureTeacher = teacherProfile.branch === 'Edebiyat';
+
+    const getExamAverage = (written?: number, speaking?: number, listening?: number, standard?: number): number | null => {
+        if(isLiteratureTeacher) {
+            if (written === undefined && speaking === undefined && listening === undefined) return null;
+            const w = written !== undefined && written >= 0 ? written : 0;
+            const s = speaking !== undefined && speaking >= 0 ? speaking : 0;
+            const l = listening !== undefined && listening >= 0 ? listening : 0;
+            return (w * 0.7) + (s * 0.15) + (l * 0.15);
+        }
+        return standard ?? null;
+    }
+
+    const exam1 = getExamAverage(grades.writtenExam1, grades.speakingExam1, grades.listeningExam1, grades.exam1);
+    const exam2 = getExamAverage(grades.writtenExam2, grades.speakingExam2, grades.listeningExam2, grades.exam2);
+
     const perf1 = grades.perf1 ?? calculateAverage(grades.scores1, perfCriteria);
     const perf2 = grades.perf2 ?? calculateAverage(grades.scores2, perfCriteria);
     const projAvg = student.hasProject ? (grades.projectGrade ?? calculateAverage(grades.projectScores, projCriteria)) : null;
     const behaviorAvg = calculateAverage(grades.behaviorScores, INITIAL_BEHAVIOR_CRITERIA);
     
+    if (isLiteratureTeacher) {
+         return (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <Card className="flex-1 col-span-full lg:col-span-2">
+                    <CardHeader className="pb-2"><CardDescription className="flex items-center gap-2 text-xs"><Edit/> 1. Sınav Detayları</CardDescription></CardHeader>
+                    <CardContent className="flex gap-2">
+                        <GradeCard title="Yazılı" icon={<></>} value={grades.writtenExam1 ?? 'Girilmedi'} />
+                        <GradeCard title="Konuşma" icon={<></>} value={grades.speakingExam1 ?? 'Girilmedi'} />
+                        <GradeCard title="Dinleme" icon={<></>} value={grades.listeningExam1 ?? 'Girilmedi'} />
+                        <Card className="flex-1 bg-primary/10"><CardHeader className="pb-2"><CardDescription className="text-xs">1. Sınav Ort.</CardDescription></CardHeader><CardContent><p className="text-2xl font-bold">{exam1?.toFixed(2)}</p></CardContent></Card>
+                    </CardContent>
+                </Card>
+                <Card className="flex-1 col-span-full lg:col-span-2">
+                    <CardHeader className="pb-2"><CardDescription className="flex items-center gap-2 text-xs"><Edit/> 2. Sınav Detayları</CardDescription></CardHeader>
+                    <CardContent className="flex gap-2">
+                        <GradeCard title="Yazılı" icon={<></>} value={grades.writtenExam2 ?? 'Girilmedi'} />
+                        <GradeCard title="Konuşma" icon={<></>} value={grades.speakingExam2 ?? 'Girilmedi'} />
+                        <GradeCard title="Dinleme" icon={<></>} value={grades.listeningExam2 ?? 'Girilmedi'} />
+                        <Card className="flex-1 bg-primary/10"><CardHeader className="pb-2"><CardDescription className="text-xs">2. Sınav Ort.</CardDescription></CardHeader><CardContent><p className="text-2xl font-bold">{exam2?.toFixed(2)}</p></CardContent></Card>
+                    </CardContent>
+                </Card>
+                 <GradeCard title="1. Performans" icon={<GraduationCap/>} value={perf1} />
+                <GradeCard title="2. Performans" icon={<GraduationCap/>} value={perf2} />
+                <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
+                <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
+            </div>
+         )
+    }
+
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1 ?? 'Girilmedi'} />
@@ -399,11 +442,25 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     
     const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;
+        const isLiterature = teacherProfile.branch === 'Edebiyat';
+
+        const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
+            if(isLiterature) {
+                if (written === undefined && speaking === undefined && listening === undefined) return null;
+                const w = written !== undefined && written >= 0 ? written : 0;
+                const s = speaking !== undefined && speaking >= 0 ? speaking : 0;
+                const l = listening !== undefined && listening >= 0 ? listening : 0;
+                return (w * 0.7) + (s * 0.15) + (l * 0.15);
+            }
+            return standard;
+        }
+        
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         
-        const exam1 = termGrades.exam1;
-        const exam2 = termGrades.exam2;
+        const exam1 = getExamAvg(termGrades.writtenExam1, termGrades.speakingExam1, termGrades.listeningExam1, termGrades.exam1);
+        const exam2 = getExamAvg(termGrades.writtenExam2, termGrades.speakingExam2, termGrades.listeningExam2, termGrades.exam2);
+
         const perf1 = termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria);
         const perf2 = termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria);
         const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
@@ -517,3 +574,5 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     </Dialog>
   );
 }
+
+    
