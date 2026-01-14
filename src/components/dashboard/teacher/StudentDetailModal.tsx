@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Gauge, BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2 } from 'lucide-react';
+import { BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2, Book, Mic, Headphones } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,7 +59,7 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     const grades = termGrades || {};
     const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
     const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
-    
+
     const exam1 = grades.exam1;
     const exam2 = grades.exam2;
     const perf1 = grades.perf1 ?? calculateAverage(grades.scores1, perfCriteria);
@@ -69,10 +69,26 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <GradeCard title="1. Sınav" icon={<Edit/>} value={exam1 ?? 'Girmedi'} />
-            <GradeCard title="2. Sınav" icon={<Edit/>} value={exam2 ?? 'Girmedi'} />
-            <GradeCard title="1. Performans" icon={<Gauge/>} value={perf1} />
-            <GradeCard title="2. Performans" icon={<Gauge/>} value={perf2} />
+            <div className="lg:col-span-2 p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-semibold mb-2">1. Sınav Detayları</h4>
+                <div className="grid grid-cols-3 gap-2">
+                    <GradeCard title="Yazılı" icon={<Book/>} value={grades.writtenExam1 ?? 'Girilmedi'} />
+                    <GradeCard title="Konuşma" icon={<Mic/>} value={grades.speakingExam1 ?? 'Girilmedi'} />
+                    <GradeCard title="Dinleme" icon={<Headphones/>} value={grades.listeningExam1 ?? 'Girilmedi'} />
+                </div>
+                 <p className="text-right text-lg font-bold mt-2 pr-2">Ortalama: <span className="text-primary">{exam1?.toFixed(2) ?? 'N/A'}</span></p>
+            </div>
+             <div className="lg:col-span-2 p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-semibold mb-2">2. Sınav Detayları</h4>
+                <div className="grid grid-cols-3 gap-2">
+                    <GradeCard title="Yazılı" icon={<Book/>} value={grades.writtenExam2 ?? 'Girilmedi'} />
+                    <GradeCard title="Konuşma" icon={<Mic/>} value={grades.speakingExam2 ?? 'Girilmedi'} />
+                    <GradeCard title="Dinleme" icon={<Headphones/>} value={grades.listeningExam2 ?? 'Girilmedi'} />
+                </div>
+                <p className="text-right text-lg font-bold mt-2 pr-2">Ortalama: <span className="text-primary">{exam2?.toFixed(2) ?? 'N/A'}</span></p>
+            </div>
+            <GradeCard title="1. Performans" icon={<GraduationCap/>} value={perf1} />
+            <GradeCard title="2. Performans" icon={<GraduationCap/>} value={perf2} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
             <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
         </div>
@@ -397,16 +413,30 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         });
     };
     
-    const calculateTermAverage = (termGrades?: GradingScores) => {
+    const calculateWeightedExamAvg = (termGrades?: GradingScores) => {
+        if (!termGrades) return { exam1: null, exam2: null };
+        
+        const e1 = (termGrades.writtenExam1 ?? 0) * 0.70 + (termGrades.speakingExam1 ?? 0) * 0.15 + (termGrades.listeningExam1 ?? 0) * 0.15;
+        const e2 = (termGrades.writtenExam2 ?? 0) * 0.70 + (termGrades.speakingExam2 ?? 0) * 0.15 + (termGrades.listeningExam2 ?? 0) * 0.15;
+
+        return {
+            exam1: (termGrades.writtenExam1 !== undefined || termGrades.speakingExam1 !== undefined || termGrades.listeningExam1 !== undefined) ? e1 : null,
+            exam2: (termGrades.writtenExam2 !== undefined || termGrades.speakingExam2 !== undefined || termGrades.listeningExam2 !== undefined) ? e2 : null
+        };
+    };
+
+    const calculateTermAverage = (termGrades?: GradingScores, hasProject?: boolean) => {
         if (!termGrades) return 0;
         const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
         const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
         
-        const exam1 = termGrades.exam1;
-        const exam2 = termGrades.exam2;
+        const weightedAverages = calculateWeightedExamAvg(termGrades);
+
+        const exam1 = weightedAverages.exam1;
+        const exam2 = weightedAverages.exam2;
         const perf1 = termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria);
         const perf2 = termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria);
-        const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
+        const projAvg = hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
 
         const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
             (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
@@ -418,8 +448,8 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         return sum / allScores.length;
     };
     
-    const term1Avg = calculateTermAverage(student.term1Grades);
-    const term2Avg = calculateTermAverage(student.term2Grades);
+    const term1Avg = calculateTermAverage(student.term1Grades, student.hasProject);
+    const term2Avg = calculateTermAverage(student.term2Grades, student.hasProject);
     const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
     
     const handleGenerateAIReport = async () => {
@@ -498,10 +528,10 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                             </Card>
                         </div>
                         <TabsContent value="term1">
-                            <TermGrades termGrades={student.term1Grades} teacherProfile={teacherProfile} student={student} />
+                            <TermGrades termGrades={{...student.term1Grades, exam1: calculateWeightedExamAvg(student.term1Grades).exam1, exam2: calculateWeightedExamAvg(student.term1Grades).exam2}} teacherProfile={teacherProfile} student={student} />
                         </TabsContent>
                         <TabsContent value="term2">
-                            <TermGrades termGrades={student.term2Grades} teacherProfile={teacherProfile} student={student} />
+                            <TermGrades termGrades={{...student.term2Grades, exam1: calculateWeightedExamAvg(student.term2Grades).exam1, exam2: calculateWeightedExamAvg(student.term2Grades).exam2}} teacherProfile={teacherProfile} student={student} />
                         </TabsContent>
                     </Tabs>
                 </TabsContent>
