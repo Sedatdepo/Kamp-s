@@ -554,11 +554,6 @@ export function TeacherDashboard() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => handleSelectClass(null)}>
-                                  <ArrowLeft className="mr-2 h-4 w-4" />
-                                  Sınıf Seçimine Dön
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                               {(orderedClasses || []).map((cls: Class) => (
                                   <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
                                       {cls.name}
@@ -621,26 +616,10 @@ export function TeacherDashboard() {
             {TABS_CONFIG[activeTab]?.label}
           </h2>
           <div className="flex items-center gap-2">
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    {currentClass?.name}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => handleSelectClass(null)}>
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Sınıf Seçimine Dön
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {(orderedClasses || []).map((cls: Class) => (
-                      <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
-                          {cls.name}
-                      </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <Button variant="outline" onClick={() => handleSelectClass(null)}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Sınıf Seçimine Dön
+            </Button>
             <Button variant="outline" onClick={handleBackToDashboard}>
               <Home className="mr-2 h-4 w-4" /> Sınıf Paneline Dön
             </Button>
@@ -669,5 +648,3 @@ export function TeacherDashboard() {
     </div>
   );
 }
-
-    
