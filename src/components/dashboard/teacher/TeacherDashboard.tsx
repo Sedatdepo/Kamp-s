@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Header } from '@/components/dashboard/Header';
+import { Header } from '@/components/dashboard/teacher/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import KazanımlarTab from './KazanımlarTab';
 import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';

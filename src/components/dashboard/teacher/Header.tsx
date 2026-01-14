@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -11,10 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { ProfileDialog } from './ProfileDialog';
-import { AuthContext } from '@/context/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
 
 function getInitials(name: string = '') {
