@@ -220,34 +220,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+        
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = studentData.number; // Şifre her zaman okul numarası olacak.
+        const password = studentData.number;
 
         try {
-            // Önce bu e-posta ile giriş yapmayı dene
-            await signInWithEmailAndPassword(auth, studentEmail, password);
-            // Başarılıysa onAuthStateChanged tetiklenecek ve kullanıcıyı yönlendirecek.
-        } catch (error: any) {
-            // Eğer kullanıcı bulunamadıysa (ilk girişi ise), yeni bir hesap oluştur.
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                try {
-                    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
-                    // Yeni oluşturulan authUid'yi öğrenci belgesine kaydet.
-                    await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
-                    // onAuthStateChanged yeni kullanıcıyı yakalayıp devam edecek.
-                } catch (creationError) {
-                    console.error("Öğrenci hesabı oluşturma hatası:", creationError);
-                    throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
-                }
+            if (studentData.authUid) {
+                await signInWithEmailAndPassword(auth, studentEmail, password);
             } else {
-                // Diğer hataları (yanlış şifre vb. ki bu senaryoda olmamalı) kullanıcıya göster.
-                console.error("Öğrenci giriş hatası:", error);
+                 const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
+                 await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
+            }
+        } catch (error: any) {
+             if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                throw new Error('Okul numaranız aynı zamanda şifrenizdir. Eğer daha önce değiştirdiyseniz lütfen doğru şifreyi girin veya şifre sıfırlama isteyin.');
+            } else {
+                console.error("Öğrenci giriş/kayıt hatası:", error);
                 throw new Error("Giriş yapılırken beklenmedik bir hata oluştu.");
             }
         }
         
-        // Bu noktada, ya giriş başarılıdır ya da yeni hesap oluşturulmuştur.
-        // Her iki durumda da onAuthStateChanged yönlendirmeyi halledecektir.
         return true;
     };
   
