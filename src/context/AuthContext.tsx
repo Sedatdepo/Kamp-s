@@ -211,20 +211,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (classSnapshot.empty) {
                 throw new Error("Sınıf kodu bulunamadı.");
             }
-            // There should only be one class with this code
             const classDoc = classSnapshot.docs[0];
             classId = classDoc.id;
             console.log(`Class code ${classCode} resolved to classId: ${classId}`);
 
         } catch (error: any) {
-            if (error.code === 'unavailable' || (error.message && error.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
+           if (error.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
                throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
            }
-           // Re-throw other errors
            throw error;
         }
 
-        // 2. Find the student using the REAL classId and studentNumber
         console.log(`Querying students collection with classId: ${classId} and number: ${studentNumber}`);
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);
@@ -237,9 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
-        // 3. Proceed with authentication
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = studentData.number;
+        const password = `${studentData.number}-ito`;
 
         try {
             await signInWithEmailAndPassword(auth, studentEmail, password);
@@ -248,8 +244,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 try {
                     const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
                     await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
-                } catch (creationError) {
+                } catch (creationError: any) {
                     console.error("Student account creation failed:", creationError);
+                    if (creationError.code === 'auth/weak-password') {
+                        throw new Error("Şifre çok zayıf. Lütfen daha karmaşık bir öğrenci numarası/şifre sistemi kullanın.");
+                    }
                     throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
                 }
             } else if (error.code === 'auth/wrong-password') {
