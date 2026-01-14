@@ -218,15 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        const classesQuery = query(collection(db, "classes"), where("code", "==", classCode.toUpperCase()));
-        const classesSnapshot = await getDocs(classesQuery);
-    
-        if (classesSnapshot.empty) {
+        const classCodeRef = doc(db, "classCodes", classCode.toUpperCase());
+        const classCodeSnap = await getDoc(classCodeRef);
+
+        if (!classCodeSnap.exists()) {
             throw new Error("Sınıf kodu bulunamadı.");
         }
-    
-        const classDoc = classesSnapshot.docs[0];
-        const classId = classDoc.id;
+        
+        const classId = classCodeSnap.data().classId;
 
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);

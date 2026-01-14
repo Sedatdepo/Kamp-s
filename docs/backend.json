@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Class": {
@@ -264,6 +265,18 @@
         "principalName"
       ]
     },
+    "ClassCode": {
+      "title": "Class Code",
+      "type": "object",
+      "description": "Maps a class code to a class ID.",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "description": "The ID of the class."
+        }
+      },
+      "required": [ "classId" ]
+    },
      "Kazanım": {
       "title": "Kazanım",
       "type": "object",
@@ -353,6 +366,22 @@
             {
               "name": "lessonId",
               "description": "The unique identifier for the lesson."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classCodes/{classCode}",
+        "definition": {
+          "entityName": "ClassCode",
+          "schema": {
+            "$ref": "#/backend/entities/ClassCode"
+          },
+          "description": "Stores a mapping from a public class code to the internal class document ID. Publicly readable.",
+          "params": [
+            {
+              "name": "classCode",
+              "description": "The public 6-character code for the class."
             }
           ]
         }

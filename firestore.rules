@@ -28,6 +28,14 @@ service cloud.firestore {
     function isStudentInClass(classId) {
        return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
     }
+    
+    // --- YENİ: SINIF KODLARI ---
+    match /classCodes/{classCode} {
+        // Herkes sınıf kodlarını okuyabilir. Bu, giriş işlemi için gereklidir.
+        allow get: if true;
+        // Sadece öğretmenler sınıf kodu oluşturabilir/güncelleyebilir/silebilir.
+        allow write: if isTeacher();
+    }
 
     // --- ÖĞRENCİ YÖNETİMİ ---
     match /students/{studentId} {
