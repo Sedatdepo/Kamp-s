@@ -202,27 +202,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        let classId;
-        try {
-            console.log('Checking for class with code:', classCode);
-            const classQuery = query(collection(db, "classes"), where("code", "==", classCode));
-            const classSnapshot = await getDocs(classQuery);
+        const classQuery = query(collection(db, "classes"), where("code", "==", classCode));
+        const classSnapshot = await getDocs(classQuery);
 
-            if (classSnapshot.empty) {
-                throw new Error("Sınıf kodu bulunamadı.");
-            }
-            const classDoc = classSnapshot.docs[0];
-            classId = classDoc.id;
-            console.log(`Class code ${classCode} resolved to classId: ${classId}`);
-
-        } catch (error: any) {
-           if (error.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
-               throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
-           }
-           throw error;
+        if (classSnapshot.empty) {
+            throw new Error("Sınıf kodu bulunamadı.");
         }
+        const classDoc = classSnapshot.docs[0];
+        const classId = classDoc.id;
 
-        console.log(`Querying students collection with classId: ${classId} and number: ${studentNumber}`);
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);
 
@@ -235,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = studentData.number;
+        const password = `${studentData.number}-ito`;
 
         try {
             await signInWithEmailAndPassword(auth, studentEmail, password);
