@@ -46,6 +46,7 @@ export const useNotification = () => {
   }, [db, classId]);
   const { data: activeSurveys } = useCollection<Survey>(surveysQuery);
 
+  // CRITICAL FIX: Do not run this query if there is no studentId.
   const responsesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
@@ -58,6 +59,7 @@ export const useNotification = () => {
     return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
   }, [activeSurveys, userResponses]);
   
+  // CRITICAL FIX: Do not run this query if there is no studentId.
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'messages'), where('participants', 'array-contains', studentId), where('isRead', '==', false), where('receiverId', '==', studentId));

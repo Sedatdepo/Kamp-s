@@ -139,12 +139,16 @@ service cloud.firestore {
     }
     
     match /surveys/{surveyId} {
+        // Oturum açmış herkes (öğretmen ve öğrenci) anketleri okuyabilir
         allow read: if isSignedIn();
+        // Sadece öğretmenler anket yazabilir/güncelleyebilir/silebilir
         allow write: if isTeacher();
     }
     
     match /surveyResponses/{responseId} {
+        // Oturum açmış herkes (öğrenciler) anket cevabı oluşturabilir.
         allow create: if isSignedIn();
+        // Sadece öğretmenler tüm cevapları okuyabilir.
         allow read, list: if isTeacher();
     }
   }
