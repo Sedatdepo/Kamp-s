@@ -17,7 +17,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string, password?: string) => Promise<boolean>;
+  signInStudent: (classCode: string, studentNumber: string) => Promise<boolean>;
   signInTeacher: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
@@ -158,24 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
       } else {
-        // No firebaseUser, check for anonymous student in localStorage
-        const storedUser = localStorage.getItem('appUser');
-        if (storedUser) {
-          try {
-              const parsedUser = JSON.parse(storedUser);
-              if(parsedUser.type === 'student' && !parsedUser.data.authUid){ // only for anonymous students
-                  setAppUser(parsedUser);
-              } else {
-                  setAppUser(null);
-                  localStorage.removeItem('appUser');
-              }
-          } catch(e){
-               setAppUser(null);
-               localStorage.removeItem('appUser');
-          }
-        } else {
-            setAppUser(null);
-        }
+        setAppUser(null);
+        localStorage.removeItem('appUser');
       }
       setLoading(false);
     });
@@ -215,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // onAuthStateChanged will handle the rest
     };
 
-    const signInStudent = async (classCode: string, studentNumber: string, password?: string): Promise<boolean> => {
+    const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
         const classCodeRef = doc(db, "classCodes", classCode.toUpperCase());
@@ -236,22 +220,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+        const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
+        const password = studentData.number; // Şifre her zaman okul numarası olacak.
 
-        if (studentData.authUid) {
-            if (!password) {
-                 throw new Error("Bu öğrenci hesabı için şifre gereklidir. Şifrenizi unuttuysanız öğretmeninizle görüşün.");
+        try {
+            // Önce bu e-posta ile giriş yapmayı dene
+            await signInWithEmailAndPassword(auth, studentEmail, password);
+            // Başarılıysa onAuthStateChanged tetiklenecek ve kullanıcıyı yönlendirecek.
+        } catch (error: any) {
+            // Eğer kullanıcı bulunamadıysa (ilk girişi ise), yeni bir hesap oluştur.
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
+                    // Yeni oluşturulan authUid'yi öğrenci belgesine kaydet.
+                    await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
+                    // onAuthStateChanged yeni kullanıcıyı yakalayıp devam edecek.
+                } catch (creationError) {
+                    console.error("Öğrenci hesabı oluşturma hatası:", creationError);
+                    throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
+                }
+            } else {
+                // Diğer hataları (yanlış şifre vb. ki bu senaryoda olmamalı) kullanıcıya göster.
+                console.error("Öğrenci giriş hatası:", error);
+                throw new Error("Giriş yapılırken beklenmedik bir hata oluştu.");
             }
-             const email = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-             await signInWithEmailAndPassword(auth, email, password);
-             // onAuthStateChanged handles the rest
-             return true; 
-        } else {
-            const studentUser: AppUser = { type: 'student', data: studentData };
-            setAppUser(studentUser);
-            localStorage.setItem('appUser', JSON.stringify(studentUser));
-            router.push('/dashboard/student');
-            return true;
         }
+        
+        // Bu noktada, ya giriş başarılıdır ya da yeni hesap oluşturulmuştur.
+        // Her iki durumda da onAuthStateChanged yönlendirmeyi halledecektir.
+        return true;
     };
   
   const contextValue = useMemo(() => ({ 

@@ -12,10 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, BellOff, Bell } from 'lucide-react';
-import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { updatePassword } from 'firebase/auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
   password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
@@ -66,7 +64,7 @@ const NotificationSettings = () => {
 }
 
 export function AccountSettingsTab() {
-  const { appUser, auth, db } = useAuth();
+  const { appUser, auth } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -74,56 +72,26 @@ export function AccountSettingsTab() {
     resolver: zodResolver(formSchema),
     defaultValues: { password: '', confirmPassword: '' },
   });
-
-  const hasAuthAccount = !!appUser && appUser.type === 'student' && !!appUser.data.authUid;
-
-  const handleCreateAccount = async (password: string) => {
-    if (appUser?.type !== 'student' || !db || !auth) return;
-    
-    setIsLoading(true);
-    const student = appUser.data;
-    const email = `s${student.number}@${student.classId.toLowerCase()}.ito-kampus.com`;
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      await updateDoc(doc(db, 'students', student.id), { authUid: user.uid });
-
-      toast({ title: 'Hesap ve Şifre Başarıyla Oluşturuldu!', description: 'Artık hesabınıza bu şifre ile giriş yapabilirsiniz.' });
-    } catch (error: any) {
-        if(error.code === 'auth/email-already-in-use') {
-             toast({ variant: 'default', title: 'Hesap Zaten Mevcut', description: 'Şifrenizi güncelleyebilirsiniz.' });
-        } else {
-            toast({ variant: 'destructive', title: 'Hesap Oluşturma Hatası', description: error.message });
-        }
-    } finally {
-      setIsLoading(false);
-    }
-  };
   
   const handleUpdatePassword = async (password: string) => {
-      if (appUser?.type !== 'student' || !auth?.currentUser || !db) return;
+      if (!auth?.currentUser) return;
       
       setIsLoading(true);
       try {
           await updatePassword(auth.currentUser, password);
           toast({ title: 'Şifre Başarıyla Güncellendi!' });
       } catch (error: any) {
-          toast({ variant: 'destructive', title: 'Şifre Güncelleme Hatası', description: error.message });
+          toast({ variant: 'destructive', title: 'Şifre Güncelleme Hatası', description: 'Bu işlem için yakın zamanda giriş yapmış olmanız gerekebilir. Lütfen çıkış yapıp tekrar deneyin.' });
       } finally {
           setIsLoading(false);
       }
   };
 
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (hasAuthAccount) {
-      await handleUpdatePassword(values.password);
-    } else {
-      await handleCreateAccount(values.password);
-    }
+    await handleUpdatePassword(values.password);
   };
+
+  if (appUser?.type !== 'student') return null;
 
   return (
     <div className="grid gap-6">
@@ -131,13 +99,10 @@ export function AccountSettingsTab() {
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2">
                     <KeyRound />
-                    Hesap ve Şifre Ayarları
+                    Şifre Değiştirme
                 </CardTitle>
                 <CardDescription>
-                    {hasAuthAccount 
-                        ? 'Mevcut şifrenizi buradan güncelleyebilirsiniz.' 
-                        : 'Kalıcı bir şifre oluşturarak hesabınızı güvence altına alın ve diğer cihazlardan giriş yapın.'
-                    }
+                    Mevcut şifrenizi (okul numaranızı) daha güvenli yeni bir şifre ile güncelleyebilirsiniz.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -171,7 +136,7 @@ export function AccountSettingsTab() {
                     />
                     <Button type="submit" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {hasAuthAccount ? 'Şifreyi Güncelle' : 'Şifre Oluştur'}
+                    Şifreyi Güncelle
                     </Button>
                 </form>
                 </Form>

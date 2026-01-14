@@ -16,12 +16,10 @@ import { useSearchParams } from 'next/navigation';
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
-  password: z.string().optional(),
 });
 
 export function StudentLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const { signInStudent } = useAuth();
   const searchParams = useSearchParams();
@@ -32,7 +30,6 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
-      password: '',
     },
   });
 
@@ -46,26 +43,14 @@ export function StudentLoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // The signInStudent function now returns a boolean indicating if navigation should happen
-      await signInStudent(values.classCode.toUpperCase(), values.studentNumber, values.password);
-      // On success, AuthContext will handle navigation, so no toast or router.push here.
-
+      await signInStudent(values.classCode.toUpperCase(), values.studentNumber);
+      // On success, AuthContext will handle navigation.
     } catch (error: any) {
-      // The error might be because a password is required
-      if (error.message.includes("şifre gereklidir")) {
-        setShowPassword(true);
-        toast({
-          variant: 'default',
-          title: 'Şifre Gerekli',
-          description: error.message,
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Giriş Başarısız',
-          description: error.message || 'Girdiğiniz bilgiler hatalı veya sınıf kodu bulunamadı.',
-        });
-      }
+      toast({
+        variant: 'destructive',
+        title: 'Giriş Başarısız',
+        description: error.message || 'Girdiğiniz bilgiler hatalı veya sınıf kodu bulunamadı.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +82,7 @@ export function StudentLoginForm() {
           name="studentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Öğrenci Numarası</FormLabel>
+              <FormLabel>Öğrenci Numarası (Bu sizin şifrenizdir)</FormLabel>
               <FormControl>
                 <Input type="text" placeholder="Okul Numaranız" {...field} />
               </FormControl>
@@ -105,21 +90,6 @@ export function StudentLoginForm() {
             </FormItem>
           )}
         />
-        {showPassword && (
-           <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Şifreniz</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Giriş Yap
