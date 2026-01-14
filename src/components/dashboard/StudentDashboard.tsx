@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { Header } from '@/components/dashboard/Header';
+import { Header } from '@/components/dashboard/teacher/Header';
 import { GradesTab } from './student/GradesTab';
 import { RiskFormTab } from './student/RiskFormTab';
 import { InfoFormTab } from './student/InfoFormTab';
@@ -50,6 +50,7 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StudentClubTab } from './student/StudentClubTab';
+import { useAuth } from '@/hooks/useAuth';
 
 const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
   if (isLoading) {
@@ -80,12 +81,16 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoadin
 
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const authContext = useContext(AuthContext);
-  const { appUser, db } = authContext || {};
+  const { appUser, db } = useAuth();
   const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
   
   const classId = appUser?.type === 'student' ? appUser.data.classId : null;
-  const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
+  
+  const classQuery = useMemoFirebase(() => {
+    if (!classId || !db) return null;
+    return doc(db, 'classes', classId);
+  }, [classId, db]);
+  
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
   useEffect(() => {
@@ -129,127 +134,116 @@ export function StudentDashboard() {
 
   if (activeTab !== 'home') {
     return (
-        <div className="flex flex-col min-h-screen w-full bg-muted/40">
-          <Header />
-          <main className="flex-1 p-4 sm:p-6">
-               <Button variant="ghost" onClick={() => setActiveTab('home')} className="mb-4">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Geri Dön
-              </Button>
-              {renderContent()}
-          </main>
-        </div>
+        <>
+            <Button variant="ghost" onClick={() => setActiveTab('home')} className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Geri Dön
+            </Button>
+            {renderContent()}
+        </>
     )
   }
   
-  const behaviorScore = appUser?.type === 'student' ? (appUser.data.behaviorScore ?? 0) : 0;
-  const badgeCount = appUser?.type === 'student' ? (appUser.data.badges?.length || 0) : 0;
-
   return (
-    <div className="flex flex-col min-h-screen w-full bg-muted/40">
-        <Header />
-        <main className="flex-1 p-4 sm:p-6">
-            <div className="grid gap-6">
-                <Card>
-                    <CardHeader className="flex flex-row justify-between items-center">
-                        <div>
-                            <CardTitle className="font-headline text-2xl">Öğrenci Paneli</CardTitle>
-                            <CardDescription>Aşağıdaki menülerden istediğin işleme ulaşabilirsin.</CardDescription>
-                        </div>
-                    </CardHeader>
-                </Card>
-                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    
-                    <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('badges')} />
-                    <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
-                    <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
-                    <MenuCard icon={<MessagesSquare />} title="Tartışma Panosu" description="Sınıf tartışmalarına katıl." onClick={() => setActiveTab('discussion')} />
-                    <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
-                    <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
-                    <MenuCard icon={<BookText />} title="Ödevler" description="Öğretmeninin verdiği diğer ödevler." onClick={() => setActiveTab('regular-homeworks')} hasNotification={notifications.homeworks} />
-                    
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<Grid />} 
-                        title="Oturma Planım" 
-                        description="Sınıftaki yerini gör." 
-                        onClick={() => setActiveTab('seatingPlan')} 
-                        isDisabled={!currentClass?.seatingPlan}
-                    />
-                    
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<Users />} 
-                        title="Nöbetçi Listesi" 
-                        description="Sınıf nöbetçi listesini gör." 
-                        onClick={() => setActiveTab('dutyRoster')} 
-                        isDisabled={!currentClass?.dutyRoster || currentClass.dutyRoster.length === 0}
-                    />
-                    
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<Vote />} 
-                        title="Seçim" 
-                        description="Sınıf seçimleri için oy kullan." 
-                        onClick={() => setActiveTab('election')} 
-                        hasNotification={notifications.election} 
-                        isDisabled={!currentClass?.isElectionActive}
-                    />
-                    
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<ClipboardCheck />} 
-                        title="Anketlerim" 
-                        description="Aktif anketleri cevapla." 
-                        onClick={() => setActiveTab('surveys')} 
-                        hasNotification={notifications.surveys}
-                        isDisabled={!hasUnansweredSurvey}
-                    />
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader className="flex flex-row justify-between items-center">
+                    <div>
+                        <CardTitle className="font-headline text-2xl">Öğrenci Paneli</CardTitle>
+                        <CardDescription>Aşağıdaki menülerden istediğin işleme ulaşabilirsin.</CardDescription>
+                    </div>
+                </CardHeader>
+            </Card>
+             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                
+                <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('badges')} />
+                <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
+                <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
+                <MenuCard icon={<MessagesSquare />} title="Tartışma Panosu" description="Sınıf tartışmalarına katıl." onClick={() => setActiveTab('discussion')} />
+                <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
+                <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
+                <MenuCard icon={<BookText />} title="Ödevler" description="Öğretmeninin verdiği diğer ödevler." onClick={() => setActiveTab('regular-homeworks')} hasNotification={notifications.homeworks} />
+                
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<Grid />} 
+                    title="Oturma Planım" 
+                    description="Sınıftaki yerini gör." 
+                    onClick={() => setActiveTab('seatingPlan')} 
+                    isDisabled={!currentClass?.seatingPlan}
+                />
+                
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<Users />} 
+                    title="Nöbetçi Listesi" 
+                    description="Sınıf nöbetçi listesini gör." 
+                    onClick={() => setActiveTab('dutyRoster')} 
+                    isDisabled={!currentClass?.dutyRoster || currentClass.dutyRoster.length === 0}
+                />
+                
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<Vote />} 
+                    title="Seçim" 
+                    description="Sınıf seçimleri için oy kullan." 
+                    onClick={() => setActiveTab('election')} 
+                    hasNotification={notifications.election} 
+                    isDisabled={!currentClass?.isElectionActive}
+                />
+                
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<ClipboardCheck />} 
+                    title="Anketlerim" 
+                    description="Aktif anketleri cevapla." 
+                    onClick={() => setActiveTab('surveys')} 
+                    hasNotification={notifications.surveys}
+                    isDisabled={!hasUnansweredSurvey}
+                />
 
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<Share2 />}
-                        title="Sosyogram"
-                        description="Arkadaşlık ilişkilerini belirt."
-                        onClick={() => setActiveTab('sociogram')}
-                        isDisabled={!currentClass?.isSociogramActive}
-                    />
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<Share2 />}
+                    title="Sosyogram"
+                    description="Arkadaşlık ilişkilerini belirt."
+                    onClick={() => setActiveTab('sociogram')}
+                    isDisabled={!currentClass?.isSociogramActive}
+                />
 
-                    <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
-                    
-                    <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
-                    
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<Trophy />} 
-                        title="Kulüp" 
-                        description="Kulüp tercihi yap veya atamanı gör." 
-                        onClick={() => setActiveTab('club')} 
-                        isDisabled={false}
-                    />
+                <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
+                
+                <MenuCard icon={<Settings />} title="Hesap Ayarları" description="Şifreni oluştur veya değiştir." onClick={() => setActiveTab('account')} />
+                
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<Trophy />} 
+                    title="Kulüp" 
+                    description="Kulüp tercihi yap veya atamanı gör." 
+                    onClick={() => setActiveTab('club')} 
+                    isDisabled={false}
+                />
 
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<ShieldAlert />} 
-                        title="Risk Formu" 
-                        description="Kişisel risk faktörlerini işaretle." 
-                        onClick={() => setActiveTab('risks')} 
-                        hasNotification={notifications.riskForm} 
-                        isDisabled={!currentClass?.isRiskFormActive}
-                    />
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<ShieldAlert />} 
+                    title="Risk Formu" 
+                    description="Kişisel risk faktörlerini işaretle." 
+                    onClick={() => setActiveTab('risks')} 
+                    hasNotification={notifications.riskForm} 
+                    isDisabled={!currentClass?.isRiskFormActive}
+                />
 
-                    <MenuCard 
-                        isLoading={classLoading}
-                        icon={<FileText />} 
-                        title="Bilgi Formu" 
-                        description="Kişisel ve ailevi bilgilerini doldur." 
-                        onClick={() => setActiveTab('info')} 
-                        hasNotification={notifications.infoForm} 
-                        isDisabled={!currentClass?.isInfoFormActive}
-                    />
-                </div>
+                <MenuCard 
+                    isLoading={classLoading}
+                    icon={<FileText />} 
+                    title="Bilgi Formu" 
+                    description="Kişisel ve ailevi bilgilerini doldur." 
+                    onClick={() => setActiveTab('info')} 
+                    hasNotification={notifications.infoForm} 
+                    isDisabled={!currentClass?.isInfoFormActive}
+                />
             </div>
-        </main>
-    </div>
+        </div>
   );
 }

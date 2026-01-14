@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { ProfileDialog } from './ProfileDialog';
 import { useAuth } from '@/hooks/useAuth';
+import { Logo } from '@/components/icons/Logo';
 
 function getInitials(name: string = '') {
     return name
@@ -32,17 +33,13 @@ export function Header() {
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
   const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
 
-  if (!appUser) {
-     return (
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-        {/* Render nothing or a loading state if user is not available */}
-      </header>
-    );
-  }
-
   return (
     <>
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+            <Logo className="h-6 w-6 text-primary" />
+            <span className="font-bold font-headline">İTO KAMPÜS</span>
+        </div>
         <div className="ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
