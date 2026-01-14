@@ -55,11 +55,16 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // BIR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI OKUYABILIR (LISTELEYEBILIR VEYA TEKIL GETIREBILIR)
-      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      // BIR OGRETMEN, SADECE KENDI 'teacherId'SINE SAHIP SINIFLARI LISTELEYEBILIR
+      allow list: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      // Bir öğretmen kendi sınıfını okuyabilir (get işlemi için)
+      allow get: if isClassOwner(classId);
+
+      // Öğretmen sadece kendi oluşturduğu sınıfı güncelleyebilir/silebilir.
+      allow update, delete: if isClassOwner(classId);
       
-      // Öğretmen sadece kendi oluşturduğu sınıfı yazabilir/silebilir.
-      allow write: if isClassOwner(classId);
+      // Bir öğretmen, kendi teacherId'sini içeren bir sınıf oluşturabilir.
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
       // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
       allow get: if isStudentInClass(classId);
