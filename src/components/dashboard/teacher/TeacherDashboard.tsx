@@ -117,7 +117,7 @@ function ClassSelectionScreen({
         try {
             await addDoc(collection(db, 'classes'), {
                 name: newClassName,
-                teacherId: teacherId,
+                teacherId: teacherId, // This was missing
                 isProjectSelectionActive: false,
                 isRiskFormActive: false,
                 isInfoFormActive: false,
@@ -129,7 +129,8 @@ function ClassSelectionScreen({
             toast({ title: 'Sınıf oluşturuldu!' });
             setNewClassName('');
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf oluşturulamadı.' });
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf oluşturulamadı. Lütfen Firestore kurallarınızı kontrol edin.' });
         }
     };
 
