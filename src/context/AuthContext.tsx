@@ -202,16 +202,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        console.log('Checking class code:', classCode);
-        const classCodeRef = doc(db, "classCodes", classCode);
-        const classCodeSnap = await getDoc(classCodeRef);
+        let classId;
+        try {
+            console.log('Checking class code:', classCode);
+            const classCodeRef = doc(db, "classCodes", classCode);
+            const classCodeSnap = await getDoc(classCodeRef);
 
-        if (!classCodeSnap.exists()) {
-            throw new Error("Sınıf kodu bulunamadı.");
+            if (!classCodeSnap.exists()) {
+                throw new Error("Sınıf kodu bulunamadı.");
+            }
+            classId = classCodeSnap.data().classId;
+        } catch (error: any) {
+             if (error.code === 'unavailable' || (error.message && error.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
+                throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
+            }
+            // Re-throw other errors
+            throw error;
         }
         
-        const classId = classCodeSnap.data().classId;
-
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);
 
@@ -222,19 +230,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
-        // This is the student's "login" not their "email". It's just a unique identifier for Firebase Auth.
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = studentData.number; // Password is the student number.
+        const password = studentData.number;
 
         try {
-            // Try to sign in. If it fails, the user likely doesn't exist yet.
             await signInWithEmailAndPassword(auth, studentEmail, password);
         } catch (error: any) {
             if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                // User doesn't exist, so create them.
                 try {
                     const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
-                    // Link the new auth UID to the student document.
                     await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
                 } catch (creationError) {
                     console.error("Student account creation failed:", creationError);
