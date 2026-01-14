@@ -15,19 +15,17 @@ export default function StudentPage() {
     // We must wait for loading to be false AND for the appUser object and its critical data (like classId) to be fully available.
     if (loading || !appUser || appUser.type !== 'student' || !appUser.data.classId) {
         return (
-            <div className="flex flex-col min-h-screen">
-                <Header />
-                <main className="flex-1 p-4 sm:p-6">
-                    <div className="grid gap-6">
-                        <Skeleton className="h-24 w-full" />
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[...Array(6)].map((_, i) => (
-                                <Skeleton key={i} className="h-28 w-full" />
-                            ))}
-                        </div>
+            <>
+                {/* We render a static Header here to avoid layout shifts, but the main content is skeleton */}
+                <div className="grid gap-6">
+                    <Skeleton className="h-24 w-full" />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[...Array(6)].map((_, i) => (
+                            <Skeleton key={i} className="h-28 w-full" />
+                        ))}
                     </div>
-                </main>
-            </div>
+                </div>
+            </>
         );
     }
     
