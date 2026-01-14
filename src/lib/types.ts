@@ -219,7 +219,6 @@ export type GradingScores = {
     perf1?: number;
     perf2?: number;
     projectGrade?: number;
-    // Use scores1/scores2 for performance grades, projectScores for project, behaviorScores for behavior
     scores1?: { [key: string]: number };
     scores2?: { [key: string]: number };
     projectScores?: { [key: string]: number };

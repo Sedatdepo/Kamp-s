@@ -59,9 +59,9 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
 
     const exam1 = termGrades.exam1;
     const exam2 = termGrades.exam2;
-    const perf1 = calculateAverageForCriteria(termGrades.scores1, perfCriteria);
-    const perf2 = calculateAverageForCriteria(termGrades.scores2, perfCriteria);
-    const projAvg = student.hasProject ? calculateAverageForCriteria(termGrades.projectScores, projCriteria) : null;
+    const perf1 = termGrades.perf1 ?? calculateAverageForCriteria(termGrades.scores1, perfCriteria);
+    const perf2 = termGrades.perf2 ?? calculateAverageForCriteria(termGrades.scores2, perfCriteria);
+    const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverageForCriteria(termGrades.projectScores, projCriteria)) : null;
 
     const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
       (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0

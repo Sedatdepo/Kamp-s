@@ -62,9 +62,9 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
     
     const exam1 = grades.exam1;
     const exam2 = grades.exam2;
-    const perf1 = calculateAverage(grades.scores1, perfCriteria);
-    const perf2 = calculateAverage(grades.scores2, perfCriteria);
-    const projAvg = student.hasProject ? calculateAverage(grades.projectScores, projCriteria) : null;
+    const perf1 = grades.perf1 ?? calculateAverage(grades.scores1, perfCriteria);
+    const perf2 = grades.perf2 ?? calculateAverage(grades.scores2, perfCriteria);
+    const projAvg = student.hasProject ? (grades.projectGrade ?? calculateAverage(grades.projectScores, projCriteria)) : null;
     const behaviorAvg = calculateAverage(grades.behaviorScores, INITIAL_BEHAVIOR_CRITERIA);
     
     return (
@@ -404,9 +404,9 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         
         const exam1 = termGrades.exam1;
         const exam2 = termGrades.exam2;
-        const perf1 = calculateAverage(termGrades.scores1, perfCriteria);
-        const perf2 = calculateAverage(termGrades.scores2, perfCriteria);
-        const projAvg = student.hasProject ? calculateAverage(termGrades.projectScores, projCriteria) : null;
+        const perf1 = termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria);
+        const perf2 = termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria);
+        const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
 
         const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
             (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
