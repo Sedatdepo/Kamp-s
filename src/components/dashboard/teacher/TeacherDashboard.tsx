@@ -122,7 +122,6 @@ function ClassSelectionScreen({
         try {
             const batch = writeBatch(db);
             
-            // 1. Set the new class document
             batch.set(newClassRef, {
                 name: newClassName,
                 teacherId: teacherId,
@@ -135,7 +134,6 @@ function ClassSelectionScreen({
                 homeworks: [],
             });
 
-            // 2. Set the class code lookup document
             batch.set(classCodeRef, {
                 classId: newClassRef.id,
             });
