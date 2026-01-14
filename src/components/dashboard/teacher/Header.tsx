@@ -11,11 +11,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { ProfileDialog } from './ProfileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/icons/Logo';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 function getInitials(name: string = '') {
     return name
@@ -29,6 +31,12 @@ function getInitials(name: string = '') {
 export function Header() {
   const { appUser, signOut } = useAuth();
   const [isProfileOpen, setProfileOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
   const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
@@ -41,40 +49,44 @@ export function Header() {
             <span className="font-bold font-headline">İTO KAMPÜS</span>
         </div>
         <div className="ml-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar>
-                  <AvatarImage src={appUser?.type === 'teacher' ? `https://api.dicebear.com/8.x/initials/svg?seed=${userName}` : undefined} />
-                  <AvatarFallback>{getInitials(userName)}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="flex flex-col">
-                <span className="font-semibold">{userName}</span>
-                {userEmail && <span className="text-xs text-muted-foreground">{userEmail}</span>}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {appUser?.type === 'teacher' && (
-                <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profil</span>
-                </DropdownMenuItem>
-              )}
-              {appUser?.type === 'student' && (
-                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-student-settings'))}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Hesap Ayarları</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Çıkış Yap</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isClient ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <Avatar>
+                      <AvatarImage src={appUser?.type === 'teacher' ? `https://api.dicebear.com/8.x/initials/svg?seed=${userName}` : undefined} />
+                      <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span className="font-semibold">{userName}</span>
+                    {userEmail && <span className="text-xs text-muted-foreground">{userEmail}</span>}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {appUser?.type === 'teacher' && (
+                    <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profil</span>
+                    </DropdownMenuItem>
+                  )}
+                  {appUser?.type === 'student' && (
+                    <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-student-settings'))}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Hesap Ayarları</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Çıkış Yap</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+          ) : (
+             <Skeleton className="h-10 w-10 rounded-full" />
+          )}
         </div>
       </header>
       {appUser?.type === 'teacher' && appUser.profile && (
