@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -31,6 +32,13 @@ export function Header() {
   const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
   const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
 
+  if (!appUser) {
+     return (
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+        {/* Render nothing or a loading state if user is not available */}
+      </header>
+    );
+  }
 
   return (
     <>
@@ -55,6 +63,12 @@ export function Header() {
                 <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profil</span>
+                </DropdownMenuItem>
+              )}
+              {appUser?.type === 'student' && (
+                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-student-settings'))}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Hesap Ayarları</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
