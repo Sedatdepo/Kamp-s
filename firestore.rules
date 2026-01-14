@@ -73,7 +73,7 @@ service cloud.firestore {
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
       // Öğrenci sadece kendi dahil olduğu sınıfı okuyabilir.
-      allow get: if isStudentInClass(classId);
+      allow get: if isSignedIn() && isStudentInClass(classId);
       
       // SINIF ALT KOLEKSİYONLARI (ÖDEVLER VB.)
       match /homeworks/{homeworkId} {
