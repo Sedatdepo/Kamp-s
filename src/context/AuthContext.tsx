@@ -202,25 +202,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
-        // 1. Get the actual class ID from the public class code
         let classId;
         try {
-            console.log('Checking class code:', classCode);
-            const classCodeRef = doc(db, "classCodes", classCode);
-            const classCodeSnap = await getDoc(classCodeRef);
+            console.log('Checking for class with code:', classCode);
+            const classQuery = query(collection(db, "classes"), where("code", "==", classCode));
+            const classSnapshot = await getDocs(classQuery);
 
-            if (!classCodeSnap.exists()) {
+            if (classSnapshot.empty) {
                 throw new Error("Sınıf kodu bulunamadı.");
             }
-            classId = classCodeSnap.data().classId;
+            // There should only be one class with this code
+            const classDoc = classSnapshot.docs[0];
+            classId = classDoc.id;
             console.log(`Class code ${classCode} resolved to classId: ${classId}`);
 
         } catch (error: any) {
-             if (error.code === 'unavailable' || (error.message && error.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
-                throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
-            }
-            // Re-throw other errors
-            throw error;
+            if (error.code === 'unavailable' || (error.message && error.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
+               throw new Error("Tarayıcı eklentiniz Firebase bağlantısını engelliyor olabilir. Lütfen reklam engelleyicinizi bu site için devre dışı bırakıp tekrar deneyin.");
+           }
+           // Re-throw other errors
+           throw error;
         }
 
         // 2. Find the student using the REAL classId and studentNumber
