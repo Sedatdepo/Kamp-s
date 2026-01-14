@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '@/firebase/provider'; // Import the useUser hook
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -23,6 +24,7 @@ export interface UseCollectionResult<T> {
   data: WithId<T>[]; // Data is now always an array.
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
+  forceRefresh: () => void; // Added function to force refresh
 }
 
 /* Internal implementation of Query:
@@ -39,32 +41,35 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries.
+ * Handles nullable references/queries and waits for auth state to be resolved.
  * 
- *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
+ * use useMemoFirebase to memoize it per React guidence.
  *  
  * @template T Optional type for document data. Defaults to any.
- * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
+ * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} memoizedTargetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
- * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
+ * @returns {UseCollectionResult<T>} Object with data, isLoading, error, and forceRefresh.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
-  type StateDataType = ResultItemType[]; // Data is always an array.
+  type StateDataType = ResultItemType[];
 
-  const [data, setData] = useState<StateDataType>([]); // Initialize with an empty array.
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
+  const { isUserLoading } = useUser(); // Get auth loading state
+  const [data, setData] = useState<StateDataType>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [refreshToggle, setRefreshToggle] = useState(false); // State to trigger refresh
+
+  const forceRefresh = () => setRefreshToggle(prev => !prev);
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
-      setData([]); // Set to empty array if no ref
-      setIsLoading(false);
+    // Wait for auth to finish loading AND for a query to be provided.
+    if (isUserLoading || !memoizedTargetRefOrQuery) {
+      setIsLoading(isUserLoading); // Reflect auth loading state
+      setData([]);
       setError(null);
       return;
     }
@@ -72,7 +77,6 @@ export function useCollection<T = any>(
     setIsLoading(true);
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -85,7 +89,6 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -94,23 +97,22 @@ export function useCollection<T = any>(
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path,
-        })
+        });
 
-        setError(contextualError)
-        setData([]) // Set to empty array on error
-        setIsLoading(false)
+        setError(contextualError);
+        setData([]);
+        setIsLoading(false);
 
-        // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery, isUserLoading, refreshToggle]); // Re-run if the target query, auth state, or refresh toggle changes.
   
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     console.warn(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase. This may cause infinite loops.');
   }
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, forceRefresh };
 }
