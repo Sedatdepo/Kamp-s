@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -265,29 +264,27 @@ export function GradingToolTab({
                   const updatedTermGrades = { ...(student[termKey] || {}) };
                   const newScores: { [key: string]: number } = {};
   
-                  if (value !== null && value >= 0) {
-                      if(isBehavior) {
-                           // For behavior, we just set the final score.
-                           return { ...student, behaviorScore: value };
-                      } else {
-                          const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
-                          if (totalMax > 0) {
-                              criteria.forEach(c => {
-                                  const proportion = (c.max || 0) / totalMax;
-                                  newScores[c.id] = Math.round(value * proportion);
-                              });
-                          }
+                  if (value !== null && value >= 0 && !isBehavior) {
+                      const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
+                      if (totalMax > 0) {
+                          criteria.forEach(c => {
+                              const proportion = (c.max || 0) / totalMax;
+                              newScores[c.id] = Math.round(value * proportion);
+                          });
                       }
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = value;
+                      // @ts-ignore
+                      updatedTermGrades[scoreKey] = newScores;
 
+                  } else if (isBehavior && value !== null) {
+                      return { ...student, behaviorScore: value };
                   } else { // value is null, clear scores
                       // @ts-ignore
                       if (perfGradeKey) updatedTermGrades[perfGradeKey] = null;
+                       // @ts-ignore
+                      updatedTermGrades[scoreKey] = {};
                   }
-                  
-                  // @ts-ignore
-                  if (!isBehavior) updatedTermGrades[scoreKey] = newScores;
   
                   return { ...student, [termKey]: updatedTermGrades };
               }
