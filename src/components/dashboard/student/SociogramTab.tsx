@@ -29,9 +29,6 @@ export function SociogramTab() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
-  // GÜVENLİK DÜZELTMESİ: Sorgu, tüm `students` koleksiyonu yerine,
-  // doğrudan o sınıfa ait alt koleksiyonu (`classes/{classId}/students`) hedefleyecek şekilde değiştirildi.
-  // Bu, "kurallar filtre değildir" ilkesine uyum sağlar.
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return collection(db, 'classes', classId, 'students');
