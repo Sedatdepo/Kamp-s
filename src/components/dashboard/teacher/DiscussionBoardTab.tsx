@@ -113,7 +113,7 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
                                             </div>
                                             <p className="text-sm mt-1">{post.content}</p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1">{post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : ''}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}</p>
                                     </div>
                                 </div>
                             ))}

@@ -31,7 +31,7 @@ const TopicList = ({ topics, onSelectTopic }: { topics: DiscussionTopic[], onSel
                         <div key={topic.id} onClick={() => onSelectTopic(topic)} className="p-4 rounded-lg border hover:bg-muted cursor-pointer">
                             <p className="font-semibold">{topic.title}</p>
                             <p className="text-sm text-muted-foreground mt-1">{topic.content}</p>
-                            <p className="text-xs text-muted-foreground mt-2">{formatDistanceToNow(topic.createdAt.toDate(), { addSuffix: true, locale: tr })}</p>
+                            {topic.createdAt && <p className="text-xs text-muted-foreground mt-2">{formatDistanceToNow(topic.createdAt.toDate(), { addSuffix: true, locale: tr })}</p>}
                         </div>
                     ))}
                 </div>
@@ -100,7 +100,9 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
                                             <p className="text-sm font-semibold">{post.studentName}</p>
                                             <p className="text-sm mt-1">{post.content}</p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr })}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}
+                                        </p>
                                     </div>
                                 </div>
                             ))}
