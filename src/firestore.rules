@@ -1,10 +1,9 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- YARDIMCI FONKSİYONLAR ---
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -33,8 +32,8 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // ÖNEMLİ: 'list' kuralı, sorgu ile tam olarak eşleşmelidir.
-      // Öğretmen, yalnızca 'teacherId' alanı kendi UID'si olan sınıfları sorgulayabilir.
+      // ÖNEMLİ: 'list' kuralı, istemciden gelen sorgu ile tam olarak eşleşmelidir.
+      // Bu kural, öğretmenin YALNIZCA 'teacherId' alanı kendi UID'si olan sınıfları sorgulamasına izin verir.
       allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
       
       // Öğretmen, kendi sınıfını tekil olarak okuyabilir, güncelleyebilir ve silebilir.
@@ -50,16 +49,28 @@ service cloud.firestore {
       }
     }
     
-    // --- DİĞER ERİŞİMLER ---
+    // --- TOP-LEVEL KOLEKSİYONLAR (Öğretmene Özel) ---
+    match /lessons/{lessonId} {
+      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+    
+    match /riskFactors/{riskFactorId} {
+      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+
+    match /questions/{questionId} {
+      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+
+    match /kazanims/{kazanimId} {
+      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // --- GENEL ERİŞİM ---
 
     // classCodes koleksiyonuna, giriş yapmış tüm kullanıcıların okuma izni verelim.
     match /classCodes/{code} {
-      allow read: if isSignedIn();
-    }
-
-    // Diğer tüm koleksiyonlara erişimi varsayılan olarak reddet.
-    match /{document=**} {
-      allow read, write: if false;
+      allow get: if isSignedIn();
     }
   }
 }
