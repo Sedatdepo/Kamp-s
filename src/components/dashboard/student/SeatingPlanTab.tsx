@@ -20,7 +20,9 @@ export function SeatingPlanTab() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
 
-  const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
+  // GÜVENLİK DÜZELTMESİ: Sorgu, tüm `students` koleksiyonu yerine,
+  // doğrudan o sınıfa ait alt koleksiyonu (`classes/{classId}/students`) hedefleyecek şekilde değiştirildi.
+  const studentsQuery = useMemoFirebase(() => (classId && db ? collection(db, 'classes', classId, 'students') : null), [classId, db]);
   const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
   const { seatingPlan, rowCount, colCount } = useMemo(() => {

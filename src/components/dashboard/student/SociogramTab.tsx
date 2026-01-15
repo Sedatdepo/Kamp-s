@@ -29,9 +29,12 @@ export function SociogramTab() {
   const classQuery = useMemoFirebase(() => (classId && db ? doc(db, 'classes', classId) : null), [classId, db]);
   const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classQuery);
   
+  // GÜVENLİK DÜZELTMESİ: Sorgu, tüm `students` koleksiyonu yerine,
+  // doğrudan o sınıfa ait alt koleksiyonu (`classes/{classId}/students`) hedefleyecek şekilde değiştirildi.
+  // Bu, "kurallar filtre değildir" ilkesine uyum sağlar.
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
-    return query(collection(db, 'students'), where('classId', '==', classId));
+    return collection(db, 'classes', classId, 'students');
   }, [db, classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
   
@@ -80,7 +83,7 @@ export function SociogramTab() {
   };
 
   const handleSubmit = async () => {
-    if (!student || !db) return;
+    if (!student || !db || !classId) return;
 
     let allPositive: string[] = [];
     let allNegative: string[] = [];
@@ -93,7 +96,7 @@ export function SociogramTab() {
       if (q.type === 'leadership') allLeadership.push(...questionAnswers);
     });
 
-    const studentRef = doc(db, 'students', student.id);
+    const studentRef = doc(db, 'classes', classId, 'students', student.id);
     try {
         await updateDoc(studentRef, {
             positiveSelections: [...new Set(allPositive)],
