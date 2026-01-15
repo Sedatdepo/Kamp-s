@@ -1,48 +1,15 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- YARDIMCI FONKSİYONLAR ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isTeacher() {
-      // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
-      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    // Sınıfın sahibi olan öğretmen mi?
-    function isClassOwner(classId) {
-      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-      return isTeacher() && classDoc.data.teacherId == request.auth.uid;
-    }
-    
-    // --- ÖĞRETMEN PROFİLİ ---
-    match /teachers/{teacherId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(teacherId);
-    }
-    
-    // --- SINIFLAR ---
-    match /classes/{classId} {
-      allow read, write: if isClassOwner(classId);
-
-      // --- SINIF ALT KOLEKSİYONLARI ---
-      match /{allChildren=**} {
-        allow read, write: if isClassOwner(classId);
-      }
-    }
-
-    // Diğer tüm koleksiyonlara erişimi varsayılan olarak reddet.
+    // TÜM KOLEKSİYONLAR VE BELGELER İÇİN GEÇERLİ KURAL:
     match /{document=**} {
-      allow read, write: if false;
+      
+      // DİKKAT: Bu ayar geliştirme içindir. 
+      // Herkes (giriş yapmayanlar dahil) veritabanını okuyabilir ve yazabilir.
+      allow read, write: if true;
+      
     }
   }
 }
