@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -101,8 +100,6 @@ const CriteriaGradingTable = ({
             await updateDoc(studentRef, {
                 behaviorScore: increment(change)
             });
-            // The onSnapshot listener in AuthContext will handle the UI update.
-            // A toast can still be shown for immediate feedback.
             toast({
                 title: `${change > 0 ? '+' : ''}${change} Puan`,
                 description: `${student.name} adlı öğrencinin puanı güncellendi.`
@@ -139,13 +136,10 @@ const CriteriaGradingTable = ({
                         <TableBody>
                             {students.map(student => {
                                 const termGrades = student[termKey];
-                                // @ts-ignore
-                                const studentScores = termGrades ? termGrades[scoreKey] : {};
+                                const studentScores = (termGrades as any)?.[scoreKey] || {};
                                 const total = calculateTotal(student.id);
-
                                 const perfGradeKey = getPerformanceGradeKey();
-                                // @ts-ignore
-                                const manualTotal = (perfGradeKey && termGrades) ? termGrades[perfGradeKey] : null;
+                                const manualTotal = (perfGradeKey && termGrades) ? (termGrades as any)[perfGradeKey] : null;
 
                                 return (
                                 <TableRow key={student.id}>
@@ -154,6 +148,7 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.max)}><Plus className="h-4 w-4 text-green-600"/></Button>
                                                     <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, -c.max)}><Minus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
@@ -161,7 +156,7 @@ const CriteriaGradingTable = ({
                                                     type="number"
                                                     max={c.max}
                                                     min={0}
-                                                    value={studentScores?.[c.id] || ''}
+                                                    value={studentScores[c.id] || ''}
                                                     onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : Number(e.target.value))}
                                                     className="w-20 mx-auto text-center h-9"
                                                 />
@@ -229,21 +224,18 @@ export function GradingToolTab({
       prevStudents.map(student => {
         if (student.id === studentId) {
           const updatedTermGrades = { ...(student[termKey] || {}) };
-          // @ts-ignore
-          const updatedScores = { ...(updatedTermGrades[scoreKey] || {}) };
+          const updatedScores = { ...((updatedTermGrades as any)[scoreKey] || {}) };
 
           if (value === null) {
             delete updatedScores[criteriaId];
           } else {
             updatedScores[criteriaId] = value;
           }
-          // @ts-ignore
-          updatedTermGrades[scoreKey] = updatedScores;
+          (updatedTermGrades as any)[scoreKey] = updatedScores;
           
           const perfGradeKey = scoreKey === 'scores1' ? 'perf1' : scoreKey === 'scores2' ? 'perf2' : scoreKey === 'projectScores' ? 'projectGrade' : null;
            if (perfGradeKey) {
-             // @ts-ignore
-             updatedTermGrades[perfGradeKey] = null;
+             (updatedTermGrades as any)[perfGradeKey] = null;
            }
 
           return { ...student, [termKey]: updatedTermGrades };
@@ -276,18 +268,14 @@ export function GradingToolTab({
                               newScores[c.id] = Math.round(value * proportion);
                           });
                       }
-                      // @ts-ignore
-                      if (perfGradeKey) updatedTermGrades[perfGradeKey] = value;
-                      // @ts-ignore
-                      updatedTermGrades[scoreKey] = newScores;
+                      if (perfGradeKey) (updatedTermGrades as any)[perfGradeKey] = value;
+                      (updatedTermGrades as any)[scoreKey] = newScores;
 
                   } else if (isBehavior && value !== null) {
                       return { ...student, behaviorScore: value };
                   } else { // value is null, clear scores
-                      // @ts-ignore
-                      if (perfGradeKey) updatedTermGrades[perfGradeKey] = null;
-                       // @ts-ignore
-                      updatedTermGrades[scoreKey] = {};
+                      if (perfGradeKey) (updatedTermGrades as any)[perfGradeKey] = null;
+                      (updatedTermGrades as any)[scoreKey] = {};
                   }
   
                   return { ...student, [termKey]: updatedTermGrades };
@@ -305,23 +293,20 @@ export function GradingToolTab({
 
       students.forEach(student => {
           const studentRef = doc(db, 'students', student.id);
-          // @ts-ignore
-          const studentScores = student[termKey]?.[scoreKey] || {};
+          const studentScores = (student as any)[termKey]?.[scoreKey] || {};
           
           let performanceGradeKey: 'perf1' | 'perf2' | 'projectGrade' | null = null;
           if(scoreKey === 'scores1') performanceGradeKey = 'perf1';
           else if(scoreKey === 'scores2') performanceGradeKey = 'perf2';
           else if(scoreKey === 'projectScores') performanceGradeKey = 'projectGrade';
           
-          // @ts-ignore
-          const manualTotal = isBehavior ? student.behaviorScore : (performanceGradeKey ? student[termKey]?.[performanceGradeKey] : undefined);
+          const manualTotal = isBehavior ? student.behaviorScore : (performanceGradeKey ? (student as any)[termKey]?.[performanceGradeKey] : undefined);
 
           let finalGrade;
           if (manualTotal !== null && manualTotal !== undefined) {
              finalGrade = manualTotal;
           } else {
              if (isBehavior) {
-                // This part is now handled by instant +/- buttons, but let's keep it for manual total entry.
                 finalGrade = student.behaviorScore;
              } else {
                 const totalScore = criteria.reduce((sum, c) => sum + (Number(studentScores[c.id]) || 0), 0);
@@ -331,7 +316,6 @@ export function GradingToolTab({
           }
 
           if (isBehavior) {
-               // behaviorScore is updated instantly now, so we just save the criteria breakdown if needed
                batch.update(studentRef, { 
                   [`${termKey}.${scoreKey}`]: studentScores,
                   behaviorScore: Math.round(finalGrade)
