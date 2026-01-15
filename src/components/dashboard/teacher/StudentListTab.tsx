@@ -260,12 +260,6 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
                       </DialogFooter>
                   </DialogContent>
               </Dialog>
-              <Button variant="outline" asChild>
-                <label htmlFor="student-upload" className="cursor-pointer">
-                  <Upload className="mr-2 h-4 w-4" /> Excel'den Aktar
-                </label>
-              </Button>
-              <input id="student-upload" type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
             </div>
           </div>
         </CardHeader>
