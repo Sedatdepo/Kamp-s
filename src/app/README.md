@@ -79,5 +79,31 @@ Bana sadece "Kod güzel" deme. Eğer derlemeyi %1 bile riske atacak bir durum va
 
 Eğer hata yoksa "Build Başarılı (Exit Code 0)" onayı ver.
 
+---
+## VERİTABANI UYUM PROTOKOLÜ
+
+**Amaç:** Bu protokolün amacı, Firestore veritabanı kurallarının katı bir şekilde uygulanacağı varsayılarak, uygulama kodunun bu kurallarla %100 uyumlu olmasını garanti altına almaktır. Bu, "Eksik veya Yetersiz İzinler" hatalarını proaktif olarak önlemek ve maksimum güvenlik sağlamak için kritiktir.
+
+**Temel İlke: "Kurallar Filtre Değildir"**
+
+Firestore güvenlik kuralları, bir sorgunun döndüreceği verileri filtrelemez. Bunun yerine, bir sorgunun potansiyel olarak erişebileceği **TÜM** belgeler üzerinde yetki kontrolü yapar. Eğer sorgu, kullanıcının izni olmayan **tek bir belgeye bile** dokunma potansiyeli taşıyorsa, Firestore isteği tamamen reddeder.
+
+**Tarama ve Raporlama Talimatı:**
+
+Senden, "Firestore'un güvenlik ve sorgulama ilkelerini temel alarak projenin tamamını tara. Katı güvenlik kuralları uyguladığımızda sorun çıkaracak potansiyel noktaları ve çözüm önerilerini raporla." komutunu aldığında aşağıdaki adımları izlemeni istiyorum:
+
+1.  **Tam Kod Taraması:** `firebase/firestore`'dan import yapan tüm dosyaları (`.ts`, `.tsx`) analiz et.
+2.  **Sorgu Analizi:** `useCollection`, `getDocs`, `query` gibi fonksiyonlarla yapılan **tüm** listeleme sorgularını bul.
+3.  **Risk Tespiti:** Her sorgu için kendine şu soruyu sor: "Bu sorgu, bir öğretmenin sadece kendi verilerini (öğrencileri, dersleri vb.) görmesi gerektiği bir senaryoda, yanlışlıkla başka bir öğretmenin verisine erişebilir mi?"
+    *   **İhlal Örneği:** `query(collection(db, 'students'), where('classId', '==', 'XYZ'))` sorgusu bir ihlaldir. Çünkü bu sorgu, `classId`'si 'XYZ' olan tüm öğrencileri listelemeye çalışır ve bu öğrencilerin hangi öğretmene ait olduğunu sorgu düzeyinde belirtmez. Güvenlik kuralı, bu geniş sorguya izin vermeyecektir.
+    *   **Doğru Sorgu:** `query(collection(db, 'students'), where('teacherId', '==', 'OGRETMEN_ID_123'))` sorgusu doğrudur. Çünkü doğrudan yetki sahibi olan öğretmenin kimliği üzerinden filtreleme yapar.
+4.  **Raporlama:** Tespit ettiğin tüm uyumsuz sorguları, aşağıdaki formatta, maddeler halinde raporla:
+    *   **[SIRA NO]. Hatalı Sorgu: [SORUNUN KISA TANIMI]**
+        *   **Dosya:** Sorunlu kodun bulunduğu dosya yolu (örn: `src/components/dashboard/teacher/TeacherDashboard.tsx`).
+        *   **Sorun:** Sorgunun neden güvenlik ilkesini ihlal ettiğini teknik olarak açıkla. "Kurallar Filtre Değildir" ilkesine atıfta bulun.
+        *   **Çözüm:** Sorgunun nasıl düzeltilmesi gerektiğini net bir şekilde belirt. Genellikle `where("teacherId", "==", teacherId)` filtresinin eklenmesi gerekecektir.
+
+Bu protokolün eksiksiz uygulanması, uygulamanın veritabanı katmanının sağlam, güvenli ve performanslı olmasını temin edecektir.
+
 <!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->
 <!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->
