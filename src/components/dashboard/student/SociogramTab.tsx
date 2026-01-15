@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -9,14 +8,122 @@ import { Student, Class, SociogramQuestion } from '@/lib/types';
 import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee } from 'lucide-react';
+import { Loader2, Share2, Users, UserX, Star, BookOpen, Coffee, X as XIcon, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
 
 
 const getIconComponent = (iconName: SociogramQuestion['icon']) => {
     const icons = { Users, UserX, Star, BookOpen, Coffee };
     const Icon = icons[iconName] || Users;
     return <Icon size={20} />;
+};
+
+
+const MultiSelectCombobox = ({
+  options,
+  selected,
+  onSelectionChange,
+  maxSelections,
+  placeholder = "Arkadaş seç..."
+}: {
+  options: { value: string; label: string }[];
+  selected: string[];
+  onSelectionChange: (newSelection: string[]) => void;
+  maxSelections: number;
+  placeholder?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleSelect = (value: string) => {
+    if (selected.includes(value)) {
+      onSelectionChange(selected.filter((s) => s !== value));
+    } else {
+      if (selected.length < maxSelections) {
+        onSelectionChange([...selected, value]);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: `En fazla ${maxSelections} kişi seçebilirsiniz.`,
+        });
+      }
+    }
+    setOpen(false);
+  };
+
+  const handleRemove = (value: string) => {
+    onSelectionChange(selected.filter((s) => s !== value));
+  };
+  
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-auto min-h-10"
+        >
+          {selected.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {selected.map((value) => {
+                const option = options.find((opt) => opt.value === value);
+                return (
+                  <Badge
+                    key={value}
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    {option?.label}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(value);
+                      }}
+                      className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <XIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Arkadaş ara..." />
+          <CommandEmpty>Öğrenci bulunamadı.</CommandEmpty>
+          <CommandGroup>
+            <CommandList>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => handleSelect(option.value)}
+                  disabled={selected.length >= maxSelections && !selected.includes(option.value)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selected.includes(option.value) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandList>
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 };
 
 
@@ -45,7 +152,6 @@ export function SociogramTab() {
 
   const survey = useMemo(() => currentClass?.sociogramSurvey || { title: '', questions: [] }, [currentClass]);
   
-
   useEffect(() => {
     if (student && survey) {
       const initialAnswers: Record<number, string[]> = {};
@@ -60,24 +166,8 @@ export function SociogramTab() {
     }
   }, [student, survey]);
   
-  const handleSelection = (questionId: number, targetId: string, maxSelections: number) => {
-    setAnswers(prev => {
-      const currentList = prev[questionId] || [];
-      const isSelected = currentList.includes(targetId);
-      
-      let newList;
-      if (isSelected) {
-        newList = currentList.filter(id => id !== targetId);
-      } else {
-        if (currentList.length < maxSelections) {
-          newList = [...currentList, targetId];
-        } else {
-          toast({ variant: 'destructive', title: `En fazla ${maxSelections} kişi seçebilirsiniz.` });
-          return prev;
-        }
-      }
-      return { ...prev, [questionId]: newList };
-    });
+  const handleSelectionChange = (questionId: number, newSelection: string[]) => {
+    setAnswers(prev => ({ ...prev, [questionId]: newSelection }));
   };
 
   const handleSubmit = async () => {
@@ -121,6 +211,8 @@ export function SociogramTab() {
       );
   }
 
+  const classmateOptions = otherClassmates.map(c => ({ value: c.id, label: c.name }));
+
   return (
     <div className="space-y-8">
         <Card className="bg-gradient-to-r from-indigo-50 to-purple-50">
@@ -130,11 +222,7 @@ export function SociogramTab() {
             </CardHeader>
         </Card>
 
-        {survey.questions.filter(q => q.active).map(question => {
-            const currentAnswers = answers[question.id] || [];
-            const isMax = currentAnswers.length >= question.maxSelections;
-
-            return (
+        {survey.questions.filter(q => q.active).map(question => (
                 <Card key={question.id}>
                     <CardHeader className={cn("flex flex-row items-start gap-4", 
                         question.type === 'positive' ? 'bg-green-50/50' : question.type === 'negative' ? 'bg-red-50/50' : 'bg-amber-50/50'
@@ -146,36 +234,20 @@ export function SociogramTab() {
                         </div>
                         <div>
                             <CardTitle className="text-lg">{question.text}</CardTitle>
-                            <CardDescription>En fazla {question.maxSelections} kişi seçebilirsiniz. ({currentAnswers.length}/{question.maxSelections})</CardDescription>
+                            <CardDescription>En fazla {question.maxSelections} kişi seçebilirsiniz. ({answers[question.id]?.length || 0}/{question.maxSelections})</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4">
-                        <div className="flex flex-wrap gap-2 rounded-lg border bg-slate-50 p-4">
-                            {otherClassmates.map(classmate => {
-                                const isSelected = currentAnswers.includes(classmate.id);
-                                return (
-                                    <button
-                                        key={classmate.id}
-                                        onClick={() => handleSelection(question.id, classmate.id, question.maxSelections)}
-                                        disabled={!isSelected && isMax}
-                                        className={cn(
-                                            "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
-                                            isSelected 
-                                                ? "bg-blue-600 text-white border-blue-700 shadow-sm"
-                                                : isMax
-                                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:border-gray-400"
-                                        )}
-                                    >
-                                        {classmate.name}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <MultiSelectCombobox
+                            options={classmateOptions}
+                            selected={answers[question.id] || []}
+                            onSelectionChange={(newSelection) => handleSelectionChange(question.id, newSelection)}
+                            maxSelections={question.maxSelections}
+                        />
                     </CardContent>
                 </Card>
             )
-        })}
+        )}
          <div className="flex justify-center py-4">
              <Button onClick={handleSubmit} size="lg" className="px-12 py-6 text-lg font-bold">Cevapları Kaydet</Button>
          </div>
