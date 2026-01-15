@@ -4,10 +4,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // UYARI: Bu kurallar test amaçlıdır ve tüm verilere tam erişim izni verir.
-    // Canlı ortamda kullanılmamalıdır.
+    // TÜM KOLEKSİYONLAR VE BELGELER İÇİN GEÇERLİ KURAL:
     match /{document=**} {
+      
+      // DİKKAT: Bu ayar geliştirme içindir. 
+      // Herkes (giriş yapmayanlar dahil) veritabanını okuyabilir ve silebilir.
       allow read, write: if true;
+      
     }
   }
 }
