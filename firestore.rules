@@ -1,14 +1,11 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Bu kural, giriş yapmış herhangi bir kullanıcının tüm verilere
-    // okuma ve yazma erişimine sahip olmasına izin verir.
-    // DİKKAT: Bu kural sadece geliştirme aşaması için uygundur.
-    // Uygulamanızı canlıya almadan önce daha kısıtlayıcı kurallar yazmalısınız.
+    // UYARI: Bu kurallar güvensizdir ve sadece geliştirme için uygundur.
+    // Herkesin veritabanınızı okumasına, yazmasına ve silmesine izin verir.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
