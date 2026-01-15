@@ -546,21 +546,27 @@ export function TeacherDashboard() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                          <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline">
-                                {currentClass?.name}
-                                <ChevronDown className="ml-2 h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {(orderedClasses || []).map((cls: Class) => (
-                                  <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
-                                      {cls.name}
-                                  </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                         <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => handleSelectClass(null)} className="h-9">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Sınıf Seçimine Dön
+                            </Button>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline">
+                                    {currentClass?.name}
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {(orderedClasses || []).map((cls: Class) => (
+                                      <DropdownMenuItem key={cls.id} onSelect={() => handleSelectClass(cls.id)}>
+                                          {cls.name}
+                                      </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                         </div>
                     </div>
                     <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
                 </CardHeader>
