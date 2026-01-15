@@ -29,42 +29,47 @@ service cloud.firestore {
 
     // --- Classes and Subcollections ---
     match /classes/{classId} {
-      // A teacher can only list classes they own.
-      allow list: if isTeacher() && request.query.where[0][2] == request.auth.uid;
+      // Bir öğretmenin yalnızca 'teacherId' alanı kendi kimliğiyle eşleşen sınıfları listelemesine izin ver.
+      allow list: if isTeacher() && request.query.where[0][0] == 'teacherId' && request.query.where[0][2] == request.auth.uid;
       
-      // A teacher can get, update, or delete a class if they own it.
+      // Bir öğretmen, yalnızca sahibi olduğu sınıfı tekil olarak okuyabilir, güncelleyebilir veya silebilir.
       allow get, update, delete: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       
-      // A teacher can create a class if the new document's teacherId is their own.
+      // Bir öğretmen, 'teacherId'si kendisine ait olan bir sınıf oluşturabilir.
       allow create: if isDataOwner(request.resource.data.teacherId);
       
       // --- Students within a class ---
       match /students/{studentId} {
-        // Teacher can do anything to students in their own class.
+        // Bir öğretmen, kendi sınıfındaki öğrencilere tam erişime sahiptir.
+        // Bu kural, üstteki /classes/{classId} kuralındaki `get` iznine dayanır.
         allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       }
       
       // --- Other subcollections (lessons, homeworks, etc.) ---
       match /{allChildren=**} {
-         // Teacher can do anything to subcollections of their own class.
+         // Bir öğretmen, kendi sınıfının altındaki tüm diğer alt koleksiyonlara tam erişime sahiptir.
          allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       }
     }
     
     // --- Top-level collections owned by teachers ---
     match /lessons/{lessonId} {
+      // Bir öğretmen, yalnızca kendi oluşturduğu derslere erişebilir.
       allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
     match /riskFactors/{riskFactorId} {
+       // Bir öğretmen, yalnızca kendi oluşturduğu risk faktörlerine erişebilir.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
      match /questions/{questionId} {
+       // Bir öğretmen, yalnızca kendi oluşturduğu sorulara erişebilir.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
      match /kazanims/{kazanimId} {
+       // Bir öğretmen, yalnızca kendi oluşturduğu kazanımlara erişebilir.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
 
