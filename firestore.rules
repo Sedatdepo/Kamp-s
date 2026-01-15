@@ -1,15 +1,58 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // TÜM KOLEKSİYONLAR VE BELGELER İÇİN GEÇERLİ KURAL:
+    // --- YARDIMCI FONKSİYONLAR ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isTeacher() {
+      // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
+    function isClassOwner(classId) {
+      // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+    }
+    
+    // --- ÖĞRETMEN PROFİLİ ---
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId);
+    }
+    
+    // --- SINIFLAR ---
+    match /classes/{classId} {
+      // Öğretmen, yalnızca teacherId'si kendisine ait olan sınıfları listeleyebilir.
+      // Bu, "permission-denied" hatalarını önlemek için en güvenli yoldur.
+      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
+      
+      // Öğretmen, kendi sınıfını okuyabilir, güncelleyebilir ve silebilir.
+      allow get, update, delete: if isClassOwner(classId);
+      
+      // Öğretmen, kendi teacherId'sini içeren bir sınıf oluşturabilir.
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+
+      // --- SINIF ALT KOLEKSİYONLARI ---
+      match /{allChildren=**} {
+        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere (öğrenciler, ödevler vb.) tam erişime sahiptir.
+        allow read, write: if isClassOwner(classId);
+      }
+    }
+
+    // Diğer tüm koleksiyonlara erişimi varsayılan olarak reddet.
     match /{document=**} {
-      
-      // DİKKAT: Bu ayar geliştirme içindir. 
-      // Herkes (giriş yapmayanlar dahil) veritabanını okuyabilir ve yazabilir.
-      allow read, write: if true;
-      
+      allow read, write: if false;
     }
   }
 }
