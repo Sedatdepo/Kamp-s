@@ -37,7 +37,8 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
 
   useEffect(() => {
     if (students) {
-      setLocalStudents(students);
+      const sorted = [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+      setLocalStudents(sorted);
     }
   }, [students]);
 
@@ -124,6 +125,7 @@ function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClas
                         <Switch
                             checked={currentClass?.isProjectSelectionActive || false}
                             onCheckedChange={handleToggleChange}
+                            disabled={!currentClass}
                         />
                     </div>
                 </CardHeader>
@@ -242,5 +244,3 @@ export function ProjectDistributionTab(props: Omit<ProjectDistributionTabProps, 
     </Tabs>
   );
 }
-
-    
