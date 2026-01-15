@@ -225,22 +225,23 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-  const displayedStudents = useMemo(() => {
-    if (!students) return [];
-    if (selectedRecordId) {
-      const record = riskMapDocuments.find(d => d.id === selectedRecordId);
-      if (record) {
-        return students.map(student => {
-          const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
-          return {
-            ...student,
-            risks: archivedData ? archivedData.risks : [],
-          };
-        });
-      }
-    }
-    return students;
-  }, [selectedRecordId, riskMapDocuments, students]);
+    const displayedStudents = useMemo(() => {
+        if (!students) return [];
+        let studentList = students;
+        if (selectedRecordId) {
+            const record = riskMapDocuments.find(d => d.id === selectedRecordId);
+            if (record) {
+                studentList = students.map(student => {
+                    const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
+                    return {
+                        ...student,
+                        risks: archivedData ? archivedData.risks : [],
+                    };
+                });
+            }
+        }
+        return [...studentList].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+    }, [selectedRecordId, riskMapDocuments, students]);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -317,12 +318,9 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
 
   const handleDeleteRecord = useCallback(() => {
     if (!selectedRecordId) return;
-    setLocalDb(prev => ({
-      ...prev,
-      riskMapDocuments: (prev.riskMapDocuments || []).filter(d => d.id !== selectedRecordId),
-    }));
+    setLocalDb(prev => ({...prev, riskMapDocuments: (prev.riskMapDocuments || []).filter(d => d.id !== selectedRecordId)}));
     handleNewRecord();
-    toast({ title: 'Silindi', description: 'Kayıt arşivden silindi.', variant: 'destructive' });
+    toast({ title: 'Silindi', variant: 'destructive'});
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
 
@@ -435,5 +433,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
     </div>
   );
 }
+
+    
 
     
