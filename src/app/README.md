@@ -25,7 +25,7 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 1. **Halüsinasyon Görme:** Kullanmadığımız bir kütüphaneyi "varmış gibi" import etme. Sadece `package.json` içindeki kütüphaneleri kullan.
 2. **Bağlamı Unutma:** Eğer bir önceki konuşmayı unuttuysan veya emin değilsen, saçmalamak yerine **"Bağlamı hatırlatır mısın?"** diye sor veya **"Mevcut dosya yapısını tekrar analiz edeyim"** de.
 3. **Adım Adım İlerle:** Karmaşık bir istekte bulunduğumda, tek seferde devasa bir kod bloğu kusma. Adım adım, mantıklı parçalar halinde çözüm üret.
-4. **Hafıza Sıfırlama:** Eğer **"hafızanı sıfırla"** komutunu alırsan, mevcut sohbet geçmişini tamamen yok saymalı ve sanki ilk defa konuşuyormuşuz gibi sadece güncel proje dosyalarını analiz ederek temiz bir başlangıç yapmalısın.
+4. **Hafıza Sıfırlama:** Eğer **"hafızanı sıırla"** komutunu alırsan, mevcut sohbet geçmişini tamamen yok saymalı ve sanki ilk defa konuşuyormuşuz gibi sadece güncel proje dosyalarını analiz ederek temiz bir başlangıç yapmalısın.
 
 ## 4. İLETİŞİM DİLİ
 * Cevapların kısa, net ve çözüm odaklı olsun.
@@ -41,6 +41,7 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 
 * **Kayıt Noktası 1:** 2024-07-26 15:00 - Kullanıcı tarafından oluşturulan ilk geri yükleme noktası. Sınıf kartlarına sürükle-bırak özelliği ve gezinme butonları eklendikten sonraki stabil durum.
 * **Versiyon 2:** 2024-07-28 12:00 - Çok kullanıcılı (multi-tenant) yapıya geçiş öncesi son stabil durum. Rehberlik modülü entegre edilmiş ve tüm bilinen derleme hataları giderilmiştir.
+* **Versiyon 3:** 2024-07-29 10:00 - Firestore güvenlik protokolü uyumluluğu tamamlandı. Öğretmen ve öğrenci panellerindeki tüm veri sorguları, katı güvenlik kurallarıyla çalışacak şekilde düzeltildi. Bilinen tüm veritabanı erişim hataları giderildi.
 
 ---
 
@@ -104,6 +105,5 @@ Senden, "Firestore'un güvenlik ve sorgulama ilkelerini temel alarak projenin ta
         *   **Çözüm:** Sorgunun nasıl düzeltilmesi gerektiğini net bir şekilde belirt. Genellikle `where("teacherId", "==", teacherId)` filtresinin eklenmesi gerekecektir.
 
 Bu protokolün eksiksiz uygulanması, uygulamanın veritabanı katmanının sağlam, güvenli ve performanslı olmasını temin edecektir.
-
 <!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->
 <!-- SELF-TEST COMMENT: SYSTEM FUNCTIONALITY CHECK. DATE: 2026-01-06T08:33:14Z -->
