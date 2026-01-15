@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, collection, query, where } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion, SociogramSurvey, SociogramAnalysisOutput } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { exportSociogramToRtf } from '@/lib/word-export';
 import { analyzeSociogram } from '@/ai/flows/analyze-sociogram-flow';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 
 interface SociogramTabProps {
