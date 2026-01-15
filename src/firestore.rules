@@ -33,14 +33,14 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // Öğretmen, yalnızca teacherId'si kendisine ait olan sınıfları listeleyebilir.
-      // Bu, "permission-denied" hatalarını önlemek için en güvenli yoldur.
+      // ÖNEMLİ: 'list' kuralı, sorgu ile tam olarak eşleşmelidir.
+      // Öğretmen, yalnızca 'teacherId' alanı kendi UID'si olan sınıfları sorgulayabilir.
       allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
       
-      // Öğretmen, kendi sınıfını okuyabilir, güncelleyebilir ve silebilir.
+      // Öğretmen, kendi sınıfını tekil olarak okuyabilir, güncelleyebilir ve silebilir.
       allow get, update, delete: if isClassOwner(classId);
       
-      // Öğretmen, kendi teacherId'sini içeren bir sınıf oluşturabilir.
+      // Öğretmen, 'teacherId'si kendisine ait olan bir sınıf oluşturabilir.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
       // --- SINIF ALT KOLEKSİYONLARI ---
@@ -49,6 +49,13 @@ service cloud.firestore {
         allow read, write: if isClassOwner(classId);
       }
     }
+    
+    // --- DİĞER ERİŞİMLER ---
+
+    // classCodes koleksiyonuna, giriş yapmış tüm kullanıcıların okuma izni verelim.
+    match /classCodes/{code} {
+      allow read: if isSignedIn();
+    }
 
     // Diğer tüm koleksiyonlara erişimi varsayılan olarak reddet.
     match /{document=**} {
@@ -56,5 +63,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
