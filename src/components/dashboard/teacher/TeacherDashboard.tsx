@@ -431,12 +431,10 @@ export function TeacherDashboard() {
 
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
   
-  const classIds = useMemo(() => classes?.map(c => c.id) || [], [classes]);
-
   const allStudentsQuery = useMemoFirebase(() => {
-    if (!classIds || classIds.length === 0 || !db) return null;
-    return query(collection(db, 'students'), where('classId', 'in', classIds));
-  }, [db, classIds]);
+    if (!teacherId || !db) return null;
+    return query(collection(db, 'students'), where('teacherId', '==', teacherId));
+  }, [db, teacherId]);
   const { data: allStudents, isLoading: allStudentsLoading } = useCollection<Student>(allStudentsQuery);
   
   const lessonsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
