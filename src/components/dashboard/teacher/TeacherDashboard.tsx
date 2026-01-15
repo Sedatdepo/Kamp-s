@@ -426,8 +426,7 @@ export function TeacherDashboard() {
   
   const classesQuery = useMemoFirebase(() => {
     if (!teacherId || !db) return null;
-    // THIS IS THE FIX: Add the where clause to filter by teacherId
-    return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
+    return query(collection(db, 'classes'));
   }, [db, teacherId]);
 
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
@@ -650,4 +649,3 @@ export function TeacherDashboard() {
   );
 }
 
-    

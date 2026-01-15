@@ -18,9 +18,8 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
+    // Sınıfın sahibi olan öğretmen mi?
     function isClassOwner(classId) {
-      // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
       let classDoc = get(/databases/$(database)/documents/classes/$(classId));
       return isTeacher() && classDoc.data.teacherId == request.auth.uid;
     }
@@ -33,19 +32,10 @@ service cloud.firestore {
     
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // Öğretmen, yalnızca teacherId'si kendisine ait olan sınıfları listeleyebilir.
-      // Bu, "permission-denied" hatalarını önlemek için en güvenli yoldur.
-      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
-      
-      // Öğretmen, kendi sınıfını okuyabilir, güncelleyebilir ve silebilir.
-      allow get, update, delete: if isClassOwner(classId);
-      
-      // Öğretmen, kendi teacherId'sini içeren bir sınıf oluşturabilir.
-      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow read, write: if isClassOwner(classId);
 
       // --- SINIF ALT KOLEKSİYONLARI ---
       match /{allChildren=**} {
-        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere (öğrenciler, ödevler vb.) tam erişime sahiptir.
         allow read, write: if isClassOwner(classId);
       }
     }
@@ -56,3 +46,4 @@ service cloud.firestore {
     }
   }
 }
+
