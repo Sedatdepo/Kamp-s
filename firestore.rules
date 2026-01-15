@@ -29,47 +29,47 @@ service cloud.firestore {
 
     // --- Classes and Subcollections ---
     match /classes/{classId} {
-      // Bir öğretmenin yalnızca 'teacherId' alanı kendi kimliğiyle eşleşen sınıfları listelemesine izin ver.
-      allow list: if isTeacher() && request.query.where[0][0] == 'teacherId' && request.query.where[0][2] == request.auth.uid;
+      // Allow a teacher to LIST classes only if the query is filtered by their own teacherId.
+      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
       
-      // Bir öğretmen, yalnızca sahibi olduğu sınıfı tekil olarak okuyabilir, güncelleyebilir veya silebilir.
+      // Allow a teacher to GET, UPDATE, or DELETE a single class document if they own it.
       allow get, update, delete: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       
-      // Bir öğretmen, 'teacherId'si kendisine ait olan bir sınıf oluşturabilir.
+      // Allow a teacher to CREATE a class if they set themselves as the teacherId.
       allow create: if isDataOwner(request.resource.data.teacherId);
       
       // --- Students within a class ---
       match /students/{studentId} {
-        // Bir öğretmen, kendi sınıfındaki öğrencilere tam erişime sahiptir.
-        // Bu kural, üstteki /classes/{classId} kuralındaki `get` iznine dayanır.
+        // Allow a teacher to access students in a class they own.
+        // This relies on the get permission on the parent class document.
         allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       }
       
       // --- Other subcollections (lessons, homeworks, etc.) ---
       match /{allChildren=**} {
-         // Bir öğretmen, kendi sınıfının altındaki tüm diğer alt koleksiyonlara tam erişime sahiptir.
+         // Allow a teacher full access to all other subcollections within a class they own.
          allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       }
     }
     
     // --- Top-level collections owned by teachers ---
     match /lessons/{lessonId} {
-      // Bir öğretmen, yalnızca kendi oluşturduğu derslere erişebilir.
+      // Allow a teacher to access lessons they created.
       allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
     match /riskFactors/{riskFactorId} {
-       // Bir öğretmen, yalnızca kendi oluşturduğu risk faktörlerine erişebilir.
+       // Allow a teacher to access risk factors they created.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
      match /questions/{questionId} {
-       // Bir öğretmen, yalnızca kendi oluşturduğu sorulara erişebilir.
+       // Allow a teacher to access questions they created.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
     
      match /kazanims/{kazanimId} {
-       // Bir öğretmen, yalnızca kendi oluşturduğu kazanımlara erişebilir.
+       // Allow a teacher to access learning objectives they created.
        allow read, write: if isDataOwner(resource.data.teacherId);
     }
 

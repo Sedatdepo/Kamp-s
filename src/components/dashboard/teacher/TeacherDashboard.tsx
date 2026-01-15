@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -426,7 +425,7 @@ export function TeacherDashboard() {
   
   const classesQuery = useMemoFirebase(() => {
     if (!teacherId || !db) return null;
-    return query(collection(db, 'classes'));
+    return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
   }, [db, teacherId]);
 
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
@@ -648,4 +647,3 @@ export function TeacherDashboard() {
     </div>
   );
 }
-
