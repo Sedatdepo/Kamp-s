@@ -153,9 +153,8 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, 1)}><Plus className="h-4 w-4"/></Button>
-                                                    <span className="font-bold text-lg w-12">{student.behaviorScore}</span>
-                                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, -2)}><Minus className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.max)}><Plus className="h-4 w-4"/></Button>
+                                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, -c.max)}><Minus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
                                                 <Input
@@ -177,7 +176,7 @@ const CriteriaGradingTable = ({
                                             value={isBehaviorTab ? total : (manualTotal ?? total)}
                                             onChange={(e) => onTotalScoreChange(student.id, e.target.value === '' ? null : Number(e.target.value))}
                                             className="w-24 mx-auto text-center h-10 font-bold text-lg bg-yellow-50 border-yellow-300"
-                                            placeholder={total.toString()}
+                                            placeholder={isBehaviorTab ? student.behaviorScore.toString() : total.toString()}
                                             readOnly={isBehaviorTab}
                                         />
                                     </TableCell>
