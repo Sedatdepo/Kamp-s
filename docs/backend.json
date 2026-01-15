@@ -35,6 +35,10 @@
           "type": "string",
           "description": "Reference to Class. (Relationship: Class 1:N Student)"
         },
+        "teacherId": {
+          "type": "string",
+          "description": "The ID of the teacher this student belongs to. For security rules."
+        },
         "number": {
           "type": "number",
           "description": "The student's unique number within the class."
@@ -95,6 +99,7 @@
       "required": [
         "id",
         "classId",
+        "teacherId",
         "number",
         "name",
         "password",

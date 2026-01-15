@@ -1,15 +1,76 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // TÜM KOLEKSİYONLAR VE BELGELER İÇİN GEÇERLİ KURAL:
-    match /{document=**} {
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    function isDataOwner(teacherId) {
+      return isTeacher() && request.auth.uid == teacherId;
+    }
+
+    // --- Teacher Profiles ---
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId);
+    }
+
+    // --- Classes and Subcollections ---
+    match /classes/{classId} {
+      // A teacher can only list classes they own.
+      allow list: if isTeacher() && request.query.where[0][2] == request.auth.uid;
       
-      // DİKKAT: Bu ayar geliştirme içindir. 
-      // Herkes (giriş yapmayanlar dahil) veritabanını okuyabilir ve yazabilir.
-      allow read, write: if true;
+      // A teacher can get, update, or delete a class if they own it.
+      allow get, update, delete: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
       
+      // A teacher can create a class if the new document's teacherId is their own.
+      allow create: if isDataOwner(request.resource.data.teacherId);
+      
+      // --- Students within a class ---
+      match /students/{studentId} {
+        // Teacher can do anything to students in their own class.
+        allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
+      }
+      
+      // --- Other subcollections (lessons, homeworks, etc.) ---
+      match /{allChildren=**} {
+         // Teacher can do anything to subcollections of their own class.
+         allow read, write: if isDataOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
+      }
+    }
+    
+    // --- Top-level collections owned by teachers ---
+    match /lessons/{lessonId} {
+      allow read, write: if isDataOwner(resource.data.teacherId);
+    }
+    
+    match /riskFactors/{riskFactorId} {
+       allow read, write: if isDataOwner(resource.data.teacherId);
+    }
+    
+     match /questions/{questionId} {
+       allow read, write: if isDataOwner(resource.data.teacherId);
+    }
+    
+     match /kazanims/{kazanimId} {
+       allow read, write: if isDataOwner(resource.data.teacherId);
+    }
+
+    // --- Publicly readable collections ---
+    match /classCodes/{code} {
+      allow get: if isSignedIn();
     }
   }
 }
