@@ -121,6 +121,10 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
     const phase = currentRecord?.currentPhase || 1;
     const formData = currentRecord?.formData || {};
 
+    const sortedStudents = useMemo(() => {
+        return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+    }, [students]);
+
     useEffect(() => {
         if(selectedRecordId) {
             const record = disciplineRecords.find(r => r.id === selectedRecordId);
@@ -231,7 +235,7 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
                             <PhaseIndicator currentPhase={phase} />
 
                             <div className='mt-8'>
-                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateRecord={updateCurrentRecord} students={students} teacherProfile={teacherProfile} currentClass={currentClass} />
+                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateRecord={updateCurrentRecord} students={sortedStudents} teacherProfile={teacherProfile} currentClass={currentClass} />
                                 <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} />
                                 <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />
                                 <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />

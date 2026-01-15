@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -153,7 +154,6 @@ const CriteriaGradingTable = ({
                                         <TableCell key={c.id} className="text-center">
                                             {isBehaviorTab ? (
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, c.max)}><Plus className="h-4 w-4"/></Button>
                                                     <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handlePointChange(student.id, -c.max)}><Minus className="h-4 w-4"/></Button>
                                                 </div>
                                             ) : (
@@ -211,6 +211,11 @@ export function GradingToolTab({
   useEffect(() => {
     setStudents(initialStudents);
   }, [initialStudents]);
+
+  const sortedStudents = useMemo(() => {
+    if (!students) return [];
+    return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+  }, [students]);
 
   const updateTeacherProfile = async (data: Partial<TeacherProfile>) => {
     if (!teacherProfile?.id || !db) return;
@@ -421,7 +426,7 @@ export function GradingToolTab({
               </TabsList>
                <TabsContent value="perf1" className="mt-4">
                     <CriteriaGradingTable 
-                        students={students} 
+                        students={sortedStudents} 
                         criteria={perfCriteria} 
                         scoreKey="scores1"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
@@ -433,7 +438,7 @@ export function GradingToolTab({
                </TabsContent>
                <TabsContent value="perf2" className="mt-4">
                     <CriteriaGradingTable 
-                        students={students} 
+                        students={sortedStudents} 
                         criteria={perfCriteria} 
                         scoreKey="scores2"
                         termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
@@ -447,7 +452,7 @@ export function GradingToolTab({
         </TabsContent>
         <TabsContent value="project">
            <CriteriaGradingTable 
-                students={students.filter(s => s.hasProject)} 
+                students={sortedStudents.filter(s => s.hasProject)} 
                 criteria={projCriteria} 
                 scoreKey="projectScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
@@ -459,7 +464,7 @@ export function GradingToolTab({
         </TabsContent>
         <TabsContent value="behavior">
             <CriteriaGradingTable 
-                students={students} 
+                students={sortedStudents} 
                 criteria={behaviorCriteria} 
                 scoreKey="behaviorScores"
                 termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}

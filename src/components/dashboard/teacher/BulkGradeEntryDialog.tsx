@@ -31,6 +31,12 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
   const isLiteratureTeacher = teacherBranch === 'Edebiyat' || teacherBranch === 'Türk Dili ve Edebiyatı';
 
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => {
+      return a.number.localeCompare(b.number, 'tr', { numeric: true });
+    });
+  }, [students]);
+
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
     if (!db) return;
@@ -39,11 +45,11 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
     
     if (lines.length === 0) return;
 
-    if (lines.length > students.length) {
+    if (lines.length > sortedStudents.length) {
         toast({
             variant: 'destructive',
             title: 'Hata: Veri Uyuşmazlığı',
-            description: `Yapıştırdığınız ${lines.length} satır, sınıftaki ${students.length} öğrenciden fazla. Lütfen kontrol edin.`
+            description: `Yapıştırdığınız ${lines.length} satır, sınıftaki ${sortedStudents.length} öğrenciden fazla. Lütfen kontrol edin.`
         });
         return;
     }
@@ -101,10 +107,6 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         });
     }
   };
-  
-  const sortedStudents = [...students].sort((a, b) => {
-    return a.number.localeCompare(b.number, 'tr', { numeric: true });
-  });
   
   const displayGrade = (grade: number | undefined | null) => {
     if (grade === -1) return 'G';
@@ -228,5 +230,3 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
     </Dialog>
   );
 }
-
-    
