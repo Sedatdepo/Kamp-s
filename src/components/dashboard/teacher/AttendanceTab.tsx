@@ -33,13 +33,15 @@ interface AttendanceTabProps {
 
 
 export function AttendanceTab({ students: initialStudents, onStudentsChange }: AttendanceTabProps) {
-  const [students, setStudents] = useState(initialStudents.map(s => ({ ...s, present: null as boolean | null })));
+  const sortedInitialStudents = useMemo(() => [...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true })), [initialStudents]);
+  
+  const [students, setStudents] = useState(sortedInitialStudents.map(s => ({ ...s, present: null as boolean | null })));
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showAbsentModal, setShowAbsentModal] = useState(false);
 
   useEffect(() => {
-    // Reset state when initial students change (e.g. class switch)
-    setStudents(initialStudents.map(s => ({...s, present: null})));
+    const sorted = [...initialStudents].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+    setStudents(sorted.map(s => ({...s, present: null})));
   }, [initialStudents]);
 
   const updateStudentStatus = (id: string, status: boolean | null) => {

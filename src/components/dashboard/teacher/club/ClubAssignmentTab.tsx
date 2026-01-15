@@ -36,7 +36,8 @@ export function ClubAssignmentTab({ students, teacherId, currentClass, clubs }: 
     const [localStudents, setLocalStudents] = useState<Student[]>(students);
 
     useEffect(() => {
-        setLocalStudents(students);
+        const sortedStudents = [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+        setLocalStudents(sortedStudents);
     }, [students]);
 
     const handleAssignmentChange = (studentId: string, clubId: string) => {

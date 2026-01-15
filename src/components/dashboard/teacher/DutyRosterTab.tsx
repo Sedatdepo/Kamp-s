@@ -26,7 +26,7 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
 
   const students = useMemo(() => {
     if (!selectedClassId) return [];
-    return allStudents.filter(s => s.classId === selectedClassId) || [];
+    return [...allStudents.filter(s => s.classId === selectedClassId)].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})) || [];
   }, [selectedClassId, allStudents]);
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];

@@ -159,6 +159,11 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
     }, [db, teacherId]);
 
     const { data: allMessages } = useCollection<Message>(messagesQuery);
+    
+    const sortedStudents = useMemo(() => {
+        if (!students) return [];
+        return [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+    }, [students]);
 
     const unreadMessagesCount = useMemo(() => {
         const counts = new Map<string, number>();
@@ -211,7 +216,7 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
                     <CardTitle className="font-headline flex items-center gap-2"><Users className="h-6 w-6"/> Öğrenciler</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto">
-                    {students && students.map(student => (
+                    {sortedStudents && sortedStudents.map(student => (
                         <div key={student.id} onClick={() => setSelectedStudent(student)}
                             className={`p-3 rounded-lg cursor-pointer flex justify-between items-center ${selectedStudent?.id === student.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
                             <div className="flex items-center gap-3">

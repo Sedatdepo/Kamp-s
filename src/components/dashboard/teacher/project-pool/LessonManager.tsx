@@ -40,7 +40,7 @@ const highSchoolLessons = [
 export function LessonManager({ teacherId, students }: { teacherId: string, students: Student[] }) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const lessonsQuery = useMemoFirebase(() => (db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
+  const lessonsQuery = useMemoFirebase(() => (db && teacherId ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
