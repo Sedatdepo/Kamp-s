@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -423,6 +424,8 @@ export function TeacherDashboard() {
   
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
   
+  // UPDATED: This is the query that was causing the permission error.
+  // It now filters classes by the logged-in teacher's ID, which aligns with our security rules.
   const classesQuery = useMemoFirebase(() => {
     if (!teacherId || !db) return null;
     return query(collection(db, 'classes'), where('teacherId', '==', teacherId));
