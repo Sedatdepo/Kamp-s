@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Calendar, Download, Users, RotateCcw, School, Upload, FileText } from 'lucide-react';
+import { Calendar, Download, Users, RotateCcw, School, Upload, FileText, Share } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -12,11 +12,14 @@ import * as XLSX from 'xlsx';
 import type { Student as DutyStudent, Class, TeacherProfile, RosterItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportDutyRosterToRtf } from '@/lib/word-export';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { doc, updateDoc } from 'firebase/firestore';
 
 
 export default function NobetciListesi({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
   const { toast } = useToast();
-
+  const { db } = useAuth();
   const [selectedClassId, setSelectedClassId] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState("");
@@ -29,10 +32,12 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
     return [...allStudents.filter(s => s.classId === selectedClassId)].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})) || [];
   }, [selectedClassId, allStudents]);
 
+  const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
+
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
   // --- LİSTE OLUŞTURMA MANTIĞI ---
-  const generateRoster = () => {
+  const generateRoster = async () => {
     if (students.length === 0) {
       toast({ title: "Hata", description: "Lütfen önce öğrenci listesi olan bir sınıf seçin.", variant: "destructive" });
       return;
@@ -78,6 +83,11 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
       }
       currentDate.setDate(currentDate.getDate() + 1);
     }
+    
+    if (db && currentClass) {
+        const classRef = doc(db, 'classes', currentClass.id);
+        await updateDoc(classRef, { dutyRoster: tempRoster });
+    }
 
     setRoster(tempRoster);
     
@@ -86,11 +96,10 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
       index: nextIndex,
       name: students[nextIndex - 1]?.name
     });
-    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu." });
+    toast({ title: "Başarılı", description: "Nöbet listesi oluşturuldu ve kaydedildi." });
   };
 
   const handleExport = () => {
-    const currentClass = classes.find(c => c.id === selectedClassId);
     if (!roster.length || !currentClass) {
       toast({
         title: 'Hata',
@@ -104,6 +113,13 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
       currentClass,
       teacherProfile,
     });
+  };
+  
+  const handleTogglePublish = async (checked: boolean) => {
+    if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { isDutyRosterPublished: checked });
+    toast({ title: `Nöbet listesi öğrencilerle ${checked ? 'paylaşıldı' : 'paylaşımı durduruldu'}.` });
   };
 
     if (!teacherProfile || !classes) {
@@ -193,7 +209,7 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
               <Calendar size={20} />
-              Listeyi Oluştur
+              Listeyi Oluştur ve Kaydet
             </button>
           </div>
         </div>
@@ -216,6 +232,15 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
           )}
 
           <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 min-h-[600px] relative overflow-x-auto">
+            <div className="absolute top-4 right-4 flex items-center space-x-2">
+                <Label htmlFor="publish-roster" className="text-sm font-medium">Öğrencilerle Paylaş</Label>
+                <Switch
+                    id="publish-roster"
+                    checked={currentClass?.isDutyRosterPublished || false}
+                    onCheckedChange={handleTogglePublish}
+                    disabled={!currentClass}
+                />
+            </div>
             {roster.length > 0 ? (
               <div className="w-full">
                 <div className="text-center mb-8 border-b pb-4">

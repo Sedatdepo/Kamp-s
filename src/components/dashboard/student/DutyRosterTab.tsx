@@ -24,6 +24,21 @@ export function DutyRosterTab() {
   if (classLoading) {
     return <Card><CardContent className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>;
   }
+  
+  if (!currentClass?.isDutyRosterPublished) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-2"><Users /> Nöbetçi Listesi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6 bg-muted/50 rounded-lg">
+            <p className="text-muted-foreground">Henüz bir nöbetçi listesi yayınlanmadı.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!dutyRoster || dutyRoster.length === 0) {
     return (
@@ -33,7 +48,7 @@ export function DutyRosterTab() {
         </CardHeader>
         <CardContent>
           <div className="text-center p-6 bg-muted/50 rounded-lg">
-            <p className="text-muted-foreground">Henüz bir nöbetçi listesi oluşturulmadı.</p>
+            <p className="text-muted-foreground">Öğretmeniniz henüz bir nöbetçi listesi oluşturmadı.</p>
           </div>
         </CardContent>
       </Card>

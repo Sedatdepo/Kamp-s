@@ -200,6 +200,8 @@ export interface Class {
   isClubSelectionActive?: boolean;
   isSociogramActive?: boolean;
   isDiscussionBoardActive?: boolean;
+  isDutyRosterPublished?: boolean;
+  isSeatingPlanPublished?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -560,7 +562,7 @@ export const SociogramAnalysisOutput = z.object({
   })).describe("Sınıfın popüler ve gizli liderleri."),
   risks: z.array(z.object({
     student: z.string().describe("Risk grubundaki öğrencinin adı."),
-    reason: z.string().describe("Risk grubunda olmasının nedeni (izole, reddedilmiş vb.)."),
+    reason: z.string().describe("Risk grubunda olmasının nedeni (izole, reddedilmiş mi)."),
     recommendation: z.string().describe("Öğretmene yönelik somut pedagojik tavsiye."),
   })).describe("Sosyal olarak izole edilmiş veya reddedilmiş, destek gerektiren öğrenciler."),
    tensions: z.array(z.object({
@@ -672,5 +674,3 @@ export interface StudentInfoFormData {
     familyMemberWithDisability: string;
     familyFinancialIssues: string;
 }
-
-    

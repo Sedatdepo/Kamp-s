@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,6 +46,21 @@ export function SeatingPlanTab() {
 
   if (classLoading || studentsLoading) {
     return <Card><CardContent className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>;
+  }
+
+  if (!currentClass?.isSeatingPlanPublished) {
+      return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline flex items-center gap-2"><Grid /> Oturma Planı</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6 bg-muted/50 rounded-lg">
+            <p className="text-muted-foreground">Öğretmeniniz henüz bir oturma planı yayınlamadı.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!seatingPlan || Object.keys(seatingPlan).length === 0) {

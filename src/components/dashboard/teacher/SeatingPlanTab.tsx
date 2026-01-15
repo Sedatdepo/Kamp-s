@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
-import { FileDown } from 'lucide-react';
+import { FileDown, Share } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 
 interface SeatingPlanTabProps {
@@ -75,6 +76,13 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
             teacherProfile,
         });
     };
+    
+    const handleTogglePublish = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', currentClass.id);
+        await updateDoc(classRef, { isSeatingPlanPublished: checked });
+        toast({ title: `Oturma planı öğrencilerle ${checked ? 'paylaşıldı' : 'paylaşımı durduruldu'}.` });
+    };
 
     if (!students) return <p>Öğrenci verisi yükleniyor...</p>;
     
@@ -93,6 +101,15 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                         <div className="space-y-2">
                             <Label>Sütun Sayısı (Yatay)</Label>
                             <Input type="number" value={colCount} onChange={e => setColCount(Number(e.target.value))} />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="publish-plan"
+                                checked={currentClass?.isSeatingPlanPublished || false}
+                                onCheckedChange={handleTogglePublish}
+                                disabled={!currentClass}
+                            />
+                            <Label htmlFor="publish-plan">Öğrencilerle Paylaş</Label>
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
