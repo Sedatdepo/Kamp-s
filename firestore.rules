@@ -3,97 +3,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // --- Collections & Sub-collections Rules ---
-
-    // Teachers can manage their own profile.
-    match /teachers/{teacherId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && request.auth.uid == teacherId;
-    }
-    
-    // Anyone can check a class code.
-    match /classCodes/{code} {
-      allow get: if isSignedIn();
-    }
-
-    // Rules for listing top-level teacher-owned collections.
-    // The query MUST include `where('teacherId', '==', request.auth.uid)`.
-    match /lessons/{doc} {
-        allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-        allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-    }
-    match /riskFactors/{doc} {
-       allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-       allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-    }
-    match /clubs/{doc} {
-       allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-       allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-    }
-    match /questions/{doc} {
-        allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-        allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-    }
-     match /kazanims/{doc} {
-        allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-        allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-     }
-     match /surveys/{doc} {
-        allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-        allow read, write: if isSignedIn() && resource.data.teacherId == request.auth.uid;
-     }
-
-    // Rules for the 'classes' collection
-    match /classes/{classId} {
-      // A teacher can only get, update, or delete their own class.
-      allow get, update, delete: if isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
-
-      // Rules for subcollections like 'students', 'homeworks', etc.
-      match /{allChildren=**} {
-        // Allow full access only to the teacher who owns the parent class.
-        allow read, write: if isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
-      }
-    }
-    
-    // A teacher can list only their own classes.
-    match /classes {
-        allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
-        // A teacher can create a class if they are the owner.
-        allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
-    }
-
-    // Rules for accessing student documents
-    match /students/{studentId} {
-        function isTheStudent() {
-            // Check if the student document has an `authUid` field matching the request.
-            return resource.data.authUid == request.auth.uid;
-        }
-        function isTheirTeacher() {
-            // Check if the class document exists and its `teacherId` matches the request UID.
-            return exists(/databases/$(database)/documents/classes/$(resource.data.classId)) && 
-                   get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid;
-        }
-        allow read, write: if isSignedIn() && (isTheStudent() || isTheirTeacher());
-    }
-
-    // General rules for other collections
-    match /messages/{messageId} {
-      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participants;
-    }
-    
-    match /infoForms/{formId} {
-      // Allow student and their teacher to access
-      allow read, write: if isSignedIn(); // Simplified for now, needs refinement
-    }
-    
-    match /surveyResponses/{responseId} {
-      allow read, create: if isSignedIn();
+    // Bu kural, giriş yapmış herhangi bir kullanıcının tüm verilere
+    // okuma ve yazma erişimine sahip olmasına izin verir.
+    // DİKKAT: Bu kural sadece geliştirme aşaması için uygundur.
+    // Uygulamanızı canlıya almadan önce daha kısıtlayıcı kurallar yazmalısınız.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
