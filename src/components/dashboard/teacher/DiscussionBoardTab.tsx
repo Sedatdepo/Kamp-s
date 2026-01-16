@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -58,6 +57,58 @@ const TopicList = ({ topics, onSelectTopic, onNewTopic, currentClass, onToggleAc
     </Card>
 );
 
+const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    
+    const replies = useMemo(() => {
+        return allPosts.filter(p => p.parentId === post.id);
+    }, [allPosts, post.id]);
+
+    const handleDeletePost = async (postId: string) => {
+        try {
+            await deleteDoc(doc(db, `classes/${classId}/discussionTopics/${topicId}/posts`, postId));
+            toast({ title: "Yanıt silindi." });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Hata", description: "Yanıt silinemedi." });
+        }
+    };
+
+    return (
+        <div style={{ marginLeft: `${level > 0 ? 20 : 0}px` }} className="mt-4">
+            <div className="flex items-start gap-3">
+                <Avatar className="h-9 w-9">
+                    <AvatarFallback>{getInitials(post.studentName)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                    <div className="bg-muted p-3 rounded-lg rounded-tl-none">
+                        <div className="flex justify-between items-center">
+                                <p className="text-sm font-semibold">{post.studentName} <span className="text-xs text-muted-foreground font-normal">#{post.studentNumber}</span></p>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive"/></Button></AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Yanıtı Sil</AlertDialogTitle><AlertDialogDescription>Bu yanıtı kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                        </div>
+                        <p className="text-sm mt-1">{post.content}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}</p>
+                </div>
+            </div>
+            {replies.length > 0 && (
+                <div className="pl-6 border-l border-dashed ml-4">
+                    {replies.map(reply => (
+                        <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack: () => void, classId: string }) => {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
@@ -69,14 +120,10 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
 
     const { data: posts, isLoading } = useCollection<DiscussionPost>(postsQuery);
 
-    const handleDeletePost = async (postId: string) => {
-        try {
-            await deleteDoc(doc(db, `classes/${classId}/discussionTopics/${topic.id}/posts`, postId));
-            toast({ title: "Yanıt silindi." });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Hata", description: "Yanıt silinemedi." });
-        }
-    };
+    const topLevelPosts = useMemo(() => {
+        if (!posts) return [];
+        return posts.filter(p => !p.parentId);
+    }, [posts]);
     
     return (
         <Card className="h-full flex flex-col">
@@ -94,28 +141,8 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
                 {isLoading ? <Loader2 className="m-auto h-8 w-8 animate-spin" /> : (
                     <ScrollArea className="flex-1 pr-4 -mr-4">
                         <div className="space-y-4">
-                            {posts.map(post => (
-                                <div key={post.id} className="flex items-start gap-3">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarFallback>{getInitials(post.studentName)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                        <div className="bg-muted p-3 rounded-lg rounded-tl-none">
-                                            <div className="flex justify-between items-center">
-                                                 <p className="text-sm font-semibold">{post.studentName} <span className="text-xs text-muted-foreground font-normal">#{post.studentNumber}</span></p>
-                                                 <AlertDialog>
-                                                     <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive"/></Button></AlertDialogTrigger>
-                                                     <AlertDialogContent>
-                                                         <AlertDialogHeader><AlertDialogTitle>Yanıtı Sil</AlertDialogTitle><AlertDialogDescription>Bu yanıtı kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
-                                                         <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
-                                                     </AlertDialogContent>
-                                                 </AlertDialog>
-                                            </div>
-                                            <p className="text-sm mt-1">{post.content}</p>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">{post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}</p>
-                                    </div>
-                                </div>
+                            {topLevelPosts.map(post => (
+                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId} topicId={topic.id}/>
                             ))}
                         </div>
                     </ScrollArea>
