@@ -307,14 +307,10 @@ export interface InfoForm {
   studentId: string;
   submitted: boolean;
   // Personal Info
-  birthDate?: Timestamp;
+  birthDate?: string;
   birthPlace?: string;
-  studentPhone?: string;
-  studentEmail?: string;
-  address?: string;
-  healthIssues?: string;
-  hobbies?: string;
-  techUsage?: string;
+  studentPhone?: string; 
+  studentEmail?: string; 
   // Parent Info
   motherStatus?: 'alive' | 'deceased' | 'unknown';
   motherEducation?: string;
@@ -322,15 +318,22 @@ export interface InfoForm {
   fatherStatus?: 'alive' | 'deceased' | 'unknown';
   fatherEducation?: string;
   fatherJob?: string;
+  guardianPhone?: string;
   // Family Info
   siblingsInfo?: string;
   economicStatus?: 'low' | 'middle' | 'high';
-  homeEnvironment?: string;
+  homeEnvironment?: string; 
   parentalAttitude?: string;
+  // Merged personal/family
+  address?: string;
+  healthIssues?: string;
+  hobbies?: string;
+  techUsage?: string;
   // Special Status
-  hasDisability?: 'yes' | 'no';
-  isMartyrVeteranChild?: 'yes' | 'no';
+  hasDisability?: 'yes' | 'no'; 
+  isMartyrVeteranChild?: 'yes' | 'no'; 
 }
+
 
 export interface Message {
   id: string;
@@ -669,7 +672,7 @@ export interface StudentInfoFormData {
   motherHasDisability: string;
   motherEducation: string;
   motherOccupation: string;
-  fatherName: string;
+fatherName: string;
   fatherBirthPlaceAndDate: string;
   fatherIsAlive: string;
   fatherIsHealthy: string;

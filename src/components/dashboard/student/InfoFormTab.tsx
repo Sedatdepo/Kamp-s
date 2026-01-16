@@ -1,7 +1,6 @@
+'use client';
 
-"use client";
-
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,18 +12,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import { Class } from '@/lib/types';
 
+// Updated Schema
 const infoFormSchema = z.object({
-  birthDate: z.date().optional(),
+  birthDate: z.string().optional(),
   birthPlace: z.string().optional(),
+  studentPhone: z.string().min(10, "Lütfen geçerli bir telefon numarası girin."),
+  studentEmail: z.string().email("Geçersiz e-posta adresi.").optional().or(z.literal('')),
   address: z.string().optional(),
   healthIssues: z.string().optional(),
   hobbies: z.string().optional(),
@@ -35,8 +33,13 @@ const infoFormSchema = z.object({
   fatherStatus: z.enum(['alive', 'deceased', 'unknown']).optional(),
   fatherEducation: z.string().optional(),
   fatherJob: z.string().optional(),
+  guardianPhone: z.string().min(10, "Lütfen veli telefon numarasını girin."),
   siblingsInfo: z.string().optional(),
   economicStatus: z.enum(['low', 'middle', 'high']).optional(),
+  homeEnvironment: z.string().optional(),
+  parentalAttitude: z.string().optional(),
+  hasDisability: z.enum(['yes', 'no']).optional(),
+  isMartyrVeteranChild: z.enum(['yes', 'no']).optional(),
 });
 
 type InfoFormData = z.infer<typeof infoFormSchema>;
@@ -56,7 +59,10 @@ export function InfoFormTab() {
   const form = useForm<InfoFormData>({
     resolver: zodResolver(infoFormSchema),
     defaultValues: {
+        birthDate: '',
         birthPlace: '',
+        studentPhone: '',
+        studentEmail: '',
         address: '',
         healthIssues: '',
         hobbies: '',
@@ -65,7 +71,10 @@ export function InfoFormTab() {
         motherJob: '',
         fatherEducation: '',
         fatherJob: '',
+        guardianPhone: '',
         siblingsInfo: '',
+        homeEnvironment: '',
+        parentalAttitude: '',
       },
   });
 
@@ -77,10 +86,12 @@ export function InfoFormTab() {
         const formSnap = await getDoc(formRef);
         if (formSnap.exists()) {
           const data = formSnap.data();
-          const defaultValues: any = {};
+           const defaultValues: any = {};
           for (const key in data) {
+            // Firestore Timestamps are converted to strings if they exist
             if (data[key] instanceof Timestamp) {
-                defaultValues[key] = data[key].toDate();
+                const date = data[key].toDate();
+                defaultValues[key] = `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
             } else {
                 defaultValues[key] = data[key];
             }
@@ -102,7 +113,6 @@ export function InfoFormTab() {
         ...data,
         studentId: appUser.data.id,
         submitted: true,
-        birthDate: data.birthDate ? Timestamp.fromDate(data.birthDate) : undefined,
       };
       await setDoc(formRef, dataToSave, { merge: true });
       toast({ title: 'Başarılı', description: 'Bilgileriniz kaydedildi.' });
@@ -143,24 +153,17 @@ export function InfoFormTab() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <h3 className="text-lg font-semibold font-headline border-b pb-2">Kişisel Bilgiler</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="birthDate" render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Doğum Tarihi</FormLabel>
-                        <Popover><PopoverTrigger asChild>
-                            <FormControl>
-                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "PPP") : <span>Tarih seçin</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus/>
-                        </PopoverContent></Popover>
-                        <FormMessage />
-                    </FormItem>
-                )}/>
+                <FormField control={form.control} name="birthDate" render={({ field }) => (<FormItem><FormLabel>Doğum Tarihi (GG.AA.YYYY)</FormLabel><FormControl><Input {...field} placeholder="Örn: 25.04.2008" /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="birthPlace" render={({ field }) => (<FormItem><FormLabel>Doğum Yeri</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
+            
+            <h3 className="text-lg font-semibold font-headline border-b pb-2 mt-8">İletişim Bilgileri</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <FormField control={form.control} name="studentPhone" render={({ field }) => (<FormItem><FormLabel>Telefon Numaranız</FormLabel><FormControl><Input {...field} placeholder="05..." /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="studentEmail" render={({ field }) => (<FormItem><FormLabel>E-posta Adresiniz (isteğe bağlı)</FormLabel><FormControl><Input {...field} placeholder="ornek@mail.com" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="guardianPhone" render={({ field }) => (<FormItem><FormLabel>Veli Telefon Numarası</FormLabel><FormControl><Input {...field} placeholder="05..." /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+
             <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Adres</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FormField control={form.control} name="healthIssues" render={({ field }) => (<FormItem><FormLabel>Sağlık Sorunları</FormLabel><FormControl><Input {...field} placeholder="örn. Astım, Alerji"/></FormControl><FormMessage /></FormItem>)} />
@@ -170,18 +173,26 @@ export function InfoFormTab() {
             
             <h3 className="text-lg font-semibold font-headline border-b pb-2 mt-8">Veli Bilgileri</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField control={form.control} name="motherStatus" render={({ field }) => (<FormItem><FormLabel>Anne Durumu</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem><SelectItem value="unknown">Bilinmiyor</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="motherStatus" render={({ field }) => (<FormItem><FormLabel>Anne Durumu</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem><SelectItem value="unknown">Bilinmiyor</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="motherEducation" render={({ field }) => (<FormItem><FormLabel>Anne Eğitim Durumu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="motherJob" render={({ field }) => (<FormItem><FormLabel>Anne Mesleği</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="fatherStatus" render={({ field }) => (<FormItem><FormLabel>Baba Durumu</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem><SelectItem value="unknown">Bilinmiyor</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="fatherStatus" render={({ field }) => (<FormItem><FormLabel>Baba Durumu</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem><SelectItem value="unknown">Bilinmiyor</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="fatherEducation" render={({ field }) => (<FormItem><FormLabel>Baba Eğitim Durumu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="fatherJob" render={({ field }) => (<FormItem><FormLabel>Baba Mesleği</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
 
             <h3 className="text-lg font-semibold font-headline border-b pb-2 mt-8">Aile Bilgileri</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="siblingsInfo" render={({ field }) => (<FormItem><FormLabel>Kardeş Bilgileri</FormLabel><FormControl><Textarea {...field} placeholder="örn. 1 abla, 1 erkek kardeş"/></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="economicStatus" render={({ field }) => (<FormItem><FormLabel>Ailenin Ekonomik Durumu</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="low">Düşük</SelectItem><SelectItem value="middle">Orta</SelectItem><SelectItem value="high">Yüksek</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="siblingsInfo" render={({ field }) => (<FormItem><FormLabel>Kardeş Bilgileri</FormLabel><FormControl><Textarea {...field} placeholder="örn. 1 abla (üniversite), 1 erkek kardeş (ilkokul)"/></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="economicStatus" render={({ field }) => (<FormItem><FormLabel>Ailenin Ekonomik Durumu</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="low">Düşük</SelectItem><SelectItem value="middle">Orta</SelectItem><SelectItem value="high">Yüksek</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="homeEnvironment" render={({ field }) => (<FormItem><FormLabel>Evde Çalışma Ortamınız</FormLabel><FormControl><Textarea {...field} placeholder="Kendinize ait bir odanız var mı? Ders çalışmak için uygun bir alanınız var mı?"/></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="parentalAttitude" render={({ field }) => (<FormItem><FormLabel>Ailenizin Derslerinize Karşı Tutumu</FormLabel><FormControl><Textarea {...field} placeholder="Derslerinizle ilgilenirler mi? Başarınızı/başarısızlığınızı nasıl karşılarlar?"/></FormControl><FormMessage /></FormItem>)} />
+            </div>
+
+            <h3 className="text-lg font-semibold font-headline border-b pb-2 mt-8">Özel Durum Bilgileri</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="hasDisability" render={({ field }) => (<FormItem><FormLabel>Herhangi bir engel durumunuz var mı?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="yes">Evet</SelectItem><SelectItem value="no">Hayır</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="isMartyrVeteranChild" render={({ field }) => (<FormItem><FormLabel>Şehit veya Gazi yakını mısınız?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="yes">Evet</SelectItem><SelectItem value="no">Hayır</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
             </div>
 
             <Button type="submit" disabled={isLoading}>
