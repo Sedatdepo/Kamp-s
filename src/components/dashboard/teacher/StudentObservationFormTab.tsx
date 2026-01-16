@@ -50,9 +50,7 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
     return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.recordDate).toLocaleDateString('tr-TR')}` }))
   }, [records]);
 
-  const defaultFormValues: ObservationRecord = {
-      id: `record-${Date.now()}`,
-      recordDate: new Date().toISOString().split('T')[0],
+  const defaultFormValues = useMemo(() => ({
       studentName: '', studentAgeGender: '', 
       studentSchool: teacherProfile?.schoolName || '', 
       studentClassNumber: currentClass ? `${currentClass.name} - ` : '', 
@@ -62,19 +60,18 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
       observerName: teacherProfile?.name || '', 
       observerTitle: 'Sınıf Rehber Öğretmeni', 
       observerSignature: '',
-  };
+  }), [teacherProfile, currentClass]);
 
   const form = useForm<ObservationRecord>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultFormValues,
   });
 
   const handleNewRecord = useCallback(() => {
-    const newId = `record-${Date.now()}`;
     setSelectedRecordId(null);
     form.reset({
       ...defaultFormValues,
-      id: newId,
+      id: `record-${Date.now()}`,
+      recordDate: new Date().toISOString().split('T')[0],
     });
   }, [form, defaultFormValues]);
 
@@ -91,18 +88,18 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
 
   const onSubmit = (values: ObservationRecord) => {
     setLocalDb(prevDb => {
-        const existingRecords = prevDb.observationDocuments || [];
-        const existingRecordIndex = existingRecords.findIndex(r => r.id === values.id);
-        let updatedRecords;
+      const existingRecords = prevDb.observationDocuments || [];
+      const existingRecordIndex = existingRecords.findIndex(r => r.id === values.id);
+      let updatedRecords;
 
-        if (existingRecordIndex > -1) {
-            updatedRecords = [...existingRecords];
-            updatedRecords[existingRecordIndex] = values;
-        } else {
-            updatedRecords = [...existingRecords, values];
-        }
-        
-        return { ...prevDb, observationDocuments: updatedRecords };
+      if (existingRecordIndex > -1) {
+        updatedRecords = [...existingRecords];
+        updatedRecords[existingRecordIndex] = values;
+      } else {
+        updatedRecords = [...existingRecords, values];
+      }
+      
+      return { ...prevDb, observationDocuments: updatedRecords };
     });
     setSelectedRecordId(values.id);
     toast({ title: 'Kaydedildi', description: 'Gözlem kaydı başarıyla kaydedildi.' });
@@ -111,8 +108,8 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
   const handleDeleteRecord = useCallback(() => {
     if (!selectedRecordId) return;
     setLocalDb(prevDb => ({
-        ...prevDb,
-        observationDocuments: (prevDb.observationDocuments || []).filter(r => r.id !== selectedRecordId)
+      ...prevDb,
+      observationDocuments: (prevDb.observationDocuments || []).filter(r => r.id !== selectedRecordId)
     }));
     handleNewRecord();
     toast({ title: 'Silindi', description: 'Gözlem kaydı silindi.', variant: 'destructive' });
@@ -144,69 +141,66 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
   );
   
   return (
-      <div className="grid md:grid-cols-4 gap-8">
-        <div className="md:col-span-1 space-y-4">
-             <RecordManager
-                records={processedRecords}
-                selectedRecordId={selectedRecordId}
-                onSelectRecord={setSelectedRecordId}
-                onNewRecord={handleNewRecord}
-                onDeleteRecord={handleDeleteRecord}
-                noun="Gözlem Kaydı"
-            />
-        </div>
-        <div className="md:col-span-3">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <Card>
-                <CardHeader className='flex-row justify-between items-center'>
-                    <CardTitle>Gözlem Kayıt Formu</CardTitle>
-                    <div className="flex items-center gap-2">
-                         <Button type="button" onClick={handleExport} variant="outline" disabled={!selectedRecordId}><FileDown className="mr-2"/> RTF Olarak İndir</Button>
-                         <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <FormField control={form.control} name="recordDate" render={({ field }) => (
-                            <FormItem className="w-1/4"><FormLabel>Tutanak Tarihi</FormLabel><FormControl><Input type="date" placeholder="Tarih" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                    )}/>
-                    <p className="font-bold text-lg border-b pb-2">Öğrenci Bilgileri</p>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {renderField('studentName', 'Adı Soyadı')}
-                      {renderField('studentAgeGender', 'Yaşı/Cinsiyeti')}
-                    </div>
-                     <div className="grid md:grid-cols-2 gap-4">
-                        {renderField('studentSchool', 'Okulu')}
-                        {renderField('studentClassNumber', 'Sınıfı/Okul Numarası')}
-                     </div>
-                      {renderField('classTeacherName', 'Sınıf/Şube Rehber Öğretmenin Adı Soyadı')}
-
-                    <p className="font-bold text-lg border-b pb-2 pt-6">Gözlem Bilgileri</p>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        {renderField('observationPlace', 'Gözlem Yapılan Yer')}
-                        {renderField('observationDateTime', 'Gözlem Yapılan Tarih/Saat')}
-                      </div>
-                       <div className="grid md:grid-cols-2 gap-4">
-                         {renderField('observationDuration', 'Gözlem Süresi')}
-                         {renderField('observationBehavior', 'Gözlem Yapılacak Davranış')}
-                      </div>
-                      
-                      {renderField('observationPlanning', 'Gözlem Sürecinin Planlanması (Davranışın Nerede, Ne Zaman, Ne Sıklıkta vs. Gözlemleneceği)', true)}
-                      {renderField('teacherObservations', 'Öğretmenin Gözlemleri', true)}
-                      {renderField('observationEvaluation', 'Gözlem Sürecinin Değerlendirilmesi', true)}
-                      {renderField('conclusionAndSuggestions', 'Sonuç ve Öneriler', true)}
-
-                     <p className="font-bold text-lg border-b pb-2 pt-6">Gözlemi Yapan</p>
-                     <div className="grid md:grid-cols-2 gap-4">
-                        {renderField('observerName', 'Adı Soyadı')}
-                        {renderField('observerTitle', 'Unvanı')}
-                     </div>
-                      {renderField('observerSignature', 'İmza')}
-                </CardContent>
-              </Card>
-            </form>
-          </Form>
-        </div>
+    <div className="grid md:grid-cols-4 gap-8">
+      <div className="md:col-span-1 space-y-4">
+        <RecordManager
+          records={processedRecords}
+          selectedRecordId={selectedRecordId}
+          onSelectRecord={setSelectedRecordId}
+          onNewRecord={handleNewRecord}
+          onDeleteRecord={handleDeleteRecord}
+          noun="Gözlem Kaydı"
+        />
       </div>
+      <div className="md:col-span-3">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
+              <CardHeader className='flex-row justify-between items-center'>
+                <CardTitle>Gözlem Kayıt Formu</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button type="button" onClick={handleExport} variant="outline" disabled={!selectedRecordId}><FileDown className="mr-2"/> RTF Olarak İndir</Button>
+                  <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <FormField control={form.control} name="recordDate" render={({ field }) => (
+                  <FormItem className="w-1/4"><FormLabel>Tutanak Tarihi</FormLabel><FormControl><Input type="date" placeholder="Tarih" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                )}/>
+                <p className="font-bold text-lg border-b pb-2">Öğrenci Bilgileri</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {renderField('studentName', 'Adı Soyadı')}
+                  {renderField('studentAgeGender', 'Yaşı/Cinsiyeti')}
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {renderField('studentSchool', 'Okulu')}
+                  {renderField('studentClassNumber', 'Sınıfı/Okul Numarası')}
+                </div>
+                {renderField('classTeacherName', 'Sınıf/Şube Rehber Öğretmenin Adı Soyadı')}
+                <p className="font-bold text-lg border-b pb-2 pt-6">Gözlem Bilgileri</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {renderField('observationPlace', 'Gözlem Yapılan Yer')}
+                  {renderField('observationDateTime', 'Gözlem Yapılan Tarih/Saat')}
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {renderField('observationDuration', 'Gözlem Süresi')}
+                  {renderField('observationBehavior', 'Gözlem Yapılacak Davranış')}
+                </div>
+                {renderField('observationPlanning', 'Gözlem Sürecinin Planlanması (Davranışın Nerede, Ne Zaman, Ne Sıklıkta vs. Gözlemleneceği)', true)}
+                {renderField('teacherObservations', 'Öğretmenin Gözlemleri', true)}
+                {renderField('observationEvaluation', 'Gözlem Sürecinin Değerlendirilmesi', true)}
+                {renderField('conclusionAndSuggestions', 'Sonuç ve Öneriler', true)}
+                <p className="font-bold text-lg border-b pb-2 pt-6">Gözlemi Yapan</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {renderField('observerName', 'Adı Soyadı')}
+                  {renderField('observerTitle', 'Unvanı')}
+                </div>
+                {renderField('observerSignature', 'İmza')}
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }

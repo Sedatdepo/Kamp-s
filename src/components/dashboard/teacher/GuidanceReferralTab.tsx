@@ -20,9 +20,9 @@ import { RecordManager } from './RecordManager';
 
 const formSchema = z.object({
   id: z.string(),
+  date: z.string(),
   studentName: z.string().min(1, "Öğrenci adı gerekli"),
   className: z.string(),
-  date: z.string(),
   studentNumber: z.string(),
   reason: z.string(),
   observations: z.string(),
@@ -41,12 +41,10 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
   const { toast } = useToast();
 
   const processedRecords = useMemo(() => {
-    return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.recordDate).toLocaleDateString('tr-TR')}` }))
+    return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.date).toLocaleDateString('tr-TR')}` }))
   }, [records]);
 
-  const defaultFormValues: GuidanceReferralRecord = {
-      id: `record-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
+  const defaultFormValues = useMemo(() => ({
       studentName: '',
       className: currentClass?.name || '',
       studentNumber: '',
@@ -57,24 +55,20 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
       referrerName: teacherProfile?.name || '',
       referrerTitle: 'Sınıf Rehber Öğretmeni',
       referrerSignature: '',
-  };
+  }), [currentClass, teacherProfile]);
 
   const form = useForm<GuidanceReferralRecord>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultFormValues,
   });
 
   const handleNewRecord = useCallback(() => {
-    const newId = `record-${Date.now()}`;
     setSelectedRecordId(null);
     form.reset({
       ...defaultFormValues,
-      id: newId,
+      id: `record-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
-      className: currentClass?.name || '',
-      referrerName: teacherProfile?.name || '',
     });
-  }, [form, teacherProfile, currentClass, defaultFormValues]);
+  }, [form, defaultFormValues]);
   
   useEffect(() => {
     if (selectedRecordId) {
@@ -178,7 +172,7 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
                      </div>
                       
                       {renderField('reason', 'Öğrencinin rehberlik servisine yönlendirilme nedeni', true)}
-                      {renderField('observations', 'Öğrenciyle ilgili gözlem ve düşünceler', true)}
+                      {renderField('observations', 'Öğrenciyle ilgili gözlemler', true)}
                       {renderField('otherInfo', 'Öğrenciyle ilgili edinilen diğer bilgiler', true)}
                       {renderField('studiesDone', 'Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar', true)}
 
