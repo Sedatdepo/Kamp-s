@@ -50,9 +50,10 @@ import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { SinifKahramanlariTab } from './SinifKahramanlariTab';
 import { DiscussionBoardTab } from './DiscussionBoardTab';
 import TimetableTab from './TimetableTab';
+import AgendaTab from './AgendaTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion" | "timetable";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion" | "timetable" | "agenda";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -379,6 +380,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<Clock />} title="Ders Programı" description="Haftalık ders programı oluşturun." onClick={() => setActiveTab('timetable')} />
+                    <MenuCard icon={<ClipboardCheck />} title="Ajanda" description="Planlayıcı, hatırlatıcı ve not defteri." onClick={() => setActiveTab('agenda')} />
                 </div>
             </TabsContent>
         </Tabs>
@@ -412,6 +414,7 @@ const TABS_CONFIG = {
   "sociogram": { label: "Sosyogram", icon: Share2 },
   "discussion": { label: "Tartışma Panosu", icon: MessagesSquare },
   "timetable": { label: "Ders Programı", icon: Clock },
+  "agenda": { label: "Ajanda", icon: ClipboardCheck },
 } as const;
 
 
@@ -503,7 +506,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     let tabContent;
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club', 'timetable'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club', 'timetable', 'agenda'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
@@ -514,6 +517,7 @@ export function TeacherDashboard() {
           case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
+          case 'agenda': tabContent = <AgendaTab />; break;
           default: tabContent = null;
         }
         return (
