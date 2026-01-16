@@ -126,7 +126,7 @@ export default function AgendaTab() {
 
     const DayContent = ({ date, ...props }: DayProps) => {
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-          return <div />;
+          return <></>;
         }
         const dateStr = format(date, 'yyyy-MM-dd');
         const eventsOnDate = agendaEvents
