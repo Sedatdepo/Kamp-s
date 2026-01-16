@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -14,8 +14,8 @@ import { AgendaEvent } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { DayProps } from 'react-day-picker';
 
 const EVENT_COLORS = [
   { name: 'Mavi', value: 'blue', class: 'bg-blue-500' },
@@ -28,17 +28,11 @@ const EVENT_COLORS = [
 const getColorClass = (colorName: string) => {
     const color = EVENT_COLORS.find(c => c.value === colorName);
     if (color) {
-      // Bu Tailwind JIT derleyicisinin renkleri yakalamasına yardımcı olur
-      // bg-blue-500 border-blue-500
-      // bg-green-500 border-green-500
-      // bg-red-500 border-red-500
-      // bg-yellow-500 border-yellow-500
-      // bg-purple-500 border-purple-500
+      // bg-blue-500 border-blue-500 ...
       return color.class;
     }
     return 'bg-gray-500';
 };
-
 
 const EventForm = ({ event, onSave, onCancel }: { event: Partial<AgendaEvent> | null, onSave: (event: AgendaEvent) => void, onCancel: () => void }) => {
     const [title, setTitle] = useState(event?.title || '');
@@ -101,18 +95,9 @@ export default function AgendaTab() {
     const { agendaEvents = [] } = db;
     const { toast } = useToast();
     
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null);
+    const [editingEvent, setEditingEvent] = useState<Partial<AgendaEvent> | null>(null);
 
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    
-    const eventsForSelectedDate = useMemo(() => {
-        return agendaEvents
-            .filter(event => event.date === selectedDateStr)
-            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-    }, [agendaEvents, selectedDateStr]);
-    
     const handleSaveEvent = (eventData: AgendaEvent) => {
         setDb(prevDb => {
             const existingIndex = (prevDb.agendaEvents || []).findIndex(e => e.id === eventData.id);
@@ -130,117 +115,88 @@ export default function AgendaTab() {
         setEditingEvent(null);
     };
 
-    const handleDeleteEvent = (eventId: string) => {
-        setDb(prevDb => ({
-            ...prevDb,
-            agendaEvents: (prevDb.agendaEvents || []).filter(e => e.id !== eventId)
-        }));
-        toast({ title: 'Silindi', variant: 'destructive' });
-    };
-    
-    const handleToggleComplete = (eventId: string) => {
-        setDb(prevDb => ({
-            ...prevDb,
-            agendaEvents: (prevDb.agendaEvents || []).map(e => e.id === eventId ? { ...e, isCompleted: !e.isCompleted } : e)
-        }));
-    };
-
-    const handleOpenForm = (event: AgendaEvent | null = null) => {
-        setEditingEvent(event);
+    const handleOpenForm = (event: AgendaEvent | null, date: Date) => {
+        if (event) {
+            setEditingEvent(event);
+        } else {
+            setEditingEvent({ date: format(date, 'yyyy-MM-dd') });
+        }
         setIsFormOpen(true);
     };
 
-    return (
-        <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-                <Card>
-                    <CardContent className="p-2">
-                        <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(date) => date && setSelectedDate(date)}
-                            className="w-full"
-                            locale={tr}
-                            components={{
-                                DayContent: ({ date, ...props }) => {
-                                    const dateStr = format(date, 'yyyy-MM-dd');
-                                    const eventsOnDate = agendaEvents.filter(e => e.date === dateStr);
-                                    return (
-                                        <div className="relative w-full h-full flex items-center justify-center">
-                                            <p>{date.getDate()}</p>
-                                            {eventsOnDate.length > 0 && (
-                                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-                                                    {eventsOnDate.slice(0, 3).map(e => (
-                                                        <div key={e.id} className={`w-1 h-1 rounded-full ${getColorClass(e.color)}`}></div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                }
-                            }}
-                        />
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="md:col-span-2">
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="font-headline">{format(selectedDate, 'd MMMM yyyy, cccc', { locale: tr })}</CardTitle>
-                                <CardDescription>Bugünün planı ve notları.</CardDescription>
-                            </div>
-                             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                                <DialogTrigger asChild>
-                                    <Button onClick={() => handleOpenForm(null)}><Plus className="mr-2"/>Yeni Ekle</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>{editingEvent ? 'Görevi Düzenle' : 'Yeni Görev/Not Ekle'}</DialogTitle>
-                                        <DialogDescription>{format(selectedDate, 'd MMMM yyyy', { locale: tr })}</DialogDescription>
-                                    </DialogHeader>
-                                    <EventForm 
-                                        event={editingEvent || { date: selectedDateStr }}
-                                        onSave={handleSaveEvent}
-                                        onCancel={() => setIsFormOpen(false)}
-                                    />
-                                </DialogContent>
-                            </Dialog>
+    const DayContent = ({ date, ...props }: DayProps) => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const eventsOnDate = agendaEvents
+            .filter(event => event.date === dateStr)
+            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+        return (
+            <div 
+                className="h-full w-full p-2 flex flex-col cursor-pointer"
+                onClick={() => handleOpenForm(null, date)}
+            >
+                <div className="flex justify-between items-start">
+                    <p className={cn("text-sm font-semibold", props.today ? "text-primary" : "")}>{date.getDate()}</p>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => {e.stopPropagation(); handleOpenForm(null, date)}}>
+                        <Plus size={14}/>
+                    </Button>
+                </div>
+                <div className="flex-1 mt-1 space-y-1 overflow-hidden">
+                    {eventsOnDate.slice(0, 3).map(event => (
+                        <div 
+                           key={event.id}
+                           onClick={(e) => { e.stopPropagation(); handleOpenForm(event, date); }}
+                           className={cn("p-1 rounded-md text-xs truncate text-white", getColorClass(event.color))}
+                           title={event.title}
+                        >
+                           {event.startTime && <span className="font-bold">{event.startTime}</span>} {event.title}
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[60vh] pr-4">
-                            {eventsForSelectedDate.length > 0 ? (
-                                <div className="space-y-4">
-                                    {eventsForSelectedDate.map(event => (
-                                        <div key={event.id} className={cn("p-4 rounded-lg border-l-4", `border-${event.color}-500`, event.isCompleted ? 'bg-gray-100 text-gray-500' : 'bg-white')}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <input type="checkbox" checked={event.isCompleted} onChange={() => handleToggleComplete(event.id)} className="w-4 h-4 accent-primary"/>
-                                                        <p className={cn("font-semibold", event.isCompleted && 'line-through')}>{event.title}</p>
-                                                    </div>
-                                                    {event.startTime && <p className="text-xs text-muted-foreground mt-1 ml-6">{event.startTime}</p>}
-                                                    {event.description && <p className={cn("text-sm mt-2 ml-6", event.isCompleted && 'line-through')}>{event.description}</p>}
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenForm(event)}><Edit size={16}/></Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(event.id)}><Trash2 size={16}/></Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
-                                    <p>Bu tarih için kayıtlı bir görev veya not yok.</p>
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
+                    ))}
+                    {eventsOnDate.length > 3 && <p className="text-xs text-muted-foreground mt-1">+ {eventsOnDate.length - 3} daha</p>}
+                </div>
             </div>
-        </div>
-    )
+        );
+    };
+
+    return (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Ajanda</CardTitle>
+                    <CardDescription>Görevlerinizi, notlarınızı ve planlarınızı takvim üzerinde yönetin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Calendar
+                        className="w-full"
+                        classNames={{
+                          table: 'border-collapse w-full',
+                          head_row: 'flex border-b',
+                          head_cell: 'w-full text-sm font-semibold p-2 text-muted-foreground',
+                          row: 'flex w-full',
+                          cell: 'h-36 w-full text-left align-top p-0 relative border group',
+                          day: 'h-full w-full',
+                        }}
+                        components={{
+                            Day: DayContent,
+                        }}
+                        locale={tr}
+                    />
+                </CardContent>
+            </Card>
+
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingEvent?.id ? 'Görevi Düzenle' : 'Yeni Görev/Not Ekle'}</DialogTitle>
+                        <DialogDescription>{editingEvent?.date ? format(parseISO(editingEvent.date), 'd MMMM yyyy, cccc', { locale: tr }) : ''}</DialogDescription>
+                    </DialogHeader>
+                    <EventForm 
+                        event={editingEvent}
+                        onSave={handleSaveEvent}
+                        onCancel={() => setIsFormOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+        </>
+    );
 }
