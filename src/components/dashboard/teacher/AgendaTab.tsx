@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, Save, X } from 'lucide-react';
 import { useDatabase } from '@/hooks/use-database';
 import { AgendaEvent } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -125,6 +125,9 @@ export default function AgendaTab() {
     };
 
     const DayContent = ({ date, ...props }: DayProps) => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+          return <div />;
+        }
         const dateStr = format(date, 'yyyy-MM-dd');
         const eventsOnDate = agendaEvents
             .filter(event => event.date === dateStr)
