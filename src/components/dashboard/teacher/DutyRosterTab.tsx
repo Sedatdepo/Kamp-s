@@ -17,14 +17,14 @@ import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 
 
-export default function NobetciListesi({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
+export function DutyRosterTab({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
   const { toast } = useToast();
   const { db } = useAuth();
-  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState(classes && classes.length > 0 ? classes[0].id : '');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState("");
   const [startIndex, setStartIndex] = useState(1);
-  const [roster, setRoster] = useState<any[]>([]);
+  const [roster, setRoster] = useState<RosterItem[]>([]);
   const [nextStartInfo, setNextStartInfo] = useState<any>(null);
 
   const students = useMemo(() => {
@@ -33,6 +33,14 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
   }, [selectedClassId, allStudents]);
 
   const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
+
+  useEffect(() => {
+      if(currentClass?.dutyRoster) {
+          setRoster(currentClass.dutyRoster);
+      } else {
+          setRoster([]);
+      }
+  }, [currentClass]);
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
@@ -244,7 +252,7 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
             {roster.length > 0 ? (
               <div className="w-full">
                 <div className="text-center mb-8 border-b pb-4">
-                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">{teacherProfile.schoolName}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">{teacherProfile?.schoolName}</h1>
                   <h2 className="text-xl font-semibold text-gray-700 mt-2 uppercase">{classes.find(c=>c.id === selectedClassId)?.name || ''} SINIFI AYLIK NÖBETÇİ ÖĞRENCİ LİSTESİ</h2>
                 </div>
                 
@@ -273,11 +281,11 @@ export default function NobetciListesi({ classes, students: allStudents, teacher
 
                 <div className="flex flex-col sm:flex-row justify-between items-center px-10 mt-10 space-y-8 sm:space-y-0">
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile.name}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile?.name}</p>
                     <p className="text-gray-600">Sınıf Rehber Öğretmeni</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile.principalName}</p>
+                    <p className="font-bold text-gray-900 text-lg mb-1">{teacherProfile?.principalName}</p>
                     <p className="text-gray-600">Okul Müdürü</p>
                   </div>
                 </div>

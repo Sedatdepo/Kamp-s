@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -8,7 +7,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { StudentListTab } from './StudentListTab';
 import { AttendanceTab } from './AttendanceTab';
-import NobetciListesi from './DutyRosterTab';
+import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
 import { StudentGradesDetailTab } from './StudentGradesDetailTab';
 
@@ -23,8 +22,6 @@ export function StudentManagementTab({ students, currentClass, teacherProfile, c
     if (!currentClass) {
         return <p>Lütfen bir sınıf seçin.</p>;
     }
-
-    const DutyRosterTab = NobetciListesi;
 
     return (
         <Tabs defaultValue="student-list">
