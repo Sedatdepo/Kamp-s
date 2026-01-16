@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord, StudentInfoFormData } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -239,73 +239,61 @@ export function exportObservationFormToRtf({ record, teacherProfile, currentClas
 }
 
 // --- STUDENT INFO FORM EXPORT ---
-export function exportStudentInfoFormToRtf({ record, teacherProfile }: { record: StudentInfoFormData, teacherProfile: TeacherProfile | null }) {
+interface ExportStudentInfoFormArgs {
+    record: InfoForm;
+    studentName: string;
+    teacherProfile: TeacherProfile | null;
+}
+
+export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile }: ExportStudentInfoFormArgs) {
     const title = "ÖĞRENCİ BİLGİ FORMU";
-    const filename = `Ogrenci_Bilgi_Formu_${record.studentName.replace(/ /g, '_')}.rtf`;
+    const filename = `Ogrenci_Bilgi_Formu_${studentName.replace(/ /g, '_')}.rtf`;
     const schoolName = teacherProfile?.schoolName || "..................";
 
-    let htmlContent = `
-        <div style="text-align: center;">
-            <h2 style="font-size: 14pt; font-weight: bold;">${schoolName.toUpperCase()}</h2>
-            <h3 style="font-size: 12pt; font-weight: bold;">ÖĞRENCİ BİLGİ FORMU</h3>
-            <p style="text-align: right;">Tarih: ${record.formDate || new Date().toLocaleDateString('tr-TR')}</p>
+    const fields = [
+        // Personal
+        { label: 'Adı Soyadı', value: studentName },
+        { label: 'Doğum Yeri ve Tarihi', value: record.birthDate ? format(record.birthDate.toDate(), 'dd.MM.yyyy') : (record.birthPlace || '') },
+        { label: 'Telefon Numarası', value: record.studentPhone || '' },
+        { label: 'E-posta', value: record.studentEmail || '' },
+        { label: 'Adres', value: (record.address || '').replace(/\n/g, '<br/>') },
+        { label: 'Sağlık Sorunları', value: record.healthIssues || '' },
+        { label: 'Hobiler', value: record.hobbies || '' },
+        { label: 'Teknoloji Kullanımı', value: record.techUsage || '' },
+        // Family
+        { label: 'Anne Durumu', value: record.motherStatus || '' },
+        { label: 'Anne Eğitim / Meslek', value: `${record.motherEducation || ''} / ${record.motherJob || ''}` },
+        { label: 'Baba Durumu', value: record.fatherStatus || '' },
+        { label: 'Baba Eğitim / Meslek', value: `${record.fatherEducation || ''} / ${record.fatherJob || ''}` },
+        { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
+        { label: 'Ekonomik Durum', value: record.economicStatus || '' },
+        { label: 'Evdeki Çalışma Ortamı', value: record.homeEnvironment || '' },
+        { label: 'Ailenin Derslere Karşı Tutumu', value: record.parentalAttitude || '' },
+        // Special Status
+        { label: 'Engel Durumu Var Mı?', value: record.hasDisability || '' },
+        { label: 'Şehit/Gazi Çocuğu Mu?', value: record.isMartyrVeteranChild || '' },
+    ];
+    
+    let tableRows = '';
+    fields.forEach(field => {
+        tableRows += `<tr><td style="width:30%; padding: 5px; font-weight: bold; background-color: #f2f2f2;">${field.label}</td><td style="padding: 5px;">${field.value}</td></tr>`;
+    });
+
+    const content = `
+        <div style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.4;">
+            <div style="text-align:center; font-weight: bold; font-size: 14pt;">${title}</div>
+            <div style="text-align:center; font-size: 12pt; margin-bottom: 20px;">${schoolName} MÜDÜRLÜĞÜ</div>
+            <table style="width:100%; border-collapse: collapse;" border="1">
+                ${tableRows}
+            </table>
         </div>
     `;
 
-    const addSection = (title: string, fields: { label: string; value: string; }[]) => {
-        htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">${title}</h4>`;
-        htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">`;
-        fields.forEach(field => {
-            htmlContent += `<tr><td style="width:40%; padding:5px; font-weight:bold;">${field.label}</td><td style="padding:5px;">${field.value || ''}</td></tr>`;
-        });
-        htmlContent += `</table><br/>`;
-    };
-    
-    addSection("ÖĞRENCİ BİLGİSİ", [
-        { label: 'Adı Soyadı', value: record.studentName },
-        { label: 'Cinsiyeti', value: record.studentGender },
-        { label: 'Sınıfı ve Numarası', value: record.studentClassAndNumber },
-        { label: 'Doğum Yeri ve Tarihi', value: record.studentBirthPlaceAndDate },
-        { label: 'Okulu', value: record.studentSchool },
-        { label: 'Adresi', value: (record.studentAddress || '').replace(/\n/g, '<br/>') },
-        { label: 'Okul öncesi eğitim aldınız mı?', value: record.studentPreschool },
-        { label: 'Sürekli ilaç/tıbbi cihaz var mı?', value: record.studentHealthDevice },
-        { label: 'Ne yapmaktan hoşlanırsınız?', value: record.studentHobbies },
-        { label: 'Sürekli bir hastalığınız var mı?', value: record.studentChronicIllness },
-    ]);
-
-    addSection("VELİ BİLGİSİ (Öğrenciyle ilgili işlemlerden birinci derecede sorumlu kişi)", [
-        { label: 'Yakınlığı', value: record.guardianKinship },
-        { label: 'Telefon Numarası', value: record.guardianPhone },
-        { label: 'Eğitim Durumu', value: record.guardianEducation },
-        { label: 'Mesleği', value: record.guardianOccupation },
-    ]);
-    
-     htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">ANNE ve BABA BİLGİLERİ</h4>`;
-     htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">
-                        <thead><tr><th></th><th style="padding:5px;">Anne</th><th style="padding:5px;">Baba</th></tr></thead>
-                        <tbody>
-                            <tr><td style="padding:5px; font-weight:bold;">Adı Soyadı</td><td style="padding:5px;">${record.motherName || ''}</td><td style="padding:5px;">${record.fatherName || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Doğum Yeri / Tarihi</td><td style="padding:5px;">${record.motherBirthPlaceAndDate || ''}</td><td style="padding:5px;">${record.fatherBirthPlaceAndDate || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Öz mü?</td><td style="padding:5px;">${record.motherIsAlive || ''}</td><td style="padding:5px;">${record.fatherIsAlive || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Sağ mı?</td><td style="padding:5px;">${record.motherIsHealthy || ''}</td><td style="padding:5px;">${record.fatherIsHealthy || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Engel durumu</td><td style="padding:5px;">${record.motherHasDisability || ''}</td><td style="padding:5px;">${record.fatherHasDisability || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Eğitim Durumu</td><td style="padding:5px;">${record.motherEducation || ''}</td><td style="padding:5px;">${record.fatherEducation || ''}</td></tr>
-                            <tr><td style="padding:5px; font-weight:bold;">Mesleği</td><td style="padding:5px;">${record.motherOccupation || ''}</td><td style="padding:5px;">${record.fatherOccupation || ''}</td></tr>
-                        </tbody>
-                     </table><br/>`;
-
-    addSection("AİLE BİLGİSİ", [
-        { label: 'Kaç kardeşsiniz?', value: record.siblingCount },
-        { label: 'Ailenizin kaçıncı çocuğusunuz?', value: record.birthOrder },
-        { label: 'Evde kimler yaşıyor?', value: record.familyLivesWith },
-        { label: 'Ailede engelli/sürekli hasta var mı?', value: record.familyMemberWithDisability },
-        { label: 'Ekonomik sorunlar yaşanır mı?', value: record.familyFinancialIssues },
-    ]);
-    
-    const finalHtml = generateHtmlShell(htmlContent, title);
+    const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, filename);
 }
+
+
 // --- ANNUAL PLAN EXPORT ---
 interface ExportAnnualPlanArgs {
     annualPlan: AnnualPlan;

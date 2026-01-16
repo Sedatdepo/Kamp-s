@@ -309,6 +309,8 @@ export interface InfoForm {
   // Personal Info
   birthDate?: Timestamp;
   birthPlace?: string;
+  studentPhone?: string;
+  studentEmail?: string;
   address?: string;
   healthIssues?: string;
   hobbies?: string;
@@ -323,6 +325,11 @@ export interface InfoForm {
   // Family Info
   siblingsInfo?: string;
   economicStatus?: 'low' | 'middle' | 'high';
+  homeEnvironment?: string;
+  parentalAttitude?: string;
+  // Special Status
+  hasDisability?: 'yes' | 'no';
+  isMartyrVeteranChild?: 'yes' | 'no';
 }
 
 export interface Message {
