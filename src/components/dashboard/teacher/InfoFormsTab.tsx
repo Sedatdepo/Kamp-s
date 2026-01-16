@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -22,7 +21,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
                 <TabsTrigger value="student-info-forms" disabled>Öğrenci Bilgi Formları</TabsTrigger>
             </TabsList>
             <TabsContent value="guidance-referral" className="mt-4">
-                 <GuidanceReferralTab />
+                 <GuidanceReferralTab teacherProfile={teacherProfile} currentClass={currentClass} />
             </TabsContent>
             <TabsContent value="student-observation-form" className="mt-4">
                  <StudentObservationFormTab 

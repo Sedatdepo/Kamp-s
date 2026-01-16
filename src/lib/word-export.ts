@@ -1,6 +1,5 @@
-
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -17,12 +16,12 @@ const generateHtmlShell = (content: string, title: string) => {
       <title>${title}</title>
       <style>
         @page {
-          size: A4 landscape;
-          margin: 0.5in;
+          size: A4 portrait;
+          margin: 0.7in;
         }
         body {
           font-family: 'Times New Roman', Times, serif;
-          font-size: 10pt;
+          font-size: 11pt;
         }
         table {
           border-collapse: collapse;
@@ -67,7 +66,7 @@ const generateReportHeader = (
     teacherProfile?: TeacherProfile | null, 
 ) => {
     const config = teacherProfile?.reportConfig;
-    const school = config?.schoolName || "..........................................";
+    const school = teacherProfile?.schoolName || "..........................................";
     const year = config?.academicYear || "20....-20....";
     const lesson = config?.lessonName || "...................";
     const term = config?.semester || "1";
@@ -85,8 +84,8 @@ const generateReportHeader = (
 
 const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
     const config = teacherProfile?.reportConfig;
-    const teacher = config?.teacherName || "...........................";
-    const principal = config?.principalName || "...........................";
+    const teacher = teacherProfile?.name || "...........................";
+    const principal = teacherProfile?.principalName || "...........................";
     const date = config?.date || new Date().toLocaleDateString('tr-TR');
 
     return `
@@ -100,7 +99,7 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
                 </td>
                 <td class="no-border center" style="width:50%;">
                     <br/><br/>
-                    <span class="bold">...........................</span><br/>
+                    <span class="bold">${teacherProfile?.departmentHeadName || '...........................'}</span><br/>
                     Zümre Başkanı
                 </td>
             </tr>
@@ -115,6 +114,62 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
         </table>
     `;
 }
+
+// --- GUIDANCE REFERRAL EXPORT ---
+interface ExportGuidanceReferralArgs {
+    record: GuidanceReferralRecord;
+    teacherProfile: TeacherProfile | null;
+}
+
+export function exportGuidanceReferralToRtf({ record, teacherProfile }: ExportGuidanceReferralArgs) {
+    const title = "REHBERLİK SERVİSİNE ÖĞRENCİ YÖNLENDİRME FORMU";
+    const filename = `Yonlendirme_Formu_${record.studentName}.rtf`;
+    const schoolName = teacherProfile?.schoolName || "..................";
+    
+    const content = `
+        <div style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.4;">
+            <div style="text-align:center; font-weight: bold; font-size: 14pt;">${title}</div>
+            <div style="text-align:center; font-size: 12pt; margin-bottom: 20px;">${schoolName} MÜDÜRLÜĞÜ</div>
+            
+            <table style="width:100%; border-collapse: collapse;">
+                <tr>
+                    <td style="border:1px solid black; padding: 5px; width: 25%;"><b>Öğrencinin Adı Soyadı</b></td>
+                    <td style="border:1px solid black; padding: 5px; width: 25%;">${record.studentName}</td>
+                    <td style="border:1px solid black; padding: 5px; width: 25%;"><b>Tarih</b></td>
+                    <td style="border:1px solid black; padding: 5px; width: 25%;">${new Date(record.date).toLocaleDateString('tr-TR')}</td>
+                </tr>
+                 <tr>
+                    <td style="border:1px solid black; padding: 5px;"><b>Sınıfı</b></td>
+                    <td style="border:1px solid black; padding: 5px;">${record.className}</td>
+                    <td style="border:1px solid black; padding: 5px;"><b>Numarası</b></td>
+                    <td style="border:1px solid black; padding: 5px;">${record.studentNumber}</td>
+                </tr>
+            </table>
+
+            <table style="width:100%; border-collapse: collapse; margin-top: 15px;">
+                <tr><th style="border:1px solid black; padding: 5px; background-color: #f2f2f2;">ÖĞRENCİNİN REHBERLİK SERVİSİNE YÖNLENDİRİLME NEDENİ</th></tr>
+                <tr><td style="border:1px solid black; padding: 5px; height: 80px;">${record.reason}</td></tr>
+                <tr><th style="border:1px solid black; padding: 5px; background-color: #f2f2f2;">ÖĞRENCİYLE İLGİLİ GÖZLEM VE DÜŞÜNCELER</th></tr>
+                <tr><td style="border:1px solid black; padding: 5px; height: 80px;">${record.observations}</td></tr>
+                <tr><th style="border:1px solid black; padding: 5px; background-color: #f2f2f2;">ÖĞRENCİYLE İLGİLİ EDİNİLEN DİĞER BİLGİLER</th></tr>
+                <tr><td style="border:1px solid black; padding: 5px; height: 80px;">${record.otherInfo}</td></tr>
+                <tr><th style="border:1px solid black; padding: 5px; background-color: #f2f2f2;">YÖNLENDİRMEYE NEDEN OLAN DURUMLA İLGİLİ YAPILAN ÇALIŞMALAR</th></tr>
+                <tr><td style="border:1px solid black; padding: 5px; height: 80px;">${record.studiesDone}</td></tr>
+            </table>
+
+            <div style="text-align: right; margin-top: 40px;">
+                 <p style="margin: 0; padding: 0;"><b>Yönlendiren</b></p>
+                 <p style="margin: 0; padding: 0;"><b>Ad-Soyad:</b> ${record.referrerName}</p>
+                 <p style="margin: 0; padding: 0;"><b>Unvan:</b> ${record.referrerTitle}</p>
+                 <p style="margin: 0; padding: 0; margin-top: 20px;"><b>İmza:</b></p>
+            </div>
+        </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
+}
+
 
 // --- ANNUAL PLAN EXPORT ---
 interface ExportAnnualPlanArgs {

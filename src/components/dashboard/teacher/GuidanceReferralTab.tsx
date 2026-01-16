@@ -5,19 +5,19 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
+import { FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GuidanceReferralRecord, SchoolInfo } from '@/lib/types';
+import { GuidanceReferralRecord, TeacherProfile, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { useDatabase } from '@/hooks/use-database';
+import { exportGuidanceReferralToRtf } from '@/lib/word-export';
+import { RecordManager } from './RecordManager';
+
 
 const formSchema = z.object({
   id: z.string(),
@@ -35,75 +35,23 @@ const formSchema = z.object({
 });
 
 
-const generatePdfContent = (data: GuidanceReferralRecord, schoolInfo: SchoolInfo, doc: jsPDF) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('REHBERLİK SERVİSİNE ÖĞRENCİ YÖNLENDİRME FORMU', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-    doc.setFontSize(11);
-    doc.text(`${schoolInfo.schoolName} OKULU`, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
-
-    (doc as any).autoTable({
-        startY: 40,
-        body: [
-            ['Öğrencinin Adı Soyadı', data.studentName, 'Tarih', new Date(data.date).toLocaleDateString('tr-TR')],
-            ['Sınıfı', data.className, 'Numarası', data.studentNumber],
-        ],
-        theme: 'grid'
-    });
-
-    const sections = [
-        { title: "Öğrencinin rehberlik servisine yönlendirilme nedeni", content: data.reason },
-        { title: "Öğrenciyle ilgili gözlem ve düşünceler", content: data.observations },
-        { title: "Öğrenciyle ilgili edinilen diğer bilgiler", content: data.otherInfo },
-        { title: "Yönlendirmeye neden olan durumla ilgili yapılan çalışmalar", content: data.studiesDone },
-    ];
-
-    let currentY = (doc as any).lastAutoTable.finalY + 5;
-
-    sections.forEach(section => {
-        (doc as any).autoTable({
-            startY: currentY,
-            head: [[section.title]],
-            body: [[section.content]],
-            theme: 'grid',
-            headStyles: { fontStyle: 'bold', fillColor: [240, 240, 240] },
-             bodyStyles: { minCellHeight: 30 }
-        });
-        currentY = (doc as any).lastAutoTable.finalY + 5;
-    });
-
-
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.setFontSize(10);
-    doc.text('Yönlendiren', doc.internal.pageSize.getWidth() - 20, finalY + 20, { align: 'right' });
-    doc.text(`Ad-Soyad: ${data.referrerName}`, doc.internal.pageSize.getWidth() - 20, finalY + 25, { align: 'right' });
-    doc.text(`Unvan: ${data.referrerTitle}`, doc.internal.pageSize.getWidth() - 20, finalY + 30, { align: 'right' });
-    doc.text(`İmza: ${data.referrerSignature || ''}`, doc.internal.pageSize.getWidth() - 20, finalY + 35, { align: 'right' });
-};
-
-
-export function GuidanceReferralTab() {
-  const { db, setDb } = useDatabase();
-  const { schoolInfo, guidanceReferralRecords: records } = db;
+export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
+  const { db: localDb, setDb: setLocalDb } = useDatabase();
+  const { guidanceReferralRecords: records } = localDb;
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const { toast } = useToast();
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
   const defaultFormValues: GuidanceReferralRecord = {
       id: `record-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       studentName: '',
-      className: '',
+      className: currentClass?.name || '',
       studentNumber: '',
       reason: '',
       observations: '',
       otherInfo: '',
       studiesDone: '',
-      referrerName: '',
+      referrerName: teacherProfile?.name || '',
       referrerTitle: 'Sınıf Rehber Öğretmeni',
       referrerSignature: '',
   };
@@ -123,10 +71,23 @@ export function GuidanceReferralTab() {
       handleNewRecord();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRecordId, records, form.reset]);
+  }, [selectedRecordId, records]);
+
+  useEffect(() => {
+    if(teacherProfile && !selectedRecordId) {
+        form.reset({
+            ...defaultFormValues,
+            id: `record-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            referrerName: teacherProfile.name,
+            className: currentClass?.name || '',
+        });
+    }
+  }, [teacherProfile, currentClass, selectedRecordId]);
+
 
   const onSubmit = (values: GuidanceReferralRecord) => {
-    setDb(prevDb => {
+    setLocalDb(prevDb => {
         let updatedRecords;
         const existingRecordIndex = prevDb.guidanceReferralRecords.findIndex(r => r.id === values.id);
 
@@ -149,14 +110,14 @@ export function GuidanceReferralTab() {
        ...defaultFormValues,
        id: newId,
        date: new Date().toISOString().split('T')[0],
-       className: schoolInfo?.className || '',
-       referrerName: schoolInfo?.classTeacherName || '',
+       className: currentClass?.name || '',
+       referrerName: teacherProfile?.name || '',
     });
   }
 
   const handleDeleteRecord = () => {
     if (!selectedRecordId) return;
-    setDb(prevDb => ({
+    setLocalDb(prevDb => ({
         ...prevDb,
         guidanceReferralRecords: prevDb.guidanceReferralRecords.filter(r => r.id !== selectedRecordId)
     }));
@@ -164,15 +125,13 @@ export function GuidanceReferralTab() {
     toast({ title: 'Silindi', description: 'Yönlendirme formu silindi.', variant: 'destructive' });
   };
 
-  const handlePrint = () => {
+  const handleExport = () => {
     const values = form.getValues();
-    if (!values.studentName || !schoolInfo) {
+    if (!values.studentName || !teacherProfile) {
       toast({ title: 'Eksik Bilgi', description: 'Lütfen formu yazdırmak için önce formu kaydedin.', variant: 'destructive' });
       return;
     }
-    const doc = new jsPDF();
-    generatePdfContent(values, schoolInfo, doc);
-    doc.save(`yonlendirme-formu-${values.studentName}.pdf`);
+    exportGuidanceReferralToRtf({ record: values, teacherProfile });
   };
   
   const renderField = (name: keyof GuidanceReferralRecord, label: string, isTextArea = false) => (
@@ -190,47 +149,18 @@ export function GuidanceReferralTab() {
       )}
     />
   );
-
-  if (!isClient) {
-    return null;
-  }
   
   return (
     <div className="grid md:grid-cols-4 gap-8">
         <div className="md:col-span-1 space-y-4">
-             <Card>
-                <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                     <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Form</Button>
-                    <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kayıtlı formu seç..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı form yok.</p>}
-                        {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.date).toLocaleDateString('tr-TR')}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
-                </CardContent>
-             </Card>
-              <Card>
-                 <CardHeader><CardTitle>Genel Ayarlar</CardTitle></CardHeader>
-                 <CardContent className="space-y-2">
-                    <div className="space-y-2">
-                        <Label>Okul Adı</Label>
-                        <Input value={schoolInfo?.schoolName || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, schoolName: e.target.value}})} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Sınıfınız</Label>
-                        <Input value={schoolInfo?.className || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, className: e.target.value}})} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Adınız Soyadınız</Label>
-                        <Input value={schoolInfo?.classTeacherName || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, classTeacherName: e.target.value}})} />
-                    </div>
-                 </CardContent>
-             </Card>
+             <RecordManager
+                records={records}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                onNewRecord={handleNewRecord}
+                onDeleteRecord={handleDeleteRecord}
+                noun="Yönlendirme Formu"
+            />
         </div>
         <div className="md:col-span-3">
           <Form {...form}>
@@ -239,10 +169,10 @@ export function GuidanceReferralTab() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Yönlendirme Formu</CardTitle>
-                        <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId}><FileDown className="mr-2"/> PDF Çıktı Al</Button>
+                        <Button type="button" onClick={handleExport} variant="outline" disabled={!selectedRecordId}><FileDown className="mr-2"/> RTF Olarak İndir</Button>
                     </div>
                     <CardDescription>
-                      {schoolInfo?.schoolName}
+                      {teacherProfile?.schoolName}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
