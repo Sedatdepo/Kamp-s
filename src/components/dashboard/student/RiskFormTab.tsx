@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { RiskFactor, Class } from '@/lib/types';
-import { collection, doc, updateDoc, query } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,9 @@ export function RiskFormTab() {
 
   const riskFactorsQuery = useMemoFirebase(() => {
     if (!studentClass?.teacherId || !db) return null;
-    return query(collection(db, 'riskFactors'));
+    // GÜVENLİK DÜZELTMESİ: Sorgu, tüm risk faktörlerini çekmek yerine,
+    // sadece o öğrencinin öğretmenine ait olanları getirecek şekilde filtrelendi.
+    return query(collection(db, 'riskFactors'), where('teacherId', '==', studentClass.teacherId));
   }, [studentClass?.teacherId, db]);
   const { data: riskFactors, isLoading: riskFactorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
 
