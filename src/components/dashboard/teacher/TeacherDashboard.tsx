@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Header } from '@/components/dashboard/teacher/Header';
+import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import KazanımlarTab from './KazanımlarTab';
-import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
+import { ProjectDistributionTab } from '@/components/dashboard/teacher/DistributionAssignmentTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
@@ -601,7 +601,7 @@ export function TeacherDashboard() {
     
     switch(activeTab) {
         case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
+        case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile!} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} students={allStudents || []} lessons={lessons || []} />; break;

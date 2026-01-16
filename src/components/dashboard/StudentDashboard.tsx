@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Header } from '@/components/dashboard/teacher/Header';
+import { Header } from '@/components/dashboard/Header';
 import { GradesTab } from './student/GradesTab';
 import { ProjectTab } from './student/ProjectTab';
 import { BadgesTab } from './student/BadgesTab';
@@ -170,7 +169,7 @@ export function StudentDashboard() {
                     title="Oturma Planım" 
                     description="Sınıftaki yerini gör." 
                     onClick={() => setActiveTab('seatingPlan')} 
-                    isDisabled={!currentClass?.seatingPlan}
+                    isDisabled={!currentClass?.isSeatingPlanPublished}
                 />
                 
                 <MenuCard 
@@ -179,7 +178,7 @@ export function StudentDashboard() {
                     title="Nöbetçi Listesi" 
                     description="Sınıf nöbetçi listesini gör." 
                     onClick={() => setActiveTab('dutyRoster')} 
-                    isDisabled={!currentClass?.dutyRoster || currentClass.dutyRoster.length === 0}
+                    isDisabled={!currentClass?.isDutyRosterPublished}
                 />
                 
                 <MenuCard 

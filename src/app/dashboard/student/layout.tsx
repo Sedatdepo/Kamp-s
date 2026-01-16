@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Header } from "@/components/dashboard/teacher/Header";
+import { Header } from "@/components/dashboard/Header";
 
 export default function StudentDashboardLayout({
   children,
