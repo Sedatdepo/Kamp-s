@@ -70,14 +70,16 @@ const formQuestions = [
 
 const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose }: { form: InfoForm | null, studentName: string, isOpen: boolean, onClose: () => void }) => {
     
-    const renderField = (label: string, value: any) => {
+    const renderField = (label: string, value: any, key: React.Key) => {
         if (value === undefined || value === null || value === '') return null;
         let displayValue = value;
-        if (value instanceof Date) {
-            displayValue = format(value, "dd.MM.yyyy");
+        if (value.toDate && typeof value.toDate === 'function') { // Handle Firestore Timestamps
+            displayValue = format(value.toDate(), "dd.MM.yyyy");
+        } else if (value instanceof Date) { // Fallback for JS Date objects
+             displayValue = format(value, "dd.MM.yyyy");
         }
         return (
-            <div className="py-2 border-b">
+            <div key={key} className="py-2 border-b">
                 <p className="text-xs font-semibold text-muted-foreground">{label}</p>
                 <p className="text-sm">{String(displayValue)}</p>
             </div>
@@ -89,7 +91,6 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose }: { form: In
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>{studentName} - Öğrenci Bilgi Formu</DialogTitle>
-                    {form?.formDate && <DialogDescription>Form Tarihi: {new Date(form.formDate).toLocaleDateString('tr-TR')}</DialogDescription>}
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] pr-4 mt-4">
                     {form ? (
@@ -99,7 +100,7 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose }: { form: In
                                 <div className="space-y-3">
                                     {section.fields.map(field => {
                                         const value = (form as any)[field.name];
-                                        return renderField(field.label, value);
+                                        return renderField(field.label, value, field.name);
                                     })}
                                 </div>
                             </div>
@@ -161,10 +162,7 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
     };
     
     const handleExport = () => {
-        if (!currentClass || !teacherProfile || !students) return;
-        // This function would need to be implemented to export all forms for the class.
-        // For simplicity, we can demonstrate exporting a single visible form.
-        if (selectedForm) {
+        if (selectedForm && teacherProfile) {
             exportStudentInfoFormToRtf({ record: selectedForm, teacherProfile });
         } else {
             toast({ title: 'Lütfen önce bir form görüntüleyin.' });
@@ -220,7 +218,7 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="outline" size="sm" onClick={() => viewForm(student.id, student.name)}>
+                                                 <Button variant="outline" size="sm" onClick={() => viewForm(student.id, student.name)}>
                                                     <Eye className="mr-2 h-4 w-4" /> Görüntüle
                                                 </Button>
                                             </TableCell>
