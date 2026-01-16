@@ -4,16 +4,17 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GuidanceReferralTab } from './GuidanceReferralTab';
 import { StudentObservationFormTab } from './StudentObservationFormTab';
-import { StudentInfoFormTab } from './StudentInfoFormTab'; // YENİ
-import { Class, TeacherProfile } from '@/lib/types';
+import { StudentInfoFormTab } from './StudentInfoFormTab';
+import { Class, TeacherProfile, Student } from '@/lib/types';
 
 interface InfoFormsTabProps {
   classId: string;
   teacherProfile: TeacherProfile | null;
   currentClass: Class | null;
+  students: Student[];
 }
 
-export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoFormsTabProps) {
+export function InfoFormsTab({ classId, teacherProfile, currentClass, students }: InfoFormsTabProps) {
     return (
         <Tabs defaultValue="guidance-referral">
             <TabsList className="grid w-full grid-cols-3">
@@ -32,6 +33,7 @@ export function InfoFormsTab({ classId, teacherProfile, currentClass }: InfoForm
             </TabsContent>
             <TabsContent value="student-info-forms" className="mt-4">
                 <StudentInfoFormTab 
+                    students={students}
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
                 />

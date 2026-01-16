@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -600,7 +599,7 @@ export function TeacherDashboard() {
         case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} students={allStudents || []} lessons={lessons || []} />; break;
         case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
         case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
-        case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+        case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} students={studentsForSelectedClass} />; break;
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;

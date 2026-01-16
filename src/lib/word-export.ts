@@ -272,10 +272,6 @@ export function exportStudentInfoFormToRtf({ record, teacherProfile }: { record:
         { label: 'Sürekli ilaç/tıbbi cihaz var mı?', value: record.studentHealthDevice },
         { label: 'Ne yapmaktan hoşlanırsınız?', value: record.studentHobbies },
         { label: 'Sürekli bir hastalığınız var mı?', value: record.studentChronicIllness },
-        { label: 'Yakın zamanda taşındınız mı, okul değiştirdiniz mi?', value: record.studentRecentMove },
-        { label: 'Ders dışı faaliyetleriniz nelerdir?', value: record.studentExtracurricular },
-        { label: 'Kendinize ait teknolojik aletleriniz var mı? Varsa günde/haftada ne kadar süre kullanırsınız?', value: record.studentTechUsage },
-        { label: 'Hala etkisi altında olduğunuz bir olay yaşadınız mı? Yaşantınızı açıklayınız.', value: record.studentMemorableEvent }
     ]);
 
     addSection("VELİ BİLGİSİ (Öğrenciyle ilgili işlemlerden birinci derecede sorumlu kişi)", [
@@ -678,7 +674,7 @@ interface ExportProjectPetitionsArgs {
 export function exportProjectPetitionsToRtf({ students, lessons, currentClass, teacherProfile }: ExportProjectPetitionsArgs) {
     const css = `
         <style>
-            body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin: 0; padding: 0; }
             .page-break { page-break-after: always; }
             .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
             .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
@@ -749,7 +745,7 @@ interface ExportClubPetitionsArgs {
 export function exportClubPetitionsToRtf({ students, clubs, currentClass, teacherProfile }: ExportClubPetitionsArgs) {
     const css = `
         <style>
-            body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin: 0; padding: 0; }
             .page-break { page-break-after: always; }
             .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
             .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
