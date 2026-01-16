@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Eye, FileDown, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { Class, InfoForm, TeacherProfile, Student } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Class, InfoForm, TeacherProfile, Student, RiskFactor } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -120,7 +120,15 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
 
   const { data: infoForms, isLoading: infoFormsLoading } = useCollection<InfoForm>(infoFormsQuery);
   
-  const getRiskScore = (studentRisks: string[], riskFactors: RiskFactor[] | undefined) => {
+  const riskFactorsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    // Assuming teacherId is available on teacherProfile
+    if (!teacherProfile?.id) return null;
+    return query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id));
+  }, [db, teacherProfile?.id]);
+  const { data: riskFactors, isLoading: riskFactorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
+  
+  const getRiskScore = (studentRisks: string[]) => {
     if (!riskFactors) return 0;
     return studentRisks.reduce((total, riskId) => {
       const factor = riskFactors.find(f => f.id === riskId);
@@ -179,12 +187,13 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                         <TableBody>
                             {students.map(student => {
                                 const form = infoForms?.find(f => f.studentId === student.id);
+                                const riskScore = getRiskScore(student.risks || []);
                                 const isSubmitted = form?.submitted === true;
                                 return (
                                     <TableRow key={student.id}>
                                         <TableCell>{student.name} ({student.number})</TableCell>
                                         <TableCell>{form?.guardianPhone || '-'}</TableCell>
-                                        <TableCell className="text-center">-</TableCell> {/* Risk puanı buraya eklenecek */}
+                                        <TableCell className="text-center font-bold">{riskScore}</TableCell>
                                         <TableCell className="text-center">
                                             {isSubmitted ? (
                                                 <span className="flex items-center justify-center text-green-600 font-medium"><CheckCircle className="mr-2 h-4 w-4"/> Dolduruldu</span>
@@ -214,3 +223,4 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
     </>
   );
 }
+    
