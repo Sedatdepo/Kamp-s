@@ -1,6 +1,19 @@
 import type { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
+export interface TimetableCell {
+  ders: string;
+  sinif: string;
+  ogretmen?: string;
+  renk?: string;
+}
+
+export interface Timetable {
+    schedule: { [key: string]: TimetableCell };
+    timeSlots: { id: number; start: string; end: string }[];
+    subjects: { id: number; name: string; color: string }[];
+}
+
 export interface Announcement {
   id: number;
   text: string;
@@ -663,6 +676,8 @@ export interface SchoolInfo {
     schoolName?: string;
     className?: string;
     classTeacherName?: string;
+    dutyDay?: string;
+    dutyPlace?: string;
 }
 
 export interface StudentInfoFormData {

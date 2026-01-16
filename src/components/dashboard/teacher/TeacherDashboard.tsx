@@ -23,7 +23,7 @@ import MebClubTab from './MebClubTab';
 import { SocialClubTab } from './SocialClubTab';
 import { SociogramTab } from './SociogramTab'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
@@ -49,9 +49,10 @@ import ExamBuilder from './ExamBuilder';
 import { ExamAnalysisTab } from './ExamAnalysisTab';
 import { SinifKahramanlariTab } from './SinifKahramanlariTab';
 import { DiscussionBoardTab } from './DiscussionBoardTab';
+import TimetableTab from './TimetableTab';
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion" | "timetable";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -377,6 +378,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
                     <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
+                    <MenuCard icon={<Clock />} title="Ders Programı" description="Haftalık ders programı oluşturun." onClick={() => setActiveTab('timetable')} />
                 </div>
             </TabsContent>
         </Tabs>
@@ -409,6 +411,7 @@ const TABS_CONFIG = {
   "gamification": { label: "Rozetler", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
   "discussion": { label: "Tartışma Panosu", icon: MessagesSquare },
+  "timetable": { label: "Ders Programı", icon: Clock },
 } as const;
 
 
@@ -500,7 +503,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     let tabContent;
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club', 'timetable'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
@@ -510,6 +513,7 @@ export function TeacherDashboard() {
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
           case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
+          case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           default: tabContent = null;
         }
         return (

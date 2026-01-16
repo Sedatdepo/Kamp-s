@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument
+    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument, Timetable, TimetableCell, Class
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -33,6 +33,7 @@ export interface Database {
   observationDocuments?: ObservationDocument[]; // NEW
   schoolInfo?: SchoolInfo; // NEW
   studentInfoForms: StudentInfoFormData[];
+  dersProgrami: Timetable;
 }
 
 // Varsayılan boş veritabanı
@@ -55,8 +56,31 @@ const initialDb: Database = {
   infoFormsStatusDocuments: [],
   guidanceReferralRecords: [], // NEW
   observationDocuments: [], // NEW
-  schoolInfo: { schoolName: '', className: '', classTeacherName: ''}, // NEW
+  schoolInfo: { schoolName: '', className: '', classTeacherName: '', dutyDay: '', dutyPlace: '' }, // NEW
   studentInfoForms: [],
+  dersProgrami: {
+    schedule: {},
+    timeSlots: [
+        { id: 1, start: '08:30', end: '09:10' },
+        { id: 2, start: '09:20', end: '10:00' },
+        { id: 3, start: '10:10', end: '10:50' },
+        { id: 4, start: '11:00', end: '11:40' },
+        { id: 5, start: '12:20', end: '13:00' },
+        { id: 6, start: '13:10', end: '13:50' },
+        { id: 7, start: '14:00', end: '14:40' },
+        { id: 8, start: '14:50', end: '15:30' },
+    ],
+    subjects: [
+      { id: 1, name: 'Matematik', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+      { id: 2, name: 'Türkçe', color: 'bg-red-100 text-red-800 border-red-200' },
+      { id: 3, name: 'Fen Bilimleri', color: 'bg-green-100 text-green-800 border-green-200' },
+      { id: 4, name: 'Sosyal Bilgiler', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+      { id: 5, name: 'İngilizce', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+      { id: 6, name: 'Beden Eğitimi', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+      { id: 7, name: 'Görsel Sanatlar', color: 'bg-pink-100 text-pink-800 border-pink-200' },
+      { id: 8, name: 'Müzik', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+    ]
+  },
 };
 
 export const useDatabase = () => {
