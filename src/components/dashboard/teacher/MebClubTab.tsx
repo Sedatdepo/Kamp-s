@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
-import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus, FileText } from 'lucide-react';
+import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus, FileText, Download } from 'lucide-react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
-
-// UI Imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -767,4 +765,4 @@ export default function MebClubTab({ classes, allStudents, teacherProfile }: { c
             </div>
         </div>
     );
-};
+}
