@@ -74,7 +74,7 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
       recordDate: new Date().toISOString().split('T')[0],
     });
   }, [form, defaultFormValues]);
-
+  
   useEffect(() => {
     if (selectedRecordId) {
       const recordData = records.find(r => r.id === selectedRecordId);

@@ -5,24 +5,26 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
+import { Home, FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { GuidanceReferralRecord, TeacherProfile, Class } from '@/lib/types';
+import { GuidanceReferralRecord, SchoolInfo, TeacherProfile, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDatabase } from '@/hooks/use-database';
-import { exportGuidanceReferralToRtf } from '@/lib/word-export';
 import { RecordManager } from './RecordManager';
+import { exportGuidanceReferralToRtf } from '@/lib/word-export';
 
 
 const formSchema = z.object({
   id: z.string(),
-  date: z.string(),
   studentName: z.string().min(1, "Öğrenci adı gerekli"),
   className: z.string(),
+  date: z.string(),
   studentNumber: z.string(),
   reason: z.string(),
   observations: z.string(),
@@ -34,6 +36,7 @@ const formSchema = z.object({
 });
 
 
+
 export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   const { db: localDb, setDb: setLocalDb } = useDatabase();
   const { guidanceReferralRecords: records = [] } = localDb;
@@ -43,7 +46,7 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
   const processedRecords = useMemo(() => {
     return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.date).toLocaleDateString('tr-TR')}` }))
   }, [records]);
-
+  
   const defaultFormValues = useMemo(() => ({
       studentName: '',
       className: currentClass?.name || '',
