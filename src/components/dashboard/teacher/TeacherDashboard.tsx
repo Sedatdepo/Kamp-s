@@ -475,7 +475,7 @@ export function TeacherDashboard() {
 
   const setAndStoreOrderedClasses = useCallback((newOrder: Class[]) => {
       setOrderedClasses(newOrder);
-      const orderIds = newNewOrder.map(c => c.id);
+      const orderIds = newOrder.map(c => c.id);
       localStorage.setItem(`classOrder_${teacherId}`, JSON.stringify(orderIds));
   }, [teacherId]);
 
