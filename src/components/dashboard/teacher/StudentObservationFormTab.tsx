@@ -1,25 +1,21 @@
-
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, FileDown, Printer, Save, Trash2, PlusCircle, Users2 } from 'lucide-react';
+import { FileDown, Printer, Save, Trash2, PlusCircle, Users2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ObservationRecord, SchoolInfo, GuidanceReferralRecord } from '@/lib/types';
+import { ObservationRecord, TeacherProfile, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { useDatabase } from '@/hooks/use-database';
-
+import { RecordManager } from './RecordManager';
 
 const formSchema = z.object({
   id: z.string(),
@@ -43,64 +39,66 @@ const formSchema = z.object({
 });
 
 
-const generatePdfContent = (data: ObservationRecord, schoolInfo: SchoolInfo, doc: jsPDF) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('ÖĞRENCİ GÖZLEM KAYDI', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-    doc.setFontSize(11);
-    doc.text(`${schoolInfo.schoolName} OKULU`, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+const generateWordContent = (data: ObservationRecord, teacherProfile: TeacherProfile | null, currentClass: Class | null) => {
+  return `
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Öğrenci Gözlem Kaydı</title>
+        <style>
+            body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; }
+            .container { width: 100%; margin: auto; padding: 1cm; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .header h1 { font-size: 14pt; font-weight: bold; }
+            .date-field { text-align: right; margin-bottom: 10px; }
+            .table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            .table td { border: 1px solid black; padding: 8px; }
+            .table td:first-child { font-weight: bold; background-color: #f2f2f2; width: 40%; }
+            .textarea-content { min-height: 100px; vertical-align: top; }
+            .signature-area { margin-top: 50px; text-align: right; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <p style="text-align:center;">ÖZEL EĞİTİM VE REHBERLİK HİZMETLERİ GENEL MÜDÜRLÜĞÜ</p>
+            <div class="header">
+                <h1 class="main-title">ÖĞRENCİ GÖZLEM KAYDI</h1>
+                <div class="date-field">Tarih: ${new Date(data.recordDate).toLocaleDateString('tr-TR')}</div>
+            </div>
 
-    (doc as any).autoTable({
-        startY: 40,
-        body: [
-            ['Öğrencinin Adı Soyadı', data.studentName, 'Tarih', new Date(data.recordDate).toLocaleDateString('tr-TR')],
-            ['Sınıfı/Numarası', data.studentClassNumber, 'Yaşı/Cinsiyeti', data.studentAgeGender],
-        ],
-        theme: 'grid'
-    });
+            <table class="table">
+                <tr><td>Adı Soyadı</td><td>${data.studentName}</td></tr>
+                <tr><td>Yaşı/Cinsiyeti</td><td>${data.studentAgeGender}</td></tr>
+                <tr><td>Okulu</td><td>${data.studentSchool}</td></tr>
+                <tr><td>Sınıfı/Okul Numarası</td><td>${data.studentClassNumber}</td></tr>
+                <tr><td>Sınıf/Şube Rehber Öğretmenin Adı Soyadı</td><td>${data.classTeacherName}</td></tr>
+                <tr><td>Gözlem Yapılan Yer</td><td>${data.observationPlace}</td></tr>
+                <tr><td>Gözlem Yapılan Tarih/Saat</td><td>${data.observationDateTime}</td></tr>
+                <tr><td>Gözlem Süresi</td><td>${data.observationDuration}</td></tr>
+                <tr><td>Gözlem Yapılacak Davranış</td><td>${data.observationBehavior}</td></tr>
+                <tr><td class="textarea-content">Gözlem Sürecinin Planlanması (Davranışın Nerede, Ne Zaman, Ne Sıklıkta vs. Gözlemleneceği)</td><td class="textarea-content">${data.observationPlanning.replace(/\n/g, '<br/>')}</td></tr>
+                <tr><td class="textarea-content">Öğretmenin Gözlemleri</td><td class="textarea-content">${data.teacherObservations.replace(/\n/g, '<br/>')}</td></tr>
+                <tr><td class="textarea-content">Gözlem Sürecinin Değerlendirilmesi</td><td class="textarea-content">${data.observationEvaluation.replace(/\n/g, '<br/>')}</td></tr>
+                <tr><td class="textarea-content">Sonuç ve Öneriler</td><td class="textarea-content">${data.conclusionAndSuggestions.replace(/\n/g, '<br/>')}</td></tr>
+            </table>
 
-    const sections = [
-        { title: "Gözlem Yapılacak Davranış", content: data.observationBehavior },
-        { title: "Gözlem Sürecinin Planlanması (Nerede, Ne Zaman, Ne Sıklıkta vs.)", content: data.observationPlanning },
-        { title: "Öğretmenin Gözlemleri", content: data.teacherObservations },
-        { title: "Gözlem Sürecinin Değerlendirilmesi", content: data.observationEvaluation },
-        { title: "Sonuç ve Öneriler", content: data.conclusionAndSuggestions },
-    ];
-
-    let currentY = (doc as any).lastAutoTable.finalY + 5;
-
-    sections.forEach(section => {
-        (doc as any).autoTable({
-            startY: currentY,
-            head: [[section.title]],
-            body: [[section.content]],
-            theme: 'grid',
-            headStyles: { fontStyle: 'bold', fillColor: [240, 240, 240] },
-             bodyStyles: { minCellHeight: 30 }
-        });
-        currentY = (doc as any).lastAutoTable.finalY + 5;
-    });
-
-
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.setFontSize(10);
-    doc.text('Gözlemi Yapan', doc.internal.pageSize.getWidth() - 20, finalY + 20, { align: 'right' });
-    doc.text(`Ad-Soyad: ${data.observerName}`, doc.internal.pageSize.getWidth() - 20, finalY + 25, { align: 'right' });
-    doc.text(`Unvan: ${data.observerTitle}`, doc.internal.pageSize.getWidth() - 20, finalY + 30, { align: 'right' });
-    doc.text(`İmza: ${data.observerSignature || ''}`, doc.internal.pageSize.getWidth() - 20, finalY + 35, { align: 'right' });
+            <div class="signature-area">
+                <p>${data.observerName}</p>
+                <p>${data.observerTitle}</p>
+                <p>İmza</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
 };
 
-
-export function StudentObservationFormTab() {
-  const { db, setDb } = useDatabase();
-  const { schoolInfo, observationRecords: records } = db;
+export function StudentObservationFormTab({ classId, teacherProfile, currentClass }: { classId: string; teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
+  const { db: localDb, setDb: setLocalDb } = useDatabase();
+  const { observationDocuments: records = [] } = localDb;
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const { toast } = useToast();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   
   const defaultFormValues: ObservationRecord = {
       id: `record-${Date.now()}`,
@@ -116,6 +114,21 @@ export function StudentObservationFormTab() {
     defaultValues: defaultFormValues,
   });
 
+  const handleNewRecord = useCallback(() => {
+    const newId = `record-${Date.now()}`;
+    setSelectedRecordId(null);
+    form.reset({
+       ...defaultFormValues,
+       id: newId,
+       recordDate: new Date().toISOString().split('T')[0],
+       studentSchool: teacherProfile?.schoolName || '',
+       studentClassNumber: currentClass ? `${currentClass.name} - ` : '',
+       classTeacherName: teacherProfile?.name || '',
+       observerName: teacherProfile?.name || '',
+       observerTitle: 'Sınıf Rehber Öğretmeni',
+    });
+  }, [form, defaultFormValues, teacherProfile, currentClass]);
+
   useEffect(() => {
     if (selectedRecordId) {
       const recordData = records.find(r => r.id === selectedRecordId); 
@@ -125,47 +138,34 @@ export function StudentObservationFormTab() {
     } else {
       handleNewRecord();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRecordId, records]);
+  }, [selectedRecordId, records, form, handleNewRecord]);
+
 
   const onSubmit = (values: ObservationRecord) => {
-    setDb(prevDb => {
+    setLocalDb(prevDb => {
+        const existingRecords = prevDb.observationDocuments || [];
+        const existingRecordIndex = existingRecords.findIndex(r => r.id === values.id);
         let updatedRecords;
-        const existingRecordIndex = prevDb.observationRecords.findIndex(r => r.id === values.id);
 
         if (existingRecordIndex > -1) {
-            updatedRecords = [...prevDb.observationRecords];
+            updatedRecords = [...existingRecords];
             updatedRecords[existingRecordIndex] = values;
         } else {
-            updatedRecords = [...prevDb.observationRecords, values];
+            updatedRecords = [...existingRecords, values];
         }
         
-        return { ...prevDb, observationRecords: updatedRecords };
+        return { ...prevDb, observationDocuments: updatedRecords };
     });
     setSelectedRecordId(values.id);
     toast({ title: 'Kaydedildi', description: 'Gözlem kaydı başarıyla kaydedildi.' });
   };
   
-  const handleNewRecord = () => {
-    const newId = `record-${Date.now()}`;
-    setSelectedRecordId(null);
-    form.reset({
-       ...defaultFormValues,
-       id: newId,
-       recordDate: new Date().toISOString().split('T')[0],
-       studentSchool: schoolInfo?.schoolName || '',
-       studentClassNumber: schoolInfo ? `${schoolInfo.className} - ` : '',
-       classTeacherName: schoolInfo?.classTeacherName || '',
-       observerName: schoolInfo?.classTeacherName || '',
-       observerTitle: 'Sınıf Rehber Öğretmeni',
-    });
-  }
 
   const handleDeleteRecord = () => {
     if (!selectedRecordId) return;
-    setDb(prevDb => ({
+    setLocalDb(prevDb => ({
         ...prevDb,
-        observationRecords: prevDb.observationRecords.filter(r => r.id !== selectedRecordId)
+        observationDocuments: (prevDb.observationDocuments || []).filter(r => r.id !== selectedRecordId)
     }));
     handleNewRecord();
     toast({ title: 'Silindi', description: 'Gözlem kaydı silindi.', variant: 'destructive' });
@@ -173,13 +173,20 @@ export function StudentObservationFormTab() {
 
   const handlePrint = () => {
     const values = form.getValues();
-    if (!values.studentName || !schoolInfo) {
+    if (!values.studentName || !teacherProfile || !currentClass) {
       toast({ title: 'Eksik Bilgi', description: 'Lütfen formu yazdırmak için önce formu kaydedin.', variant: 'destructive' });
       return;
     }
-    const doc = new jsPDF();
-    generatePdfContent(values, schoolInfo, doc);
-    doc.save(`gozlem-kaydi-${values.studentName}.pdf`);
+    const content = generateWordContent(values, teacherProfile, currentClass);
+    const blob = new Blob([content], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gozlem-kaydi-${values.studentName}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
   
   const renderField = (name: keyof ObservationRecord, label: string, isTextArea = false) => (
@@ -197,30 +204,18 @@ export function StudentObservationFormTab() {
       )}
     />
   );
-
-  if (!isClient) {
-    return null;
-  }
   
   return (
       <div className="grid md:grid-cols-4 gap-8">
         <div className="md:col-span-1 space-y-4">
-             <Card>
-                <CardHeader><CardTitle>Gözlem Kayıtları</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                     <Button onClick={handleNewRecord} className="w-full"><PlusCircle className="mr-2"/> Yeni Kayıt</Button>
-                    <Select onValueChange={setSelectedRecordId} value={selectedRecordId || ''}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kayıtlı gözlem seç..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {records && records.length === 0 && <p className='text-sm text-muted-foreground text-center p-2'>Kayıtlı gözlem yok.</p>}
-                        {records && records.map(r => <SelectItem key={r.id} value={r.id}>{r.studentName} - {new Date(r.recordDate).toLocaleDateString('tr-TR')}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {selectedRecordId && <Button onClick={handleDeleteRecord} variant="destructive" className="w-full mt-2"><Trash2 className="mr-2"/> Seçili Kaydı Sil</Button>}
-                </CardContent>
-             </Card>
+             <RecordManager
+                records={(records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.recordDate).toLocaleDateString('tr-TR')}` }))}
+                selectedRecordId={selectedRecordId}
+                onSelectRecord={setSelectedRecordId}
+                onNewRecord={handleNewRecord}
+                onDeleteRecord={handleDeleteRecord}
+                noun="Gözlem Kaydı"
+            />
         </div>
         <div className="md:col-span-3">
           <Form {...form}>
@@ -229,7 +224,7 @@ export function StudentObservationFormTab() {
                 <CardHeader className='flex-row justify-between items-center'>
                     <CardTitle>Gözlem Kayıt Formu</CardTitle>
                     <div className="flex items-center gap-2">
-                         <Button onClick={handlePrint} variant="outline" disabled={!selectedRecordId}><Printer className="mr-2"/> Kaydı Yazdır</Button>
+                         <Button type="button" onClick={handlePrint} variant="outline" disabled={!selectedRecordId}><Printer className="mr-2"/> Kaydı Yazdır</Button>
                          <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
                     </div>
                 </CardHeader>
@@ -274,7 +269,6 @@ export function StudentObservationFormTab() {
             </form>
           </Form>
         </div>
-      </main>
-    </div>
+      </div>
   );
 }
