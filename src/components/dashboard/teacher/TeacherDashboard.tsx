@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
 import KazanımlarTab from './KazanımlarTab';
-import { ProjectDistributionTab } from '@/components/dashboard/teacher/DistributionAssignmentTab';
+import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
 import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
 import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
 import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
@@ -475,7 +475,7 @@ export function TeacherDashboard() {
 
   const setAndStoreOrderedClasses = useCallback((newOrder: Class[]) => {
       setOrderedClasses(newOrder);
-      const orderIds = newOrder.map(c => c.id);
+      const orderIds = newNewOrder.map(c => c.id);
       localStorage.setItem(`classOrder_${teacherId}`, JSON.stringify(orderIds));
   }, [teacherId]);
 

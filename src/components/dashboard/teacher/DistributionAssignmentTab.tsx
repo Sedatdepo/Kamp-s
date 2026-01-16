@@ -1,50 +1,43 @@
-
-"use client";
+'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { useCollection } from '@/firebase'; // Changed import
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
-import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { LessonManager } from './LessonManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { LessonManager } from './LessonManager';
 
-interface DistributionAssignmentTabProps {
+interface ProjectAssignmentViewProps {
   classId: string;
   teacherId: string;
   teacherProfile?: TeacherProfile | null;
   currentClass?: Class | null;
   students: Student[];
+  lessons: Lesson[];
 }
 
-export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, currentClass, students }: DistributionAssignmentTabProps) {
+export function ProjectAssignmentView({ classId, teacherId, teacherProfile, currentClass, students, lessons }: ProjectAssignmentViewProps) {
   const { db } = useAuth();
   const { toast } = useToast();
-
-  const lessonsQuery = useMemo(() => (teacherId && db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherId)) : null), [teacherId, db]);
-  // Changed useFirestore to useCollection
-  const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
   const [filterLessonId, setFilterLessonId] = useState<string>('all');
 
   useEffect(() => {
     if (students) {
-      setLocalStudents(students);
+      const sorted = [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+      setLocalStudents(sorted);
     }
   }, [students]);
 
   const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
-    // If "unassigned" is selected, treat it as clearing the value.
     const finalValue = value === 'unassigned' ? null : value;
     setLocalStudents(prev => 
       prev.map(s => s.id === studentId ? { ...s, [field]: finalValue } : s)
@@ -52,7 +45,7 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
   };
   
   const handleSaveChanges = async () => {
-    if (!db) return;
+    if (!db || !students) return;
     const batch = writeBatch(db);
     localStudents.forEach(student => {
       const originalStudent = students.find(s => s.id === student.id);
@@ -92,11 +85,11 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
   };
 
   const filteredStudents = useMemo(() => {
-    if (filterLessonId === 'all') return localStudents;
+    if (filterLessonId === 'all' || !localStudents) return localStudents;
     return localStudents.filter(s => s.projectPreferences.includes(filterLessonId));
   }, [localStudents, filterLessonId]);
 
-  const isLoading = lessonsLoading;
+  const isLoading = !lessons;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -111,6 +104,7 @@ export function DistributionAssignmentTab({ classId, teacherId, teacherProfile, 
                         <Switch
                             checked={currentClass?.isProjectSelectionActive || false}
                             onCheckedChange={handleToggleChange}
+                            disabled={!currentClass}
                         />
                     </div>
                 </CardHeader>
