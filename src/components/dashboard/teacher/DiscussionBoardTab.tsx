@@ -3,13 +3,13 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { DiscussionTopic, DiscussionPost, Class } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Plus, MessageSquare, MessagesSquare, ArrowLeft, Send, Trash2 } from 'lucide-react';
+import { Loader2, Plus, MessageSquare, MessagesSquare, ArrowLeft, Send, Trash2, UserX, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -57,7 +57,7 @@ const TopicList = ({ topics, onSelectTopic, onNewTopic, currentClass, onToggleAc
     </Card>
 );
 
-const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; }) => {
+const PostItem = ({ post, allPosts, level = 0, classId, topicId, currentClass }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; currentClass: Class | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     
@@ -74,6 +74,27 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
         }
     };
 
+    const isBlocked = useMemo(() => {
+        return currentClass?.discussionBoard?.blockedStudentIds?.includes(post.studentId);
+    }, [currentClass, post.studentId]);
+
+    const toggleBlockStudent = async () => {
+        if (!db || !classId) return;
+        const classRef = doc(db, 'classes', classId);
+
+        try {
+            if (isBlocked) {
+                await updateDoc(classRef, { 'discussionBoard.blockedStudentIds': arrayRemove(post.studentId) });
+                toast({ title: "Engelleme Kaldırıldı" });
+            } else {
+                await updateDoc(classRef, { 'discussionBoard.blockedStudentIds': arrayUnion(post.studentId) });
+                toast({ title: "Öğrenci Engellendi" });
+            }
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Hata", description: "İşlem gerçekleştirilemedi." });
+        }
+    };
+
     return (
         <div style={{ marginLeft: `${level > 0 ? 20 : 0}px` }} className="mt-4">
             <div className="flex items-start gap-3">
@@ -84,13 +105,21 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
                     <div className="bg-muted p-3 rounded-lg rounded-tl-none">
                         <div className="flex justify-between items-center">
                                 <p className="text-sm font-semibold">{post.studentName} <span className="text-xs text-muted-foreground font-normal">#{post.studentNumber}</span></p>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive"/></Button></AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Yanıtı Sil</AlertDialogTitle><AlertDialogDescription>Bu yanıtı kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                <div className="flex items-center">
+                                     <Button variant="ghost" size="icon" className="h-6 w-6" title={isBlocked ? 'Engeli kaldır' : 'Öğrenciyi engelle'} onClick={toggleBlockStudent}>
+                                        {isBlocked 
+                                            ? <UserCheck className="h-4 w-4 text-green-600" />
+                                            : <UserX className="h-4 w-4 text-orange-500" />
+                                        }
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive"/></Button></AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Yanıtı Sil</AlertDialogTitle><AlertDialogDescription>Bu yanıtı kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePost(post.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
                         </div>
                         <p className="text-sm mt-1">{post.content}</p>
                     </div>
@@ -100,7 +129,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
             {replies.length > 0 && (
                 <div className="pl-6 border-l border-dashed ml-4">
                     {replies.map(reply => (
-                        <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId} />
+                        <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId} currentClass={currentClass} />
                     ))}
                 </div>
             )}
@@ -109,7 +138,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
 };
 
 
-const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack: () => void, classId: string }) => {
+const TopicView = ({ topic, onBack, classId, currentClass }: { topic: DiscussionTopic, onBack: () => void, classId: string, currentClass: Class | null }) => {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
     const [newPost, setNewPost] = useState("");
@@ -142,7 +171,7 @@ const TopicView = ({ topic, onBack, classId }: { topic: DiscussionTopic, onBack:
                     <ScrollArea className="flex-1 pr-4 -mr-4">
                         <div className="space-y-4">
                             {topLevelPosts.map(post => (
-                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId} topicId={topic.id}/>
+                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId} topicId={topic.id} currentClass={currentClass}/>
                             ))}
                         </div>
                     </ScrollArea>
@@ -237,7 +266,7 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
     }
 
     if (view === 'topic' && selectedTopic) {
-        return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} />
+        return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} currentClass={currentClass} />
     }
     
     return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} currentClass={currentClass} onToggleActive={handleToggleActive} />

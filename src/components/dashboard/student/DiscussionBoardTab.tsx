@@ -41,7 +41,7 @@ const TopicList = ({ topics, onSelectTopic }: { topics: DiscussionTopic[], onSel
     </Card>
 );
 
-const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; }) => {
+const PostItem = ({ post, allPosts, level = 0, classId, topicId, isBlocked }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; isBlocked: boolean; }) => {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
     const [showReplyForm, setShowReplyForm] = useState(false);
@@ -53,7 +53,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
     }, [allPosts, post.id]);
 
     const handleAddReply = async () => {
-        if (!replyContent.trim() || !appUser || appUser.type !== 'student' || !classId) return;
+        if (!replyContent.trim() || !appUser || appUser.type !== 'student' || !classId || isBlocked) return;
 
         setIsSaving(true);
         try {
@@ -91,7 +91,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
                          <p className="text-xs text-muted-foreground">
                             {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}
                         </p>
-                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowReplyForm(!showReplyForm)}>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowReplyForm(!showReplyForm)} disabled={isBlocked}>
                             <MessageSquare className="mr-1 h-3 w-3" /> Yanıtla
                         </Button>
                     </div>
@@ -99,13 +99,14 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
                     {showReplyForm && (
                         <div className="flex gap-2 mt-2">
                            <Textarea 
-                              placeholder={`${post.studentName} adlı kişiye yanıt yaz...`} 
+                              placeholder={isBlocked ? "Yazmanız kısıtlandı." : `${post.studentName} adlı kişiye yanıt yaz...`} 
                               value={replyContent} 
                               onChange={(e) => setReplyContent(e.target.value)} 
                               rows={1} 
                               className="text-sm"
+                              disabled={isBlocked}
                            />
-                           <Button onClick={handleAddReply} disabled={isSaving || !replyContent.trim()} size="sm">
+                           <Button onClick={handleAddReply} disabled={isSaving || !replyContent.trim() || isBlocked} size="sm">
                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                            </Button>
                         </div>
@@ -114,7 +115,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
             </div>
              <div className="pl-6 border-l border-dashed ml-4">
                  {replies.map(reply => (
-                    <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId}/>
+                    <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId} isBlocked={isBlocked} />
                  ))}
             </div>
         </div>
@@ -122,7 +123,7 @@ const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: Discu
 };
 
 
-const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => void }) => {
+const TopicView = ({ topic, onBack, isBlocked }: { topic: DiscussionTopic, onBack: () => void, isBlocked: boolean }) => {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
     const [newPost, setNewPost] = useState("");
@@ -142,7 +143,7 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
     }, [posts]);
 
     const handleAddPost = async () => {
-        if (!newPost.trim() || !appUser || appUser.type !== 'student' || !classId) return;
+        if (!newPost.trim() || !appUser || appUser.type !== 'student' || !classId || isBlocked) return;
 
         setIsSaving(true);
         try {
@@ -176,14 +177,20 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
                     {isLoading ? <Loader2 className="m-auto h-8 w-8 animate-spin" /> : (
                         <div className="space-y-4">
                             {topLevelPosts.map(post => (
-                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId!} topicId={topic.id}/>
+                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId!} topicId={topic.id} isBlocked={isBlocked}/>
                             ))}
                         </div>
                     )}
                 </ScrollArea>
                  <div className="flex gap-2 pt-4 border-t">
-                    <Textarea placeholder="Yeni bir fikir yaz..." value={newPost} onChange={(e) => setNewPost(e.target.value)} rows={1} />
-                    <Button onClick={handleAddPost} disabled={isSaving || !newPost.trim()}>
+                    <Textarea 
+                        placeholder={isBlocked ? "Bu tartışma panosunda yazmanız kısıtlanmıştır." : "Yeni bir fikir yaz..."} 
+                        value={newPost} 
+                        onChange={(e) => setNewPost(e.target.value)} 
+                        rows={1}
+                        disabled={isBlocked}
+                    />
+                    <Button onClick={handleAddPost} disabled={isSaving || !newPost.trim() || isBlocked}>
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                     </Button>
                 </div>
@@ -207,6 +214,11 @@ export const DiscussionBoardTab = () => {
 
     const { data: topics, isLoading: topicsLoading } = useCollection<DiscussionTopic>(topicsQuery);
     
+    const isBlocked = useMemo(() => {
+        if (!currentClass || !appUser || appUser.type !== 'student') return false;
+        return currentClass.discussionBoard?.blockedStudentIds?.includes(appUser.data.id);
+    }, [currentClass, appUser]);
+
     if (classLoading || topicsLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     
     if (!currentClass?.isDiscussionBoardActive) {
@@ -223,7 +235,7 @@ export const DiscussionBoardTab = () => {
     }
 
     if (selectedTopic) {
-        return <TopicView topic={selectedTopic} onBack={() => setSelectedTopic(null)} />
+        return <TopicView topic={selectedTopic} onBack={() => setSelectedTopic(null)} isBlocked={isBlocked} />
     }
     
     return <TopicList topics={topics || []} onSelectTopic={setSelectedTopic} />
