@@ -18,7 +18,12 @@ import {
   X,
   Calendar,
   Search,
-  PlusCircle
+  PlusCircle,
+  Eye,
+  FileDown,
+  ToggleLeft,
+  ToggleRight,
+  FileSignature
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -186,7 +191,7 @@ const DilekcePreview = ({ data, showOfficialFields }: { data: FormData, showOffi
                         </div>
                     )}
                     {(data.dagitim_geregi || data.dagitim_bilgi) && (
-                        <div>
+                        <div style="margin-top: 10px;">
                             <p className="font-bold">DAĞITIM:</p>
                             {data.dagitim_geregi && <p className="whitespace-pre-wrap">Gereği:<br/>{data.dagitim_geregi}</p>}
                             {data.dagitim_bilgi && <p className="mt-1 whitespace-pre-wrap">Bilgi:<br/>{data.dagitim_bilgi}</p>}
