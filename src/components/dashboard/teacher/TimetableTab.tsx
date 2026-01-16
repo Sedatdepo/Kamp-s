@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileDown, Eraser, Settings, Save, X } from 'lucide-react';
+import { FileDown, Eraser, Settings, Save, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
