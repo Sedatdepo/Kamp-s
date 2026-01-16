@@ -26,6 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { exportStudentInfoFormToRtf } from '@/lib/word-export';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const infoFormSchema = z.object({
   birthDate: z.date().optional(),
@@ -94,10 +95,10 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
         return String(value);
     };
 
-    const renderField = (field: any) => {
+    const renderField = (field: any, key: any) => {
         const displayValue = renderFieldValue(form ? (form as any)[field.name] : null);
         return (
-            <div key={field.name} className="py-2 border-b">
+            <div key={key} className="py-2 border-b">
                 <p className="text-xs font-semibold text-muted-foreground">{field.label}</p>
                 <p className="text-sm">{String(displayValue)}</p>
             </div>
@@ -117,7 +118,7 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
                                 <div key={section.section}>
                                     <h3 className="font-bold text-lg border-b pb-2 mb-3">{section.section}</h3>
                                     <div className="space-y-2">
-                                        {section.fields.map(field => renderField(field))}
+                                        {section.fields.map(field => renderField(field, field.name))}
                                     </div>
                                 </div>
                             ))}
