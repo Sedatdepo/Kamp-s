@@ -499,9 +499,9 @@ export function TeacherDashboard() {
   };
 
   const renderContent = () => {
+    let tabContent;
     const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
-        let tabContent;
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
           case 'zumre': tabContent = <ZumreTab />; break;
@@ -571,6 +571,7 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
+                <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim planları." onClick={() => setActiveTab('bep')} />
                 <MenuCard icon={<Trophy />} title="Rozetler" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
@@ -590,7 +591,6 @@ export function TeacherDashboard() {
       );
     }
     
-    let tabContent;
     switch(activeTab) {
         case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile} students={studentsForSelectedClass} currentClass={currentClass} />; break;
@@ -603,6 +603,7 @@ export function TeacherDashboard() {
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        case 'bep': tabContent = <BepTab />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;

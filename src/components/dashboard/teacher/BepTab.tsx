@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, FormProvider, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
@@ -19,6 +19,14 @@ import {
   Calendar,
   Search
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
@@ -78,6 +86,7 @@ const downloadAsRTF = (content: any, filename: any) => {
 };
 
 export function BepTab() {
+  const { toast } = useToast();
   // --- STATE YÖNETİMİ ---
   
   // Navigasyon - Başlangıçta 'students' aktif
@@ -91,7 +100,6 @@ export function BepTab() {
     schoolPrincipal: '',
     schoolName: ''
   });
-  const [toasts, setToasts] = useState<any[]>([]);
 
   // Form & Seçim Stateleri
   const [searchTerm, setSearchTerm] = useState('');
@@ -143,17 +151,9 @@ export function BepTab() {
 
   // --- ACTIONS ---
 
-  const addToast = (msg: any, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  };
-
   const handleSaveTeacher = () => {
     localStorage.setItem('teacherInfo', JSON.stringify(teacherInfo));
-    addToast('Öğretmen bilgileri kaydedildi', 'success');
+    toast({ title: 'Başarılı', description: 'Öğretmen bilgileri kaydedildi.' });
   };
 
   const handleSaveStudent = (e: any) => {
@@ -174,10 +174,10 @@ export function BepTab() {
     let updatedStudents;
     if (editingStudent && students.some(s => s.id === editingStudent.id)) {
       updatedStudents = students.map(s => s.id === newStudent.id ? newStudent : s);
-      addToast('Öğrenci güncellendi', 'success');
+      toast({ title: 'Başarılı', description: 'Öğrenci güncellendi.' });
     } else {
       updatedStudents = [...students, newStudent];
-      addToast('Öğrenci eklendi', 'success');
+      toast({ title: 'Başarılı', description: 'Öğrenci eklendi.' });
     }
 
     setStudents(updatedStudents);
@@ -191,7 +191,7 @@ export function BepTab() {
       const updated = students.filter(s => s.id !== id);
       setStudents(updated);
       localStorage.setItem('students', JSON.stringify(updated));
-      addToast('Öğrenci silindi', 'warning');
+      toast({ title: 'Silindi', description: 'Öğrenci silindi.', variant: 'destructive' });
     }
   };
 
@@ -256,13 +256,13 @@ export function BepTab() {
   
   const generateRTF = (type: any) => {
     const student = students.find(s => s.id === selectedStudentId);
-    if (!student) return addToast('Öğrenci seçilmedi', 'error');
+    if (!student) return toast({ title: 'Hata', description: 'Öğrenci seçilmedi.', variant: 'destructive'});
 
     let content = '';
 
     if (type === 'bep') {
         const kazanims = PHYSICS_OUTCOMES.filter(k => selectedKazanims.has(k.id));
-        if (kazanims.length === 0) return addToast('Kazanım seçilmedi', 'error');
+        if (kazanims.length === 0) return toast({ title: 'Hata', description: 'Kazanım seçilmedi.', variant: 'destructive'});
 
         // Tablo satırlarını oluştur
         let rows = '';
@@ -368,7 +368,7 @@ export function BepTab() {
     }
 
     downloadAsRTF(content, `${type}_raporu_${student.name}`);
-    addToast('Rapor indirildi', 'success');
+    toast({ title: 'Başarılı', description: 'Rapor indirildi.' });
   };
 
 
@@ -376,16 +376,7 @@ export function BepTab() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      {/* Toast */}
-      <div className="fixed top-5 right-5 z-50 flex flex-col gap-2">
-        {toasts.map((t: any) => (
-          <div key={t.id} className={`bg-white p-4 rounded shadow-lg border-l-4 ${t.type === 'success' ? 'border-green-500' : t.type === 'error' ? 'border-red-500' : 'border-blue-500'} flex items-center gap-3 animate-slideIn`}>
-            {t.type === 'success' ? <CheckSquare size={20} className="text-green-500"/> : <Square size={20} className="text-blue-500"/>}
-            <span>{t.msg}</span>
-          </div>
-        ))}
-      </div>
-
+      
       {/* Header */}
       <div className="bg-white shadow-sm p-4 mb-6 sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
@@ -397,16 +388,18 @@ export function BepTab() {
                 </div>
             </div>
             <div className="flex gap-2">
-                <button 
+                <Button 
                     onClick={() => setActiveTab('students')} 
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${activeTab === 'students' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                    variant={activeTab === 'students' ? 'default' : 'outline'}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors`}>
                     <Users size={18} /> Öğrenci Yönetimi
-                </button>
-                <button 
+                </Button>
+                <Button 
                     onClick={() => setActiveTab('bep')} 
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${activeTab === 'bep' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                    variant={activeTab === 'bep' ? 'default' : 'outline'}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors`}>
                     <FileText size={18} /> BEP Hazırla
-                </button>
+                </Button>
             </div>
         </div>
       </div>
@@ -418,343 +411,343 @@ export function BepTab() {
             <div className="space-y-6">
                 
                 {/* Öğretmen Bilgileri Kartı (Öğrenci sekmesinde üstte görünsün istedim) */}
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><School size={20}/> Öğretmen & Okul Bilgileri</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Branş Öğretmeni</label>
-                            <input type="text" className="w-full p-2 border rounded-md text-sm" 
-                                value={teacherInfo.branchTeacher} 
-                                onChange={e => setTeacherInfo({...teacherInfo, branchTeacher: e.target.value})} 
-                            />
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-gray-700"><School size={20}/> Öğretmen & Okul Bilgileri</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <Label className="block text-xs font-medium text-gray-500 mb-1">Branş Öğretmeni</Label>
+                                <Input type="text" className="w-full p-2 border rounded-md text-sm" 
+                                    value={teacherInfo.branchTeacher} 
+                                    onChange={e => setTeacherInfo({...teacherInfo, branchTeacher: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Label className="block text-xs font-medium text-gray-500 mb-1">Rehber Öğretmen</Label>
+                                <Input type="text" className="w-full p-2 border rounded-md text-sm" 
+                                    value={teacherInfo.guidanceTeacher} 
+                                    onChange={e => setTeacherInfo({...teacherInfo, guidanceTeacher: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Label className="block text-xs font-medium text-gray-500 mb-1">Okul Müdürü</Label>
+                                <Input type="text" className="w-full p-2 border rounded-md text-sm" 
+                                    value={teacherInfo.schoolPrincipal} 
+                                    onChange={e => setTeacherInfo({...teacherInfo, schoolPrincipal: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <Label className="block text-xs font-medium text-gray-500 mb-1">Okul Adı</Label>
+                                <Input type="text" className="w-full p-2 border rounded-md text-sm" 
+                                    value={teacherInfo.schoolName} 
+                                    onChange={e => setTeacherInfo({...teacherInfo, schoolName: e.target.value})} 
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Rehber Öğretmen</label>
-                            <input type="text" className="w-full p-2 border rounded-md text-sm" 
-                                value={teacherInfo.guidanceTeacher} 
-                                onChange={e => setTeacherInfo({...teacherInfo, guidanceTeacher: e.target.value})} 
-                            />
+                        <div className="mt-4 text-right">
+                            <Button onClick={handleSaveTeacher} size="sm" className="inline-flex items-center gap-1">
+                                <Save size={14} /> Kaydet
+                            </Button>
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Okul Müdürü</label>
-                            <input type="text" className="w-full p-2 border rounded-md text-sm" 
-                                value={teacherInfo.schoolPrincipal} 
-                                onChange={e => setTeacherInfo({...teacherInfo, schoolPrincipal: e.target.value})} 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Okul Adı</label>
-                            <input type="text" className="w-full p-2 border rounded-md text-sm" 
-                                value={teacherInfo.schoolName} 
-                                onChange={e => setTeacherInfo({...teacherInfo, schoolName: e.target.value})} 
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4 text-right">
-                        <button onClick={handleSaveTeacher} className="text-sm bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 inline-flex items-center gap-1">
-                            <Save size={14} /> Kaydet
-                        </button>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Öğrenci Listesi */}
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold flex items-center gap-2"><Users /> Öğrenci Listesi</h2>
-                        <button 
-                            onClick={() => { setEditingStudent(null); setIsModalOpen(true); }}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2">
+                <Card>
+                    <CardHeader className="flex flex-row justify-between items-center">
+                        <CardTitle className="text-xl font-bold flex items-center gap-2"><Users /> Öğrenci Listesi</CardTitle>
+                        <Button onClick={() => { setEditingStudent(null); setIsModalOpen(true); }}>
                             <Plus size={18} /> Yeni Öğrenci
-                        </button>
-                    </div>
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="relative mb-6">
+                            <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                            <Input 
+                                type="text" 
+                                placeholder="Öğrenci adı, sınıf veya numara ile ara..." 
+                                className="w-full p-3 pl-10 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
 
-                    <div className="relative mb-6">
-                        <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-                        <input 
-                            type="text" 
-                            placeholder="Öğrenci adı, sınıf veya numara ile ara..." 
-                            className="w-full p-3 pl-10 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="space-y-3">
-                        {students.filter(s => 
-                            s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            s.class.toLowerCase().includes(searchTerm.toLowerCase())
-                        ).map(student => (
-                            <div key={student.id} className="p-4 border rounded-lg flex justify-between items-start hover:bg-gray-50 transition-colors">
-                                <div>
-                                    <h3 className="font-bold text-lg text-gray-800">{student.name}</h3>
-                                    <div className="text-sm text-gray-600 mt-1 flex gap-3">
-                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-700 font-medium">{student.class}</span>
-                                        <span>No: {student.number}</span>
-                                        <span>Dal: {student.branch}</span>
+                        <div className="space-y-3">
+                            {students.filter(s => 
+                                s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                s.class.toLowerCase().includes(searchTerm.toLowerCase())
+                            ).map(student => (
+                                <div key={student.id} className="p-4 border rounded-lg flex justify-between items-start hover:bg-gray-50 transition-colors">
+                                    <div>
+                                        <h3 className="font-bold text-lg text-gray-800">{student.name}</h3>
+                                        <div className="text-sm text-gray-600 mt-1 flex gap-3">
+                                            <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-700 font-medium">{student.class}</span>
+                                            <span>No: {student.number}</span>
+                                            <span>Dal: {student.branch}</span>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {student.specialNeeds && student.specialNeeds.map((need: any) => (
+                                                <span key={need} className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">
+                                                    {need.replace('-', ' ').toUpperCase()}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {student.specialNeeds && student.specialNeeds.map((need: any) => (
-                                            <span key={need} className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">
-                                                {need.replace('-', ' ').toUpperCase()}
-                                            </span>
-                                        ))}
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="icon" onClick={() => { setEditingStudent(student); setIsModalOpen(true); }} className="text-blue-500 hover:bg-blue-50">
+                                            <Edit size={18} />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)} className="text-red-500 hover:bg-red-50">
+                                            <Trash2 size={18} />
+                                        </Button>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => { setEditingStudent(student); setIsModalOpen(true); }} className="text-blue-500 hover:bg-blue-50 p-2 rounded">
-                                        <Edit size={18} />
-                                    </button>
-                                    <button onClick={() => handleDeleteStudent(student.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                        {students.length === 0 && <div className="text-center text-gray-400 py-10">Kayıtlı öğrenci bulunamadı.</div>}
-                    </div>
-                </div>
+                            ))}
+                            {students.length === 0 && <div className="text-center text-gray-400 py-10">Kayıtlı öğrenci bulunamadı.</div>}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         )}
 
         {/* BEP MODULE */}
         {activeTab === 'bep' && (
             <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FileText /> BEP Hazırlama</h2>
-                    
-                    {/* Öğrenci Seçimi */}
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Öğrenci Seçin</label>
-                        <select 
-                            className="w-full p-3 border rounded-lg bg-gray-50 text-lg"
-                            value={selectedStudentId}
-                            onChange={(e) => {
-                                setSelectedStudentId(e.target.value);
-                                setSelectedKazanims(new Set()); // Öğrenci değişince seçimleri sıfırla
-                            }}
-                        >
-                            <option value="">-- Lütfen bir öğrenci seçin --</option>
-                            {students.map(s => (
-                                <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
-                            ))}
-                        </select>
-                    </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-xl font-bold mb-4 flex items-center gap-2"><FileText /> BEP Hazırlama</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Öğrenci Seçimi */}
+                        <div className="mb-6">
+                            <Label className="block text-sm font-medium text-gray-700 mb-2">Öğrenci Seçin</Label>
+                            <select 
+                                className="w-full p-3 border rounded-lg bg-gray-50 text-lg"
+                                value={selectedStudentId}
+                                onChange={(e) => {
+                                    setSelectedStudentId(e.target.value);
+                                    setSelectedKazanims(new Set()); // Öğrenci değişince seçimleri sıfırla
+                                }}
+                            >
+                                <option value="">-- Lütfen bir öğrenci seçin --</option>
+                                {students.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    {selectedStudentId && (
-                        <div className="animate-fadeIn">
-                            {/* Tarih Seçimi */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-blue-50 p-4 rounded-lg">
-                                <div>
-                                    <label className="block text-sm font-medium text-blue-900 mb-1">Başlangıç Tarihi</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-2.5 text-blue-400" size={18} />
-                                        <input type="date" className="w-full p-2 pl-10 border border-blue-200 rounded-md" 
-                                            value={bepDates.start} onChange={e => setBepDates({...bepDates, start: e.target.value})} />
+                        {selectedStudentId && (
+                            <div className="animate-fadeIn">
+                                {/* Tarih Seçimi */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-blue-50 p-4 rounded-lg">
+                                    <div>
+                                        <Label className="block text-sm font-medium text-blue-900 mb-1">Başlangıç Tarihi</Label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-2.5 text-blue-400" size={18} />
+                                            <Input type="date" className="w-full p-2 pl-10 border border-blue-200 rounded-md" 
+                                                value={bepDates.start} onChange={e => setBepDates({...bepDates, start: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label className="block text-sm font-medium text-blue-900 mb-1">Bitiş Tarihi</Label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-2.5 text-blue-400" size={18} />
+                                            <Input type="date" className="w-full p-2 pl-10 border border-blue-200 rounded-md" 
+                                                value={bepDates.end} onChange={e => setBepDates({...bepDates, end: e.target.value})} />
+                                        </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-blue-900 mb-1">Bitiş Tarihi</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-2.5 text-blue-400" size={18} />
-                                        <input type="date" className="w-full p-2 pl-10 border border-blue-200 rounded-md" 
-                                            value={bepDates.end} onChange={e => setBepDates({...bepDates, end: e.target.value})} />
+
+                                {/* Kazanım Seçimi */}
+                                <div className="mb-8">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="font-bold text-gray-700">Kazanım Listesi ({selectedKazanims.size} seçili)</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-2">
+                                        {getFilteredKazanims().length > 0 ? getFilteredKazanims().map(k => (
+                                            <div 
+                                                key={k.id} 
+                                                onClick={() => toggleKazanim(k.id)}
+                                                className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedKazanims.has(k.id) ? 'bg-green-50 border-green-500 shadow-sm' : 'bg-white hover:border-blue-300'}`}
+                                            >
+                                                <div className="flex justify-between">
+                                                    <span className="font-mono text-xs font-bold text-gray-500">{k.id}</span>
+                                                    {selectedKazanims.has(k.id) && <CheckSquare className="text-green-600" size={18}/>}
+                                                </div>
+                                                <p className="text-sm mt-1">{k.text}</p>
+                                            </div>
+                                        )) : (
+                                            <p className="text-gray-400 text-center italic p-4">Bu sınıf düzeyi için tanımlı kazanım bulunamadı.</p>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Kazanım Seçimi */}
-                            <div className="mb-8">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-gray-700">Kazanım Listesi ({selectedKazanims.size} seçili)</h3>
-                                </div>
-                                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-2">
-                                    {getFilteredKazanims().length > 0 ? getFilteredKazanims().map(k => (
-                                        <div 
-                                            key={k.id} 
-                                            onClick={() => toggleKazanim(k.id)}
-                                            className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedKazanims.has(k.id) ? 'bg-green-50 border-green-500 shadow-sm' : 'bg-white hover:border-blue-300'}`}
-                                        >
-                                            <div className="flex justify-between">
-                                                <span className="font-mono text-xs font-bold text-gray-500">{k.id}</span>
-                                                {selectedKazanims.has(k.id) && <CheckSquare className="text-green-600" size={18}/>}
-                                            </div>
-                                            <p className="text-sm mt-1">{k.text}</p>
-                                        </div>
-                                    )) : (
-                                        <p className="text-gray-400 text-center italic p-4">Bu sınıf düzeyi için tanımlı kazanım bulunamadı.</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Performans Değerlendirme */}
-                            <div className="mb-8 border-t pt-6">
-                                <h3 className="font-bold text-gray-700 mb-4">Eğitsel Performans Değerlendirme</h3>
-                                <div className="space-y-4">
-                                    {PERFORMANCE_ITEMS.map(item => (
-                                        <div key={item.id} className="p-4 border rounded-lg bg-gray-50">
-                                            <p className="text-sm font-medium mb-2">{item.skill}</p>
-                                            <div className="flex flex-wrap gap-4 items-center">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-500">Puan:</span>
-                                                    <input 
-                                                        type="number" min="1" max="4" 
-                                                        className="w-16 p-1 border rounded text-center"
-                                                        value={selectedPerformance[item.id]?.score || ''}
-                                                        onChange={e => setSelectedPerformance({
-                                                            ...selectedPerformance,
-                                                            [item.id]: { ...selectedPerformance[item.id], score: e.target.value }
-                                                        })}
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                     <input 
-                                                        type="text" 
-                                                        placeholder="Gözlem notu..."
-                                                        className="w-full p-1 border rounded text-sm"
-                                                        value={selectedPerformance[item.id]?.observation || ''}
-                                                        onChange={e => setSelectedPerformance({
-                                                            ...selectedPerformance,
-                                                            [item.id]: { ...selectedPerformance[item.id], observation: e.target.value }
-                                                        })}
-                                                    />
+                                {/* Performans Değerlendirme */}
+                                <div className="mb-8 border-t pt-6">
+                                    <h3 className="font-bold text-gray-700 mb-4">Eğitsel Performans Değerlendirme</h3>
+                                    <div className="space-y-4">
+                                        {PERFORMANCE_ITEMS.map(item => (
+                                            <div key={item.id} className="p-4 border rounded-lg bg-gray-50">
+                                                <p className="text-sm font-medium mb-2">{item.skill}</p>
+                                                <div className="flex flex-wrap gap-4 items-center">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-gray-500">Puan:</span>
+                                                        <Input 
+                                                            type="number" min="1" max="4" 
+                                                            className="w-16 p-1 border rounded text-center"
+                                                            value={selectedPerformance[item.id]?.score || ''}
+                                                            onChange={e => setSelectedPerformance({
+                                                                ...selectedPerformance,
+                                                                [item.id]: { ...selectedPerformance[item.id], score: e.target.value }
+                                                            })}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                         <Input 
+                                                            type="text" 
+                                                            placeholder="Gözlem notu..."
+                                                            className="w-full p-1 border rounded text-sm"
+                                                            value={selectedPerformance[item.id]?.observation || ''}
+                                                            onChange={e => setSelectedPerformance({
+                                                                ...selectedPerformance,
+                                                                [item.id]: { ...selectedPerformance[item.id], observation: e.target.value }
+                                                            })}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Kaba Değerlendirme */}
-                            <div className="mb-8 border-t pt-6">
-                                <h3 className="font-bold text-gray-700 mb-4">Kaba Değerlendirme Formu</h3>
-                                <div className="space-y-4">
-                                    {getFilteredKabaItems().length > 0 ? getFilteredKabaItems().map((item, idx) => {
-                                        const key = `${item.unit}-${item.skill}`;
-                                        return (
-                                            <div key={idx} className="p-4 border rounded-lg bg-white">
-                                                <p className="text-sm font-bold text-gray-800 mb-2">{item.unit}: <span className="font-normal">{item.skill}</span></p>
-                                                <div className="flex flex-wrap gap-4">
-                                                    {['yapar', 'yapamaz', 'kısmen'].map(opt => (
-                                                        <label key={opt} className="flex items-center gap-1 cursor-pointer">
-                                                            <input 
-                                                                type="radio" 
-                                                                name={`kaba_${idx}`}
-                                                                checked={selectedKaba[key]?.evaluation === opt}
-                                                                onChange={() => handleKabaEvaluation(key, opt, item.skill)}
-                                                            />
-                                                            <span className="text-sm capitalize">{opt}</span>
-                                                        </label>
-                                                    ))}
+                                {/* Kaba Değerlendirme */}
+                                <div className="mb-8 border-t pt-6">
+                                    <h3 className="font-bold text-gray-700 mb-4">Kaba Değerlendirme Formu</h3>
+                                    <div className="space-y-4">
+                                        {getFilteredKabaItems().length > 0 ? getFilteredKabaItems().map((item, idx) => {
+                                            const key = `${item.unit}-${item.skill}`;
+                                            return (
+                                                <div key={idx} className="p-4 border rounded-lg bg-white">
+                                                    <p className="text-sm font-bold text-gray-800 mb-2">{item.unit}: <span className="font-normal">{item.skill}</span></p>
+                                                    <div className="flex flex-wrap gap-4">
+                                                        {['yapar', 'yapamaz', 'kısmen'].map(opt => (
+                                                            <label key={opt} className="flex items-center gap-1 cursor-pointer">
+                                                                <input 
+                                                                    type="radio" 
+                                                                    name={`kaba_${idx}`}
+                                                                    checked={selectedKaba[key]?.evaluation === opt}
+                                                                    onChange={() => handleKabaEvaluation(key, opt, item.skill)}
+                                                                />
+                                                                <span className="text-sm capitalize">{opt}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        <Textarea 
+                                                            rows={2} 
+                                                            placeholder="Otomatik oluşturulan gözlem notu (düzenlenebilir)"
+                                                            className="w-full p-2 border rounded-md text-sm bg-gray-50 focus:bg-white transition-colors"
+                                                            value={selectedKaba[key]?.text || ''}
+                                                            onChange={(e) => handleKabaTextChange(key, e.target.value)}
+                                                        ></Textarea>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-2">
-                                                    <textarea 
-                                                        rows="2" 
-                                                        placeholder="Otomatik oluşturulan gözlem notu (düzenlenebilir)"
-                                                        className="w-full p-2 border rounded-md text-sm bg-gray-50 focus:bg-white transition-colors"
-                                                        value={selectedKaba[key]?.text || ''}
-                                                        onChange={(e) => handleKabaTextChange(key, e.target.value)}
-                                                    ></textarea>
-                                                </div>
-                                            </div>
-                                        )
-                                    }) : (
-                                        <p className="text-gray-400 text-center italic p-4">Bu sınıf düzeyi için tanımlı kaba değerlendirme maddesi bulunamadı.</p>
-                                    )}
+                                            )
+                                        }) : (
+                                            <p className="text-gray-400 text-center italic p-4">Bu sınıf düzeyi için tanımlı kaba değerlendirme maddesi bulunamadı.</p>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex flex-wrap gap-4 justify-center mt-8 sticky bottom-4 bg-white p-4 shadow-lg rounded-full border border-gray-200">
+                                    <Button 
+                                        onClick={() => generateRTF('bep')}
+                                        className="bg-purple-600 text-white px-6 py-3 rounded-full hover:bg-purple-700 shadow-md flex items-center gap-2 font-bold">
+                                        <Download size={20} /> BEP İndir (RTF)
+                                    </Button>
+                                    <Button 
+                                        onClick={() => generateRTF('performance')}
+                                        className="bg-teal-600 text-white px-6 py-3 rounded-full hover:bg-teal-700 shadow-md flex items-center gap-2 font-bold">
+                                        <Download size={20} /> Perf. İndir (RTF)
+                                    </Button>
+                                    <Button 
+                                        onClick={() => generateRTF('kaba')}
+                                        className="bg-orange-600 text-white px-6 py-3 rounded-full hover:bg-orange-700 shadow-md flex items-center gap-2 font-bold">
+                                        <Download size={20} /> Kaba Değ. İndir (RTF)
+                                    </Button>
+                                </div>
+
                             </div>
+                        )}
 
-                            {/* Action Buttons */}
-                            <div className="flex flex-wrap gap-4 justify-center mt-8 sticky bottom-4 bg-white p-4 shadow-lg rounded-full border border-gray-200">
-                                <button 
-                                    onClick={() => generateRTF('bep')}
-                                    className="bg-purple-600 text-white px-6 py-3 rounded-full hover:bg-purple-700 shadow-md flex items-center gap-2 font-bold">
-                                    <Download size={20} /> BEP İndir (RTF)
-                                </button>
-                                <button 
-                                    onClick={() => generateRTF('performance')}
-                                    className="bg-teal-600 text-white px-6 py-3 rounded-full hover:bg-teal-700 shadow-md flex items-center gap-2 font-bold">
-                                    <Download size={20} /> Perf. İndir (RTF)
-                                </button>
-                                <button 
-                                    onClick={() => generateRTF('kaba')}
-                                    className="bg-orange-600 text-white px-6 py-3 rounded-full hover:bg-orange-700 shadow-md flex items-center gap-2 font-bold">
-                                    <Download size={20} /> Kaba Değ. İndir (RTF)
-                                </button>
+                        {!selectedStudentId && (
+                            <div className="text-center py-20 text-gray-400">
+                                <Users size={48} className="mx-auto mb-4 opacity-50" />
+                                <p>İşlem yapmak için yukarıdan bir öğrenci seçiniz.</p>
                             </div>
-
-                        </div>
-                    )}
-
-                    {!selectedStudentId && (
-                        <div className="text-center py-20 text-gray-400">
-                            <Users size={48} className="mx-auto mb-4 opacity-50" />
-                            <p>İşlem yapmak için yukarıdan bir öğrenci seçiniz.</p>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         )}
       </div>
 
       {/* MODAL: Öğrenci Ekle/Düzenle */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-                    <h3 className="text-xl font-bold">{editingStudent ? 'Öğrenci Düzenle' : 'Yeni Öğrenci Ekle'}</h3>
-                    <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X /></button>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>{editingStudent ? 'Öğrenci Düzenle' : 'Yeni Öğrenci Ekle'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveStudent} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <Label className="block text-sm font-bold text-gray-700 mb-1">Ad Soyad</Label>
+                        <Input name="name" required defaultValue={editingStudent?.name} className="w-full p-2 border rounded" placeholder="Öğrenci Adı" />
+                    </div>
+                    <div>
+                        <Label className="block text-sm font-bold text-gray-700 mb-1">Sınıf</Label>
+                        <Input name="class" required defaultValue={editingStudent?.class} className="w-full p-2 border rounded" placeholder="Örn: 10-A" />
+                    </div>
+                    <div>
+                        <Label className="block text-sm font-bold text-gray-700 mb-1">Numara</Label>
+                        <Input name="number" defaultValue={editingStudent?.number} className="w-full p-2 border rounded" placeholder="Okul No" />
+                    </div>
+                    <div>
+                        <Label className="block text-sm font-bold text-gray-700 mb-1">Dal</Label>
+                        <Input name="branch" defaultValue={editingStudent?.branch} className="w-full p-2 border rounded" placeholder="Bilişim, Muhasebe vb." />
+                    </div>
                 </div>
-                <form onSubmit={handleSaveStudent} className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Ad Soyad</label>
-                            <input name="name" required defaultValue={editingStudent?.name} className="w-full p-2 border rounded" placeholder="Öğrenci Adı" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Sınıf</label>
-                            <input name="class" required defaultValue={editingStudent?.class} className="w-full p-2 border rounded" placeholder="Örn: 10-A" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Numara</label>
-                            <input name="number" defaultValue={editingStudent?.number} className="w-full p-2 border rounded" placeholder="Okul No" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Dal</label>
-                            <input name="branch" defaultValue={editingStudent?.branch} className="w-full p-2 border rounded" placeholder="Bilişim, Muhasebe vb." />
-                        </div>
+                
+                <div>
+                    <Label className="block text-sm font-bold text-gray-700 mb-2">Özel Gereksinim Türü</Label>
+                    <div className="flex flex-wrap gap-2">
+                        {SPECIAL_NEED_TYPES.map(type => (
+                            <Button 
+                                key={type} type="button"
+                                variant={editingStudent?.specialNeeds?.includes(type) ? 'default' : 'outline'}
+                                onClick={() => toggleSpecialNeed(type)}
+                            >
+                                {type}
+                            </Button>
+                        ))}
                     </div>
-                    
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Özel Gereksinim Türü</label>
-                        <div className="flex flex-wrap gap-2">
-                            {SPECIAL_NEED_TYPES.map(type => (
-                                <button 
-                                    key={type} type="button"
-                                    onClick={() => toggleSpecialNeed(type)}
-                                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                                        editingStudent?.specialNeeds?.includes(type) 
-                                        ? 'bg-blue-500 text-white border-blue-600' 
-                                        : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
-                                    }`}>
-                                    {type}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Notlar</label>
-                        <textarea name="notes" defaultValue={editingStudent?.notes} rows="3" className="w-full p-2 border rounded" placeholder="Öğrenci hakkında notlar..."></textarea>
-                    </div>
+                <div>
+                    <Label className="block text-sm font-bold text-gray-700 mb-1">Notlar</Label>
+                    <Textarea name="notes" defaultValue={editingStudent?.notes} rows={3} className="w-full p-2 border rounded" placeholder="Öğrenci hakkında notlar..."></Textarea>
+                </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-50">İptal</button>
-                        <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold">Kaydet</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-      )}
+                <div className="flex justify-end gap-3 pt-4">
+                    <DialogClose asChild><Button type="button" variant="outline">İptal</Button></DialogClose>
+                    <Button type="submit">Kaydet</Button>
+                </div>
+            </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
