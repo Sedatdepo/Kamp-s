@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -263,19 +263,19 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
         { label: 'Yabancı Dil', value: record.foreignLanguage || '' },
         // Health
         { label: 'Sürekli Hastalık/Alerji', value: record.healthIssues || '' },
-        { label: 'Geçirdiği Hastalık/Ameliyat', value: record.pastIllnesses || '' },
+        { label: 'Geçmiş Önemli Hastalık/Ameliyat', value: record.pastIllnesses || '' },
         { label: 'Kullandığı Cihaz/Protez', value: record.healthDevice || '' },
         // Socio-economic
         { label: 'Hobiler', value: record.hobbies || '' },
-        { label: 'Bir İşte Çalışıyor Mu?', value: record.isWorking === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Bir İşte Çalışıyor mu?', value: record.isWorking === 'yes' ? 'Evet' : 'Hayır' },
         { label: 'Okula Ulaşım Şekli', value: record.commutesToSchoolBy || '' },
         { label: 'Oturulan Ev Kira Mı?', value: record.isHomeRented === 'yes' ? 'Evet' : 'Hayır' },
         { label: 'Kendine Ait Odası Var Mı?', value: record.hasOwnRoom === 'yes' ? 'Evet' : 'Hayır' },
         // Family
         { label: 'Veli Telefonu', value: record.guardianPhone || '' },
-        { label: 'Anne Hayatta Mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Anne Hayatta mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
         { label: 'Anne Eğitim/Meslek', value: `${record.motherEducation || ''} / ${record.motherJob || ''}` },
-        { label: 'Baba Hayatta Mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Baba Hayatta mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
         { label: 'Baba Eğitim/Meslek', value: `${record.fatherEducation || ''} / ${record.fatherJob || ''}` },
         { label: 'Kiminle Yaşıyor?', value: record.familyLivesWith || '' },
         { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
@@ -1765,4 +1765,62 @@ export function exportDetailedGradesToRtf({ students, currentClass, teacherProfi
     const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- TIMETABLE EXPORT ---
+interface ExportTimetableArgs {
+    schedule: { [key: string]: TimetableCell };
+    periods: { start: string; end: string }[];
+    days: string[];
+    teacherName: string;
+    schoolName?: string;
+    dutyDay?: string;
+    dutyPlace?: string;
+}
+
+export function exportTimetableToRtf({ schedule, periods, days, teacherName, schoolName, dutyDay, dutyPlace }: ExportTimetableArgs) {
+    const title = `Haftalık Ders Programı - ${teacherName}`;
+    const filename = `Ders_Programi_${teacherName.replace(/ /g, '_')}.rtf`;
+    
+    const header = `
+        <div class="center">
+            <p class="header-p bold">${schoolName || ''}</p>
+            <p class="header-p bold">${teacherName} - Haftalık Ders Programı</p>
+            ${dutyDay || dutyPlace ? `<p class="header-p small-text">Nöbet Günü: ${dutyDay || ''} - Nöbet Yeri: ${dutyPlace || ''}</p>` : ''}
+        </div>
+        <br>
+    `;
+
+    let tableHeader = `
+        <tr>
+            <th style="width:10%;">Saatler</th>
+            ${days.map(day => `<th>${day}</th>`).join('')}
+        </tr>
+    `;
+
+    let tableRows = periods.map((period, pIndex) => {
+        let row = `<tr><td class="center bold">${pIndex+1}. Ders<br/><span class="small-text">${period.start}-${period.end}</span></td>`;
+        days.forEach((_, dIndex) => {
+            const cellKey = `${dIndex}-${pIndex}`;
+            const cellData = schedule[cellKey];
+            if (cellData) {
+                row += `<td class="center">${cellData.ders}<br/><span class="small-text">${cellData.sinif}</span></td>`;
+            } else {
+                row += `<td></td>`;
+            }
+        });
+        row += `</tr>`;
+        return row;
+    }).join('');
+
+    const content = `
+        ${header}
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${tableRows}</tbody>
+        </table>
+    `;
+    
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
 }

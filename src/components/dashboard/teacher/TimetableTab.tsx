@@ -1,8 +1,9 @@
+
 'use client';
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Printer, Trash2, Plus, Eraser, BookOpen, Clock, ChevronDown, Settings, X, Save, Users, Bell, Timer, MapPin, Calendar, FolderOpen, Upload, Home } from 'lucide-react';
+import { FileDown, Trash2, Plus, Eraser, BookOpen, Clock, ChevronDown, Settings, X, Save, Users, Bell, Timer, MapPin, Calendar, FolderOpen, Upload, Home } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useDatabase } from '@/hooks/use-database';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { exportTimetableToRtf } from '@/lib/word-export';
 
 
 const DEFAULT_SUBJECTS = [
@@ -111,7 +113,25 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
     }
   };
 
-  const handlePrint = () => window.print();
+  const handleExport = () => {
+    if (!schoolInfo) {
+        toast({ title: "Hata", description: "Okul bilgileri bulunamadı.", variant: "destructive" });
+        return;
+    }
+    if(!schedule || !periods) {
+        toast({ title: "Hata", description: "Program verileri eksik.", variant: "destructive" });
+        return;
+    }
+    exportTimetableToRtf({
+      schedule,
+      periods,
+      days: DAYS,
+      teacherName: schoolInfo.classTeacherName || 'Öğretmen',
+      schoolName: schoolInfo.schoolName,
+      dutyDay: schoolInfo.dutyDay,
+      dutyPlace: schoolInfo.dutyPlace,
+    });
+  };
 
   const openTimeSettings = () => {
     setTempPeriods(JSON.parse(JSON.stringify(periods)));
@@ -236,9 +256,11 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
           <p className="text-gray-500 mt-1">Ders ve Sınıf seçip tabloya tıklayarak yerleştirin.</p>
         </div>
         <div className="flex flex-wrap gap-2 justify-center">
+            <Link href="/" passHref><Button variant="outline" className="flex items-center gap-2"><Home size={18} /> Ana Sayfa</Button></Link>
+           <Button onClick={() => {}} variant="outline" className="flex items-center gap-2" disabled><FolderOpen size={18} />Arşiv / Yükle</Button>
            <Button onClick={openTimeSettings} variant="outline" className="flex items-center gap-2"><Settings size={18} />Saatleri Düzenle</Button>
            <Button onClick={handleClearAll} variant="outline" className="flex items-center gap-2"><Trash2 size={18} />Temizle</Button>
-           <Button onClick={handlePrint} className="flex items-center gap-2"><Printer size={18} />Yazdır / PDF</Button>
+           <Button onClick={handleExport} className="flex items-center gap-2"><FileDown size={18} />RTF İndir</Button>
         </div>
       </header>
 
@@ -292,3 +314,4 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
     </div>
   );
 }
+
