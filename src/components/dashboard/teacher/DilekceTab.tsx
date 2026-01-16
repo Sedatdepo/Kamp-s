@@ -1,10 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { FileDown, FileSignature, PlusCircle, Trash2, Eye, ToggleLeft, ToggleRight, Save } from 'lucide-react';
+import { 
+  Users, 
+  FileText, 
+  Save, 
+  Trash2, 
+  Edit, 
+  Download, 
+  Plus, 
+  CheckSquare, 
+  Square,
+  School,
+  X,
+  Calendar,
+  Search,
+  PlusCircle
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -396,9 +411,11 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
                         <FormItem>
                           <FormLabel>Kapanış İfadesi</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
                               <SelectTrigger>
                                   <SelectValue placeholder="Gereğini arz ederim." />
                               </SelectTrigger>
+                            </FormControl>
                               <SelectContent>
                                   <SelectItem value="Gereğini arz ederim.">Gereğini arz ederim.</SelectItem>
                                   <SelectItem value="Bilgilerinizi arz ederim.">Bilgilerinizi arz ederim.</SelectItem>
@@ -461,4 +478,3 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
     </div>
   );
 }
-    

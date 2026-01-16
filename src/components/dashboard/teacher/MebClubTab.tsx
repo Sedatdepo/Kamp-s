@@ -1,8 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
-import { Home, FileText, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Download, Save, Wand2, Trash2, ArrowDownCircle } from 'lucide-react';
+import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus, FileText } from 'lucide-react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
+
+// UI Imports
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // --- MOCK DATA & UTILS ---
@@ -32,128 +42,9 @@ const SAMPLE_PLANS = {
     ]
 };
 
-// --- UI COMPONENTS ---
-const Button = ({ children, variant = "primary", size = "default", className = "", onClick, asChild, ...props }: any) => {
-  const baseStyle = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
-  
-  const sizes: Record<string, string> = {
-      default: "h-9 px-4 py-2 text-sm",
-      sm: "h-8 px-3 text-xs",
-      icon: "h-9 w-9"
-  };
-
-  const variants: Record<string, string> = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow",
-    secondary: "bg-purple-600 text-white hover:bg-purple-700 shadow",
-    outline: "border border-gray-200 bg-transparent shadow-sm hover:bg-gray-100 text-gray-900",
-    ghost: "hover:bg-gray-100 hover:text-gray-900",
-    destructive: "bg-red-500 text-white hover:bg-red-600 shadow"
-  };
-  
-  const Comp = asChild ? 'span' : 'button';
-  return <Comp className={`${baseStyle} ${sizes[size]} ${variants[variant] || variants.primary} ${className}`} onClick={onClick} {...props}>{children}</Comp>;
-};
-
-const Input = ({ className = "", ...props }: any) => (
-  <input className={`flex h-9 w-full rounded-md border border-gray-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props} />
-);
-
-const Label = ({ children, className = "" }: any) => (
-  <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}>{children}</label>
-);
-
-const Textarea = ({ className = "", ...props }: any) => (
-  <textarea className={`flex min-h-[60px] w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props} />
-);
-
-const Card = ({ children, className = "" }: any) => <div className={`rounded-xl border border-gray-200 bg-white text-gray-950 shadow ${className}`}>{children}</div>;
-const CardHeader = ({ children }: any) => <div className="flex flex-col space-y-1.5 p-6">{children}</div>;
-const CardTitle = ({ children, className = "" }: any) => <h3 className={`font-semibold leading-none tracking-tight ${className}`}>{children}</h3>;
-const CardDescription = ({ children }: any) => <p className="text-sm text-gray-500">{children}</p>;
-const CardContent = ({ children }: any) => <div className="p-6 pt-0">{children}</div>;
-
-// Select Components
-const SelectContext = createContext<any>(null);
-const Select = ({ value, onValueChange, children }: any) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
-      <div className="relative">{children}</div>
-    </SelectContext.Provider>
-  );
-};
-const SelectTrigger = ({ children, className = "" }: any) => {
-  const { setOpen, open } = useContext(SelectContext);
-  return (
-    <button onClick={() => setOpen(!open)} className={`flex h-9 w-full items-center justify-between rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-white placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>
-      {children}
-    </button>
-  );
-};
-const SelectValue = ({ placeholder }: any) => {
-  const { value } = useContext(SelectContext);
-  return <span>{value || placeholder}</span>;
-};
-const SelectContent = ({ children }: any) => {
-  const { open } = useContext(SelectContext);
-  if (!open) return null;
-  return <div className="absolute top-full z-50 mt-1 max-h-96 w-full min-w-[8rem] overflow-hidden rounded-md border border-gray-200 bg-white text-gray-950 shadow-md animate-in fade-in-0 zoom-in-95">{children}</div>;
-};
-const SelectItem = ({ value, children }: any) => {
-  const { onValueChange, setOpen } = useContext(SelectContext);
-  return (
-    <div onClick={() => { onValueChange(value); setOpen(false); }} className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-gray-100 focus:text-gray-900 hover:bg-gray-100 cursor-pointer">
-      <span className="truncate">{children}</span>
-    </div>
-  );
-};
-
-// Dialog Components
-const DialogContext = createContext<any>(null);
-const Dialog = ({ children }: any) => {
-  const [open, setOpen] = useState(false);
-  return <DialogContext.Provider value={{ open, setOpen }}>{children}</DialogContext.Provider>;
-};
-const DialogTrigger = ({ asChild, children }: any) => {
-  const { setOpen } = useContext(DialogContext);
-  const Comp = asChild ? 'div' : 'button';
-  return <Comp onClick={() => setOpen(true)} className="cursor-pointer">{children}</Comp>;
-};
-const DialogContent = ({ children, className = "" }: any) => {
-  const { open, setOpen } = useContext(DialogContext);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className={`relative z-50 grid w-full gap-4 border bg-white p-6 shadow-lg duration-200 sm:rounded-lg ${className}`}>
-        <button onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-gray-100 text-gray-500">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-};
-const DialogHeader = ({ children }: any) => <div className="flex flex-col space-y-1.5 text-center sm:text-left">{children}</div>;
-const DialogFooter = ({ children }: any) => <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">{children}</div>;
-const DialogTitle = ({ children }: any) => <h2 className="text-lg font-semibold leading-none tracking-tight">{children}</h2>;
-const DialogClose = ({ asChild, children }: any) => {
-  const { setOpen } = useContext(DialogContext);
-  const Comp = asChild ? 'div' : 'button';
-  return <Comp onClick={() => setOpen(false)}>{children}</Comp>;
-};
-
-// Table Components
-const Table = ({ children }: any) => <div className="w-full overflow-auto"><table className="w-full caption-bottom text-sm">{children}</table></div>;
-const TableHeader = ({ children }: any) => <thead className="[&_tr]:border-b">{children}</thead>;
-const TableBody = ({ children }: any) => <tbody className="[&_tr:last-child]:border-0">{children}</tbody>;
-const TableRow = ({ children }: any) => <tr className="border-b transition-colors hover:bg-gray-100/50 data-[state=selected]:bg-gray-100">{children}</tr>;
-const TableHead = ({ children }: any) => <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 [&:has([role=checkbox])]:pr-0">{children}</th>;
-const TableCell = ({ children }: any) => <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">{children}</td>;
-
 
 // --- MAIN APPLICATION COMPONENT ---
-const ClubManagementPage = ({ classes, allStudents, teacherProfile }: { classes: Class[], allStudents: Student[], teacherProfile: TeacherProfile | null }) => {
+export default function MebClubTab({ classes, allStudents, teacherProfile }: { classes: Class[], allStudents: Student[], teacherProfile: TeacherProfile | null }) {
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Ana Bilgiler
@@ -357,7 +248,7 @@ const ClubManagementPage = ({ classes, allStudents, teacherProfile }: { classes:
                     <tbody>
             `;
             participationList.forEach((s, i) => {
-                 content += `<tr><td>${i+1}</td><td>${s.name || ''}</td><td>${s.classNo || ''}</td><td></td></tr>`;
+                 content += `<tr><td>${i + 1}</td><td>${s.name || ''}</td><td>${s.classNo || ''}</td><td></td></tr>`;
             });
             content += `</tbody></table>`;
         } else if (modalId === 'modal10') {
@@ -877,5 +768,3 @@ const ClubManagementPage = ({ classes, allStudents, teacherProfile }: { classes:
         </div>
     );
 };
-
-export default ClubManagementPage;

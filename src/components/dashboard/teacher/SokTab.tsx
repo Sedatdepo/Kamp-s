@@ -17,57 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
-
-
-// --- MOCK DATA & CONSTANTS (ŞÖK İÇİN) ---
-const SOK_GUNDEM_MADDELERI = [
-  "Açılış ve yoklama",
-  "Bir önceki toplantı tutanaklarının okunması",
-  "Öğrencilerin başarı durumlarının değerlendirilmesi",
-  "Öğrencilerin davranış durumlarının değerlendirilmesi",
-  "Sosyal etkinliklerin planlanması",
-  "Dilek ve temenniler",
-  "Kapanış"
-];
-
-const SOK_VARSAYILAN_KARARLAR = [
-  "1. Toplantı Kurul Başkanı tarafından iyi dileklerle açıldı.",
-  "2. Bir önceki toplantıda alınan kararların uygulandığı görüldü.",
-  "3. Başarısı düşük öğrencilerin velileriyle görüşülmesi kararlaştırıldı.",
-  "4. Sınıf içi olumlu davranışların ödüllendirilmesine devam edileceği belirtildi."
-];
-
-const SOK_SENARYOLARI = [
-  {
-    agenda: "Açılış ve yoklama",
-    scenarios: [
-      { description: "Standart Açılış", content: "Toplantı, Müdür Yardımcısı {mudurYardimcisi} başkanlığında, Sınıf Rehber Öğretmeni {sinifRehberOgretmeni} ve ders öğretmenlerinin katılımıyla açıldı." },
-      { description: "Eksiksiz Katılım", content: "Toplantı belirtilen saatte başladı. Yapılan yoklamada tüm ders öğretmenlerinin hazır bulunduğu görüldü." }
-    ]
-  },
-  {
-    agenda: "Öğrencilerin başarı durumlarının değerlendirilmesi",
-    scenarios: [
-      { description: "Genel Başarı İyi", content: "Sınıfın genel başarı durumunun iyi olduğu, derslere katılımın yüksek olduğu branş öğretmenleri tarafından belirtildi." },
-      { description: "Desteğe İhtiyaç Var", content: "Bazı öğrencilerin temel eksiklikleri olduğu, bu öğrencilerle birebir ilgilenilmesi gerektiği vurgulandı." }
-    ]
-  }
-];
-
-const SMART_CONTENT_POOL: Record<string, string[]> = {
-  "açılış": ["Toplantı iyi dileklerle açıldı.", "Yoklama yapıldı, eksik bulunmadığı görüldü."],
-  "başarı": ["Genel not ortalamasının sınıf seviyesine uygun olduğu görüldü.", "Sayısal derslerde başarının artırılması için ek çalışmalar yapılması önerildi."],
-  "davranış": ["Sınıf genelinde disiplin sorunu yaşanmadığı belirtildi.", "Derse geç kalma alışkanlığı olan öğrencilerle görüşülmesi kararlaştırıldı."],
-  "sosyal": ["Sınıfça müze gezisi düzenlenmesi önerildi.", "Okul içi turnuvalara katılım sağlanması kararlaştırıldı."],
-  "default": ["Gündem maddesi üzerinde görüşüldü ve oy birliği ile karara bağlandı.", "İlgili yönetmelik maddeleri okundu."]
-};
-
-const VARSAYILAN_BRANSLAR = [
-    "Sınıf Rehber Öğretmeni", "Okul Rehber Öğretmeni", "Türk Dili ve Edebiyatı",
-    "Din Kültürü ve Ahlak Bilgisi", "Tarih", "Coğrafya", "Matematik", "Fizik",
-    "Kimya", "Biyoloji", "Felsefe", "Beden Eğitimi", "Görsel / Müzik",
-    "İngilizce", "Müdür Yardımcısı"
-];
+import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 
 // --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
@@ -97,6 +47,30 @@ interface ArchivedDocument {
     data: FormData;
 }
 
+const VARSAYILAN_BRANSLAR = [
+    "Sınıf Rehber Öğretmeni", "Okul Rehber Öğretmeni", "Türk Dili ve Edebiyatı",
+    "Din Kültürü ve Ahlak Bilgisi", "Tarih", "Coğrafya", "Matematik", "Fizik",
+    "Kimya", "Biyoloji", "Felsefe", "Beden Eğitimi", "Görsel / Müzik",
+    "İngilizce", "Müdür Yardımcısı"
+];
+
+const SOK_GUNDEM_MADDELERI = [
+    "Açılış ve yoklama",
+    "Bir önceki toplantı tutanaklarının okunması",
+    "Öğrencilerin başarı durumlarının değerlendirilmesi",
+    "Öğrencilerin davranış durumlarının değerlendirilmesi",
+    "Sosyal etkinliklerin planlanması",
+    "Dilek ve temenniler",
+    "Kapanış"
+  ];
+  
+const SOK_VARSAYILAN_KARARLAR = [
+    "1. Toplantı Kurul Başkanı tarafından iyi dileklerle açıldı.",
+    "2. Bir önceki toplantıda alınan kararların uygulandığı görüldü.",
+    "3. Başarısı düşük öğrencilerin velileriyle görüşülmesi kararlaştırıldı.",
+    "4. Sınıf içi olumlu davranışların ödüllendirilmesine devam edileceği belirtildi."
+];
+
 const defaultValues: FormData = {
     academicYear: '2025-2026',
     donem: "1. Dönem",
@@ -116,13 +90,13 @@ export default function SokTab() {
     // --- STATE MANAGEMENT ---
     const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
     
-    // Helper function for toast notifications
     const toast = ({ title, description, variant = "default" }: any) => {
         const id = Date.now();
         setUiToasts(prev => [...prev, { id, title, description, variant }]);
         setTimeout(() => setUiToasts(prev => prev.filter(t => t.id !== id)), 3000);
     };
 
+    const [isGenerating, setIsGenerating] = useState<number | null>(null);
     const [isGeneratingDecisions, setIsGeneratingDecisions] = useState(false);
     const [activeGundemIndex, setActiveGundemIndex] = useState<number | null>(null);
     const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
@@ -148,7 +122,6 @@ export default function SokTab() {
     // Drag & Drop Refs
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
-    const [isGenerating, setIsGenerating] = useState<number | null>(null);
 
 
     const form = useForm<FormData>({
@@ -156,23 +129,19 @@ export default function SokTab() {
         defaultValues,
     });
 
-    const { fields: katilimciFields, append: appendKatilimci, remove: removeKatilimci } = useFieldArray({ control: form.control, name: "katilimcilar" });
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
     const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
     // --- EFFECTS: LOCAL STORAGE HANDLING ---
     useEffect(() => {
-        // Load Temp Data
         const savedTempData = localStorage.getItem("sok_temp_data");
         if (savedTempData) {
             try { form.reset(JSON.parse(savedTempData)); } catch (e) { console.error(e); }
         }
-        // Load Archives
         const savedArchives = localStorage.getItem("sok_archives");
         if (savedArchives) {
             try { setArchives(JSON.parse(savedArchives)); } catch (e) { console.error(e); }
         }
-        // Load Libraries
         const savedAgendas = localStorage.getItem("sok_custom_agendas");
         if (savedAgendas) setCustomAgendas(JSON.parse(savedAgendas));
         const savedTemplates = localStorage.getItem("sok_custom_templates");
@@ -187,14 +156,6 @@ export default function SokTab() {
     }, [form]);
 
     // --- BUSINESS LOGIC ---
-
-    const formatContent = (content: string) => {
-        const formData = form.getValues();
-        let text = content
-            .replace(/{sinifRehberOgretmeni}/g, formData.sinifRehberOgretmeni || 'Sınıf Rehber Öğretmeni')
-            .replace(/{mudurYardimcisi}/g, formData.mudurYardimcisi || 'Müdür Yardımcısı');
-        return text;
-    };
 
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
@@ -223,105 +184,6 @@ export default function SokTab() {
     };
     
 
-    // KÜTÜPHANE YÖNETİMİ
-    const saveAgendaToLibrary = (index: number) => {
-        const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
-        const agendaContent = form.getValues(`gorusmeler.${index}.detay`).trim();
-
-        if (!agendaTitle) return;
-
-        let isTitleNew = false;
-        let isContentNew = false;
-
-        // Başlığı Kaydet
-        if (![...SOK_GUNDEM_MADDELERI, ...customAgendas].some(a => a.toLowerCase() === agendaTitle.toLowerCase())) {
-            const newAgendas = [...customAgendas, agendaTitle];
-            setCustomAgendas(newAgendas);
-            localStorage.setItem("sok_custom_agendas", JSON.stringify(newAgendas));
-            isTitleNew = true;
-        }
-
-        // İçeriği Kaydet
-        if (agendaContent.length > 5) {
-            const currentTemplates = customTemplates[agendaTitle] || [];
-            if (!currentTemplates.includes(agendaContent)) {
-                const updatedTemplates = { ...customTemplates, [agendaTitle]: [...currentTemplates, agendaContent] };
-                setCustomTemplates(updatedTemplates);
-                localStorage.setItem("sok_custom_templates", JSON.stringify(updatedTemplates));
-                isContentNew = true;
-            }
-        }
-
-        if (isTitleNew || isContentNew) {
-            toast({ title: "Kaydedildi", description: "Kütüphaneye eklendi.", variant: "success" });
-        } else {
-            toast({ title: "Mevcut", description: "Bu içerik zaten kütüphanede var." });
-        }
-    };
-
-    // DELETE & UPDATE HANDLERS FOR LIBRARY
-    const handleDeleteAgenda = (key: string) => {
-        if (!confirm("Başlığı ve tüm şablonlarını silmek istiyor musunuz?")) return;
-        const newAgendas = customAgendas.filter(a => a !== key);
-        setCustomAgendas(newAgendas);
-        localStorage.setItem("sok_custom_agendas", JSON.stringify(newAgendas));
-        
-        const newTemplates = { ...customTemplates };
-        delete newTemplates[key];
-        setCustomTemplates(newTemplates);
-        localStorage.setItem("sok_custom_templates", JSON.stringify(newTemplates));
-        toast({ title: "Silindi", description: "Başlık silindi." });
-    };
-
-    const handleUpdateAgenda = (oldKey: string) => {
-        if (!editingItem || !editingItem.value.trim()) return;
-        const newKey = editingItem.value.trim();
-        if (oldKey === newKey) { setEditingItem(null); return; }
-
-        const newAgendas = customAgendas.map(a => a === oldKey ? newKey : a);
-        setCustomAgendas(newAgendas);
-        localStorage.setItem("sok_custom_agendas", JSON.stringify(newAgendas));
-
-        if (customTemplates[oldKey]) {
-            const newTemplates = { ...customTemplates };
-            newTemplates[newKey] = newTemplates[oldKey];
-            delete newTemplates[oldKey];
-            setCustomTemplates(newTemplates);
-            localStorage.setItem("sok_custom_templates", JSON.stringify(newTemplates));
-        }
-        setEditingItem(null);
-        toast({ title: "Güncellendi", variant: "success" });
-    };
-
-    const handleDeleteTemplate = (key: string, index: number) => {
-        if (!confirm("Şablonu silmek istiyor musunuz?")) return;
-        const updatedTemplates = {
-            ...customTemplates,
-            [key]: customTemplates[key].filter((_, i) => i !== index)
-        };
-        setCustomTemplates(updatedTemplates);
-        localStorage.setItem("sok_custom_templates", JSON.stringify(updatedTemplates));
-        toast({ title: "Silindi", description: "Şablon silindi." });
-    };
-
-    const handleUpdateTemplate = (key: string, index: number) => {
-        if (!editingItem || !editingItem.value.trim()) return;
-        const updatedTemplates = {
-            ...customTemplates,
-            [key]: customTemplates[key].map((t, i) => i === index ? editingItem.value.trim() : t)
-        };
-        setCustomTemplates(updatedTemplates);
-        localStorage.setItem("sok_custom_templates", JSON.stringify(updatedTemplates));
-        setEditingItem(null);
-        toast({ title: "Güncellendi", variant: "success" });
-    };
-    const addAgendaFromLibrary = (text: string) => {
-        appendGundem({ madde: text });
-        appendGorusme({ detay: '' });
-        setIsAgendaLibraryOpen(false);
-        toast({ title: "Eklendi", description: "Madde listeye eklendi." });
-    };
-
     // ARCHIVE HANDLERS
     const openSaveDialog = () => {
         const vals = form.getValues();
@@ -346,40 +208,18 @@ export default function SokTab() {
         setIsSaveDialogOpen(false);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
-
-    // VOICE
-    const toggleListening = (index: number, fieldType: 'madde' | 'detay') => {
-        const currentId = `${fieldType}-${index}`;
-        if (listeningId === currentId) { recognitionRef.current?.stop(); setListeningId(null); return; }
-
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) { alert("Tarayıcınız desteklemiyor."); return; }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'tr-TR';
-        recognition.onstart = () => setListeningId(currentId);
-        recognition.onresult = (e: any) => {
-            const txt = e.results[0][0].transcript;
-            const path = fieldType === 'madde' ? `gundemMaddeleri.${index}.madde` : `gorusmeler.${index}.detay`;
-            // @ts-ignore
-            const current = form.getValues(path) || "";
-            // @ts-ignore
-            form.setValue(path, current ? `${current} ${txt}` : txt, { shouldDirty: true });
-        };
-        recognition.onend = () => setListeningId(null);
-        recognitionRef.current = recognition;
-        recognition.start();
+    
+    
+    // DRAG & DROP
+    const handleSortEnd = () => {
+        if(draggedItem.current !== null && draggedOverItem.current !== null) {
+             moveGundem(draggedItem.current, draggedOverItem.current);
+             moveGorusme(draggedItem.current, draggedOverItem.current);
+        }
+        draggedItem.current = null; draggedOverItem.current = null;
     };
-
-    const generateDecisionsWithAI = async () => {
-        setIsGeneratingDecisions(true);
-        setTimeout(() => {
-            form.setValue('kararlar', SOK_VARSAYILAN_KARARLAR.join('\n'), { shouldDirty: true });
-            setIsGeneratingDecisions(false);
-            toast({ title: "Tamamlandı", description: "Kararlar listeye eklendi.", variant: "success" });
-        }, 500);
-    };
-
+    
+    // DOCUMENT GENERATION
     const generateDocumentHTML = (data: FormData) => {
         const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
@@ -420,7 +260,15 @@ export default function SokTab() {
 
     const handleExport = () => {
         const content = generateDocumentHTML(form.getValues());
-        downloadDoc(content, `SOK_Tutanagi_${form.getValues('sinif')}.doc`);
+        const filename = `SOK_Tutanagi_${form.getValues('sinif')}.doc`;
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
 
@@ -440,41 +288,17 @@ export default function SokTab() {
         setIsPreviewOpen(true);
     };
 
-    const downloadDoc = (content: string, filename: string) => {
-        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const generateDecisionsWithAI = async () => {
+        setIsGeneratingDecisions(true);
+        setTimeout(() => {
+            form.setValue('kararlar', SOK_VARSAYILAN_KARARLAR.join('\n'), { shouldDirty: true });
+            setIsGeneratingDecisions(false);
+            toast({ title: "Tamamlandı", description: "Kararlar listeye eklendi.", variant: "success" });
+        }, 500);
     };
 
-    const handleSortEnd = () => {
-        if(draggedItem.current !== null && draggedOverItem.current !== null) {
-             moveGundem(draggedItem.current, draggedOverItem.current);
-             moveGorusme(draggedItem.current, draggedOverItem.current);
-        }
-        draggedItem.current = null; draggedOverItem.current = null;
-    };
-    // Helper for Scenarios
-    const getScenarios = () => {
-        if (activeGundemIndex === null) return [];
-        
-        const currentAgenda = form.getValues(`gundemMaddeleri.${activeGundemIndex}.madde`).trim();
-        
-        const systemScenarios = SENARYOLAR[currentAgenda] || [];
-        const userTemplates = customTemplates[currentAgenda] || [];
-        
-        return [
-            ...userTemplates.map((c, i) => ({ description: `Özel Şablon ${i + 1}`, content: c })),
-            ...systemScenarios.map(s => ({ description: s, content: formatContent(s) }))
-        ];
-    };
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
-            
             {/* TOASTS */}
             <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
                 {uiToasts.map(t => (
@@ -534,11 +358,9 @@ export default function SokTab() {
                                         </div>
                                         <div className="pl-8 relative">
                                             <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
-                                        </div>
-                                        <div className="flex justify-end gap-2 pl-8">
-                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index}>
+                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
                                                 {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
-                                                Yapay Zeka ile Doldur
+                                                Doldur
                                             </Button>
                                         </div>
                                     </div>
