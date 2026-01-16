@@ -1,11 +1,12 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, updateDoc, collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,11 +15,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, Eye, FileDown } from 'lucide-react';
+import { CalendarIcon, Loader2, Eye, FileDown, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useDoc, useMemoFirebase } from '@/firebase';
+import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { Class, InfoForm, TeacherProfile } from '@/lib/types';
 import { Dialog, DialogClose, DialogFooter, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -93,6 +94,16 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
         return String(value);
     };
 
+    const renderField = (field: any) => {
+        const displayValue = renderFieldValue(form ? (form as any)[field.name] : null);
+        return (
+            <div key={field.name} className="py-2 border-b">
+                <p className="text-xs font-semibold text-muted-foreground">{field.label}</p>
+                <p className="text-sm">{String(displayValue)}</p>
+            </div>
+        );
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl">
@@ -102,16 +113,11 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
                 <ScrollArea className="max-h-[70vh] pr-4 mt-4">
                     {form ? (
                         <div className="space-y-6">
-                            {formQuestions.map((section, i) => (
-                                <div key={i}>
+                            {formQuestions.map((section) => (
+                                <div key={section.section}>
                                     <h3 className="font-bold text-lg border-b pb-2 mb-3">{section.section}</h3>
-                                    <div className="space-y-4">
-                                        {section.fields.map(field => (
-                                            <div key={field.name} className="grid grid-cols-3 gap-4 text-sm">
-                                                <p className="font-semibold text-muted-foreground col-span-1">{field.label}</p>
-                                                <p className="col-span-2">{renderFieldValue((form as any)[field.name])}</p>
-                                            </div>
-                                        ))}
+                                    <div className="space-y-2">
+                                        {section.fields.map(field => renderField(field))}
                                     </div>
                                 </div>
                             ))}
