@@ -96,12 +96,10 @@ export default function ZumreTab() {
 
     // --- EFFECTS: LOCAL STORAGE HANDLING ---
     useEffect(() => {
-        // Load Temp Data
         const savedTempData = localStorage.getItem("zumre_temp_data");
         if (savedTempData) {
             try { form.reset(JSON.parse(savedTempData)); } catch (e) { console.error(e); }
         }
-        // Load Archives
         const savedArchives = localStorage.getItem("zumre_archives");
         if (savedArchives) {
             try { setArchives(JSON.parse(savedArchives)); } catch (e) { console.error(e); }
@@ -167,6 +165,7 @@ export default function ZumreTab() {
         setIsSaveDialogOpen(false);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
+    
     
     // DRAG & DROP
     const draggedItem = useRef<number | null>(null);
@@ -276,9 +275,7 @@ export default function ZumreTab() {
                                     </div>
                                     <div className="pl-8 relative">
                                         <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
-                                    </div>
-                                    <div className="flex justify-end gap-2 pl-8">
-                                        <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index}>
+                                        <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
                                             {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
                                             Yapay Zeka ile Doldur
                                         </Button>
@@ -289,9 +286,7 @@ export default function ZumreTab() {
                         </CardContent>
                     </Card>
                      <Card>
-                        <CardHeader className="flex flex-row justify-between">
-                            <CardTitle>Alınan Kararlar</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Alınan Kararlar</CardTitle></CardHeader>
                         <CardContent>
                             <Textarea {...form.register('kararlar')} rows={6} className="font-mono text-sm" />
                         </CardContent>

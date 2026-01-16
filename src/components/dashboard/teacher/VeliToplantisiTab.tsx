@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -102,7 +101,6 @@ export default function VeliToplantisiTab() {
         defaultValues,
     });
 
-    const { fields: katilimciFields, append: appendKatilimci, remove: removeKatilimci } = useFieldArray({ control: form.control, name: "katilimcilar" });
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
     const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
@@ -261,6 +259,7 @@ export default function VeliToplantisiTab() {
     
     return (
       <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
+        {/* HEADER */}
         <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
             <div className="flex items-center gap-3">
                 <div className="bg-green-100 p-2 rounded-lg text-green-700"><Users className="h-6 w-6" /></div>
@@ -293,9 +292,11 @@ export default function VeliToplantisiTab() {
                         <CardHeader><CardTitle>Gündem ve Görüşmeler</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
                             {gundemFields.map((item, index) => (
-                                <div key={item.id} className="space-y-4 border p-4 rounded-lg bg-white">
+                                 <div key={item.id} className={`space-y-4 border p-4 rounded-lg bg-white transition-all ${draggedItem.current === index ? 'opacity-50' : ''}`} draggable onDragStart={() => (draggedItem.current = index)} onDragEnter={() => (draggedOverItem.current = index)} onDragEnd={handleSortEnd} onDragOver={(e) => e.preventDefault()}>
                                     <div className="flex items-center gap-2">
+                                        <GripVertical className="cursor-grab text-slate-300" />
                                         <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold" />
+                                        <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                     </div>
                                     <div className="pl-8 relative">
                                         <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
@@ -305,6 +306,7 @@ export default function VeliToplantisiTab() {
                                     </div>
                                 </div>
                             ))}
+                            <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                         </CardContent>
                     </Card>
                      <Card>

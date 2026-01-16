@@ -464,12 +464,12 @@ export default function SokTab() {
         
         const currentAgenda = form.getValues(`gundemMaddeleri.${activeGundemIndex}.madde`).trim();
         
-        const systemScenarios = SOK_SENARYOLARI.find(s => s.agenda.toLowerCase() === currentAgenda.toLowerCase())?.scenarios || [];
+        const systemScenarios = SENARYOLAR[currentAgenda] || [];
         const userTemplates = customTemplates[currentAgenda] || [];
         
         return [
             ...userTemplates.map((c, i) => ({ description: `Özel Şablon ${i + 1}`, content: c })),
-            ...systemScenarios.map(s => ({ description: s.description, content: formatContent(s.content) }))
+            ...systemScenarios.map(s => ({ description: s, content: formatContent(s) }))
         ];
     };
     return (
