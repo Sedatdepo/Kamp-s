@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord, StudentInfoFormData } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -83,10 +83,10 @@ const generateReportHeader = (
 }
 
 const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
-    const config = teacherProfile?.reportConfig;
     const teacher = teacherProfile?.name || "...........................";
     const principal = teacherProfile?.principalName || "...........................";
-    const date = config?.date || new Date().toLocaleDateString('tr-TR');
+    const guidanceCounselor = teacherProfile?.guidanceCounselorName || "...........................";
+    const date = new Date().toLocaleDateString('tr-TR');
 
     return `
         <br><br><br>
@@ -95,12 +95,12 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
                 <td class="no-border center" style="width:50%;">
                     <br/><br/>
                     <span class="bold">${teacher}</span><br/>
-                    Ders Öğretmeni
+                    Sınıf Rehber Öğretmeni
                 </td>
                 <td class="no-border center" style="width:50%;">
                     <br/><br/>
-                    <span class="bold">${teacherProfile?.departmentHeadName || '...........................'}</span><br/>
-                    Zümre Başkanı
+                    <span class="bold">${guidanceCounselor}</span><br/>
+                    Okul Rehber Öğretmeni
                 </td>
             </tr>
             <tr>
@@ -157,20 +157,20 @@ export function exportGuidanceReferralToRtf({ record, teacherProfile }: ExportGu
                 <tr><td style="border:1px solid black; padding: 5px; height: 80px;">${record.studiesDone || ''}</td></tr>
             </table>
 
-            <table class="no-border" style="width:100%; margin-top: 40px;">
-                <tr>
-                    <td class="no-border" style="width:50%; vertical-align: bottom; text-align:center;">
+             <table class="no-border" style="width:100%; margin-top: 40px; border:none;">
+                <tr style="border:none;">
+                    <td class="no-border" style="width:50%; vertical-align: top; text-align:center;">
                         <p style="margin: 0; padding: 0;"><b>Yönlendiren</b></p>
                         <p style="margin: 0; padding: 0;"><b>Ad-Soyad:</b> ${record.referrerName}</p>
                         <p style="margin: 0; padding: 0;"><b>Unvan:</b> ${record.referrerTitle}</p>
                         <p style="margin: 0; padding: 0; margin-top: 20px;"><b>İmza:</b></p>
                     </td>
-                    <td class="no-border" style="width:50%; vertical-align: bottom; text-align:center;">
+                    <td class="no-border" style="width:50%; vertical-align: top; text-align:center;">
                         <p style="margin: 0; padding: 0;"><b>Okul Rehber Öğretmeni</b></p>
                         <p style="margin: 0; padding: 0;">${teacherProfile?.guidanceCounselorName || '....................'}</p>
                     </td>
                 </tr>
-                 <tr>
+                 <tr style="border:none;">
                     <td colspan="2" class="no-border" style="text-align: center; padding-top: 40px;">
                         <p style="margin:0;">Uygundur</p>
                         <p style="margin:0;">${new Date(record.date).toLocaleDateString('tr-TR')}</p>
@@ -203,7 +203,7 @@ export function exportObservationFormToRtf({ record, teacherProfile, currentClas
         <div style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.4;">
             <div style="text-align:center;">
                 <p style="margin:0; font-weight: bold; font-size: 10pt;">T.C.</p>
-                <p style="margin:0; font-weight: bold; font-size: 12pt;">${teacherProfile?.reportConfig?.schoolName?.toLocaleUpperCase('tr-TR') || schoolName.toLocaleUpperCase('tr-TR')}</p>
+                <p style="margin:0; font-weight: bold; font-size: 12pt;">${teacherProfile?.schoolName?.toLocaleUpperCase('tr-TR') || schoolName.toLocaleUpperCase('tr-TR')}</p>
                 <p style="margin:0; font-weight: bold; font-size: 12pt;">${teacherProfile?.reportConfig?.academicYear || '20...-20...'} EĞİTİM ÖĞRETİM YILI</p>
                 <h1 style="font-size: 14pt; font-weight: bold; margin-top: 15px;">${title}</h1>
             </div>
@@ -235,6 +235,79 @@ export function exportObservationFormToRtf({ record, teacherProfile, currentClas
     `;
 
     const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
+}
+
+// --- STUDENT INFO FORM EXPORT ---
+export function exportStudentInfoFormToRtf({ record, teacherProfile }: { record: StudentInfoFormData, teacherProfile: TeacherProfile | null }) {
+    const title = "ÖĞRENCİ BİLGİ FORMU";
+    const filename = `Ogrenci_Bilgi_Formu_${record.studentName.replace(/ /g, '_')}.rtf`;
+    const schoolName = teacherProfile?.schoolName || "..................";
+
+    let htmlContent = `
+        <div style="text-align: center;">
+            <h2 style="font-size: 14pt; font-weight: bold;">${schoolName.toUpperCase()}</h2>
+            <h3 style="font-size: 12pt; font-weight: bold;">ÖĞRENCİ BİLGİ FORMU</h3>
+            <p style="text-align: right;">Tarih: ${record.formDate || new Date().toLocaleDateString('tr-TR')}</p>
+        </div>
+    `;
+
+    const addSection = (title: string, fields: { label: string; value: string; }[]) => {
+        htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">${title}</h4>`;
+        htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">`;
+        fields.forEach(field => {
+            htmlContent += `<tr><td style="width:40%; padding:5px; font-weight:bold;">${field.label}</td><td style="padding:5px;">${field.value || ''}</td></tr>`;
+        });
+        htmlContent += `</table><br/>`;
+    };
+    
+    addSection("ÖĞRENCİ BİLGİSİ", [
+        { label: 'Adı Soyadı', value: record.studentName },
+        { label: 'Cinsiyeti', value: record.studentGender },
+        { label: 'Sınıfı ve Numarası', value: record.studentClassAndNumber },
+        { label: 'Doğum Yeri ve Tarihi', value: record.studentBirthPlaceAndDate },
+        { label: 'Okulu', value: record.studentSchool },
+        { label: 'Adresi', value: (record.studentAddress || '').replace(/\n/g, '<br/>') },
+        { label: 'Okul öncesi eğitim aldınız mı?', value: record.studentPreschool },
+        { label: 'Sürekli ilaç/tıbbi cihaz var mı?', value: record.studentHealthDevice },
+        { label: 'Ne yapmaktan hoşlanırsınız?', value: record.studentHobbies },
+        { label: 'Sürekli bir hastalığınız var mı?', value: record.studentChronicIllness },
+        { label: 'Yakın zamanda taşındınız mı, okul değiştirdiniz mi?', value: record.studentRecentMove },
+        { label: 'Ders dışı faaliyetleriniz nelerdir?', value: record.studentExtracurricular },
+        { label: 'Kendinize ait teknolojik aletleriniz var mı? Varsa günde/haftada ne kadar süre kullanırsınız?', value: record.studentTechUsage },
+        { label: 'Hala etkisi altında olduğunuz bir olay yaşadınız mı? Yaşantınızı açıklayınız.', value: record.studentMemorableEvent }
+    ]);
+
+    addSection("VELİ BİLGİSİ (Öğrenciyle ilgili işlemlerden birinci derecede sorumlu kişi)", [
+        { label: 'Yakınlığı', value: record.guardianKinship },
+        { label: 'Telefon Numarası', value: record.guardianPhone },
+        { label: 'Eğitim Durumu', value: record.guardianEducation },
+        { label: 'Mesleği', value: record.guardianOccupation },
+    ]);
+    
+     htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">ANNE ve BABA BİLGİLERİ</h4>`;
+     htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">
+                        <thead><tr><th></th><th style="padding:5px;">Anne</th><th style="padding:5px;">Baba</th></tr></thead>
+                        <tbody>
+                            <tr><td style="padding:5px; font-weight:bold;">Adı Soyadı</td><td style="padding:5px;">${record.motherName || ''}</td><td style="padding:5px;">${record.fatherName || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Doğum Yeri / Tarihi</td><td style="padding:5px;">${record.motherBirthPlaceAndDate || ''}</td><td style="padding:5px;">${record.fatherBirthPlaceAndDate || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Öz mü?</td><td style="padding:5px;">${record.motherIsAlive || ''}</td><td style="padding:5px;">${record.fatherIsAlive || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Sağ mı?</td><td style="padding:5px;">${record.motherIsHealthy || ''}</td><td style="padding:5px;">${record.fatherIsHealthy || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Engel durumu</td><td style="padding:5px;">${record.motherHasDisability || ''}</td><td style="padding:5px;">${record.fatherHasDisability || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Eğitim Durumu</td><td style="padding:5px;">${record.motherEducation || ''}</td><td style="padding:5px;">${record.fatherEducation || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Mesleği</td><td style="padding:5px;">${record.motherOccupation || ''}</td><td style="padding:5px;">${record.fatherOccupation || ''}</td></tr>
+                        </tbody>
+                     </table><br/>`;
+
+    addSection("AİLE BİLGİSİ", [
+        { label: 'Kaç kardeşsiniz?', value: record.siblingCount },
+        { label: 'Ailenizin kaçıncı çocuğusunuz?', value: record.birthOrder },
+        { label: 'Evde kimler yaşıyor?', value: record.familyLivesWith },
+        { label: 'Ailede engelli/sürekli hasta var mı?', value: record.familyMemberWithDisability },
+        { label: 'Ekonomik sorunlar yaşanır mı?', value: record.familyFinancialIssues },
+    ]);
+    
+    const finalHtml = generateHtmlShell(htmlContent, title);
     downloadRtf(finalHtml, filename);
 }
 
@@ -878,42 +951,78 @@ export function exportInfoFormsStatusToRtf({ students, infoForms, currentClass, 
 }
 
 // --- STUDENT INFO FORM EXPORT ---
-export function exportStudentInfoToRtf(student: Student, infoForm: InfoForm, teacher: TeacherProfile) {
-    const content = `
-        <div class="center">
-            <p class="bold">ÖĞRENCİ BİLGİ FORMU</p>
+export function exportStudentInfoFormToRtf({ record, teacherProfile }: { record: StudentInfoFormData, teacherProfile: TeacherProfile | null }) {
+    const title = "ÖĞRENCİ BİLGİ FORMU";
+    const filename = `Ogrenci_Bilgi_Formu_${record.studentName.replace(/ /g, '_')}.rtf`;
+    const schoolName = teacherProfile?.schoolName || "..................";
+    
+    let htmlContent = `
+        <div style="text-align: center;">
+            <h2 style="font-size: 14pt; font-weight: bold;">${schoolName.toUpperCase()}</h2>
+            <h3 style="font-size: 12pt; font-weight: bold;">ÖĞRENCİ BİLGİ FORMU</h3>
+            <p style="text-align: right;">Tarih: ${record.formDate || new Date().toLocaleDateString('tr-TR')}</p>
         </div>
-        <p><b>Okul:</b> ${teacher.schoolName}</p>
-        <p><b>Öğretmen:</b> ${teacher.name}</p>
-        <p><b>Öğrenci:</b> ${student.name} (#${student.number})</p>
-        <br>
-        <h3>KİŞİSEL BİLGİLER</h3>
-        <table>
-            <tr><td style="width: 30%;">Doğum Tarihi</td><td>${infoForm.birthDate ? format(infoForm.birthDate.toDate(), 'dd.MM.yyyy') : 'N/A'}</td></tr>
-            <tr><td>Doğum Yeri</td><td>${infoForm.birthPlace || 'N/A'}</td></tr>
-            <tr><td>Adres</td><td>${infoForm.address || 'N/A'}</td></tr>
-            <tr><td>Sürekli Hastalığı / Alerjisi</td><td>${infoForm.healthIssues || 'Yok'}</td></tr>
-            <tr><td>İlgi Alanları / Hobileri</td><td>${infoForm.hobbies || 'N/A'}</td></tr>
-            <tr><td>Günlük Teknoloji Kullanımı</td><td>${infoForm.techUsage || 'N/A'}</td></tr>
-        </table>
-        <br>
-        <h3>VELİ BİLGİLERİ</h3>
-        <table>
-            <tr><td style="width: 30%;">Anne Durumu</td><td>${infoForm.motherStatus || 'N/A'}</td></tr>
-            <tr><td>Anne Eğitim / Meslek</td><td>${(infoForm.motherEducation || 'N/A') + ' / ' + (infoForm.motherJob || 'N/A')}</td></tr>
-            <tr><td>Baba Durumu</td><td>${infoForm.fatherStatus || 'N/A'}</td></tr>
-            <tr><td>Baba Eğitim / Meslek</td><td>${(infoForm.fatherEducation || 'N/A') + ' / ' + (infoForm.fatherJob || 'N/A')}</td></tr>
-        </table>
-        <br>
-        <h3>AİLE BİLGİLERİ</h3>
-        <table>
-            <tr><td style="width: 30%;">Kardeş Sayısı / Bilgileri</td><td>${infoForm.siblingsInfo || 'N/A'}</td></tr>
-            <tr><td>Ailenin Ekonomik Durumu</td><td>${infoForm.economicStatus || 'N/A'}</td></tr>
-        </table>
     `;
-    const finalHtml = generateHtmlShell(content, "Öğrenci Bilgi Formu");
-    downloadRtf(finalHtml, `${student.name.replace(/ /g, '_')}_Bilgi_Formu.rtf`);
+
+    const addSection = (title: string, fields: { label: string; value: string; }[]) => {
+        htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">${title}</h4>`;
+        htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">`;
+        fields.forEach(field => {
+            htmlContent += `<tr><td style="width:40%; padding:5px; font-weight:bold;">${field.label}</td><td style="padding:5px;">${field.value || ''}</td></tr>`;
+        });
+        htmlContent += `</table><br/>`;
+    };
+    
+    addSection("ÖĞRENCİ BİLGİSİ", [
+        { label: 'Adı Soyadı', value: record.studentName },
+        { label: 'Cinsiyeti', value: record.studentGender },
+        { label: 'Sınıfı ve Numarası', value: record.studentClassAndNumber },
+        { label: 'Doğum Yeri ve Tarihi', value: record.studentBirthPlaceAndDate },
+        { label: 'Okulu', value: record.studentSchool },
+        { label: 'Adresi', value: (record.studentAddress || '').replace(/\n/g, '<br/>') },
+        { label: 'Okul öncesi eğitim aldınız mı?', value: record.studentPreschool },
+        { label: 'Sürekli ilaç/tıbbi cihaz var mı?', value: record.studentHealthDevice },
+        { label: 'Ne yapmaktan hoşlanırsınız?', value: record.studentHobbies },
+        { label: 'Sürekli bir hastalığınız var mı?', value: record.studentChronicIllness },
+        { label: 'Yakın zamanda taşındınız mı, okul değiştirdiniz mi?', value: record.studentRecentMove },
+        { label: 'Ders dışı faaliyetleriniz nelerdir?', value: record.studentExtracurricular },
+        { label: 'Kendinize ait teknolojik aletleriniz var mı? Varsa günde/haftada ne kadar süre kullanırsınız?', value: record.studentTechUsage },
+        { label: 'Hala etkisi altında olduğunuz bir olay yaşadınız mı? Yaşantınızı açıklayınız.', value: record.studentMemorableEvent }
+    ]);
+
+    addSection("VELİ BİLGİSİ (Öğrenciyle ilgili işlemlerden birinci derecede sorumlu kişi)", [
+        { label: 'Yakınlığı', value: record.guardianKinship },
+        { label: 'Telefon Numarası', value: record.guardianPhone },
+        { label: 'Eğitim Durumu', value: record.guardianEducation },
+        { label: 'Mesleği', value: record.guardianOccupation },
+    ]);
+    
+     htmlContent += `<h4 style="font-size: 11pt; font-weight:bold; background-color:#f2f2f2; padding:5px; border:1px solid black;">ANNE ve BABA BİLGİLERİ</h4>`;
+     htmlContent += `<table style="width:100%; border-collapse: collapse;" border="1">
+                        <thead><tr><th></th><th style="padding:5px;">Anne</th><th style="padding:5px;">Baba</th></tr></thead>
+                        <tbody>
+                            <tr><td style="padding:5px; font-weight:bold;">Adı Soyadı</td><td style="padding:5px;">${record.motherName || ''}</td><td style="padding:5px;">${record.fatherName || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Doğum Yeri / Tarihi</td><td style="padding:5px;">${record.motherBirthPlaceAndDate || ''}</td><td style="padding:5px;">${record.fatherBirthPlaceAndDate || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Öz mü?</td><td style="padding:5px;">${record.motherIsAlive || ''}</td><td style="padding:5px;">${record.fatherIsAlive || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Sağ mı?</td><td style="padding:5px;">${record.motherIsHealthy || ''}</td><td style="padding:5px;">${record.fatherIsHealthy || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Engel durumu</td><td style="padding:5px;">${record.motherHasDisability || ''}</td><td style="padding:5px;">${record.fatherHasDisability || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Eğitim Durumu</td><td style="padding:5px;">${record.motherEducation || ''}</td><td style="padding:5px;">${record.fatherEducation || ''}</td></tr>
+                            <tr><td style="padding:5px; font-weight:bold;">Mesleği</td><td style="padding:5px;">${record.motherOccupation || ''}</td><td style="padding:5px;">${record.fatherOccupation || ''}</td></tr>
+                        </tbody>
+                     </table><br/>`;
+
+    addSection("AİLE BİLGİSİ", [
+        { label: 'Kaç kardeşsiniz?', value: record.siblingCount },
+        { label: 'Ailenizin kaçıncı çocuğusunuz?', value: record.birthOrder },
+        { label: 'Evde kimler yaşıyor?', value: record.familyLivesWith },
+        { label: 'Ailede engelli/sürekli hasta var mı?', value: record.familyMemberWithDisability },
+        { label: 'Ekonomik sorunlar yaşanır mı?', value: record.familyFinancialIssues },
+    ]);
+    
+    const finalHtml = generateHtmlShell(htmlContent, title);
+    downloadRtf(finalHtml, filename);
 }
+
 
 
 // --- DUTY ROSTER EXPORT ---
