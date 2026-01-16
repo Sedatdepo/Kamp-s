@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { 
-  FileDown, FileSignature, PlusCircle, Trash2, Eye, ToggleLeft, ToggleRight, Search, BookOpen, Copy, Save 
-} from 'lucide-react';
+import { FileDown, FileSignature, PlusCircle, Trash2, Eye, ToggleLeft, ToggleRight, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import { exportDilekceToRtf } from '@/lib/word-export';
-
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const ilgiSchema = z.object({ value: z.string() });
 const ekSchema = z.object({ value: z.string() });
@@ -463,3 +461,4 @@ export function DilekceTab({ teacherProfile }: { teacherProfile: TeacherProfile 
     </div>
   );
 }
+    
