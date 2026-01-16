@@ -229,11 +229,11 @@ function ClassSelectionScreen({
         const draggedIndex = classes.findIndex(c => c.id === draggedClassId);
         const targetIndex = classes.findIndex(c => c.id === targetClassId);
 
-        const newOrderedClasses = [...classes];
-        const [draggedItem] = newOrderedClasses.splice(draggedIndex, 1);
-        newOrderedClasses.splice(targetIndex, 0, draggedItem);
+        const newOrder = [...classes];
+        const [draggedItem] = newOrder.splice(draggedIndex, 1);
+        newOrder.splice(targetIndex, 0, draggedItem);
         
-        setOrderedClasses(newOrderedClasses);
+        setOrderedClasses(newOrder);
         setDraggedClassId(null);
     };
 

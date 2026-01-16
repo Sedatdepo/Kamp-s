@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
-import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus } from 'lucide-react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
 
 // --- MOCK DATA & UTILS ---
 const MEB_CLUBS = [

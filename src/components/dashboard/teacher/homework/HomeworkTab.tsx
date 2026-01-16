@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -64,5 +63,3 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
         </Tabs>
     );
 }
-
-    

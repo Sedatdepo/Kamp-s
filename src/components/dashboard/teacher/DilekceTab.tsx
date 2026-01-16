@@ -191,7 +191,7 @@ const DilekcePreview = ({ data, showOfficialFields }: { data: FormData, showOffi
                         </div>
                     )}
                     {(data.dagitim_geregi || data.dagitim_bilgi) && (
-                        <div style="margin-top: 10px;">
+                        <div style={{marginTop: '10px'}}>
                             <p className="font-bold">DAĞITIM:</p>
                             {data.dagitim_geregi && <p className="whitespace-pre-wrap">Gereği:<br/>{data.dagitim_geregi}</p>}
                             {data.dagitim_bilgi && <p className="mt-1 whitespace-pre-wrap">Bilgi:<br/>{data.dagitim_bilgi}</p>}

@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { 
-  Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
-  Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X
-} from 'lucide-react';
+import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,16 +15,15 @@ import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-it
 import { Loader2 } from 'lucide-react';
 import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 
-// --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
     academicYear: z.string().min(1, "Eğitim yılı gerekli"),
     donem: z.string().min(1, "Dönem gerekli"),
-    sinif: z.string().min(1, "Zümre adı gerekli"), // Changed 'sinif' to 'zumre'
+    sinif: z.string().min(1, "Zümre adı gerekli"), 
     tarih: z.string(),
     saat: z.string(),
     yer: z.string(),
-    mudurYardimcisi: z.string(), // Kept for consistency, maybe "Bölüm Başkanı"
-    sinifRehberOgretmeni: z.string(), // Changed to 'zumreBaskani'
+    mudurYardimcisi: z.string(), 
+    sinifRehberOgretmeni: z.string(), 
     katilimcilar: z.array(z.object({
         brans: z.string(),
         adSoyad: z.string()
@@ -54,21 +49,20 @@ const VARSAYILAN_BRANSLAR = [
 
 const defaultValues: FormData = {
     academicYear: '2025-2026',
-    donem: "Sene Başı", // Changed from "1. Dönem"
-    sinif: "", // This will be Zümre name
+    donem: "Sene Başı", 
+    sinif: "", 
     tarih: new Date().toISOString().split('T')[0],
     saat: "15:00",
     yer: "Zümre Odası",
-    mudurYardimcisi: "", // Or maybe "Okul Müdürü"
-    sinifRehberOgretmeni: "", // This is now Zümre Başkanı
+    mudurYardimcisi: "", 
+    sinifRehberOgretmeni: "",
     katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: '' })),
     gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
     gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '' })),
-    kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'), // Use default kararlar
+    kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
 };
 
 export default function ZumreTab() {
-    // --- STATE MANAGEMENT ---
     const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
     
     const toast = ({ title, description, variant = "default" }: any) => {
@@ -93,7 +87,6 @@ export default function ZumreTab() {
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
     const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
-    // --- EFFECTS: LOCAL STORAGE HANDLING ---
     useEffect(() => {
         const savedTempData = localStorage.getItem("zumre_temp_data");
         if (savedTempData) {
@@ -112,8 +105,6 @@ export default function ZumreTab() {
         return () => subscription.unsubscribe();
     }, [form]);
 
-    // --- BUSINESS LOGIC ---
-
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
         if (!agendaTitle) {
@@ -125,8 +116,8 @@ export default function ZumreTab() {
           const response = await generateMeetingAgendaItem({
             meetingType: 'Zümre',
             agendaTitle,
-            classInfo: form.getValues('sinif'), // Zümre Adı
-            teacherInfo: form.getValues('sinifRehberOgretmeni'), // Zümre Başkanı
+            classInfo: form.getValues('sinif'),
+            teacherInfo: form.getValues('sinifRehberOgretmeni'),
           });
           if (response.generatedText) {
             form.setValue(`gorusmeler.${index}.detay`, response.generatedText, { shouldDirty: true });
@@ -140,7 +131,6 @@ export default function ZumreTab() {
         }
     };
     
-    // ARCHIVE HANDLERS
     const openSaveDialog = () => {
         const vals = form.getValues();
         setSaveNameInput(`${vals.academicYear} - ${vals.sinif} Zümresi`);
@@ -149,23 +139,19 @@ export default function ZumreTab() {
 
     const handleSaveToArchive = () => {
         if (!saveNameInput.trim()) return;
-
         const newDoc: ArchivedDocument = {
             id: Date.now().toString(),
             name: saveNameInput,
             createdAt: new Date().toLocaleDateString('tr-TR'),
             data: form.getValues()
         };
-
         const updatedArchives = [newDoc, ...archives];
         setArchives(updatedArchives);
         localStorage.setItem("zumre_archives", JSON.stringify(updatedArchives));
-        
         setIsSaveDialogOpen(false);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
     
-    // DRAG & DROP
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
 
@@ -177,7 +163,6 @@ export default function ZumreTab() {
         draggedItem.current = null; draggedOverItem.current = null;
     };
     
-    // DOCUMENT GENERATION
     const generateDocumentHTML = (data: FormData) => {
         const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
@@ -230,7 +215,6 @@ export default function ZumreTab() {
 
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
-            {/* HEADER */}
             <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="bg-purple-100 p-2 rounded-lg text-purple-700"><Users className="h-6 w-6" /></div>

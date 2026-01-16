@@ -50,7 +50,7 @@ export const RubricModal = ({ isOpen, onClose, assignment, rubrics, onAddRubricC
     if (!isOpen || !assignment || !editableRubric) return null;
 
     const totalScore = editableRubric.items.reduce((acc: any, curr: any) => acc + (parseInt(curr.score) || 0), 0);
-
+    
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">

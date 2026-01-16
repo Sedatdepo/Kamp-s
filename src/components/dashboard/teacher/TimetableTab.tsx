@@ -1,23 +1,24 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
-import { FileDown, Eraser, Settings, Save, X, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Calendar, Download, Users, RotateCcw, School, Upload, FileText, Share, Settings, Eraser, Trash2, X, FileDown } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import type { Student as DutyStudent, Class, TeacherProfile, RosterItem, TimetableCell } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { exportTimetableToRtf } from '@/lib/word-export';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useDatabase } from '@/hooks/use-database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { TimetableCell, Class, Lesson } from '@/lib/types';
-import { exportTimetableToRtf } from '@/lib/word-export';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Lesson } from '@/lib/types';
 
-const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
-
-const timeToMinutes = (timeStr: string): number => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
 
 export default function TimetableTab({ classes, lessons }: { classes: Class[], lessons: Lesson[] }) {
   const { db, setDb, loading } = useDatabase();
@@ -108,6 +109,9 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
     setDb(prev => ({...prev, dersProgrami: {...prev.dersProgrami, timeSlots: tempPeriods}}));
     setShowTimeSettings(false);
   };
+  
+  const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+
 
   return (
     <div className="p-4 space-y-6">

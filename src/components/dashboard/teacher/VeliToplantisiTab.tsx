@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { 
-  Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, 
-  Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, 
-  Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X
-} from 'lucide-react';
+import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,25 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
-
-const VELI_TOPLANTISI_GUNDEM = [
-    "Açılış ve yoklama.",
-    "Okul ve sınıf kurallarının hatırlatılması.",
-    "Sınıfın genel başarı durumunun değerlendirilmesi.",
-    "Öğrenci devam-devamsızlık durumları.",
-    "Veli-öğrenci-öğretmen işbirliğinin önemi.",
-    "Dilek ve temenniler.",
-    "Kapanış."
-];
-
-const VELI_TOPLANTISI_KARARLAR = [
-    "1. Toplantıya katılımın yüksek olduğu görüldü.",
-    "2. Öğrencilerin genel olarak okul kurallarına uyduğu belirtildi.",
-    "3. Başarıyı artırmak için evde ders çalışma ortamının düzenlenmesinin önemi vurgulandı.",
-    "4. Devamsızlık yapan öğrencilerin velileriyle birebir görüşme yapılması kararlaştırıldı.",
-    "5. Okul-aile iletişiminin güçlendirilmesi için düzenli bilgi akışının sağlanacağı belirtildi."
-];
-
+import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 
 // --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
@@ -61,6 +39,24 @@ interface ArchivedDocument {
     createdAt: string;
     data: FormData;
 }
+
+const VELI_TOPLANTISI_GUNDEM = [
+    "Açılış ve yoklama.",
+    "Okul ve sınıf kurallarının hatırlatılması.",
+    "Sınıfın genel başarı durumunun değerlendirilmesi.",
+    "Öğrenci devam-devamsızlık durumları.",
+    "Veli-öğrenci-öğretmen işbirliğinin önemi.",
+    "Dilek ve temenniler.",
+    "Kapanış."
+];
+
+const VELI_TOPLANTISI_KARARLAR = [
+    "1. Toplantıya katılımın yüksek olduğu görüldü.",
+    "2. Öğrencilerin genel olarak okul kurallarına uyduğu belirtildi.",
+    "3. Başarıyı artırmak için evde ders çalışma ortamının düzenlenmesinin önemi vurgulandı.",
+    "4. Devamsızlık yapan öğrencilerin velileriyle birebir görüşme yapılması kararlaştırıldı.",
+    "5. Okul-aile iletişiminin güçlendirilmesi için düzenli bilgi akışının sağlanacağı belirtildi."
+];
 
 const defaultValues: FormData = {
     academicYear: '2025-2026',
@@ -94,7 +90,6 @@ export default function VeliToplantisiTab() {
     const [isArchiveListOpen, setIsArchiveListOpen] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveNameInput, setSaveNameInput] = useState("");
-
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -240,84 +235,66 @@ export default function VeliToplantisiTab() {
         toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
 
-    const handlePrint = () => {
-        const printWindow = window.open('', '', 'width=800,height=600');
-        if (printWindow) {
-            printWindow.document.write(previewHtml);
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
-        } else { alert("Pop-up engelleyiciyi kapatın."); }
-    };
-    
-    const handlePreview = () => {
-        const content = generateDocumentHTML(form.getValues());
-        setPreviewHtml(content);
-        setIsPreviewOpen(true);
-    };
-
-    
     return (
-      <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
-        {/* HEADER */}
-        <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className="bg-green-100 p-2 rounded-lg text-green-700"><Users className="h-6 w-6" /></div>
-                <div>
-                    <h1 className="text-xl font-bold text-slate-900">Veli Toplantı Modülü</h1>
-                    <p className="text-xs text-slate-500">Veli Toplantı Tutanakları</p>
+        <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
+            <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-100 p-2 rounded-lg text-green-700"><Users className="h-6 w-6" /></div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">Veli Toplantı Modülü</h1>
+                        <p className="text-xs text-slate-500">Veli Toplantı Tutanakları</p>
+                    </div>
                 </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={openSaveDialog} variant="outline"><Save className="mr-2 h-4 w-4"/> Arşive Kaydet</Button>
-                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
-            </div>
-        </header>
-        <main className="max-w-5xl mx-auto p-6 space-y-8">
-            <Form {...form}>
-                <form className="space-y-8">
-                    <Card>
-                        <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="donem" render={({ field }: any) => (<FormItem><FormLabel>Dönem</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="tarih" render={({ field }: any) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="saat" render={({ field }: any) => (<FormItem><FormLabel>Saat</FormLabel><FormControl><Input type="time" {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Toplantı Yöneticisi</FormLabel><FormControl><Input placeholder="Sınıf Rehber Öğretmeni" {...field} /></FormControl></FormItem>)} />
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader><CardTitle>Gündem ve Görüşmeler</CardTitle></CardHeader>
-                        <CardContent className="space-y-6">
-                            {gundemFields.map((item, index) => (
-                                 <div key={item.id} className={`space-y-4 border p-4 rounded-lg bg-white transition-all ${draggedItem.current === index ? 'opacity-50' : ''}`} draggable onDragStart={() => (draggedItem.current = index)} onDragEnter={() => (draggedOverItem.current = index)} onDragEnd={handleSortEnd} onDragOver={(e) => e.preventDefault()}>
-                                    <div className="flex items-center gap-2">
-                                        <GripVertical className="cursor-grab text-slate-300" />
-                                        <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold" />
-                                        <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={openSaveDialog} variant="outline"><Save className="mr-2 h-4 w-4"/> Arşive Kaydet</Button>
+                    <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
+                </div>
+            </header>
+            <main className="max-w-5xl mx-auto p-6 space-y-8">
+                <Form {...form}>
+                    <form className="space-y-8">
+                        <Card>
+                            <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="donem" render={({ field }: any) => (<FormItem><FormLabel>Dönem</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="tarih" render={({ field }: any) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="saat" render={({ field }: any) => (<FormItem><FormLabel>Saat</FormLabel><FormControl><Input type="time" {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Toplantı Yöneticisi</FormLabel><FormControl><Input placeholder="Sınıf Rehber Öğretmeni" {...field} /></FormControl></FormItem>)} />
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader><CardTitle>Gündem ve Görüşmeler</CardTitle></CardHeader>
+                            <CardContent className="space-y-6">
+                                {gundemFields.map((item, index) => (
+                                     <div key={item.id} className={`space-y-4 border p-4 rounded-lg bg-white transition-all ${draggedItem.current === index ? 'opacity-50' : ''}`} draggable onDragStart={() => (draggedItem.current = index)} onDragEnter={() => (draggedOverItem.current = index)} onDragEnd={handleSortEnd} onDragOver={(e) => e.preventDefault()}>
+                                        <div className="flex items-center gap-2">
+                                            <GripVertical className="cursor-grab text-slate-300" />
+                                            <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold" />
+                                            <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
+                                        </div>
+                                        <div className="pl-8 relative">
+                                            <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
+                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
+                                                {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>} Doldur
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="pl-8 relative">
-                                        <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
-                                        <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
-                                            {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>} Doldur
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                            <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader><CardTitle>Alınan Kararlar</CardTitle></CardHeader>
-                        <CardContent>
-                            <Textarea {...form.register('kararlar')} rows={6} className="font-mono text-sm" />
-                        </CardContent>
-                    </Card>
-                </form>
-            </Form>
-        </main>
-      </div>
+                                ))}
+                                <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader><CardTitle>Alınan Kararlar</CardTitle></CardHeader>
+                            <CardContent>
+                                <Textarea {...form.register('kararlar')} rows={6} className="font-mono text-sm" />
+                            </CardContent>
+                        </Card>
+                    </form>
+                </Form>
+            </main>
+        </div>
     );
 }
