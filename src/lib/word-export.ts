@@ -161,7 +161,7 @@ export function exportGuidanceReferralToRtf({ record, teacherProfile }: ExportGu
                 <tr style="border:none;">
                     <td class="no-border" style="width:50%; vertical-align: top; text-align:center;">
                         <p style="margin: 0; padding: 0;"><b>Yönlendiren</b></p>
-                        <p style="margin: 0; padding: 0;"><b>Ad-Soyad:</b> ${record.referrerName}</p>
+                        <p style="margin: 0; padding: 0;"><b>Adı Soyadı:</b> ${record.referrerName}</p>
                         <p style="margin: 0; padding: 0;"><b>Unvan:</b> ${record.referrerTitle}</p>
                         <p style="margin: 0; padding: 0; margin-top: 20px;"><b>İmza:</b></p>
                     </td>
@@ -253,31 +253,41 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
     const fields = [
         // Personal
         { label: 'Adı Soyadı', value: studentName },
-        { label: 'Doğum Yeri ve Tarihi', value: record.birthDate ? format(record.birthDate.toDate(), 'dd.MM.yyyy') : (record.birthPlace || '') },
-        { label: 'Telefon Numarası', value: record.studentPhone || '' },
+        { label: 'Doğum Tarihi', value: record.birthDate || '' },
+        { label: 'Doğum Yeri', value: record.birthPlace || '' },
+        { label: 'Kan Grubu', value: record.bloodType || '' },
+        { label: 'Boy / Kilo', value: `${record.height || '-'} cm / ${record.weight || '-'} kg` },
+        { label: 'Telefon', value: record.studentPhone || '' },
         { label: 'E-posta', value: record.studentEmail || '' },
         { label: 'Adres', value: (record.address || '').replace(/\n/g, '<br/>') },
-        { label: 'Sağlık Sorunları', value: record.healthIssues || '' },
+        { label: 'Yabancı Dil', value: record.foreignLanguage || '' },
+        // Health
+        { label: 'Sürekli Hastalık/Alerji', value: record.healthIssues || '' },
+        { label: 'Geçirdiği Hastalık/Ameliyat', value: record.pastIllnesses || '' },
+        { label: 'Kullandığı Cihaz/Protez', value: record.healthDevice || '' },
+        // Socio-economic
         { label: 'Hobiler', value: record.hobbies || '' },
-        { label: 'Teknoloji Kullanımı', value: record.techUsage || '' },
+        { label: 'Bir İşte Çalışıyor Mu?', value: record.isWorking === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Okula Ulaşım Şekli', value: record.commutesToSchoolBy || '' },
+        { label: 'Oturulan Ev Kira Mı?', value: record.isHomeRented === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Kendine Ait Odası Var Mı?', value: record.hasOwnRoom === 'yes' ? 'Evet' : 'Hayır' },
         // Family
-        { label: 'Anne Durumu', value: record.motherStatus || '' },
-        { label: 'Anne Eğitim / Meslek', value: `${record.motherEducation || ''} / ${record.motherJob || ''}` },
-        { label: 'Baba Durumu', value: record.fatherStatus || '' },
-        { label: 'Baba Eğitim / Meslek', value: `${record.fatherEducation || ''} / ${record.fatherJob || ''}` },
+        { label: 'Veli Telefonu', value: record.guardianPhone || '' },
+        { label: 'Anne Hayatta Mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Anne Eğitim/Meslek', value: `${record.motherEducation || ''} / ${record.motherJob || ''}` },
+        { label: 'Baba Hayatta Mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Baba Eğitim/Meslek', value: `${record.fatherEducation || ''} / ${record.fatherJob || ''}` },
+        { label: 'Kiminle Yaşıyor?', value: record.familyLivesWith || '' },
         { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
-        { label: 'Ekonomik Durum', value: record.economicStatus || '' },
-        { label: 'Evdeki Çalışma Ortamı', value: record.homeEnvironment || '' },
-        { label: 'Ailenin Derslere Karşı Tutumu', value: record.parentalAttitude || '' },
+        { label: 'Üvey Kardeşi Var Mı?', value: record.hasStepSibling === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Ailenin Gelir Düzeyi', value: record.economicStatus || '' },
+        { label: 'Ailenin Derslere Tutumu', value: record.parentalAttitude || '' },
         // Special Status
-        { label: 'Engel Durumu Var Mı?', value: record.hasDisability || '' },
-        { label: 'Şehit/Gazi Çocuğu Mu?', value: record.isMartyrVeteranChild || '' },
+        { label: 'Engel Durumu', value: record.hasDisability === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Şehit/Gazi Çocuğu Mu?', value: record.isMartyrVeteranChild === 'yes' ? 'Evet' : 'Hayır' },
     ];
     
-    let tableRows = '';
-    fields.forEach(field => {
-        tableRows += `<tr><td style="width:30%; padding: 5px; font-weight: bold; background-color: #f2f2f2;">${field.label}</td><td style="padding: 5px;">${field.value}</td></tr>`;
-    });
+    let tableRows = fields.map(field => `<tr><td style="width:30%; padding: 5px; font-weight: bold; background-color: #f2f2f2;">${field.label}</td><td style="padding: 5px;">${field.value}</td></tr>`).join('');
 
     const content = `
         <div style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.4;">
@@ -1003,7 +1013,7 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
             <tr><td style="width: 30%;"><b>Adı Soyadı:</b></td><td>${student.name}</td></tr>
             <tr><td><b>Okul Numarası:</b></td><td>${student.number}</td></tr>
             <tr><td><b>Sınıfı:</b></td><td>${currentClass.name}</td></tr>
-            <tr><td><b>Doğum Tarihi:</b></td><td>${infoForm?.birthDate ? format(infoForm.birthDate.toDate(), 'dd.MM.yyyy') : 'Belirtilmemiş'}</td></tr>
+            <tr><td><b>Doğum Tarihi:</b></td><td>${infoForm?.birthDate || 'Belirtilmemiş'}</td></tr>
             <tr><td><b>Doğum Yeri:</b></td><td>${infoForm?.birthPlace || 'Belirtilmemiş'}</td></tr>
         </table>
     `;

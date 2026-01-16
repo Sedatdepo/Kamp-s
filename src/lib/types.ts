@@ -306,32 +306,53 @@ export interface InfoForm {
   id: string; // Should be the same as studentId
   studentId: string;
   submitted: boolean;
-  // Personal Info
+  
+  // Öğrenci Bilgileri
   birthDate?: string;
   birthPlace?: string;
-  studentPhone?: string; 
-  studentEmail?: string; 
-  // Parent Info
+  studentPhone?: string;
+  studentEmail?: string;
+  address?: string;
+  bloodType?: string;
+  height?: string;
+  weight?: string;
+  foreignLanguage?: string;
+
+  // Sağlık Bilgileri
+  healthIssues?: string; // Sürekli Hastalık
+  pastIllnesses?: string; // Geçirdiği Hastalık/Ameliyat
+  healthDevice?: string; // Kullandığı Cihaz/Protez
+  
+  // Sosyo-Ekonomik Durum
+  hobbies?: string;
+  isWorking?: 'yes' | 'no';
+  commutesToSchoolBy?: 'walking' | 'service' | 'public' | 'private' | 'other';
+  isHomeRented?: 'yes' | 'no';
+  hasOwnRoom?: 'yes' | 'no';
+
+  // Veli Bilgileri
+  guardianPhone?: string;
+
+  // Anne Bilgileri
   motherStatus?: 'alive' | 'deceased' | 'unknown';
   motherEducation?: string;
   motherJob?: string;
+  
+  // Baba Bilgileri
   fatherStatus?: 'alive' | 'deceased' | 'unknown';
   fatherEducation?: string;
   fatherJob?: string;
-  guardianPhone?: string;
-  // Family Info
+
+  // Aile Bilgileri
+  familyLivesWith?: string; // Kiminle oturuyor
   siblingsInfo?: string;
+  hasStepSibling?: 'yes' | 'no';
   economicStatus?: 'low' | 'middle' | 'high';
-  homeEnvironment?: string; 
   parentalAttitude?: string;
-  // Merged personal/family
-  address?: string;
-  healthIssues?: string;
-  hobbies?: string;
-  techUsage?: string;
-  // Special Status
-  hasDisability?: 'yes' | 'no'; 
-  isMartyrVeteranChild?: 'yes' | 'no'; 
+  
+  // Özel Durum
+  hasDisability?: 'yes' | 'no';
+  isMartyrVeteranChild?: 'yes' | 'no';
 }
 
 

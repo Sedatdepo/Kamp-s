@@ -1,109 +1,73 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, getDoc, setDoc, Timestamp, updateDoc, collection, query, where } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, Eye, FileDown, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2, Eye, FileDown, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { Class, InfoForm, TeacherProfile } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { Class, InfoForm, TeacherProfile, Student } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { exportStudentInfoFormToRtf } from '@/lib/word-export';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-const infoFormSchema = z.object({
-  birthDate: z.date().optional(),
-  birthPlace: z.string().optional(),
-  studentPhone: z.string().min(10, "Geçerli bir telefon numarası girin."),
-  studentEmail: z.string().email("Geçersiz e-posta.").optional().or(z.literal('')),
-  address: z.string().optional(),
-  healthIssues: z.string().optional(),
-  hobbies: z.string().optional(),
-  techUsage: z.string().optional(),
-  motherStatus: z.enum(['alive', 'deceased', 'unknown']).optional(),
-  motherEducation: z.string().optional(),
-  motherJob: z.string().optional(),
-  fatherStatus: z.enum(['alive', 'deceased', 'unknown']).optional(),
-  fatherEducation: z.string().optional(),
-  fatherJob: z.string().optional(),
-  siblingsInfo: z.string().optional(),
-  economicStatus: z.enum(['low', 'middle', 'high']).optional(),
-  homeEnvironment: z.string().optional(),
-  parentalAttitude: z.string().optional(),
-  hasDisability: z.enum(['yes', 'no']).optional(),
-  isMartyrVeteranChild: z.enum(['yes', 'no']).optional(),
-});
-
-type InfoFormData = z.infer<typeof infoFormSchema>;
-
-const formQuestions = [
-    { section: "Kişisel Bilgiler", fields: [
-      { name: "birthDate", label: "Doğum Tarihi", type: "date" },
-      { name: "birthPlace", label: "Doğum Yeri", type: "text" },
-      { name: "studentPhone", label: "Telefon Numarası", type: "text" },
-      { name: "studentEmail", label: "E-posta Adresi", type: "email" },
-      { name: "address", label: "Adres", type: "textarea" },
-      { name: "healthIssues", label: "Sürekli Sağlık Sorunu / Alerji", type: "text" },
-      { name: "hobbies", label: "Hobiler ve İlgi Alanları", type: "text" },
-      { name: "techUsage", label: "Günlük Teknoloji Kullanım Süresi", type: "text" },
-    ]},
-    { section: "Aile Bilgileri", fields: [
-      { name: "motherStatus", label: "Anne Hayatta Mı?", type: "select", options: [{value: "alive", label: "Hayatta"}, {value: "deceased", label: "Vefat Etti"}] },
-      { name: "motherEducation", label: "Anne Eğitim Durumu", type: "text" },
-      { name: "motherJob", label: "Anne Mesleği", type: "text" },
-      { name: "fatherStatus", label: "Baba Hayatta Mı?", type: "select", options: [{value: "alive", label: "Hayatta"}, {value: "deceased", label: "Vefat Etti"}] },
-      { name: "fatherEducation", label: "Baba Eğitim Durumu", type: "text" },
-      { name: "fatherJob", label: "Baba Mesleği", type: "text" },
-      { name: "siblingsInfo", label: "Kardeş Bilgileri (Yaş, okul durumu vb.)", type: "textarea" },
-      { name: "economicStatus", label: "Ailenin Ekonomik Durumu", type: "select", options: [{value: "low", label: "Düşük"}, {value: "middle", label: "Orta"}, {value: "high", label: "Yüksek"}]},
-      { name: "homeEnvironment", label: "Evde Çalışma Ortamı", type: "textarea", placeholder: "Öğrencinin ders çalışmak için ayrı bir odası var mı?" },
-      { name: "parentalAttitude", label: "Ailenin Derslere Karşı Tutumu", type: "textarea", placeholder: "Aile ders başarısını önemsiyor mu, destek oluyor mu?" },
-    ]},
-    { section: "Özel Durum Bilgileri", fields: [
-      { name: "hasDisability", label: "Herhangi bir engel durumu var mı?", type: "select", options: [{value: "yes", label: "Evet"}, {value: "no", label: "Hayır"}] },
-      { name: "isMartyrVeteranChild", label: "Şehit veya Gazi yakını mı?", type: "select", options: [{value: "yes", label: "Evet"}, {value: "no", label: "Hayır"}] },
-    ]}
-];
-
+import { format } from 'date-fns';
 
 const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, teacherProfile }: { form: InfoForm | null, studentName: string, isOpen: boolean, onClose: () => void, onExport: (form: InfoForm) => void, teacherProfile: TeacherProfile | null }) => {
     
     const renderFieldValue = (value: any) => {
         if (value === undefined || value === null || value === '') return <span className="text-muted-foreground italic">Belirtilmemiş</span>;
-        if (value.toDate && typeof value.toDate === 'function') { 
-            return format(value.toDate(), "dd.MM.yyyy");
-        } else if (value instanceof Date) {
-             return format(value, "dd.MM.yyyy");
-        }
+        if (value.toDate && typeof value.toDate === 'function') return format(value.toDate(), "dd.MM.yyyy");
+        if (value instanceof Date) return format(value, "dd.MM.yyyy");
+        if (value === 'yes') return 'Evet';
+        if (value === 'no') return 'Hayır';
+        if (value === 'alive') return 'Hayatta';
+        if (value === 'deceased') return 'Vefat Etti';
+        if (value === 'walking') return 'Yürüyerek';
+        if (value === 'service') return 'Servis';
+        if (value === 'public') return 'Toplu Taşıma';
+        if (value === 'private') return 'Özel Araç';
+        if (value === 'other') return 'Diğer';
         return String(value);
     };
 
-    const renderField = (field: any, key: any) => {
-        const displayValue = renderFieldValue(form ? (form as any)[field.name] : null);
-        return (
-            <div key={key} className="py-2 border-b">
-                <p className="text-xs font-semibold text-muted-foreground">{field.label}</p>
-                <p className="text-sm">{String(displayValue)}</p>
-            </div>
-        );
-    };
+    const formQuestions = useMemo(() => [
+        { section: "Kişisel ve İletişim Bilgileri", fields: [
+            { name: "birthDate", label: "Doğum Tarihi" }, { name: "birthPlace", label: "Doğum Yeri" },
+            { name: "studentPhone", label: "Öğrenci Telefonu" }, { name: "studentEmail", label: "E-posta" },
+            { name: "address", label: "Adres" }, { name: "bloodType", label: "Kan Grubu" },
+            { name: "height", label: "Boy" }, { name: "weight", label: "Kilo" },
+            { name: "foreignLanguage", label: "Yabancı Dil" },
+        ]},
+        { section: "Sağlık Bilgileri", fields: [
+            { name: "healthIssues", label: "Sürekli Hastalık/Alerji" },
+            { name: "pastIllnesses", label: "Geçmiş Önemli Hastalık/Ameliyat" },
+            { name: "healthDevice", label: "Kullandığı Cihaz/Protez" },
+        ]},
+        { section: "Sosyo-Ekonomik Durum", fields: [
+            { name: "isWorking", label: "Bir İşte Çalışıyor mu?" },
+            { name: "commutesToSchoolBy", label: "Okula Ulaşım Şekli" },
+            { name: "economicStatus", label: "Ailenin Gelir Düzeyi" },
+            { name: "isHomeRented", label: "Oturulan Ev Kira mı?" },
+            { name: "hasOwnRoom", label: "Kendine Ait Odası Var mı?" },
+        ]},
+        { section: "Aile Bilgileri", fields: [
+            { name: "guardianPhone", label: "Veli Telefonu" },
+            { name: "motherStatus", label: "Anne Hayatta mı?" }, { name: "motherEducation", label: "Anne Eğitimi" }, { name: "motherJob", label: "Anne Mesleği" },
+            { name: "fatherStatus", label: "Baba Hayatta mı?" }, { name: "fatherEducation", label: "Baba Eğitimi" }, { name: "fatherJob", label: "Baba Mesleği" },
+            { name: "familyLivesWith", label: "Kiminle Yaşıyor?" }, { name: "siblingsInfo", label: "Kardeş Bilgileri" },
+            { name: "hasStepSibling", label: "Üvey Kardeşi Var mı?" }, { name: "parentalAttitude", label: "Ailenin Derslere Tutumu" },
+        ]},
+        { section: "Özel Durum", fields: [
+            { name: "hasDisability", label: "Engel Durumu" },
+            { name: "isMartyrVeteranChild", label: "Şehit/Gazi Yakını mı?" },
+        ]}
+    ], []);
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -114,11 +78,16 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
                 <ScrollArea className="max-h-[70vh] pr-4 mt-4">
                     {form ? (
                         <div className="space-y-6">
-                            {formQuestions.map((section) => (
+                           {formQuestions.map(section => (
                                 <div key={section.section}>
                                     <h3 className="font-bold text-lg border-b pb-2 mb-3">{section.section}</h3>
-                                    <div className="space-y-2">
-                                        {section.fields.map(field => renderField(field, field.name))}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                                        {section.fields.map(field => (
+                                            <div key={field.name} className="py-2 border-b border-dashed">
+                                                <p className="text-xs font-semibold text-muted-foreground">{field.label}</p>
+                                                <p className="text-sm">{renderFieldValue((form as any)[field.name])}</p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))}
@@ -136,7 +105,6 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
     );
 };
 
-
 export function StudentInfoFormTab({ students, currentClass, teacherProfile }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
@@ -147,13 +115,18 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
 
   const infoFormsQuery = useMemoFirebase(() => {
     if (!db || studentIds.length === 0) return null;
-    if (studentIds.length > 30) {
-        toast({ variant: "destructive", title: "Uyarı", description: "Sınıf mevcudu 30'dan fazla olduğu için tüm bilgi formları yüklenemeyebilir." });
-    }
-    return query(collection(db, 'infoForms'), where('studentId', 'in', studentIds.slice(0, 30)));
-  }, [db, studentIds, toast]);
+    return query(collection(db, 'infoForms'), where('studentId', 'in', studentIds));
+  }, [db, studentIds]);
 
   const { data: infoForms, isLoading: infoFormsLoading } = useCollection<InfoForm>(infoFormsQuery);
+  
+  const getRiskScore = (studentRisks: string[], riskFactors: RiskFactor[] | undefined) => {
+    if (!riskFactors) return 0;
+    return studentRisks.reduce((total, riskId) => {
+      const factor = riskFactors.find(f => f.id === riskId);
+      return total + (factor?.weight || 0);
+    }, 0);
+  };
 
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -183,12 +156,7 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                 <div className="flex justify-between items-center">
                     <CardTitle>Öğrenci Bilgi Formu Takibi</CardTitle>
                     <div className="flex items-center space-x-2">
-                        <Switch
-                            id="info-form-toggle"
-                            checked={currentClass?.isInfoFormActive || false}
-                            onCheckedChange={handleToggleChange}
-                            disabled={!currentClass}
-                        />
+                        <Switch id="info-form-toggle" checked={currentClass?.isInfoFormActive || false} onCheckedChange={handleToggleChange} disabled={!currentClass}/>
                         <Label htmlFor="info-form-toggle">Form Aktif</Label>
                     </div>
                 </div>
@@ -202,6 +170,8 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Öğrenci</TableHead>
+                                <TableHead>Veli Telefonu</TableHead>
+                                <TableHead className="text-center">Risk Puanı</TableHead>
                                 <TableHead className="text-center">Durum</TableHead>
                                 <TableHead className="text-right">İşlemler</TableHead>
                             </TableRow>
@@ -213,21 +183,17 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                                 return (
                                     <TableRow key={student.id}>
                                         <TableCell>{student.name} ({student.number})</TableCell>
+                                        <TableCell>{form?.guardianPhone || '-'}</TableCell>
+                                        <TableCell className="text-center">-</TableCell> {/* Risk puanı buraya eklenecek */}
                                         <TableCell className="text-center">
                                             {isSubmitted ? (
-                                                <span className="flex items-center justify-center text-green-600 font-medium">
-                                                    <CheckCircle className="mr-2 h-4 w-4"/> Dolduruldu
-                                                </span>
+                                                <span className="flex items-center justify-center text-green-600 font-medium"><CheckCircle className="mr-2 h-4 w-4"/> Dolduruldu</span>
                                             ) : (
-                                                 <span className="flex items-center justify-center text-orange-600 font-medium">
-                                                    <XCircle className="mr-2 h-4 w-4"/> Bekleniyor
-                                                 </span>
+                                                 <span className="flex items-center justify-center text-orange-600 font-medium"><XCircle className="mr-2 h-4 w-4"/> Bekleniyor</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                             <Button variant="outline" size="sm" onClick={() => viewForm(student.id, student.name)}>
-                                                <Eye className="mr-2 h-4 w-4" /> Görüntüle
-                                            </Button>
+                                             <Button variant="outline" size="sm" onClick={() => viewForm(student.id, student.name)}><Eye className="mr-2 h-4 w-4" /> Görüntüle</Button>
                                         </TableCell>
                                     </TableRow>
                                 );
