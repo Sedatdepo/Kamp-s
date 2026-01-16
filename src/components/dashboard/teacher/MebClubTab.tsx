@@ -879,5 +879,3 @@ const ClubManagementPage = ({ classes, allStudents, teacherProfile }: { classes:
 };
 
 export default ClubManagementPage;
-
-    

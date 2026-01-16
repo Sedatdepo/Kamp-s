@@ -347,23 +347,6 @@ export default function SokTab() {
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
 
-    const handleLoadFromArchive = (doc: ArchivedDocument) => {
-        if (confirm(`"${doc.name}" adlı kayıt yüklenecek. Mevcut verileriniz değişecek. Onaylıyor musunuz?`)) {
-            form.reset(doc.data);
-            setIsArchiveListOpen(false);
-            toast({ title: "Yüklendi", description: "Arşivden başarıyla yüklendi.", variant: "success" });
-        }
-    };
-
-    const handleDeleteFromArchive = (id: string) => {
-        if (confirm("Bu kaydı silmek istediğinize emin misiniz?")) {
-            const updatedArchives = archives.filter(doc => doc.id !== id);
-            setArchives(updatedArchives);
-            localStorage.setItem("sok_archives", JSON.stringify(updatedArchives));
-            toast({ title: "Silindi", description: "Kayıt arşivden silindi." });
-        }
-    };
-
     // VOICE
     const toggleListening = (index: number, fieldType: 'madde' | 'detay') => {
         const currentId = `${fieldType}-${index}`;
@@ -535,8 +518,8 @@ export default function SokTab() {
                                 <FormField control={form.control} name="tarih" render={({ field }: any) => (<FormItem><FormLabel>Tarih</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="saat" render={({ field }: any) => (<FormItem><FormLabel>Saat</FormLabel><FormControl><Input type="time" {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Sınıf Rehber Öğretmeni</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Müdür Yardımcısı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Toplantı Yöneticisi</FormLabel><FormControl><Input placeholder="Sınıf Rehber Öğretmeni" {...field} /></FormControl></FormItem>)} />
+                                <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Onaylayan</FormLabel><FormControl><Input placeholder="Okul Müdürü / Müdür Yrd." {...field} /></FormControl></FormItem>)} />
                             </CardContent>
                         </Card>
                         <Card>
@@ -550,7 +533,7 @@ export default function SokTab() {
                                             <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                         <div className="pl-8 relative">
-                                            <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px] pr-8" placeholder="Görüşme detayları..." />
+                                            <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
                                         </div>
                                         <div className="flex justify-end gap-2 pl-8">
                                             <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index}>

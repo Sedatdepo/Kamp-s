@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -289,7 +288,7 @@ export default function ZumreTab() {
                             <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                         </CardContent>
                     </Card>
-                    <Card>
+                     <Card>
                         <CardHeader className="flex flex-row justify-between">
                             <CardTitle>Alınan Kararlar</CardTitle>
                         </CardHeader>
