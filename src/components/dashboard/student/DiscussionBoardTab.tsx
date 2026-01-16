@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { DiscussionTopic, DiscussionPost, Class } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft, Send } from 'lucide-react';
+import { Loader2, ArrowLeft, Send, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -42,6 +41,87 @@ const TopicList = ({ topics, onSelectTopic }: { topics: DiscussionTopic[], onSel
     </Card>
 );
 
+const PostItem = ({ post, allPosts, level = 0, classId, topicId }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; }) => {
+    const { appUser, db } = useAuth();
+    const { toast } = useToast();
+    const [showReplyForm, setShowReplyForm] = useState(false);
+    const [replyContent, setReplyContent] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const replies = useMemo(() => {
+        return allPosts.filter(p => p.parentId === post.id);
+    }, [allPosts, post.id]);
+
+    const handleAddReply = async () => {
+        if (!replyContent.trim() || !appUser || appUser.type !== 'student' || !classId) return;
+
+        setIsSaving(true);
+        try {
+            await addDoc(collection(db, `classes/${classId}/discussionTopics/${topicId}/posts`), {
+                topicId: topicId,
+                parentId: post.id,
+                studentId: appUser.data.id,
+                studentName: appUser.data.name,
+                studentNumber: appUser.data.number,
+                content: replyContent,
+                createdAt: serverTimestamp(),
+            });
+            setReplyContent('');
+            setShowReplyForm(false);
+            toast({ title: 'Yanıtın gönderildi!' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Yanıt gönderilemedi.' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <div style={{ marginLeft: `${level > 0 ? 20 : 0}px` }} className="mt-4">
+            <div className="flex items-start gap-3">
+                <Avatar className="h-9 w-9">
+                    <AvatarFallback>{getInitials(post.studentName)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                    <div className="bg-muted p-3 rounded-lg rounded-tl-none">
+                        <p className="text-sm font-semibold">{post.studentName}</p>
+                        <p className="text-sm mt-1">{post.content}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                         <p className="text-xs text-muted-foreground">
+                            {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}
+                        </p>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowReplyForm(!showReplyForm)}>
+                            <MessageSquare className="mr-1 h-3 w-3" /> Yanıtla
+                        </Button>
+                    </div>
+                   
+                    {showReplyForm && (
+                        <div className="flex gap-2 mt-2">
+                           <Textarea 
+                              placeholder={`${post.studentName} adlı kişiye yanıt yaz...`} 
+                              value={replyContent} 
+                              onChange={(e) => setReplyContent(e.target.value)} 
+                              rows={1} 
+                              className="text-sm"
+                           />
+                           <Button onClick={handleAddReply} disabled={isSaving || !replyContent.trim()} size="sm">
+                               {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
+                           </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+             <div className="pl-6 border-l border-dashed ml-4">
+                 {replies.map(reply => (
+                    <PostItem key={reply.id} post={reply} allPosts={allPosts} level={level + 1} classId={classId} topicId={topicId}/>
+                 ))}
+            </div>
+        </div>
+    );
+};
+
+
 const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => void }) => {
     const { appUser, db } = useAuth();
     const { toast } = useToast();
@@ -55,6 +135,11 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
     }, [db, classId, topic.id]);
 
     const { data: posts, isLoading } = useCollection<DiscussionPost>(postsQuery);
+
+    const topLevelPosts = useMemo(() => {
+        if (!posts) return [];
+        return posts.filter(p => !p.parentId);
+    }, [posts]);
 
     const handleAddPost = async () => {
         if (!newPost.trim() || !appUser || appUser.type !== 'student' || !classId) return;
@@ -71,7 +156,7 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
                 createdAt: serverTimestamp(),
             });
             setNewPost('');
-            toast({ title: 'Yanıtın gönderildi!' });
+            toast({ title: 'Fikrin gönderildi!' });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Yanıt gönderilemedi.' });
         } finally {
@@ -90,27 +175,14 @@ const TopicView = ({ topic, onBack }: { topic: DiscussionTopic, onBack: () => vo
                 <ScrollArea className="flex-1 pr-4 -mr-4">
                     {isLoading ? <Loader2 className="m-auto h-8 w-8 animate-spin" /> : (
                         <div className="space-y-4">
-                            {posts.map(post => (
-                                <div key={post.id} className="flex items-start gap-3">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarFallback>{getInitials(post.studentName)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                        <div className="bg-muted p-3 rounded-lg rounded-tl-none">
-                                            <p className="text-sm font-semibold">{post.studentName}</p>
-                                            <p className="text-sm mt-1">{post.content}</p>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: tr }) : 'gönderiliyor...'}
-                                        </p>
-                                    </div>
-                                </div>
+                            {topLevelPosts.map(post => (
+                               <PostItem key={post.id} post={post} allPosts={posts || []} level={0} classId={classId!} topicId={topic.id}/>
                             ))}
                         </div>
                     )}
                 </ScrollArea>
                  <div className="flex gap-2 pt-4 border-t">
-                    <Textarea placeholder="Fikrini yaz..." value={newPost} onChange={(e) => setNewPost(e.target.value)} rows={1} />
+                    <Textarea placeholder="Yeni bir fikir yaz..." value={newPost} onChange={(e) => setNewPost(e.target.value)} rows={1} />
                     <Button onClick={handleAddPost} disabled={isSaving || !newPost.trim()}>
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                     </Button>
