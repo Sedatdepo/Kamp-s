@@ -126,7 +126,7 @@ export default function AgendaTab() {
 
     const DayContent = ({ date, ...props }: DayProps) => {
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-          return <></>;
+          return null;
         }
         const dateStr = format(date, 'yyyy-MM-dd');
         const eventsOnDate = agendaEvents
@@ -173,10 +173,10 @@ export default function AgendaTab() {
                         className="w-full"
                         classNames={{
                           table: 'border-collapse w-full',
-                          head_row: 'flex border-b',
-                          head_cell: 'w-full text-sm font-semibold p-2 text-muted-foreground',
-                          row: 'flex w-full',
-                          cell: 'h-36 w-full text-left align-top p-0 relative border group',
+                          head_row: 'border-b',
+                          head_cell: 'text-sm font-semibold p-2 text-muted-foreground text-center',
+                          row: '',
+                          cell: 'h-36 text-left align-top p-0 relative border group',
                           day: 'h-full w-full',
                         }}
                         components={{
