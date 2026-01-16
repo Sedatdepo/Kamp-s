@@ -1,4 +1,3 @@
-
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -8,10 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Home, FileDown, Save, Trash2, PlusCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GuidanceReferralRecord, SchoolInfo } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -197,8 +196,7 @@ export function GuidanceReferralTab() {
   }
   
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="p-4 sm:p-6 md:p-8 grid md:grid-cols-4 gap-8">
+    <div className="grid md:grid-cols-4 gap-8">
         <div className="md:col-span-1 space-y-4">
              <Card>
                 <CardHeader><CardTitle>Yönlendirme Kayıtları</CardTitle></CardHeader>
@@ -219,18 +217,18 @@ export function GuidanceReferralTab() {
               <Card>
                  <CardHeader><CardTitle>Genel Ayarlar</CardTitle></CardHeader>
                  <CardContent className="space-y-2">
-                    <FormItem>
-                        <FormLabel>Okul Adı</FormLabel>
+                    <div className="space-y-2">
+                        <Label>Okul Adı</Label>
                         <Input value={schoolInfo?.schoolName || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, schoolName: e.target.value}})} />
-                    </FormItem>
-                     <FormItem>
-                        <FormLabel>Sınıfınız</FormLabel>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Sınıfınız</Label>
                         <Input value={schoolInfo?.className || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, className: e.target.value}})} />
-                    </FormItem>
-                     <FormItem>
-                        <FormLabel>Adınız Soyadınız</FormLabel>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Adınız Soyadınız</Label>
                         <Input value={schoolInfo?.classTeacherName || ''} onChange={(e) => setDb({...db, schoolInfo: {...db.schoolInfo, classTeacherName: e.target.value}})} />
-                    </FormItem>
+                    </div>
                  </CardContent>
              </Card>
         </div>
@@ -276,8 +274,6 @@ export function GuidanceReferralTab() {
             </form>
           </Form>
         </div>
-      </main>
     </div>
   );
 }
-
