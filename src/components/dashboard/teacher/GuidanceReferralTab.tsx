@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { GuidanceReferralRecord, TeacherProfile, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDatabase } from '@/hooks/use-database';
 import { exportGuidanceReferralToRtf } from '@/lib/word-export';
 import { RecordManager } from './RecordManager';
@@ -37,9 +36,13 @@ const formSchema = z.object({
 
 export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   const { db: localDb, setDb: setLocalDb } = useDatabase();
-  const { guidanceReferralRecords: records } = localDb;
+  const { guidanceReferralRecords: records = [] } = localDb;
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const processedRecords = useMemo(() => {
+    return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.recordDate).toLocaleDateString('tr-TR')}` }))
+  }, [records]);
 
   const defaultFormValues: GuidanceReferralRecord = {
       id: `record-${Date.now()}`,
@@ -61,69 +64,58 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
     defaultValues: defaultFormValues,
   });
 
+  const handleNewRecord = useCallback(() => {
+    const newId = `record-${Date.now()}`;
+    setSelectedRecordId(null);
+    form.reset({
+      ...defaultFormValues,
+      id: newId,
+      date: new Date().toISOString().split('T')[0],
+      className: currentClass?.name || '',
+      referrerName: teacherProfile?.name || '',
+    });
+  }, [form, teacherProfile, currentClass, defaultFormValues]);
+  
   useEffect(() => {
     if (selectedRecordId) {
-      const recordData = records.find(r => r.id === selectedRecordId); 
+      const recordData = records.find(r => r.id === selectedRecordId);
       if (recordData) {
         form.reset(recordData);
       }
     } else {
       handleNewRecord();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRecordId, records]);
-
-  useEffect(() => {
-    if(teacherProfile && !selectedRecordId) {
-        form.reset({
-            ...defaultFormValues,
-            id: `record-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            referrerName: teacherProfile.name,
-            className: currentClass?.name || '',
-        });
-    }
-  }, [teacherProfile, currentClass, selectedRecordId]);
+  }, [selectedRecordId, records, form, handleNewRecord]);
 
 
   const onSubmit = (values: GuidanceReferralRecord) => {
     setLocalDb(prevDb => {
+        const existingRecords = prevDb.guidanceReferralRecords || [];
+        const existingRecordIndex = existingRecords.findIndex(r => r.id === values.id);
         let updatedRecords;
-        const existingRecordIndex = prevDb.guidanceReferralRecords.findIndex(r => r.id === values.id);
 
         if (existingRecordIndex > -1) {
-          updatedRecords = [...prevDb.guidanceReferralRecords];
-          updatedRecords[existingRecordIndex] = values;
+            updatedRecords = [...existingRecords];
+            updatedRecords[existingRecordIndex] = values;
         } else {
-          updatedRecords = [...prevDb.guidanceReferralRecords, values];
+            updatedRecords = [...existingRecords, values];
         }
+        
         return { ...prevDb, guidanceReferralRecords: updatedRecords };
     });
     setSelectedRecordId(values.id);
     toast({ title: 'Kaydedildi', description: 'Yönlendirme formu başarıyla kaydedildi.' });
   };
-  
-  const handleNewRecord = () => {
-    const newId = `record-${Date.now()}`;
-    setSelectedRecordId(null);
-    form.reset({
-       ...defaultFormValues,
-       id: newId,
-       date: new Date().toISOString().split('T')[0],
-       className: currentClass?.name || '',
-       referrerName: teacherProfile?.name || '',
-    });
-  }
 
-  const handleDeleteRecord = () => {
+  const handleDeleteRecord = useCallback(() => {
     if (!selectedRecordId) return;
     setLocalDb(prevDb => ({
         ...prevDb,
-        guidanceReferralRecords: prevDb.guidanceReferralRecords.filter(r => r.id !== selectedRecordId)
+        guidanceReferralRecords: (prevDb.guidanceReferralRecords || []).filter(r => r.id !== selectedRecordId)
     }));
     handleNewRecord();
     toast({ title: 'Silindi', description: 'Yönlendirme formu silindi.', variant: 'destructive' });
-  };
+  }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
   const handleExport = () => {
     const values = form.getValues();
@@ -154,7 +146,7 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
     <div className="grid md:grid-cols-4 gap-8">
         <div className="md:col-span-1 space-y-4">
              <RecordManager
-                records={records}
+                records={processedRecords}
                 selectedRecordId={selectedRecordId}
                 onSelectRecord={setSelectedRecordId}
                 onNewRecord={handleNewRecord}

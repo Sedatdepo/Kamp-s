@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Printer, Save, Trash2, PlusCircle, Users2 } from 'lucide-react';
+import { FileDown, Save, Trash2, PlusCircle, Users2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,6 +15,8 @@ import { ObservationRecord, TeacherProfile, Class } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
+import { exportObservationFormToRtf } from '@/lib/word-export';
+
 
 const formSchema = z.object({
   id: z.string(),
@@ -38,10 +40,6 @@ const formSchema = z.object({
 });
 
 
-const generateWordContent = (data: ObservationRecord, teacherProfile: TeacherProfile | null, currentClass: Class | null) => {
-  // RTF generation logic...
-};
-
 export function StudentObservationFormTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   const { db: localDb, setDb: setLocalDb } = useDatabase();
   const { observationDocuments: records = [] } = localDb;
@@ -52,23 +50,8 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
     return (records || []).map(r => ({ id: r.id, name: `${r.studentName} - ${new Date(r.recordDate).toLocaleDateString('tr-TR')}` }))
   }, [records]);
 
-  const form = useForm<ObservationRecord>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const defaultFormValues: ObservationRecord = {
       id: `record-${Date.now()}`,
-      recordDate: new Date().toISOString().split('T')[0],
-      studentName: '', studentAgeGender: '', studentSchool: '', studentClassNumber: '', classTeacherName: '',
-      observationPlace: '', observationDateTime: '', observationDuration: '', observationBehavior: '',
-      observationPlanning: '', teacherObservations: '', observationEvaluation: '', conclusionAndSuggestions: '',
-      observerName: '', observerTitle: '', observerSignature: '',
-    },
-  });
-
-  const handleNewRecord = useCallback(() => {
-    const newId = `record-${Date.now()}`;
-    setSelectedRecordId(null);
-    form.reset({
-      id: newId,
       recordDate: new Date().toISOString().split('T')[0],
       studentName: '', studentAgeGender: '', 
       studentSchool: teacherProfile?.schoolName || '', 
@@ -79,8 +62,21 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
       observerName: teacherProfile?.name || '', 
       observerTitle: 'Sınıf Rehber Öğretmeni', 
       observerSignature: '',
+  };
+
+  const form = useForm<ObservationRecord>({
+    resolver: zodResolver(formSchema),
+    defaultValues: defaultFormValues,
+  });
+
+  const handleNewRecord = useCallback(() => {
+    const newId = `record-${Date.now()}`;
+    setSelectedRecordId(null);
+    form.reset({
+      ...defaultFormValues,
+      id: newId,
     });
-  }, [form, teacherProfile, currentClass]);
+  }, [form, defaultFormValues]);
 
   useEffect(() => {
     if (selectedRecordId) {
@@ -122,11 +118,15 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
     toast({ title: 'Silindi', description: 'Gözlem kaydı silindi.', variant: 'destructive' });
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
-  const handlePrint = () => {
-    // This function seems to be missing the file generation part.
-    // It should call a utility function to generate and download the file.
+  const handleExport = () => {
+    const values = form.getValues();
+    if (!values.studentName) {
+      toast({ title: 'Eksik Bilgi', description: 'Lütfen formu yazdırmak için önce formu kaydedin.', variant: 'destructive' });
+      return;
+    }
+    exportObservationFormToRtf({ record: values, teacherProfile, currentClass });
   };
-
+  
   const renderField = (name: keyof ObservationRecord, label: string, isTextArea = false) => (
     <FormField
       control={form.control}
@@ -162,7 +162,7 @@ export function StudentObservationFormTab({ teacherProfile, currentClass }: { te
                 <CardHeader className='flex-row justify-between items-center'>
                     <CardTitle>Gözlem Kayıt Formu</CardTitle>
                     <div className="flex items-center gap-2">
-                         <Button type="button" onClick={handlePrint} variant="outline" disabled={!selectedRecordId}><Printer className="mr-2"/> Kaydı Yazdır</Button>
+                         <Button type="button" onClick={handleExport} variant="outline" disabled={!selectedRecordId}><FileDown className="mr-2"/> RTF Olarak İndir</Button>
                          <Button type="submit" size="lg"><Save className="mr-2"/> Formu Kaydet</Button>
                     </div>
                 </CardHeader>
