@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus } from 'lucide-react';
+import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, Bus, Wand2, Save, Settings, Plus, Trash2, Home, List, Mic, Paperclip, Pencil, Video, LayoutTemplate, CaseUpper, KeySquare, FileQuestion, Sparkles, Binary, Shuffle, AlignLeft, ChevronDown, Star, GripVertical, Archive, BookmarkPlus, Library, AlertCircle, X, CheckSquare, FileText } from 'lucide-react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -763,4 +763,3 @@ export default function MebClubTab({ classes, allStudents, teacherProfile }: { c
         </div>
     );
 }
-    
