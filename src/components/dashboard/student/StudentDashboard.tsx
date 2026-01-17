@@ -1,8 +1,6 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Header } from '@/components/dashboard/teacher/Header';
 import { GradesTab } from './GradesTab';
 import { ProjectTab } from './ProjectTab';
 import { BadgesTab } from './BadgesTab';
