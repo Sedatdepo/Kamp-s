@@ -91,20 +91,22 @@ export const useDatabase = () => {
 
   // Component mount olduğunda localStorage'dan veriyi yükle
   useEffect(() => {
+    setLoading(true);
     try {
       const storedDb = localStorage.getItem(DB_KEY);
-      if (storedDb) {
+      if (storedDb && storedDb.trim().length > 2) { // Basic check for non-empty JSON
         const parsedDb = JSON.parse(storedDb);
-        // Ensure all parts of the initialDb are present in the loaded data
-        setDb({ ...initialDb, ...parsedDb });
+        // Merge with initialDb to ensure all keys are present and the app doesn't crash on new fields
+        setDb(prevDb => ({ ...initialDb, ...parsedDb }));
       } else {
-        // Eğer localStorage boşsa, başlangıç verisiyle doldur
+        // If no valid data, initialize localStorage with the default structure
         localStorage.setItem(DB_KEY, JSON.stringify(initialDb));
         setDb(initialDb);
       }
     } catch (error) {
-      console.error("Failed to load database from localStorage:", error);
-      // Hata durumunda varsayılan DB'yi kullan
+      console.error("Failed to load or parse database from localStorage, resetting:", error);
+      // On parsing error, reset to initial state to prevent crash loop
+      localStorage.setItem(DB_KEY, JSON.stringify(initialDb));
       setDb(initialDb);
     } finally {
       setLoading(false);
