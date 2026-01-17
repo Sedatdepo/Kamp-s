@@ -112,11 +112,11 @@ export const PrintPreviewModal = ({ isOpen, onClose, project }: any) => {
                 <div>
                   <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
                     <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">3</span>
-                    Teslim Formatı
+                    Teslim Şartları
                   </h3>
                   <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                    <li>Bu proje <strong>${project.formats}</strong> formatında hazırlanmalıdır.</li>
-                    <li>Dijital dosya boyutu <strong>${project.size}</strong>'ı geçmemelidir.</li>
+                    <li>Bu proje <b>${project.formats}</b> formatında hazırlanmalıdır.</li>
+                    <li>Dijital dosya boyutu <b>${project.size}</b>'ı geçmemelidir.</li>
                   </ul>
                 </div>
               </div>

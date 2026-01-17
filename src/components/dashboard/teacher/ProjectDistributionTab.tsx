@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { ProjectAssignmentView } from './DistributionAssignmentTab';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
+import { ProjectLibrary } from './project-pool/ProjectLibrary';
 
 interface ProjectDistributionTabProps {
   classId: string;
@@ -18,9 +19,10 @@ interface ProjectDistributionTabProps {
 
 export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
   return (
-    <Tabs defaultValue="assignment">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="assignment">Proje Atama</TabsTrigger>
+    <Tabs defaultValue="library">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="assignment">Proje Tercihleri</TabsTrigger>
+        <TabsTrigger value="library">Proje Havuzu</TabsTrigger>
         <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
       </TabsList>
       <TabsContent value="assignment" className="mt-4">
@@ -31,6 +33,14 @@ export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
           currentClass={props.currentClass}
           students={props.students}
           lessons={props.lessons}
+        />
+      </TabsContent>
+      <TabsContent value="library" className="mt-4">
+        <ProjectLibrary
+           classId={props.classId}
+           teacherProfile={props.teacherProfile}
+           classes={props.classes}
+           students={props.students}
         />
       </TabsContent>
       <TabsContent value="petitions" className="mt-4">
