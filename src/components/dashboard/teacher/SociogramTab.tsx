@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Share2, Users, User, UserCheck, UserX, Star, BookOpen, Coffee, FileDown, CheckCircle, AlertTriangle, Wand2, Lightbulb, Heart, Group, Frown } from 'lucide-react';
+import { Loader2, Share2, Users, User, UserCheck, UserX, Star, BookOpen, Coffee, FileDown, CheckCircle, AlertTriangle, Wand2, Lightbulb, Heart, Group, Frown, Plus, Edit, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -22,6 +22,33 @@ import {
 import { exportSociogramToRtf } from '@/lib/word-export';
 import { analyzeSociogram } from '@/ai/flows/analyze-sociogram-flow';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 interface SociogramTabProps {
@@ -38,6 +65,12 @@ const DEFAULT_SURVEY: SociogramSurvey = {
       { id: 2, text: 'Sınıfta yan yana oturmak istemediğin kişiler kim?', type: 'negative', maxSelections: 2, active: true, icon: 'UserX' },
       { id: 3, text: 'Sınıf başkanı olmasa bile sınıfı kim yönetir?', type: 'leadership', maxSelections: 1, active: true, icon: 'Star' },
     ],
+};
+
+const getIconComponent = (iconName: SociogramQuestion['icon']) => {
+    const icons = { Users, UserX, Star, BookOpen, Coffee };
+    const Icon = icons[iconName] || Users;
+    return <Icon size={20} />;
 };
 
 const SociogramGraph = ({ students, relationships }: { students: Student[], relationships: any[] }) => {
@@ -116,6 +149,73 @@ const SociogramGraph = ({ students, relationships }: { students: Student[], rela
     );
 };
 
+const QuestionModal = ({ question, isOpen, onClose, onSave }: { question: Partial<SociogramQuestion> | null, isOpen: boolean, onClose: () => void, onSave: (question: SociogramQuestion) => void }) => {
+    const [editedQuestion, setEditedQuestion] = useState(question);
+
+    useEffect(() => {
+        setEditedQuestion(question);
+    }, [question]);
+
+    if (!isOpen || !editedQuestion) return null;
+
+    const handleSaveClick = () => {
+        if (!editedQuestion.text?.trim()) {
+            return;
+        }
+        onSave(editedQuestion as SociogramQuestion);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{editedQuestion.id && editedQuestion.id > 1000 ? 'Yeni Soru Ekle' : 'Soruyu Düzenle'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label htmlFor="q-text">Soru Metni</Label>
+                        <Textarea id="q-text" value={editedQuestion.text} onChange={(e) => setEditedQuestion({ ...editedQuestion, text: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="q-type">Soru Tipi</Label>
+                            <Select value={editedQuestion.type} onValueChange={(val: any) => setEditedQuestion({...editedQuestion, type: val})}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="positive">Olumlu Seçim</SelectItem>
+                                    <SelectItem value="negative">Olumsuz Seçim</SelectItem>
+                                    <SelectItem value="leadership">Liderlik Seçimi</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="q-max">Maksimum Seçim</Label>
+                            <Input id="q-max" type="number" value={editedQuestion.maxSelections} onChange={(e) => setEditedQuestion({...editedQuestion, maxSelections: parseInt(e.target.value) || 1})} />
+                        </div>
+                    </div>
+                     <div>
+                        <Label htmlFor="q-icon">İkon</Label>
+                        <Select value={editedQuestion.icon} onValueChange={(val: any) => setEditedQuestion({...editedQuestion, icon: val})}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Users">Arkadaşlar</SelectItem>
+                                <SelectItem value="Coffee">Sohbet</SelectItem>
+                                <SelectItem value="BookOpen">Ders</SelectItem>
+                                <SelectItem value="UserX">İstenmeyen</SelectItem>
+                                <SelectItem value="Star">Lider</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onClose}>İptal</Button>
+                    <Button onClick={handleSaveClick}>Kaydet</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function SociogramTab({ students, currentClass }: SociogramTabProps) {
   const { appUser, db } = useAuth();
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
@@ -124,6 +224,8 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
   const [survey, setSurvey] = useState<SociogramSurvey>(currentClass?.sociogramSurvey || DEFAULT_SURVEY);
   const [aiAnalysis, setAiAnalysis] = useState<SociogramAnalysisOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Partial<SociogramQuestion> | null>(null);
   
   useEffect(() => {
     if (currentClass && !currentClass.sociogramSurvey && db) {
@@ -243,111 +345,164 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
       }
   }
 
+  const handleOpenModal = (question: Partial<SociogramQuestion> | null) => {
+    if (question) {
+        setEditingQuestion(question);
+    } else {
+        setEditingQuestion({ id: Date.now(), text: '', type: 'positive', maxSelections: 3, active: true, icon: 'Users' });
+    }
+    setIsQuestionModalOpen(true);
+  };
+    
+  const handleSaveQuestion = (questionToSave: SociogramQuestion) => {
+      const existingIndex = survey.questions.findIndex(q => q.id === questionToSave.id);
+      let newQuestions;
+      if (existingIndex > -1) {
+          newQuestions = survey.questions.map(q => q.id === questionToSave.id ? questionToSave : q);
+      } else {
+          newQuestions = [...survey.questions, questionToSave];
+      }
+      handleSurveyChange({...survey, questions: newQuestions});
+      setIsQuestionModalOpen(false);
+  };
+
+  const handleDeleteQuestion = (questionId: number) => {
+      const newQuestions = survey.questions.filter(q => q.id !== questionId);
+      handleSurveyChange({...survey, questions: newQuestions});
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1 space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Yönetim Paneli</CardTitle>
-            <CardDescription>Anketi aktif edin ve soruları yönetin.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between space-x-2 p-3 bg-muted rounded-lg">
-              <Label htmlFor="sociogram-toggle" className="font-semibold">
-                Sosyogram Seçimi {currentClass?.isSociogramActive ? 'Aktif' : 'Pasif'}
-              </Label>
-              <Switch 
-                  id="sociogram-toggle" 
-                  checked={currentClass?.isSociogramActive || false}
-                  onCheckedChange={handleToggleActive}
-                  disabled={!currentClass}
-              />
-            </div>
-            {survey.questions.map((q, i) => (
-                <div key={q.id} className="flex items-center justify-between space-x-2 p-2 border rounded-md">
-                     <Label htmlFor={`q-active-${q.id}`} className="text-sm font-medium">{q.text}</Label>
-                     <Switch 
-                        id={`q-active-${q.id}`}
-                        checked={q.active}
-                        onCheckedChange={(checked) => {
-                            const newQuestions = [...survey.questions];
-                            newQuestions[i].active = checked;
-                            handleSurveyChange({...survey, questions: newQuestions});
-                        }}
-                     />
-                </div>
-            ))}
-          </CardContent>
-        </Card>
-        
-        <Card>
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-4">
+          <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Lightbulb /> AI Analiz Sonuçları</CardTitle>
-                 <CardDescription>Yapay zekanın sınıf dinamikleri hakkındaki yorumları.</CardDescription>
-                 <Button onClick={handleAnalyzeWithAI} disabled={isAnalyzing} size="sm" className="mt-2">
-                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
-                    Yapay Zeka ile Yorumla
-                </Button>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm max-h-96 overflow-y-auto">
-                 {aiAnalysis ? (
-                    <div className="space-y-4">
-                        <p className="p-3 bg-blue-50 text-blue-800 rounded-md border border-blue-100">{aiAnalysis.summary}</p>
-                        
-                        {aiAnalysis.leaders.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-500"/>Liderler</h4>{aiAnalysis.leaders.map(l => <p key={l.student}>- <strong>{l.student}:</strong> {l.reason}</p>)}</div>}
-
-                        {aiAnalysis.cliques.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Group size={16} className="text-green-600"/>Gruplar (Klikler)</h4>{aiAnalysis.cliques.map(c => <p key={c.members.join('-')}>- <strong>{c.members.join(', ')}:</strong> {c.description}</p>)}</div>}
-
-                        {aiAnalysis.risks.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><AlertTriangle size={16} className="text-red-500"/>Risk Grubu</h4>{aiAnalysis.risks.map(r => <p key={r.student}>- <strong>{r.student} ({r.reason}):</strong> {r.recommendation}</p>)}</div>}
-                        
-                        {aiAnalysis.tensions.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Frown size={16} className="text-orange-500"/>Gerilimler</h4>{aiAnalysis.tensions.map(t => <p key={t.students.join('-')}>- <strong>{t.students.join(' ↔ ')}:</strong> {t.description}</p>)}</div>}
+              <CardTitle>Yönetim Paneli</CardTitle>
+              <CardDescription>Anketi aktif edin ve soruları yönetin.</CardDescription>
+                <div className="flex justify-between items-center pt-2">
+                    <div className="flex items-center space-x-2">
+                        <Switch id="sociogram-toggle" checked={currentClass?.isSociogramActive || false} onCheckedChange={handleToggleActive} disabled={!currentClass} />
+                        <Label htmlFor="sociogram-toggle">Anket Aktif</Label>
                     </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                        {isAnalyzing ? 'Analiz ediliyor...' : 'Analiz sonuçlarını görmek için butona tıklayın.'}
-                    </p>
-                )}
+                    <Button size="sm" onClick={() => handleOpenModal(null)}>
+                        <Plus className="mr-2 h-4 w-4" /> Yeni Soru
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {survey.questions.map((q, i) => (
+                  <div key={q.id} className="flex items-center justify-between space-x-2 p-2 border rounded-md hover:bg-slate-50 group">
+                       <Label htmlFor={`q-active-${q.id}`} className="text-sm font-medium flex items-center gap-2">
+                           {getIconComponent(q.icon)} {q.text}
+                       </Label>
+                       <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenModal(q)}><Edit className="h-4 w-4" /></Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Soruyu Sil</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            "{q.text}" sorusunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteQuestion(q.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                           <Switch 
+                              id={`q-active-${q.id}`}
+                              checked={q.active}
+                              onCheckedChange={(checked) => {
+                                  const newQuestions = [...survey.questions];
+                                  newQuestions[i].active = checked;
+                                  handleSurveyChange({...survey, questions: newQuestions});
+                              }}
+                           />
+                       </div>
+                  </div>
+              ))}
             </CardContent>
-        </Card>
-      </div>
+          </Card>
+          
+          <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Lightbulb /> AI Analiz Sonuçları</CardTitle>
+                   <CardDescription>Yapay zekanın sınıf dinamikleri hakkındaki yorumları.</CardDescription>
+                   <Button onClick={handleAnalyzeWithAI} disabled={isAnalyzing} size="sm" className="mt-2">
+                      {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
+                      Yapay Zeka ile Yorumla
+                  </Button>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm max-h-96 overflow-y-auto">
+                   {aiAnalysis ? (
+                      <div className="space-y-4">
+                          <p className="p-3 bg-blue-50 text-blue-800 rounded-md border border-blue-100">{aiAnalysis.summary}</p>
+                          
+                          {aiAnalysis.leaders.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-500"/>Liderler</h4>{aiAnalysis.leaders.map(l => <p key={l.student}>- <strong>{l.student}:</strong> {l.reason}</p>)}</div>}
 
-      <div className="lg:col-span-2 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2"><UserCheck /> Analiz Sonuçları</CardTitle>
-                <Button onClick={handleExport} variant="outline"><FileDown className="mr-2 h-4 w-4"/> Raporu İndir</Button>
-            </div>
-            <CardDescription>Sınıfın sosyal dinamikleri, yıldızları ve gruplaşmaları.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-                <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Pozitif Seçim</TableHead><TableHead>Negatif Seçim</TableHead><TableHead>Liderlik Seçimi</TableHead></TableRow></TableHeader>
-                <TableBody>
-                    {analysis.popular.map(({student, pos, neg, lead}) => (
-                        <TableRow key={student?.id}>
-                            <TableCell className="font-medium">{student?.name}</TableCell>
-                            <TableCell><Badge variant="default" className="bg-green-500">{pos}</Badge></TableCell>
-                            <TableCell><Badge variant="destructive">{neg}</Badge></TableCell>
-                            <TableCell><Badge variant="default" className="bg-yellow-500">{lead}</Badge></TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-             {analysis.popular.filter(p => p.pos > 0).length === 0 && <p className="text-sm text-center text-muted-foreground p-4">Henüz seçim yapılmadı.</p>}
-          </CardContent>
-        </Card>
+                          {aiAnalysis.cliques.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Group size={16} className="text-green-600"/>Gruplar (Klikler)</h4>{aiAnalysis.cliques.map(c => <p key={c.members.join('-')}>- <strong>{c.members.join(', ')}:</strong> {c.description}</p>)}</div>}
 
-        <Card>
+                          {aiAnalysis.risks.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><AlertTriangle size={16} className="text-red-500"/>Risk Grubu</h4>{aiAnalysis.risks.map(r => <p key={r.student}>- <strong>{r.student} ({r.reason}):</strong> {r.recommendation}</p>)}</div>}
+                          
+                          {aiAnalysis.tensions.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Frown size={16} className="text-orange-500"/>Gerilimler</h4>{aiAnalysis.tensions.map(t => <p key={t.students.join('-')}>- <strong>{t.students.join(' ↔ ')}:</strong> {t.description}</p>)}</div>}
+                      </div>
+                  ) : (
+                      <p className="text-center text-muted-foreground py-4">
+                          {isAnalyzing ? 'Analiz ediliyor...' : 'Analiz sonuçlarını görmek için butona tıklayın.'}
+                      </p>
+                  )}
+              </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
             <CardHeader>
-                <CardTitle>İlişki Ağı Grafiği (Sosyogram)</CardTitle>
+              <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2"><UserCheck /> Analiz Sonuçları</CardTitle>
+                  <Button onClick={handleExport} variant="outline"><FileDown className="mr-2 h-4 w-4"/> Raporu İndir</Button>
+              </div>
+              <CardDescription>Sınıfın sosyal dinamikleri, yıldızları ve gruplaşmaları.</CardDescription>
             </CardHeader>
             <CardContent>
-                <SociogramGraph students={students} relationships={analysis.relationships} />
+              <Table>
+                  <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Pozitif Seçim</TableHead><TableHead>Negatif Seçim</TableHead><TableHead>Liderlik Seçimi</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                      {analysis.popular.map(({student, pos, neg, lead}) => (
+                          <TableRow key={student?.id}>
+                              <TableCell className="font-medium">{student?.name}</TableCell>
+                              <TableCell><Badge variant="default" className="bg-green-500">{pos}</Badge></TableCell>
+                              <TableCell><Badge variant="destructive">{neg}</Badge></TableCell>
+                              <TableCell><Badge variant="default" className="bg-yellow-500">{lead}</Badge></TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+               {analysis.popular.filter(p => p.pos > 0).length === 0 && <p className="text-sm text-center text-muted-foreground p-4">Henüz seçim yapılmadı.</p>}
             </CardContent>
-        </Card>
+          </Card>
+
+          <Card>
+              <CardHeader>
+                  <CardTitle>İlişki Ağı Grafiği (Sosyogram)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <SociogramGraph students={students} relationships={analysis.relationships} />
+              </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+      <QuestionModal
+        isOpen={isQuestionModalOpen}
+        onClose={() => setIsQuestionModalOpen(false)}
+        question={editingQuestion}
+        onSave={handleSaveQuestion}
+      />
+    </>
   );
 }
