@@ -228,7 +228,6 @@ export default function ZumreTab() {
                     <Button onClick={handleExport} className="bg-purple-600 hover:bg-purple-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                 </div>
             </header>
-
             <main className="max-w-5xl mx-auto p-6 space-y-8">
                 <Form {...form}>
                     <form className="space-y-8">
