@@ -21,12 +21,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
 
 // --- SABİT VERİLER (CONSTANTS) ---
 const PHYSICS_OUTCOMES = [
@@ -255,12 +259,135 @@ export function BepTab() {
                 <TabsTrigger value="bep">BEP Hazırla</TabsTrigger>
             </TabsList>
             <TabsContent value="students" className="mt-4">
-                {/* Öğrenci Yönetimi içeriği */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>BEP Öğrenci Yönetimi</CardTitle>
+                        <CardDescription>Bireyselleştirilmiş Eğitim Programı hazırlanacak öğrencileri yönetin.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex justify-between mb-4">
+                            <Input 
+                                placeholder="Öğrenci ara..." 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="max-w-sm"
+                            />
+                            <Button onClick={() => { setIsModalOpen(true); setEditingStudent(null); }}>
+                                <Plus className="mr-2 h-4 w-4" /> Yeni Öğrenci Ekle
+                            </Button>
+                        </div>
+                        <div className="border rounded-lg">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Adı Soyadı</TableHead>
+                                        <TableHead>Sınıf</TableHead>
+                                        <TableHead>Numara</TableHead>
+                                        <TableHead>Tanı</TableHead>
+                                        <TableHead className="text-right">İşlemler</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map(student => (
+                                        <TableRow key={student.id}>
+                                            <TableCell className="font-medium">{student.name}</TableCell>
+                                            <TableCell>{student.class}</TableCell>
+                                            <TableCell>{student.number}</TableCell>
+                                            <TableCell>{student.specialNeeds?.join(', ')}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => { setEditingStudent(student); setIsModalOpen(true); }}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
             </TabsContent>
             <TabsContent value="bep" className="mt-4">
-                {/* BEP Hazırlama içeriği */}
+                <Card>
+                  <CardHeader>
+                      <CardTitle>BEP Hazırlama Sihirbazı</CardTitle>
+                      <CardDescription>Öğrenci seçerek BEP planı oluşturun ve raporları indirin.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Select onValueChange={setSelectedStudentId} value={selectedStudentId}>
+                          <SelectTrigger>
+                              <SelectValue placeholder="BEP hazırlanacak öğrenciyi seçin..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {students.filter(s => s.isSpecialNeeds).map(student => (
+                                  <SelectItem key={student.id} value={student.id}>{student.name} ({student.class})</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                      {selectedStudentId && (
+                        <div className="space-y-6 pt-4 border-t">
+                          <div className="flex gap-4">
+                              <Button onClick={() => generateRTF('kaba')}>Kaba Değerlendirme Formu İndir</Button>
+                              <Button onClick={() => generateRTF('performans')}>Eğitsel Performans Formu İndir</Button>
+                              <Button onClick={() => generateRTF('bep')}>BEP Planı İndir</Button>
+                          </div>
+                        </div>
+                      )}
+                  </CardContent>
+                </Card>
             </TabsContent>
         </Tabs>
+        
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{editingStudent ? 'Öğrenciyi Düzenle' : 'Yeni Öğrenci Ekle'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSaveStudent} className="space-y-4 pt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="name">Adı Soyadı</Label>
+                            <Input id="name" name="name" defaultValue={editingStudent?.name || ''} />
+                        </div>
+                         <div>
+                            <Label htmlFor="class">Sınıf</Label>
+                            <Input id="class" name="class" defaultValue={editingStudent?.class || ''} />
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="number">Numara</Label>
+                            <Input id="number" name="number" defaultValue={editingStudent?.number || ''} />
+                        </div>
+                         <div>
+                            <Label htmlFor="branch">Dal/Alan</Label>
+                            <Input id="branch" name="branch" defaultValue={editingStudent?.branch || ''} />
+                        </div>
+                    </div>
+                    <div>
+                        <Label>Tanı/Özel Durum</Label>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            {SPECIAL_NEED_TYPES.map(need => (
+                                <div key={need} className="flex items-center gap-2">
+                                    <input type="checkbox" id={need} checked={editingStudent?.specialNeeds?.includes(need)} onChange={() => toggleSpecialNeed(need)} />
+                                    <Label htmlFor={need} className="text-sm">{need}</Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                     <div>
+                        <Label htmlFor="notes">Notlar</Label>
+                        <Textarea id="notes" name="notes" defaultValue={editingStudent?.notes || ''} />
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Kaydet</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
