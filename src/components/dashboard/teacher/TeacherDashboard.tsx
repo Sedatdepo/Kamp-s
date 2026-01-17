@@ -1,27 +1,10 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
-import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
-import KazanımlarTab from './KazanımlarTab';
-import { ProjectDistributionTab } from '@/components/dashboard/teacher/ProjectDistributionTab';
-import { RiskMapTab } from '@/components/dashboard/teacher/RiskMapTab';
-import { InfoFormsTab } from '@/components/dashboard/teacher/InfoFormsTab';
-import { GradingToolTab } from '@/components/dashboard/teacher/GradingToolTab';
-import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
-import { HomeworkTab } from '@/components/dashboard/teacher/HomeworkTab';
-import { ElectionTab } from '@/components/dashboard/teacher/ElectionTab';
-import { AnnualPlanTab } from '@/components/dashboard/teacher/AnnualPlanTab';
-import { DilekceTab } from '@/components/dashboard/teacher/DilekceTab';
-import { SurveyTab } from '@/components/dashboard/teacher/SurveyTab';
-import { DisciplineTab } from './DisciplineTab';
-import { BepTab } from './BepTab';
-import VeliToplantisiTab from './VeliToplantisiTab';
-import SokTab from './SokTab';
-import MebClubTab from './MebClubTab';
-import { SocialClubTab } from './SocialClubTab';
-import { SociogramTab } from './SociogramTab'; 
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,14 +26,39 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ZumreTab from './ZumreTab';
 import { ProfileDialog } from './ProfileDialog';
-import ExamBuilder from './ExamBuilder';
-import { ExamAnalysisTab } from './ExamAnalysisTab';
-import { SinifKahramanlariTab } from './SinifKahramanlariTab';
-import { DiscussionBoardTab } from './DiscussionBoardTab';
-import TimetableTab from './TimetableTab';
-import AgendaTab from './AgendaTab';
+
+const LoadingSpinner = () => (
+    <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+);
+
+// Dynamically import all tab components
+const StudentManagementTab = dynamic(() => import('@/components/dashboard/teacher/StudentManagementTab').then(mod => mod.StudentManagementTab), { loading: LoadingSpinner });
+const KazanımlarTab = dynamic(() => import('./KazanımlarTab'), { loading: LoadingSpinner });
+const ProjectDistributionTab = dynamic(() => import('@/components/dashboard/teacher/ProjectDistributionTab').then(mod => mod.ProjectDistributionTab), { loading: LoadingSpinner });
+const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
+const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.InfoFormsTab), { loading: LoadingSpinner });
+const GradingToolTab = dynamic(() => import('@/components/dashboard/teacher/GradingToolTab').then(mod => mod.GradingToolTab), { loading: LoadingSpinner });
+const CommunicationTab = dynamic(() => import('@/components/dashboard/teacher/CommunicationTab').then(mod => mod.CommunicationTab), { loading: LoadingSpinner });
+const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/HomeworkTab').then(mod => mod.HomeworkTab), { loading: LoadingSpinner });
+const ElectionTab = dynamic(() => import('@/components/dashboard/teacher/ElectionTab').then(mod => mod.ElectionTab), { loading: LoadingSpinner });
+const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/AnnualPlanTab').then(mod => mod.AnnualPlanTab), { loading: LoadingSpinner });
+const DilekceTab = dynamic(() => import('@/components/dashboard/teacher/DilekceTab').then(mod => mod.DilekceTab), { loading: LoadingSpinner });
+const SurveyTab = dynamic(() => import('@/components/dashboard/teacher/SurveyTab').then(mod => mod.SurveyTab), { loading: LoadingSpinner });
+const DisciplineTab = dynamic(() => import('./DisciplineTab').then(mod => mod.DisciplineTab), { loading: LoadingSpinner });
+const BepTab = dynamic(() => import('./BepTab').then(mod => mod.BepTab), { loading: LoadingSpinner });
+const VeliToplantisiTab = dynamic(() => import('./VeliToplantisiTab'), { loading: LoadingSpinner });
+const SokTab = dynamic(() => import('./SokTab'), { loading: LoadingSpinner });
+const MebClubTab = dynamic(() => import('./MebClubTab'), { loading: LoadingSpinner });
+const SocialClubTab = dynamic(() => import('./SocialClubTab').then(mod => mod.SocialClubTab), { loading: LoadingSpinner });
+const SociogramTab = dynamic(() => import('./SociogramTab').then(mod => mod.SociogramTab), { loading: LoadingSpinner });
+const ZumreTab = dynamic(() => import('./ZumreTab'), { loading: LoadingSpinner });
+const ExamBuilder = dynamic(() => import('./ExamBuilder'), { loading: LoadingSpinner });
+const ExamAnalysisTab = dynamic(() => import('./ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
+const SinifKahramanlariTab = dynamic(() => import('./SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
+const DiscussionBoardTab = dynamic(() => import('./DiscussionBoardTab').then(mod => mod.DiscussionBoardTab), { loading: LoadingSpinner });
+const TimetableTab = dynamic(() => import('./TimetableTab'), { loading: LoadingSpinner });
+const AgendaTab = dynamic(() => import('./AgendaTab'), { loading: LoadingSpinner });
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion" | "timetable" | "agenda";
