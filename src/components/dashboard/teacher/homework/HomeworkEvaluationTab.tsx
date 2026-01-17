@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '../RecordManager';
@@ -68,31 +69,47 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
     const handleSaveAll = async () => {
         if (!db) return;
         const batch = writeBatch(db);
-        students.forEach(student => {
+        
+        for (const student of students) {
             const submission = submissions.find(s => s.studentId === student.id);
-            if (submission) {
+            const studentScores = scores[student.id];
+            const studentFeedback = feedback[student.id];
+            
+            const hasDataToSave = (studentScores && Object.values(studentScores).some(s => s > 0)) || (studentFeedback && studentFeedback.trim() !== '');
+
+            const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
+
+            if (submission) { // Existing submission, update it
                 const subRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', submission.id);
-                const studentScores = scores[student.id];
-                const studentFeedback = feedback[student.id];
-                
-                const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
                 
                 const updates: any = {};
-                // Only include fields that have changed
                 if (studentScores && JSON.stringify(studentScores) !== JSON.stringify(submission.rubricScores || {})) updates.rubricScores = studentScores;
-                if (studentFeedback !== (submission.feedback || '')) updates.feedback = studentFeedback;
+                if (studentFeedback !== undefined && studentFeedback !== (submission.feedback || '')) updates.feedback = studentFeedback;
                 if (totalScore !== submission.grade) updates.grade = totalScore;
                 
                 if (Object.keys(updates).length > 0) {
                     batch.update(subRef, updates);
                 }
+            } else if (hasDataToSave) { // No submission, but teacher entered data. Create one.
+                const newSubRef = doc(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
+                batch.set(newSubRef, {
+                    studentId: student.id,
+                    studentName: student.name,
+                    studentNumber: student.number,
+                    homeworkId: homework.id,
+                    submittedAt: new Date().toISOString(), // Mark as submitted now
+                    rubricScores: studentScores || {},
+                    feedback: studentFeedback || '',
+                    grade: totalScore,
+                    text: 'Öğretmen tarafından not girişi yapıldı.' // Add a note
+                });
             }
-        });
+        }
 
         try {
             await batch.commit();
             toast({ title: 'Değerlendirmeler kaydedildi.' });
-            onScoresUpdated(); // Callback to refresh data in parent
+            onScoresUpdated();
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Hata!', description: 'Değerlendirmeler kaydedilemedi.' });
@@ -101,8 +118,8 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
     
     return (
         <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value={homework.id}>
-                <AccordionTrigger>
+            <AccordionItem value={homework.id} className="border-b-0">
+                <AccordionTrigger className="p-4 border rounded-lg data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                     <div>
                         <p className="font-semibold text-left">{homework.text}</p>
                         <p className="text-xs text-muted-foreground text-left">
@@ -110,8 +127,8 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                         </p>
                     </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                    <div className="space-y-4">
+                <AccordionContent className="border border-t-0 rounded-b-lg p-0">
+                    <div className="space-y-4 p-4">
                         <div className="flex justify-end gap-2">
                              <Button size="sm" onClick={handleSaveAll}><Save className="mr-2 h-4 w-4" /> Tümünü Kaydet</Button>
                             <AlertDialog>
@@ -138,37 +155,31 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                     const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
                                     
                                     return (
-                                        <TableRow key={student.id} className={!submission ? 'bg-gray-50 opacity-70' : ''}>
+                                        <TableRow key={student.id} className={!submission ? 'bg-yellow-50/50' : ''}>
                                             <TableCell className="font-medium">{student.name}</TableCell>
                                             
-                                            {submission ? (
-                                                <>
-                                                    {homework.rubric?.map((c: any) => (
-                                                        <TableCell key={c.label}>
-                                                            <Input 
-                                                                type="number" 
-                                                                className="w-16 text-center mx-auto" 
-                                                                value={studentScores[c.label] ?? ''} 
-                                                                onChange={(e) => handleScoreChange(student.id, c.label, e.target.value)}
-                                                                max={c.score}
-                                                            />
-                                                        </TableCell>
-                                                    ))}
-                                                    <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
-                                                    <TableCell>
-                                                        <Textarea 
-                                                            value={feedback[student.id] || ''}
-                                                            onChange={(e) => handleFeedbackChange(student.id, e.target.value)}
-                                                            rows={1}
-                                                            className="text-xs"
-                                                        />
-                                                    </TableCell>
-                                                </>
-                                            ) : (
-                                                <TableCell colSpan={(homework.rubric?.length || 0) + 2} className="text-center text-muted-foreground text-xs">
-                                                    Teslim Bekleniyor
+                                            {homework.rubric?.map((c: any) => (
+                                                <TableCell key={c.label}>
+                                                    <Input 
+                                                        type="number" 
+                                                        className="w-16 text-center mx-auto" 
+                                                        value={studentScores[c.label] ?? ''} 
+                                                        onChange={(e) => handleScoreChange(student.id, c.label, e.target.value)}
+                                                        max={c.score}
+                                                        placeholder="-"
+                                                    />
                                                 </TableCell>
-                                            )}
+                                            ))}
+                                            <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
+                                            <TableCell>
+                                                <Textarea 
+                                                    value={feedback[student.id] || ''}
+                                                    onChange={(e) => handleFeedbackChange(student.id, e.target.value)}
+                                                    rows={1}
+                                                    className="text-xs"
+                                                    placeholder="Geri bildirim..."
+                                                />
+                                            </TableCell>
                                         </TableRow>
                                     )
                                 })}
