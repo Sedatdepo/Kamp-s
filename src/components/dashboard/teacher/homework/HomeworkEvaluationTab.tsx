@@ -11,11 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,31 +23,156 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { Badge } from '@/components/ui/badge';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '../RecordManager';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 
-const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSubmitted }: { student: Student, homework: Homework, submissions: Submission[], classId: string, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
-    const submission = submissions.find(s => s.studentId === student.id);
+const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, teacherProfile: TeacherProfile | null, onHomeworkDelete: (id: string) => void, onScoresUpdated: () => void }) => {
+    const { db } = useAuth();
+    const { toast } = useToast();
+    const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
+    const [feedback, setFeedback] = useState<{ [studentId: string]: string }>({});
 
-    if (submission) {
-        return <Badge>Teslim Edildi</Badge>;
-    }
+    // Initialize state from existing submissions
+    useEffect(() => {
+        const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
+        const initialFeedback: { [studentId: string]: string } = {};
+        students.forEach(student => {
+            const submission = submissions.find(s => s.studentId === student.id);
+            if (submission) {
+                initialScores[student.id] = submission.rubricScores || {};
+                initialFeedback[student.id] = submission.feedback || '';
+            }
+        });
+        setScores(initialScores);
+        setFeedback(initialFeedback);
+    }, [submissions, students]);
 
-    if (!homework.questions || homework.questions.length === 0) {
-        return (
-            <div className="flex items-center space-x-2">
-                <Checkbox id={`mark-${student.id}-${homework.id}`} onCheckedChange={() => onMarkAsSubmitted(student.id, homework.id)} />
-                <Label htmlFor={`mark-${student.id}-${homework.id}`} className="text-xs">Teslim Etti</Label>
-            </div>
-        );
-    }
+    const handleScoreChange = (studentId: string, criteriaId: string, value: string) => {
+        const newScore = parseInt(value, 10);
+        setScores(prev => ({
+            ...prev,
+            [studentId]: {
+                ...prev[studentId],
+                [criteriaId]: isNaN(newScore) ? 0 : newScore,
+            },
+        }));
+    };
     
-    return <Badge variant="secondary">Bekleniyor</Badge>;
+    const handleFeedbackChange = (studentId: string, value: string) => {
+        setFeedback(prev => ({ ...prev, [studentId]: value }));
+    };
+
+    const handleSaveAll = async () => {
+        if (!db) return;
+        const batch = writeBatch(db);
+        students.forEach(student => {
+            const submission = submissions.find(s => s.studentId === student.id);
+            if (submission) {
+                const subRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', submission.id);
+                const studentScores = scores[student.id];
+                const studentFeedback = feedback[student.id];
+                
+                const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
+                
+                const updates: any = {};
+                if (studentScores !== submission.rubricScores) updates.rubricScores = studentScores;
+                if (studentFeedback !== submission.feedback) updates.feedback = studentFeedback;
+                updates.grade = totalScore;
+                
+                if (Object.keys(updates).length > 1) { // Only update if there are changes
+                    batch.update(subRef, updates);
+                }
+            }
+        });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Değerlendirmeler kaydedildi.' });
+            onScoresUpdated(); // Callback to refresh data in parent
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Hata!', description: 'Değerlendirmeler kaydedilemedi.' });
+        }
+    };
+    
+    return (
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value={homework.id}>
+                <AccordionTrigger>
+                    <div>
+                        <p className="font-semibold text-left">{homework.text}</p>
+                        <p className="text-xs text-muted-foreground text-left">
+                            Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Yok'}
+                        </p>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="space-y-4">
+                        <div className="flex justify-end gap-2">
+                             <Button size="sm" onClick={handleSaveAll}><Save className="mr-2 h-4 w-4" /> Tümünü Kaydet</Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild><Button size="sm" variant="destructive"><Trash2 className="mr-2 h-4 w-4"/> Ödevi Sil</Button></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu ödevi ve tüm teslimleri silmek istediğinizden emin misiniz?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => onHomeworkDelete(homework.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Öğrenci</TableHead>
+                                    {homework.rubric?.map((c: any) => <TableHead key={c.label} className="text-center">{c.label} ({c.score}P)</TableHead>)}
+                                    <TableHead className="text-center">Toplam</TableHead>
+                                    <TableHead>Geri Bildirim</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {students.map(student => {
+                                    const submission = submissions.find(s => s.studentId === student.id);
+                                    if (!submission) return null;
+                                    const studentScores = scores[student.id] || {};
+                                    const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
+                                    
+                                    return (
+                                        <TableRow key={student.id}>
+                                            <TableCell className="font-medium">{student.name}</TableCell>
+                                            {homework.rubric?.map((c: any) => (
+                                                <TableCell key={c.label}>
+                                                    <Input 
+                                                        type="number" 
+                                                        className="w-16 text-center mx-auto" 
+                                                        value={studentScores[c.label] || ''} 
+                                                        onChange={(e) => handleScoreChange(student.id, c.label, e.target.value)}
+                                                        max={c.score}
+                                                    />
+                                                </TableCell>
+                                            ))}
+                                            <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
+                                            <TableCell>
+                                                <Textarea 
+                                                    value={feedback[student.id] || ''}
+                                                    onChange={(e) => handleFeedbackChange(student.id, e.target.value)}
+                                                    rows={1}
+                                                    className="text-xs"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+    );
 };
+
 
 export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacherProfile }: { classId: string, students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) => {
     const { db } = useAuth();
@@ -152,7 +272,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
     const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
-        setLocalDb(prev => ({ ...prev, homeworkStatusDocuments: (prev.homeworkStatusDocuments || []).filter(d => d.id !== selectedRecordId) }));
+        setLocalDb(prev => ({ ...prev, homeworkStatusDocuments: (prev.homeworkStatusDocuments || []).filter(d => d.id !== selectedRecordId)}));
         handleNewRecord();
         toast({ title: 'Kayıt Silindi', variant: 'destructive' });
     }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
