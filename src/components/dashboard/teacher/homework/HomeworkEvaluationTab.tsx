@@ -29,7 +29,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, teacherProfile: TeacherProfile | null, onHomeworkDelete: (id: string) => void, onScoresUpdated: () => void }) => {
     const { db } = useAuth();
     const { toast } = useToast();
@@ -79,11 +78,12 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                 const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
                 
                 const updates: any = {};
-                if (studentScores !== submission.rubricScores) updates.rubricScores = studentScores;
-                if (studentFeedback !== submission.feedback) updates.feedback = studentFeedback;
-                updates.grade = totalScore;
+                // Only include fields that have changed
+                if (studentScores && JSON.stringify(studentScores) !== JSON.stringify(submission.rubricScores || {})) updates.rubricScores = studentScores;
+                if (studentFeedback !== (submission.feedback || '')) updates.feedback = studentFeedback;
+                if (totalScore !== submission.grade) updates.grade = totalScore;
                 
-                if (Object.keys(updates).length > 1) { // Only update if there are changes
+                if (Object.keys(updates).length > 0) {
                     batch.update(subRef, updates);
                 }
             }
@@ -134,33 +134,41 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                             <TableBody>
                                 {students.map(student => {
                                     const submission = submissions.find(s => s.studentId === student.id);
-                                    if (!submission) return null;
                                     const studentScores = scores[student.id] || {};
                                     const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
                                     
                                     return (
-                                        <TableRow key={student.id}>
+                                        <TableRow key={student.id} className={!submission ? 'bg-gray-50 opacity-70' : ''}>
                                             <TableCell className="font-medium">{student.name}</TableCell>
-                                            {homework.rubric?.map((c: any) => (
-                                                <TableCell key={c.label}>
-                                                    <Input 
-                                                        type="number" 
-                                                        className="w-16 text-center mx-auto" 
-                                                        value={studentScores[c.label] || ''} 
-                                                        onChange={(e) => handleScoreChange(student.id, c.label, e.target.value)}
-                                                        max={c.score}
-                                                    />
+                                            
+                                            {submission ? (
+                                                <>
+                                                    {homework.rubric?.map((c: any) => (
+                                                        <TableCell key={c.label}>
+                                                            <Input 
+                                                                type="number" 
+                                                                className="w-16 text-center mx-auto" 
+                                                                value={studentScores[c.label] ?? ''} 
+                                                                onChange={(e) => handleScoreChange(student.id, c.label, e.target.value)}
+                                                                max={c.score}
+                                                            />
+                                                        </TableCell>
+                                                    ))}
+                                                    <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
+                                                    <TableCell>
+                                                        <Textarea 
+                                                            value={feedback[student.id] || ''}
+                                                            onChange={(e) => handleFeedbackChange(student.id, e.target.value)}
+                                                            rows={1}
+                                                            className="text-xs"
+                                                        />
+                                                    </TableCell>
+                                                </>
+                                            ) : (
+                                                <TableCell colSpan={(homework.rubric?.length || 0) + 2} className="text-center text-muted-foreground text-xs">
+                                                    Teslim Bekleniyor
                                                 </TableCell>
-                                            ))}
-                                            <TableCell className="text-center font-bold text-lg">{totalScore}</TableCell>
-                                            <TableCell>
-                                                <Textarea 
-                                                    value={feedback[student.id] || ''}
-                                                    onChange={(e) => handleFeedbackChange(student.id, e.target.value)}
-                                                    rows={1}
-                                                    className="text-xs"
-                                                />
-                                            </TableCell>
+                                            )}
                                         </TableRow>
                                     )
                                 })}
@@ -307,7 +315,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
                                 <HomeworkEvaluationCard
                                     key={hw.id}
                                     homework={hw}
-                                    students={students}
+                                    students={students.filter(s => hw.assignedStudents?.includes(s.id))}
                                     submissions={displayedData.submissions[hw.id] || []}
                                     classId={classId}
                                     teacherProfile={teacherProfile}

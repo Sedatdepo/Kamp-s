@@ -162,21 +162,47 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
             </div>
 
             {existingSubmission ? (
-                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
-                    <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
+                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border space-y-3'>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold">
                         <CheckCircle className="h-5 w-5"/>
                         <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     </div>
-                    {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
-                     {existingSubmission.feedback && (
-                         <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
+                    
+                    {existingSubmission.rubricScores && homework.rubric && (
+                        <div className="mt-2 space-y-2">
+                            <p className="font-semibold text-sm">Detaylı Değerlendirme</p>
+                            <div className="border rounded-lg overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Kriter</TableHead>
+                                            <TableHead className="text-right">Alınan Puan</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {homework.rubric.map((item: any) => (
+                                            <TableRow key={item.label}>
+                                                <TableCell className="text-sm">{item.label}</TableCell>
+                                                <TableCell className="text-right font-bold text-sm">
+                                                    {existingSubmission.rubricScores?.[item.label] || 0} / {item.score}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {existingSubmission.feedback && (
+                         <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200'>
                              <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
                              <p className="text-sm">{existingSubmission.feedback}</p>
                          </div>
                     )}
                      {existingSubmission.grade !== undefined && (
                          <div className='flex justify-end mt-2'>
-                            <Badge>Not: {existingSubmission.grade}</Badge>
+                            <Badge>Toplam Not: {existingSubmission.grade}</Badge>
                          </div>
                     )}
                 </div>
