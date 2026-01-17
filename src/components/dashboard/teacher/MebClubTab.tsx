@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Home, FileDown, Calendar, CheckSquare, Bus, Users, ClipboardList, BarChart, Scale, Banknote, Handshake, CheckCircle, X, Save, Wand2, Trash2, ArrowDownCircle, Plus } from 'lucide-react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 // --- MOCK DATA & UTILS ---
 const MEB_CLUBS = [
@@ -751,10 +752,7 @@ export default function MebClubTab({ classes, allStudents, teacherProfile }: { c
                             </div>
 
                             <DialogFooter className="mt-8 border-t pt-4">
-                                <DialogClose asChild>
-                                    <Button variant="outline">Kapat</Button>
-                                </DialogClose>
-                                <Button onClick={() => downloadRTF(mod.id, mod.title)} className="bg-green-600 hover:bg-green-700 gap-2">
+                                 <Button onClick={() => downloadRTF(mod.id, mod.title)} className="bg-green-600 hover:bg-green-700 gap-2">
                                     <Download className="h-5 w-5" /> RTF İndir (Word)
                                 </Button>
                             </DialogFooter>
@@ -765,3 +763,4 @@ export default function MebClubTab({ classes, allStudents, teacherProfile }: { c
         </div>
     );
 }
+    
