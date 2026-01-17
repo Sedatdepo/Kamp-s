@@ -374,11 +374,10 @@ export function GradingToolTab({
 
   return (
     <>
-      <Tabs defaultValue="performance" onValueChange={(value) => setActiveTab(value === 'performance' ? 1 : value === 'project' ? 3 : 4)}>
+      <Tabs defaultValue="performance" onValueChange={(value) => setActiveTab(value === 'performance' ? 1 : 4)}>
         <div className="flex justify-between items-center mb-4">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="performance">Performans</TabsTrigger>
-            <TabsTrigger value="project">Proje</TabsTrigger>
             <TabsTrigger value="behavior">Davranış</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
@@ -433,18 +432,6 @@ export function GradingToolTab({
                     />
                </TabsContent>
           </Tabs>
-        </TabsContent>
-        <TabsContent value="project">
-           <CriteriaGradingTable 
-                students={sortedStudents.filter(s => s.hasProject)} 
-                criteria={projCriteria} 
-                scoreKey="projectScores"
-                termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
-                onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
-                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'projectScores', projCriteria)}
-                onSave={() => handleSaveScores('projectScores', projCriteria)}
-                onExport={() => handleExport(3)}
-            />
         </TabsContent>
         <TabsContent value="behavior">
             <CriteriaGradingTable 
