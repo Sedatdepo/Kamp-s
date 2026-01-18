@@ -58,7 +58,7 @@ const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSub
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
-    const { db, storage } = useAuth();
+    const { db, storage, appUser } = useAuth();
   
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
@@ -97,7 +97,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     
     
     const handleAddOrUpdateHomework = async () => {
-        if (!db || !storage || !classId || !text.trim() || !teacherProfile?.id) return;
+        const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : null;
+        if (!db || !storage || !classId || !text.trim() || !teacherId) return;
 
         setIsUploading(true);
 
@@ -116,7 +117,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     }
                 }
                 
-                const newFileRef = ref(storage, `uploads/${teacherProfile.id}/homeworks/${classId}/${homeworkId}/${file.name}`);
+                const newFileRef = ref(storage, `uploads/${teacherId}/homeworks/${classId}/${homeworkId}/${file.name}`);
                 
                 await uploadBytes(newFileRef, file);
                 const downloadURL = await getDownloadURL(newFileRef);
