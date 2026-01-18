@@ -192,79 +192,63 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     }, 4000);
   }, []);
 
-   useEffect(() => {
+  useEffect(() => {
     if (!isClient) return;
 
     const selectedIds = Object.keys(bepSelections);
+    if (selectedIds.length === 0) {
+        setDynamicPerformanceItems([]);
+        setSelectedPerformance({});
+        setSelectedKaba({});
+        return;
+    }
+
     const selectedOutcomeObjects = UNIQUE_OUTCOMES.filter(k => k && selectedIds.includes(k.id));
-    
-    const units = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
-    const newPerformanceItems = units.map((unit, index) => ({
+    const selectedUnits = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
+
+    // --- 1. Eğitsel Performans ---
+    const newPerformanceItems = selectedUnits.map((unit, index) => ({
         id: `perf-unit-${unit}-${index}`,
         skill: `${unit} ünitesindeki temel kavram, ilke ve süreçlere ilişkin performans.`
     }));
     setDynamicPerformanceItems(newPerformanceItems);
 
-    const performanceTemplates: ((unit: string) => string)[] = [
+    const performanceTemplates = [
         (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
         (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
         (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
         (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
         (unit: string) => `${unit} ünitesindeki problem çözme becerisi desteklenmelidir.`,
     ];
-    
-    setSelectedPerformance(prevPerformance => {
-        const newPerformanceState = JSON.parse(JSON.stringify(prevPerformance || {}));
-        let hasChanged = false;
 
-        newPerformanceItems.forEach((item, index) => {
-            const unit = units[index];
-            const templateIndex = index % performanceTemplates.length;
-            const newText = unit ? performanceTemplates[templateIndex](unit) : '';
-            const currentItem = newPerformanceState[item.id] || {};
-
-            if (!currentItem.observation) { // Sadece boşsa doldur
-                newPerformanceState[item.id] = { ...currentItem, observation: newText };
-                hasChanged = true;
-            }
-        });
-        
-        Object.keys(newPerformanceState).forEach(key => {
-            if (!newPerformanceItems.some(item => item.id === key)) {
-                delete newPerformanceState[key];
-                hasChanged = true;
-            }
-        });
-
-        return hasChanged ? newPerformanceState : prevPerformance;
+    const newPerformanceState: Record<string, { score: string; observation: string }> = {};
+    newPerformanceItems.forEach((item, index) => {
+        const unit = selectedUnits[index];
+        const templateIndex = index % performanceTemplates.length;
+        const newText = unit ? performanceTemplates[templateIndex](unit) : '';
+        newPerformanceState[item.id] = { 
+            score: '2', // Default score
+            observation: newText 
+        };
     });
+    setSelectedPerformance(newPerformanceState);
 
-    if (selectedIds.length > 0) { 
-        const newKabaState = { ...selectedKaba };
-        let hasChange = false;
-
-        KABA_ITEMS.forEach(kabaItem => {
-            const relevantKazanims = selectedOutcomeObjects.filter(k => k!.unit === kabaItem.unit);
-            if (relevantKazanims.length > 0) {
-                const key = `${kabaItem.unit}-${kabaItem.skill}`;
-                if (!newKabaState[key] || !newKabaState[key].evaluation) {
-                     const outcomeText = relevantKazanims[0]!.text;
-                     newKabaState[key] = {
-                        evaluation: 'yapamaz',
-                        text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
-                    };
-                    hasChange = true;
-                }
-            }
-        });
-
-        if (hasChange) {
-            setSelectedKaba(newKabaState);
-            addToast('Formlar otomatik güncellendi', 'info');
+    // --- 2. Kaba Değerlendirme ---
+    const newKabaState: Record<string, { evaluation: string; text: string }> = {};
+    KABA_ITEMS.forEach(kabaItem => {
+        const relevantKazanims = selectedOutcomeObjects.filter(k => k!.unit === kabaItem.unit);
+        if (relevantKazanims.length > 0) {
+            const key = `${kabaItem.unit}-${kabaItem.skill}`;
+            const outcomeText = relevantKazanims[0]!.text;
+            newKabaState[key] = {
+                evaluation: 'yapamaz',
+                text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
+            };
         }
-    }
+    });
+    setSelectedKaba(newKabaState);
 
-  }, [bepSelections, addToast, selectedKaba, isClient]);
+}, [bepSelections, isClient]);
   
     useEffect(() => {
         const subjectData = ALL_PLANS[selectedBebSubject];
@@ -350,11 +334,14 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   }, [students, selectedStudentId]);
 
   const filteredKazanims = useMemo(() => {
-    return UNIQUE_OUTCOMES.filter(k => k!.subject === selectedBebSubject && k!.grade === parseInt(selectedBebGrade, 10));
+    const grade = parseInt(selectedBebGrade, 10);
+    if (isNaN(grade)) return [];
+    return UNIQUE_OUTCOMES.filter(k => k!.subject === selectedBebSubject && k!.grade === grade);
   }, [selectedBebSubject, selectedBebGrade]);
 
   const filteredKabaItems = useMemo(() => {
     const grade = parseInt(selectedBebGrade, 10);
+    if (isNaN(grade)) return [];
     return KABA_ITEMS.filter(k => k.grade === grade);
   }, [selectedBebGrade]);
 
