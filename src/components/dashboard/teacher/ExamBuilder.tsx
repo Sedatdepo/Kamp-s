@@ -260,10 +260,12 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                   seenBy: [],
                   questions: currentExam.questions
               };
+
+              const cleanDoc = JSON.parse(JSON.stringify(newHomeworkDoc));
               
               const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
               const newDocRef = doc(homeworksColRef);
-              batch.set(newDocRef, newHomeworkDoc);
+              batch.set(newDocRef, cleanDoc);
           }
   
           await batch.commit();
