@@ -148,6 +148,17 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
   };
 
   const addQuestion = (type: QuestionType, questionData?: Partial<ExamQuestion>) => {
+    // Sanitize incoming matchingPairs from AI to ensure unique IDs
+    if (questionData && questionData.matchingPairs) {
+        const seenIds = new Set<string>();
+        questionData.matchingPairs.forEach(p => {
+            if (!p.id || seenIds.has(p.id)) {
+                p.id = uuidv4();
+            }
+            seenIds.add(p.id);
+        });
+    }
+    
     const newQuestion: ExamQuestion = {
       id: `q_${Date.now()}`,
       text: '',
@@ -439,7 +450,7 @@ export default function ExamBuilder({ classes, students }: { classes: Class[], s
                     <Label className="text-lg font-semibold">Eşleştirme Çiftleri</Label>
                     <div className='mt-2 space-y-2'>
                         {(activeQuestion.matchingPairs || []).map((pair, i) => (
-                           <MatchingPairEditor key={pair.id} pair={pair} index={i} onUpdate={handleUpdateMatchingPair} onRemove={handleRemoveMatchingPair} />
+                           <MatchingPairEditor key={`${pair.id || 'pair'}-${i}`} pair={pair} index={i} onUpdate={handleUpdateMatchingPair} onRemove={handleRemoveMatchingPair} />
                         ))}
                          <Button variant="outline" size="sm" onClick={handleAddMatchingPair} className="mt-2"><Plus className="mr-2 h-4 w-4"/>Çift Ekle</Button>
                     </div>
