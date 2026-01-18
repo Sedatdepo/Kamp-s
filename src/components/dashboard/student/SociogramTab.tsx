@@ -139,7 +139,7 @@ export function SociogramTab() {
   
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
-    return collection(db, 'classes', classId, 'students');
+    return query(collection(db, 'students'), where('classId', '==', classId));
   }, [db, classId]);
   const { data: classmates, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
   
@@ -184,7 +184,7 @@ export function SociogramTab() {
       if (q.type === 'leadership') allLeadership.push(...questionAnswers);
     });
 
-    const studentRef = doc(db, 'classes', classId, 'students', student.id);
+    const studentRef = doc(db, 'students', student.id);
     try {
         await updateDoc(studentRef, {
             positiveSelections: [...new Set(allPositive)],
