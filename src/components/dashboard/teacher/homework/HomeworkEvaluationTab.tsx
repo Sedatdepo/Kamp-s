@@ -165,7 +165,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                                     <>
                                                         {submission.text && <p className="whitespace-pre-wrap">{submission.text}</p>}
                                                         {submission.file && (
-                                                            <a href={submission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                                                            <a href={submission.file.dataUrl} download={submission.file.name} className="flex items-center gap-1 text-blue-600 hover:underline">
                                                                 <Paperclip className="h-3 w-3" />
                                                                 {submission.file.name}
                                                             </a>
@@ -334,8 +334,8 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
             <div className="lg:col-span-3">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Performans Ödevi Değerlendirme</CardTitle>
-                        <CardDescription>Atadığınız performans ödevlerini yönetin ve öğrencilerinizi kriterlere göre notlayın.</CardDescription>
+                        <CardTitle>Ödev Değerlendirme</CardTitle>
+                        <CardDescription>Öğrencilerin teslim ettiği ödevleri değerlendirin.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {displayedData.homeworks && displayedData.homeworks.length > 0 ? (

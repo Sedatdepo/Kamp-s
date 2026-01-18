@@ -7,7 +7,6 @@ import { Homework, Submission, Question, Badge as BadgeType } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -22,11 +21,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db, storage } = useAuth();
+    const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionText, setSubmissionText] = useState('');
-    const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+    const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -39,12 +38,39 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.[0];
     }, [submissions]);
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 750 * 1024) { // ~750KB
+                toast({
+                    variant: "destructive",
+                    title: "Dosya Boyutu Çok Büyük",
+                    description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
+                });
+                return;
+            }
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                setSubmissionFile({
+                    dataUrl: reader.result as string,
+                    name: file.name,
+                    type: file.type,
+                });
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                toast({ variant: "destructive", title: "Dosya Okuma Hatası" });
+            };
+        }
+    };
+
     const handleSubmit = async () => {
         if (!submissionText.trim() && !submissionFile) {
             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !storage || !classId) return;
+        if (!db || !classId) return;
 
         setIsSubmitting(true);
         
@@ -55,20 +81,10 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
           text: submissionText || null,
+          file: submissionFile || null,
         };
 
         try {
-            if (submissionFile) {
-                const fileRef = ref(storage, `submissions/${classId}/${homework.id}/${student.id}/${submissionFile.name}`);
-                await uploadBytes(fileRef, submissionFile);
-                const downloadURL = await getDownloadURL(fileRef);
-                submissionData.file = {
-                    url: downloadURL,
-                    name: submissionFile.name,
-                    type: submissionFile.type,
-                };
-            }
-
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             
@@ -97,7 +113,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                  
                 <p className="text-sm font-semibold">{homework.text}</p>
                 {homework.file && (
-                    <a href={homework.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-blue-50 p-2 rounded-md hover:bg-blue-100 text-blue-600">
+                    <a href={homework.file.dataUrl} download={homework.file.name} className="flex items-center gap-2 mt-2 bg-blue-50 p-2 rounded-md hover:bg-blue-100 text-blue-600">
                         <Paperclip className="h-4 w-4" />
                         <span className="truncate">{homework.file.name}</span>
                         <Download className="h-4 w-4 ml-auto" />
@@ -113,7 +129,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
                     {existingSubmission.file && (
-                         <a href={existingSubmission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white p-2 rounded-md hover:bg-slate-50 text-slate-600 border">
+                         <a href={existingSubmission.file.dataUrl} download={existingSubmission.file.name} className="flex items-center gap-2 bg-white p-2 rounded-md hover:bg-slate-50 text-slate-600 border">
                             <Paperclip className="h-4 w-4" />
                             <span className="truncate">{existingSubmission.file.name}</span>
                         </a>
@@ -140,7 +156,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     />
                     <Input
                         type="file"
-                        onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                        onChange={handleFileChange}
                     />
                     <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

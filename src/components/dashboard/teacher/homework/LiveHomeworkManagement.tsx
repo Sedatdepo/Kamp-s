@@ -59,13 +59,13 @@ const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSub
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
-    const { db, storage, appUser } = useAuth();
+    const { db, appUser } = useAuth();
   
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
     const [file, setFile] = useState<File | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
@@ -95,11 +95,25 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     useEffect(() => {
         fetchSubmissions();
     }, [fetchSubmissions]);
-    
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile && selectedFile.size > 750 * 1024) { // ~750KB limit
+            toast({
+                variant: "destructive",
+                title: "Dosya Boyutu Çok Büyük",
+                description: "Lütfen 750 KB'tan küçük bir dosya seçin. Bu yöntem daha büyük dosyaları desteklemez.",
+            });
+            setFile(null);
+            e.target.value = ''; // Clear file input
+        } else {
+            setFile(selectedFile || null);
+        }
+    };
     
     const handleAddOrUpdateHomework = async () => {
         const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : null;
-        if (!db || !storage || !classId || (!text.trim() && !file) || !teacherId) {
+        if (!db || !classId || (!text.trim() && !file) || !teacherId) {
             toast({
                 variant: 'destructive',
                 title: 'Eksik Bilgi',
@@ -108,32 +122,29 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             return;
         }
 
-        setIsUploading(true);
+        setIsProcessing(true);
 
         try {
             let fileData = editingHomework?.file || null;
-            const homeworkId = editingHomework ? editingHomework.id : doc(collection(db, 'classes', classId, 'homeworks')).id;
-
-
-            if (file) { // New file is being uploaded
-                if(editingHomework?.file?.url) { // if there was an old file, delete it
-                    try {
-                        const oldFileRef = ref(storage, editingHomework.file.url);
-                        await deleteObject(oldFileRef);
-                    } catch (e: any) {
-                         if (e.code !== 'storage/object-not-found') console.error("Old file deletion failed:", e);
-                    }
-                }
-                
-                const newFileRef = ref(storage, `uploads/${teacherId}/homeworks/${classId}/${homeworkId}/${file.name}`);
-                
-                await uploadBytes(newFileRef, file);
-                const downloadURL = await getDownloadURL(newFileRef);
-                fileData = { url: downloadURL, name: file.name, type: file.type };
+            
+            if (file) {
+                 const reader = new FileReader();
+                 reader.readAsDataURL(file);
+                 await new Promise<void>((resolve, reject) => {
+                     reader.onload = () => {
+                         fileData = {
+                             dataUrl: reader.result as string,
+                             name: file.name,
+                             type: file.type,
+                         };
+                         resolve();
+                     };
+                     reader.onerror = error => reject(error);
+                 });
             }
 
             const homeworkData = {
-                text: text,
+                text,
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
             };
@@ -143,8 +154,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 await updateDoc(homeworkRef, homeworkData);
                 toast({ title: "Ödev güncellendi!" });
             } else {
-                 const newHomeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
-                 await setDoc(newHomeworkRef, {
+                await addDoc(collection(db, 'classes', classId, 'homeworks'), {
                     ...homeworkData,
                     classId,
                     assignedDate: new Date().toISOString(),
@@ -157,43 +167,23 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 toast({ title: "Ödev eklendi!" });
             }
             
-            setText('');
-            setDueDate(undefined);
-            setEditingHomework(null);
-            setFile(null);
+            cancelEditing();
             forceRefresh();
 
         } catch (error) {
             console.error("Homework error:", error);
             toast({ variant: "destructive", title: "İşlem sırasında bir sorun oluştu." });
         } finally {
-            setIsUploading(false);
+            setIsProcessing(false);
         }
     };
 
-    const handleDeleteHomework = async (id: string) => {
-        if (!db || !storage || !classId) return;
+
+    const handleDeleteHomework = async (homework: Homework) => {
+        if (!db || !classId) return;
         try {
-            const hwToDelete = liveHomeworks?.find(hw => hw.id === id);
-            const batch = writeBatch(db);
-
-            const subsSnapshot = await getDocs(collection(db, `classes/${classId}/homeworks/${id}/submissions`));
-            subsSnapshot.forEach(doc => batch.delete(doc.ref));
-            
-            const homeworkRef = doc(db, 'classes', classId, 'homeworks', id);
-            batch.delete(homeworkRef);
-
-            if(hwToDelete?.file?.url) {
-                const fileRef = ref(storage, hwToDelete.file.url);
-                try {
-                    await deleteObject(fileRef);
-                } catch (e: any) {
-                    if (e.code !== 'storage/object-not-found') throw e;
-                }
-            }
-
-            await batch.commit();
-            toast({ title: "Ödev ve tüm teslimler silindi." });
+            await deleteDoc(doc(db, 'classes', classId, 'homeworks', homework.id));
+            toast({ title: "Ödev silindi." });
             forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
@@ -218,7 +208,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homeworkId}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             toast({ title: "Teslim Edildi", description: `${student.name} adlı öğrencinin ödevi teslim edildi olarak işaretlendi.` });
-            fetchSubmissions(); // Re-fetch to update the UI
+            fetchSubmissions(); 
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "İşlem kaydedilemedi." });
         }
@@ -228,7 +218,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const startEditing = (hw: Homework) => {
         setEditingHomework(hw);
         setText(hw.text);
-        setFile(null);
+        setFile(null); // Clear file input when starting edit
         if (hw.dueDate) {
             setDueDate(new Date(hw.dueDate));
         }
@@ -291,8 +281,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     </Popover>
 
                     <div>
-                        <Label htmlFor="file-upload">Dosya Eki</Label>
-                        <Input id="file-upload" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1"/>
+                        <Label htmlFor="file-upload">Dosya Eki (Max 750KB)</Label>
+                        <Input id="file-upload" type="file" onChange={handleFileChange} className="mt-1"/>
                     </div>
                     
                     {(file || (editingHomework && editingHomework.file)) && (
@@ -307,8 +297,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
                     <div className="flex gap-2">
                         {editingHomework && <Button variant="ghost" onClick={cancelEditing}>İptal</Button>}
-                        <Button onClick={handleAddOrUpdateHomework} className="w-full" disabled={isUploading}>
-                            {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        <Button onClick={handleAddOrUpdateHomework} className="w-full" disabled={isProcessing}>
+                            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                             {editingHomework ? 'Güncelle' : 'Ekle'}
                         </Button>
                     </div>
@@ -358,7 +348,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
                                                                     <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteHomework(hw.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                                                    <AlertDialogAction onClick={() => handleDeleteHomework(hw)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                             </AlertDialogContent>
                                                         </AlertDialog>

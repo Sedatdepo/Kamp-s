@@ -31,7 +31,7 @@ export interface Submission {
   homeworkId?: string; // To link back to the homework
   text?: string;
   file?: {
-    url: string;
+    dataUrl: string;
     name: string;
     type: string;
   };
@@ -56,7 +56,7 @@ export interface Homework {
   assignedStudents?: string[];
   assignmentType?: 'performance' | 'project';
   file?: {
-    url: string;
+    dataUrl: string;
     name: string;
     type: string;
   };
@@ -382,7 +382,7 @@ export interface Message {
   participants: string[];
   isRead: boolean;
   file?: {
-    url: string;
+    dataUrl: string;
     name: string;
     type: string;
   };
