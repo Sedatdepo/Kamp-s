@@ -49,6 +49,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 interface SociogramTabProps {
@@ -216,6 +218,31 @@ const QuestionModal = ({ question, isOpen, onClose, onSave }: { question: Partia
     );
 }
 
+const AIStudentAnalysisView = ({ studentAnalysis }: { studentAnalysis: SociogramAnalysisOutput['studentAnalyses'][0] }) => {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>{studentAnalysis.studentName}</CardTitle>
+                <CardDescription>{studentAnalysis.summary}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+                <div>
+                    <h4 className="font-semibold text-green-700">Güçlü Yönler</h4>
+                    <p className="text-slate-600">{studentAnalysis.strengths}</p>
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-red-700">Riskler ve Zorluklar</h4>
+                    <p className="text-slate-600">{studentAnalysis.risksAndChallenges}</p>
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-blue-700">Öğretmene Tavsiye</h4>
+                    <p className="text-slate-600">{studentAnalysis.recommendation}</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+  };
+
 export function SociogramTab({ students, currentClass }: SociogramTabProps) {
   const { appUser, db } = useAuth();
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
@@ -319,7 +346,7 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
 
   const handleExport = () => {
     if (!currentClass || !students || !teacherProfile) return;
-    exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey });
+    exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey, aiAnalysis });
   }
 
   const handleAnalyzeWithAI = async () => {
@@ -438,20 +465,34 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
                       Yapay Zeka ile Yorumla
                   </Button>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm max-h-96 overflow-y-auto">
+               <CardContent className="space-y-4 text-sm max-h-[60vh] overflow-y-auto">
                    {aiAnalysis ? (
-                      <div className="space-y-4">
-                          <p className="p-3 bg-blue-50 text-blue-800 rounded-md border border-blue-100">{aiAnalysis.summary}</p>
-                          
-                          {aiAnalysis.leaders.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-500"/>Liderler</h4>{aiAnalysis.leaders.map(l => <p key={l.student}>- <strong>{l.student}:</strong> {l.reason}</p>)}</div>}
-
-                          {aiAnalysis.cliques.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Group size={16} className="text-green-600"/>Gruplar (Klikler)</h4>{aiAnalysis.cliques.map(c => <p key={c.members.join('-')}>- <strong>{c.members.join(', ')}:</strong> {c.description}</p>)}</div>}
-
-                          {aiAnalysis.risks.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><AlertTriangle size={16} className="text-red-500"/>Risk Grubu</h4>{aiAnalysis.risks.map(r => <p key={r.student}>- <strong>{r.student} ({r.reason}):</strong> {r.recommendation}</p>)}</div>}
-                          
-                          {aiAnalysis.tensions.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Frown size={16} className="text-orange-500"/>Gerilimler</h4>{aiAnalysis.tensions.map(t => <p key={t.students.join('-')}>- <strong>{t.students.join(' ↔ ')}:</strong> {t.description}</p>)}</div>}
-                      </div>
-                  ) : (
+                       <Tabs defaultValue="class">
+                           <TabsList className="grid w-full grid-cols-2">
+                               <TabsTrigger value="class">Sınıf Analizi</TabsTrigger>
+                               <TabsTrigger value="individual">Bireysel ({aiAnalysis.studentAnalyses.length})</TabsTrigger>
+                           </TabsList>
+                           <TabsContent value="class" className="mt-4 space-y-4">
+                               <p className="p-3 bg-blue-50 text-blue-800 rounded-md border border-blue-100">{aiAnalysis.classAnalysis.summary}</p>
+                               {aiAnalysis.classAnalysis.leaders.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Star size={16} className="text-yellow-500"/>Liderler</h4>{aiAnalysis.classAnalysis.leaders.map(l => <p key={l.student}>- <strong>{l.student}:</strong> {l.reason}</p>)}</div>}
+                               {aiAnalysis.classAnalysis.cliques.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Group size={16} className="text-green-600"/>Gruplar (Klikler)</h4>{aiAnalysis.classAnalysis.cliques.map(c => <p key={c.members.join('-')}>- <strong>{c.members.join(', ')}:</strong> {c.description}</p>)}</div>}
+                               {aiAnalysis.classAnalysis.risks.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><AlertTriangle size={16} className="text-red-500"/>Risk Grubu</h4>{aiAnalysis.classAnalysis.risks.map(r => <p key={r.student}>- <strong>{r.student} ({r.reason}):</strong> {r.recommendation}</p>)}</div>}
+                               {aiAnalysis.classAnalysis.tensions.length > 0 && <div><h4 className="font-bold flex items-center gap-1"><Frown size={16} className="text-orange-500"/>Gerilimler</h4>{aiAnalysis.classAnalysis.tensions.map(t => <p key={t.students.join('-')}>- <strong>{t.students.join(' ↔ ')}:</strong> {t.description}</p>)}</div>}
+                           </TabsContent>
+                           <TabsContent value="individual" className="mt-4">
+                               <Accordion type="single" collapsible className="w-full">
+                                   {aiAnalysis.studentAnalyses.map((studentAnalysis, index) => (
+                                        <AccordionItem value={`item-${index}`} key={studentAnalysis.studentName}>
+                                           <AccordionTrigger>{studentAnalysis.studentName}</AccordionTrigger>
+                                           <AccordionContent>
+                                               <AIStudentAnalysisView studentAnalysis={studentAnalysis} />
+                                           </AccordionContent>
+                                       </AccordionItem>
+                                   ))}
+                               </Accordion>
+                           </TabsContent>
+                       </Tabs>
+                   ) : (
                       <p className="text-center text-muted-foreground py-4">
                           {isAnalyzing ? 'Analiz ediliyor...' : 'Analiz sonuçlarını görmek için butona tıklayın.'}
                       </p>

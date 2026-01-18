@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, StudentReportOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -1391,6 +1391,8 @@ export function exportExamToRtf({ questions, imageDataUrls, examTitle, ...settin
 
         if (imageDataUrl) {
             const base64String = imageDataUrl.split(',')[1];
+            // Cannot get image dimensions synchronously here, so we might need a fixed size or pass them in.
+            // Assuming a default display size for now. A better solution would involve loading the image to get its dimensions.
             questionBody = `{\\pard ${getRtfImageString(base64String, 800, 600)}\\par}`;
         } else {
              const escapedText = q.text.replace(/\n/g, '\\line ');
@@ -1636,23 +1638,24 @@ interface SociogramExportArgs {
     currentClass: Class;
     teacherProfile: TeacherProfile | null;
     survey: SociogramSurvey;
+    aiAnalysis: SociogramAnalysisOutput | null;
 }
 
-export function exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey }: SociogramExportArgs) {
+export function exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey, aiAnalysis }: SociogramExportArgs) {
     const reportTitle = "Sosyometri Analiz Raporu";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
     const footer = generateReportFooter(teacherProfile);
     const title = `${currentClass.name} - ${reportTitle}`;
 
     const studentTable = `
-        <h3>Öğrenci Seçimleri</h3>
+        <h3>A. ÖĞRENCİ SEÇİMLERİ (HAM VERİ)</h3>
         <table>
             <thead>
                 <tr>
                     <th>Öğrenci</th>
-                    <th>Olumlu Seçimler</th>
-                    <th>Olumsuz Seçimler</th>
-                    <th>Lider Seçimleri</th>
+                    <th>Olumlu Seçimler (${survey.questions.find(q => q.type === 'positive')?.maxSelections || ''} kişi)</th>
+                    <th>Olumsuz Seçimler (${survey.questions.find(q => q.type === 'negative')?.maxSelections || ''} kişi)</th>
+                    <th>Lider Seçimleri (${survey.questions.find(q => q.type === 'leadership')?.maxSelections || ''} kişi)</th>
                 </tr>
             </thead>
             <tbody>
@@ -1668,19 +1671,50 @@ export function exportSociogramToRtf({ students, analysis, currentClass, teacher
         </table>
     `;
 
-    const analysisSection = `
-        <h3>Analiz Sonuçları</h3>
-        <p><b>Sınıfın Yıldızları (En Çok Olumlu Seçilenler):</b> ${analysis.popular.map(p => p.student.name).join(', ') || 'Belirlenemedi'}</p>
-        <p><b>Destek Gerekenler (Dışlananlar):</b> ${analysis.rejected.map(r => r.student.name).join(', ') || 'Yok'}</p>
+    const numericalAnalysisSection = `
+        <h3>B. SAYISAL ANALİZ SONUÇLARI</h3>
+        <p><b>Sınıfın Yıldızları (En Çok Olumlu Seçilenler):</b> ${analysis.popular.map(p => `${p.student.name} (${p.pos} oy)`).join(', ') || 'Belirlenemedi'}</p>
+        <p><b>Destek Gerekenler (En Çok Olumsuz Seçilenler):</b> ${analysis.rejected.map(r => `${r.student.name} (${r.neg} oy)`).join(', ') || 'Yok'}</p>
         <p><b>Yalnızlar (Hiç Seçim Yapmayan/Almayan):</b> ${analysis.isolated.map(s => s.name).join(', ') || 'Yok'}</p>
-        <div style="border:1px solid #ccc; padding:10px; text-align:center; margin-top:20px;">[Grafik Görseli Web Arayüzünde Görüntülenir]</div>
     `;
+    
+    let aiAnalysisSection = `<h3>C. YAPAY ZEKA ANALİZİ</h3>`;
+    if (aiAnalysis) {
+        aiAnalysisSection += `
+            <h4>1. Sınıf Geneli Değerlendirmesi</h4>
+            <p><b>Genel Özet:</b> ${aiAnalysis.classAnalysis.summary || 'Yorum yok.'}</p>
+            <p><b>Liderler:</b></p>
+            <ul>${aiAnalysis.classAnalysis.leaders.map(l => `<li><b>${l.student}:</b> ${l.reason}</li>`).join('')}</ul>
+            <p><b>Gruplar (Klikler):</b></p>
+            <ul>${aiAnalysis.classAnalysis.cliques.map(c => `<li><b>[${c.members.join(', ')}]:</b> ${c.description}</li>`).join('')}</ul>
+             <p><b>Risk Grubundaki Öğrenciler:</b></p>
+            <ul>${aiAnalysis.classAnalysis.risks.map(r => `<li><b>${r.student} (${r.reason}):</b> ${r.recommendation}</li>`).join('')}</ul>
+             <p><b>Potansiyel Gerilimler:</b></p>
+            <ul>${aiAnalysis.classAnalysis.tensions.map(t => `<li><b>${t.students.join(' ve ')}:</b> ${t.description}</li>`).join('')}</ul>
+            <br/>
+            <h4>2. Bireysel Öğrenci Değerlendirmeleri</h4>
+            ${aiAnalysis.studentAnalyses.map(s => `
+                <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+                    <p><b>Öğrenci: ${s.studentName}</b></p>
+                    <p><b>Genel Durum:</b> ${s.summary}</p>
+                    <p><b>Güçlü Yönler:</b> ${s.strengths}</p>
+                    <p><b>Riskler ve Zorluklar:</b> ${s.risksAndChallenges}</p>
+                    <p><b>Tavsiye:</b> ${s.recommendation}</p>
+                </div>
+            `).join('')}
+        `;
+    } else {
+        aiAnalysisSection += '<p>Yapay zeka analizi henüz yapılmadı.</p>';
+    }
+
 
     const content = `
         ${header}
         ${studentTable}
         <br>
-        ${analysisSection}
+        ${numericalAnalysisSection}
+        <br>
+        ${aiAnalysisSection}
         ${footer}
     `;
 

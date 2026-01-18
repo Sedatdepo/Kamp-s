@@ -583,6 +583,8 @@ export interface Database {
     observationDocuments?: ObservationDocument[]; // NEW
     schoolInfo?: SchoolInfo; // NEW
     studentInfoForms: StudentInfoFormData[];
+    dersProgrami: Timetable;
+    agendaEvents?: AgendaEvent[];
 }
 
 // --- SOCIOGRAM AI ANALYSIS TYPES ---
@@ -597,7 +599,7 @@ export const SociogramAnalysisInput = z.object({
 });
 export type SociogramAnalysisInput = z.infer<typeof SociogramAnalysisInput>;
 
-export const SociogramAnalysisOutput = z.object({
+const ClassAnalysisSchema = z.object({
   summary: z.string().describe("Sınıfın genel sosyal yapısı hakkında kısa bir özet."),
   cliques: z.array(z.object({
     members: z.array(z.string()).describe("Grup üyelerinin isimleri."),
@@ -617,7 +619,21 @@ export const SociogramAnalysisOutput = z.object({
     description: z.string().describe("Bu gerilimin olası etkisi hakkında kısa bir yorum."),
   })).describe("Karşılıklı olarak birbirini negatif seçen öğrenci çiftleri arasındaki potansiyel çatışmalar."),
 });
+
+const StudentAnalysisSchema = z.object({
+  studentName: z.string().describe("Değerlendirilen öğrencinin adı."),
+  summary: z.string().describe("Öğrencinin sınıftaki sosyal durumunun genel özeti. (Popüler, izole, ortalama, çatışmalı vb.)"),
+  strengths: z.string().describe("Öğrencinin sosyal açıdan güçlü yönleri (örn: 'Çok sayıda pozitif seçim alıyor', 'Farklı gruplar arasında köprü kuruyor')."),
+  risksAndChallenges: z.string().describe("Öğrencinin karşılaştığı sosyal riskler ve zorluklar (örn: 'Hiç pozitif seçim almamış', 'X kişisi ile karşılıklı negatif seçim içinde')."),
+  recommendation: z.string().describe("Bu öğrenciye özel olarak öğretmenin uygulayabileceği pedagojik bir tavsiye."),
+});
+
+export const SociogramAnalysisOutput = z.object({
+  classAnalysis: ClassAnalysisSchema.describe("Sınıfın tamamına yönelik genel sosyogram analizi."),
+  studentAnalyses: z.array(StudentAnalysisSchema).describe("Sınıftaki her bir öğrenci için yapılmış bireysel analizler."),
+});
 export type SociogramAnalysisOutput = z.infer<typeof SociogramAnalysisOutput>;
+
 
 
 // NEW ARCHIVE TYPES
