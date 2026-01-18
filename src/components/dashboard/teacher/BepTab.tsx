@@ -19,6 +19,8 @@ import {
   ChevronDown,
   Settings
 } from 'lucide-react';
+import { TeacherProfile, Class } from '@/lib/types';
+
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
@@ -95,7 +97,7 @@ const downloadAsRTF = (content: any, filename: any) => {
 
 // --- ANA BİLEŞEN ---
 
-export function BepTab({ teacherProfile, currentClass }: { teacherProfile: any, currentClass: any }) {
+export function BepTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   // --- STATE YÖNETİMİ ---
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
@@ -103,10 +105,10 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: any, 
   // Veri
   const [students, setStudents] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({
-    branchTeacher: teacherProfile?.name || '',
-    guidanceTeacher: teacherProfile?.guidanceCounselorName || '',
-    schoolPrincipal: teacherProfile?.principalName || '',
-    schoolName: teacherProfile?.schoolName || ''
+    branchTeacher: '',
+    guidanceTeacher: '',
+    schoolPrincipal: '',
+    schoolName: ''
   });
   const [toasts, setToasts] = useState<any[]>([]);
 
@@ -119,8 +121,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: any, 
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [bepDates, setBepDates] = useState({ start: '', end: '' });
   
-  // GÜNCELLENDİ: Sadece ID tutmak yerine her kazanım için detayları tutan obje
-  // Yapı: { "FİZ.9.1.1": { method: "...", material: "...", evaluation: "..." } }
   const [bepSelections, setBepSelections] = useState<any>({});
   
   const [selectedPerformance, setSelectedPerformance] = useState<any>({});
@@ -169,49 +169,70 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: any, 
     }, 4000);
   }, []);
 
-  useEffect(() => {
-    // bepSelections objesinin anahtarları (seçili kazanım ID'leri)
+   useEffect(() => {
+    if (!isClient) return;
     const selectedIds = Object.keys(bepSelections);
-    if (selectedIds.length === 0) return;
-
     const selectedOutcomeObjects = PHYSICS_OUTCOMES.filter(k => selectedIds.includes(k.id));
     
     // 1. Eğitsel Performans Otomatik Doldurma
     const units = [...new Set(selectedOutcomeObjects.map(k => k.unit))];
-    if (units.length > 0) {
-        const perfText = `${units.join(', ')} ünitelerindeki temel kavramları açıklamakta güçlük çekmektedir.`;
-        
-        setSelectedPerformance(prev => ({
-            ...prev,
-            1: { score: '2', observation: perfText }
-        }));
-    }
+    
+    setSelectedPerformance(prevPerformance => {
+        const newPerformanceState = JSON.parse(JSON.stringify(prevPerformance || {}));
+        let hasChanged = false;
 
-    // 2. Kaba Değerlendirme Otomatik Doldurma
-    const newKabaState = { ...selectedKaba };
-    let hasChange = false;
+        const performanceTemplates = [
+          (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
+          (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
+          (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
+          (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
+        ];
 
-    KABA_ITEMS.forEach(kabaItem => {
-        const relevantKazanims = selectedOutcomeObjects.filter(k => k.unit === kabaItem.unit);
-        if (relevantKazanims.length > 0) {
-            const key = `${kabaItem.unit}-${kabaItem.skill}`;
-            if (!newKabaState[key] || !newKabaState[key].evaluation) {
-                 const outcomeText = relevantKazanims[0].text;
-                 newKabaState[key] = {
-                    evaluation: 'yapamaz',
-                    text: `Öğrenci "${'\'\''}${outcomeText}'\'\''" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
-                };
-                hasChange = true;
+        const updates: { [key: number]: string } = {};
+        units.slice(0, 4).forEach((unit, index) => {
+            updates[index + 1] = performanceTemplates[index](unit);
+        });
+
+        for (let i = 1; i <= 4; i++) {
+            const newText = updates[i] || ''; 
+            const currentItem = newPerformanceState[i] || {};
+            
+            if (currentItem.observation !== newText) {
+                newPerformanceState[i] = { ...currentItem, observation: newText };
+                hasChanged = true;
             }
         }
+        
+        return hasChanged ? newPerformanceState : prevPerformance;
     });
 
-    if (hasChange) {
-        setSelectedKaba(newKabaState);
-        addToast('Formlar otomatik güncellendi', 'info');
+    // 2. Kaba Değerlendirme Otomatik Doldurma
+    if (selectedIds.length > 0) { 
+        const newKabaState = { ...selectedKaba };
+        let hasChange = false;
+
+        KABA_ITEMS.forEach(kabaItem => {
+            const relevantKazanims = selectedOutcomeObjects.filter(k => k.unit === kabaItem.unit);
+            if (relevantKazanims.length > 0) {
+                const key = `${kabaItem.unit}-${kabaItem.skill}`;
+                if (!newKabaState[key] || !newKabaState[key].evaluation) {
+                     const outcomeText = relevantKazanims[0].text;
+                     newKabaState[key] = {
+                        evaluation: 'yapamaz',
+                        text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
+                    };
+                    hasChange = true;
+                }
+            }
+        });
+
+        if (hasChange) {
+            setSelectedKaba(newKabaState);
+            addToast('Formlar otomatik güncellendi', 'info');
+        }
     }
 
-  }, [bepSelections, addToast, selectedKaba]); 
+  }, [bepSelections, addToast, selectedKaba, isClient]);
 
   // --- ACTIONS ---
 
