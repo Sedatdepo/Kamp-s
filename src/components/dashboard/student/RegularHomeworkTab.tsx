@@ -25,6 +25,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
@@ -39,7 +40,22 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.[0];
     }, [submissions]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
+        setAnswers(prev => {
+            const currentAnswer = prev[questionId as string];
+            if (isMulti) {
+                const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+                if (currentArr.includes(answer)) {
+                    return { ...prev, [questionId as string]: currentArr.filter(a => a !== answer) };
+                } else {
+                    return { ...prev, [questionId as string]: [...currentArr, answer] };
+                }
+            }
+            return { ...prev, [questionId as string]: answer };
+        });
+    };
+
+     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             if (file.size > 750 * 1024) { // ~750KB
@@ -66,11 +82,18 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         }
     };
 
-    const handleSubmit = async () => {
-        if (!submissionText.trim() && !submissionFile) {
-            toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
+    const handleSubmit = async (isCheckboxMark: boolean = false) => {
+        const hasQuestions = homework.questions && homework.questions.length > 0;
+        if (hasQuestions && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
+            toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
+
+        if (!hasQuestions && !isCheckboxMark && !submissionText.trim() && !submissionFile) {
+             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
+            return;
+        }
+        
         if (!db || !classId) return;
 
         setIsSubmitting(true);
@@ -81,8 +104,9 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
-          text: submissionText || null,
-          file: submissionFile || null,
+          answers: hasQuestions ? answers : undefined,
+          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : (submissionText || undefined),
+          file: submissionFile || undefined,
         };
 
         try {
@@ -92,6 +116,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             toast({ title: "Ödev başarıyla teslim edildi!" });
             setSubmissionText('');
             setSubmissionFile(null);
+            setAnswers({});
             forceRefresh();
 
         } catch (error: any) {
@@ -116,13 +141,60 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                  </div>
                  
-                <p className="text-sm font-semibold">{homework.text}</p>
-                {homework.file && (
-                    <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 mt-2">
-                        <Paperclip className="h-4 w-4" />
-                        <span className="truncate">{homework.file.name}</span>
-                        <Download className="h-4 w-4 ml-auto" />
-                    </Button>
+                 {homework.questions && homework.questions.length > 0 ? (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-lg p-4">
+                            <h2 className="text-xl font-bold text-center mb-4">{homework.text}</h2>
+                            {homework.questions.map((q: Question, index: number) => (
+                                <div key={q.id || index} className="mb-6 pb-4 border-b">
+                                    <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
+                                    {q.image && <img src={q.image} alt={`Soru ${index+1}`} className="my-2 rounded-md border max-w-sm"/>}
+                                    {q.type === 'multiple-choice' && q.options && (
+                                        <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
+                                            {q.options.map((opt, i) => (
+                                                <div key={i} className="flex items-center space-x-2">
+                                                    <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
+                                                    <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                                </div>
+                                            ))}
+                                        </RadioGroup>
+                                    )}
+                                     {q.type === 'checkbox' && q.options && (
+                                        <div className="space-y-2">
+                                          {q.options.map((opt, i) => (
+                                            <div key={i} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`${q.id}-${i}`}
+                                                onCheckedChange={() => handleAnswerChange(q.id, opt, true)}
+                                                disabled={!!existingSubmission}
+                                              />
+                                              <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                    )}
+                                    {q.type === 'open-ended' && (
+                                        <Textarea 
+                                            placeholder="Cevabınızı buraya yazın..."
+                                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                            disabled={!!existingSubmission}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                     <div>
+                        <p className="text-sm font-semibold">{homework.text}</p>
+                        {homework.file && (
+                            <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 mt-2">
+                                <Paperclip className="h-4 w-4" />
+                                <span className="truncate">{homework.file.name}</span>
+                                <Download className="h-4 w-4 ml-auto" />
+                            </Button>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -151,6 +223,11 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
+            ) : homework.questions && homework.questions.length > 0 ? (
+                 <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Ödevi Teslim Et
+                 </Button>
             ) : (
                 <div className="space-y-3 pt-3 border-t">
                     <Textarea 
@@ -163,7 +240,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                         type="file"
                         onChange={handleFileChange}
                     />
-                    <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
+                    <Button onClick={() => handleSubmit(false)} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Gönder
                     </Button>
@@ -175,17 +252,22 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
 function RegularHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
-    const homeworksQuery = useMemoFirebase(() => {
+    
+    // Fetch all homeworks and filter client-side for robustness against missing fields
+    const allHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
+        return query(collection(db, 'classes', classId, 'homeworks'));
     }, [db, classId]);
     
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
-
+    const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
+    
     const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
+        if (!allHomeworks) return [];
+        // Filter for regular homeworks (rubric is null or undefined)
+        const regularHomeworks = allHomeworks.filter(hw => hw.rubric == null);
+        return [...regularHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [allHomeworks]);
+
 
     if (homeworksLoading) {
         return (
