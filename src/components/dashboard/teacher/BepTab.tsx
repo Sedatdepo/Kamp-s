@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -20,20 +21,44 @@ import {
   Settings
 } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
-
+import { ALL_PLANS } from '@/lib/plans';
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
-const PHYSICS_OUTCOMES = [
-  { id: "FİZ.9.1.1", grade: 9, unit: "FİZİK BİLİMİ VE KARİYER KEŞFİ", text: "Fizik biliminin tanımına yönelik tümevarımsal akıl yürütebilme" },
-  { id: "FİZ.9.1.2", grade: 9, unit: "FİZİK BİLİMİ VE KARİYER KEŞFİ", text: "Fizik biliminin alt dallarını sınıflandırabilme" },
-  { id: "FİZ.9.2.1", grade: 9, unit: "KUVVET VE HAREKET", text: "SI birim sisteminde birimleri verilen temel ve türetilmiş nicelikleri sınıflandırabilme" },
-  { id: "FİZ.9.2.2", grade: 9, unit: "KUVVET VE HAREKET", text: "Skaler ve vektörel nicelikleri karşılaştırabilme" },
-  { id: "FİZ.10.1.1", grade: 10, unit: "HAREKET", text: "Yatay doğrultuda sabit hızlı hareket ile ilgili tümevarımsal akıl yürütebilme" },
-  { id: "FİZ.10.2.1", grade: 10, unit: "ENERJİ", text: "Kuvvet-yer değiştirme grafiği kullanılarak iş ile ilgili tümevarımsal akıl yürütebilme" },
-  { id: "FİZ.11.1.1", grade: 11, unit: "KUVVET VE HAREKET", text: "Newton Hareket Yasaları ile ilgili tümevarımsal akıl yürütebilme" },
-  { id: "FİZ.12.1.1", grade: 12, unit: "KUVVET VE HAREKET", text: "Torkun matematiksel modeline yönelik tümevarımsal akıl yürütebilme" }
-];
+const fizikPlanData = ALL_PLANS.Fizik.data;
+
+const allOutcomes = Object.keys(fizikPlanData).flatMap(gradeKey => {
+    if (!fizikPlanData[gradeKey] || !fizikPlanData[gradeKey].data) return [];
+    
+    return fizikPlanData[gradeKey].data.map((item: any) => {
+        if (!item.learningOutcome || item.isBreak || item.learningOutcome.includes('Devamı...')) {
+            return null;
+        }
+
+        const match = item.learningOutcome.match(/^(FİZ\.\d+\.\d+\.\d+)\.?\s*(.*)$/);
+        
+        let id, text;
+        if (match && match[1] && match[2]) {
+            id = match[1];
+            text = match[2];
+        } else {
+            // Fallback for entries that don't match the regex pattern perfectly
+            id = item.id; // Use the unique ID from the plan item
+            text = item.learningOutcome;
+        }
+
+        return {
+            id: id,
+            grade: parseInt(gradeKey, 10),
+            unit: item.unit,
+            text: text,
+        };
+    }).filter(Boolean); // Filter out nulls
+});
+
+// Remove duplicates based on ID, preferring the first one encountered.
+const PHYSICS_OUTCOMES = Array.from(new Map(allOutcomes.map(item => [item!.id, item])).values());
+
 
 const PERFORMANCE_ITEMS = [
   { id: 1, skill: "Temel Kavram Bilgisi: Fiziksel kavramları tanımlama ve temel düzeyde açıklama." },
@@ -43,10 +68,10 @@ const PERFORMANCE_ITEMS = [
 ];
 
 const KABA_ITEMS = [
-  { grade: 9, unit: "FİZİK BİLİMİ VE KARİYER KEŞFİ", skill: "Fiziğin ne olduğunu kendi cümleleriyle açıklar." },
-  { grade: 9, unit: "FİZİK BİLİMİ VE KARİYER KEŞFİ", skill: "Fiziğin alt dallarından 3 tanesini sayar." },
+  { grade: 9, unit: "FİZİK BİLİMİ", skill: "Fiziğin ne olduğunu kendi cümleleriyle açıklar." },
+  { grade: 9, unit: "FİZİK BİLİMİ", skill: "Fiziğin alt dallarından 3 tanesini sayar." },
   { grade: 9, unit: "KUVVET VE HAREKET", skill: "Temel ve türetilmiş büyüklükleri ayırt eder." },
-  { grade: 10, unit: "HAREKET", skill: "Hareket çeşitlerini ayırt eder." },
+  { grade: 10, unit: "KUVVET VE HAREKET", skill: "Hareket çeşitlerini ayırt eder." },
   { grade: 10, unit: "ENERJİ", skill: "Enerji türlerini sayar." }
 ];
 
@@ -139,16 +164,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       }
     }
 
-    const today = new Date();
-    const future = new Date();
-    future.setMonth(today.getMonth() + 6);
-    setBepDates({
-      start: today.toISOString().split('T')[0],
-      end: future.toISOString().split('T')[0]
-    });
-  }, []);
-
-  useEffect(() => {
     if (teacherProfile) {
         setTeacherInfo({
             branchTeacher: teacherProfile.name || '',
@@ -157,6 +172,14 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
             schoolName: teacherProfile.schoolName || ''
         });
     }
+
+    const today = new Date();
+    const future = new Date();
+    future.setMonth(today.getMonth() + 6);
+    setBepDates({
+      start: today.toISOString().split('T')[0],
+      end: future.toISOString().split('T')[0]
+    });
   }, [teacherProfile]);
 
 
@@ -174,27 +197,23 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     const selectedIds = Object.keys(bepSelections);
     const selectedOutcomeObjects = PHYSICS_OUTCOMES.filter(k => selectedIds.includes(k.id));
     
-    // 1. Eğitsel Performans Otomatik Doldurma
-    const units = [...new Set(selectedOutcomeObjects.map(k => k.unit))];
+    const units = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
     
     setSelectedPerformance(prevPerformance => {
         const newPerformanceState = JSON.parse(JSON.stringify(prevPerformance || {}));
         let hasChanged = false;
 
-        const performanceTemplates = [
-          (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
-          (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
-          (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
-          (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
+        const performanceTemplates: ((unit: string) => string)[] = [
+            (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
+            (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
+            (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
+            (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
         ];
 
-        const updates: { [key: number]: string } = {};
-        units.slice(0, 4).forEach((unit, index) => {
-            updates[index + 1] = performanceTemplates[index](unit);
-        });
-
+        // Fill performance items with units
         for (let i = 1; i <= 4; i++) {
-            const newText = updates[i] || ''; 
+            const unit = units[i - 1];
+            const newText = unit ? performanceTemplates[i - 1](unit) : '';
             const currentItem = newPerformanceState[i] || {};
             
             if (currentItem.observation !== newText) {
@@ -212,11 +231,11 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
         let hasChange = false;
 
         KABA_ITEMS.forEach(kabaItem => {
-            const relevantKazanims = selectedOutcomeObjects.filter(k => k.unit === kabaItem.unit);
+            const relevantKazanims = selectedOutcomeObjects.filter(k => k!.unit === kabaItem.unit);
             if (relevantKazanims.length > 0) {
                 const key = `${kabaItem.unit}-${kabaItem.skill}`;
                 if (!newKabaState[key] || !newKabaState[key].evaluation) {
-                     const outcomeText = relevantKazanims[0].text;
+                     const outcomeText = relevantKazanims[0]!.text;
                      newKabaState[key] = {
                         evaluation: 'yapamaz',
                         text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
@@ -314,7 +333,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     if (!currentStudent) return [];
     const gradeMatch = currentStudent.class.match(/(\d+)/);
     const grade = gradeMatch ? parseInt(gradeMatch[0]) : 9;
-    return PHYSICS_OUTCOMES.filter(k => k.grade === grade);
+    return PHYSICS_OUTCOMES.filter(k => k!.grade === grade);
   }, [currentStudent]);
 
   const filteredKabaItems = useMemo(() => {
@@ -388,15 +407,15 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const interval = Math.max(1, Math.floor(diffDays / selectedIds.length));
         
-        const activeKazanims = filteredKazanims.filter(k => selectedIds.includes(k.id));
+        const activeKazanims = filteredKazanims.filter(k => selectedIds.includes(k!.id));
 
         activeKazanims.forEach((k) => {
-            const details = bepSelections[k.id];
+            const details = bepSelections[k!.id];
             const dateStr = currentDate.toLocaleDateString('tr-TR');
             rows += `
                 <tr>
-                    <td style="border:1px solid #000;padding:5px;font-size:10pt">${k.unit}</td>
-                    <td style="border:1px solid #000;padding:5px;font-size:10pt">${k.text}</td>
+                    <td style="border:1px solid #000;padding:5px;font-size:10pt">${k!.unit}</td>
+                    <td style="border:1px solid #000;padding:5px;font-size:10pt">${k!.text}</td>
                     <td style="border:1px solid #000;padding:5px;font-size:10pt">${details.evaluation}</td>
                     <td style="border:1px solid #000;padding:5px;font-size:10pt">${details.method}</td>
                     <td style="border:1px solid #000;padding:5px;font-size:10pt">${details.material}</td>
@@ -696,15 +715,15 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                 </div>
                                 <div className="space-y-3">
                                     {filteredKazanims.length > 0 ? filteredKazanims.map(k => {
-                                        const isSelected = !!bepSelections[k.id];
+                                        const isSelected = !!bepSelections[k!.id];
                                         return (
                                             <div 
-                                                key={k.id} 
+                                                key={k!.id} 
                                                 className={`border rounded-xl transition-all overflow-hidden ${isSelected ? 'border-blue-300 shadow-sm bg-white' : 'border-slate-200 bg-slate-50/50'}`}
                                             >
                                                 {/* Header / Toggle Area */}
                                                 <div 
-                                                    onClick={() => toggleKazanim(k.id)}
+                                                    onClick={() => toggleKazanim(k!.id)}
                                                     className={`p-4 cursor-pointer flex gap-3 items-start hover:bg-blue-50/30 transition-colors`}
                                                 >
                                                     <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'}`}>
@@ -712,10 +731,10 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{k.id}</span>
-                                                            <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded font-medium">{k.unit}</span>
+                                                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{k!.id}</span>
+                                                            <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded font-medium">{k!.unit}</span>
                                                         </div>
-                                                        <p className={`text-sm leading-relaxed ${isSelected ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{k.text}</p>
+                                                        <p className={`text-sm leading-relaxed ${isSelected ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>{k!.text}</p>
                                                     </div>
                                                     {isSelected && <Settings size={16} className="text-slate-400" />}
                                                 </div>
@@ -727,8 +746,8 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                                             <label className="block text-xs font-bold text-slate-500 mb-1">Yöntem ve Teknik</label>
                                                             <select 
                                                                 className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
-                                                                value={bepSelections[k.id]?.method || ''}
-                                                                onChange={(e) => updateKazanimDetail(k.id, 'method', e.target.value)}
+                                                                value={bepSelections[k!.id]?.method || ''}
+                                                                onChange={(e) => updateKazanimDetail(k!.id, 'method', e.target.value)}
                                                             >
                                                                 {TEACHING_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                                                 <option value="Anlatım, Soru-Cevap">Anlatım, Soru-Cevap (Standart)</option>
@@ -738,8 +757,8 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                                             <label className="block text-xs font-bold text-slate-500 mb-1">Eğitim Materyali</label>
                                                             <select 
                                                                 className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
-                                                                value={bepSelections[k.id]?.material || ''}
-                                                                onChange={(e) => updateKazanimDetail(k.id, 'material', e.target.value)}
+                                                                value={bepSelections[k!.id]?.material || ''}
+                                                                onChange={(e) => updateKazanimDetail(k!.id, 'material', e.target.value)}
                                                             >
                                                                 {MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
                                                                 <option value="Ders Kitabı, Akıllı Tahta">Ders Kitabı, Akıllı Tahta (Standart)</option>
@@ -749,8 +768,8 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                                             <label className="block text-xs font-bold text-slate-500 mb-1">Değerlendirme Ölçütü</label>
                                                             <select 
                                                                 className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
-                                                                value={bepSelections[k.id]?.evaluation || ''}
-                                                                onChange={(e) => updateKazanimDetail(k.id, 'evaluation', e.target.value)}
+                                                                value={bepSelections[k!.id]?.evaluation || ''}
+                                                                onChange={(e) => updateKazanimDetail(k!.id, 'evaluation', e.target.value)}
                                                             >
                                                                 {EVALUATION_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                                             </select>
