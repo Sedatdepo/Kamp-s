@@ -184,71 +184,61 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
 
 
   // --- AUTO-FILL EFFECT ---
-  const addToast = useCallback((msg: any, type = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  }, []);
+    const addToast = useCallback((msg: any, type = 'info') => {
+        const id = Date.now() + Math.random();
+        setToasts(prev => [...prev, { id, msg, type }]);
+        setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+        }, 4000);
+    }, []);
 
-  useEffect(() => {
-    if (!isClient) return;
+    useEffect(() => {
+        if (!isClient) return;
 
-    const selectedIds = Object.keys(bepSelections);
-    if (selectedIds.length === 0) {
-        setDynamicPerformanceItems([]);
-        setSelectedPerformance({});
-        setSelectedKaba({});
-        return;
-    }
-
-    const selectedOutcomeObjects = UNIQUE_OUTCOMES.filter(k => k && selectedIds.includes(k.id));
-    const selectedUnits = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
-
-    // --- 1. Eğitsel Performans ---
-    const newPerformanceItems = selectedUnits.map((unit, index) => ({
-        id: `perf-unit-${unit}-${index}`,
-        skill: `${unit} ünitesindeki temel kavram, ilke ve süreçlere ilişkin performans.`
-    }));
-    setDynamicPerformanceItems(newPerformanceItems);
-
-    const performanceTemplates = [
-        (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
-        (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
-        (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
-        (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
-        (unit: string) => `${unit} ünitesindeki problem çözme becerisi desteklenmelidir.`,
-    ];
-
-    const newPerformanceState: Record<string, { score: string; observation: string }> = {};
-    newPerformanceItems.forEach((item, index) => {
-        const unit = selectedUnits[index];
-        const templateIndex = index % performanceTemplates.length;
-        const newText = unit ? performanceTemplates[templateIndex](unit) : '';
-        newPerformanceState[item.id] = { 
-            score: '2', // Default score
-            observation: newText 
-        };
-    });
-    setSelectedPerformance(newPerformanceState);
-
-    // --- 2. Kaba Değerlendirme ---
-    const newKabaState: Record<string, { evaluation: string; text: string }> = {};
-    KABA_ITEMS.forEach(kabaItem => {
-        const relevantKazanims = selectedOutcomeObjects.filter(k => k!.unit === kabaItem.unit);
-        if (relevantKazanims.length > 0) {
-            const key = `${kabaItem.unit}-${kabaItem.skill}`;
-            const outcomeText = relevantKazanims[0]!.text;
-            newKabaState[key] = {
-                evaluation: 'yapamaz',
-                text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
-            };
+        const selectedIds = Object.keys(bepSelections);
+        if (selectedIds.length === 0) {
+            setDynamicPerformanceItems([]);
+            setSelectedPerformance({});
+            setSelectedKaba({});
+            return;
         }
-    });
-    setSelectedKaba(newKabaState);
 
-}, [bepSelections, isClient]);
+        const selectedOutcomeObjects = UNIQUE_OUTCOMES.filter(k => k && selectedIds.includes(k.id));
+
+        // --- 1. Eğitsel Performans (Birebir Eşleme) ---
+        const newPerformanceItems = selectedOutcomeObjects.map(kazanim => ({
+            id: kazanim!.id, 
+            skill: kazanim!.text 
+        }));
+        setDynamicPerformanceItems(newPerformanceItems);
+
+        const newPerformanceState: Record<string, { score: string; observation: string }> = {};
+        selectedOutcomeObjects.forEach(kazanim => {
+            if (kazanim) {
+                newPerformanceState[kazanim.id] = {
+                    score: '2', 
+                    observation: `'${kazanim.text}' becerisini göstermede desteklenmelidir.`
+                };
+            }
+        });
+        setSelectedPerformance(newPerformanceState);
+
+        // --- 2. Kaba Değerlendirme (Birebir Eşleme) ---
+        const newKabaState: Record<string, { evaluation: string; text: string, unit: string }> = {};
+        selectedOutcomeObjects.forEach(kazanim => {
+            if (kazanim) {
+                const key = kazanim.id;
+                newKabaState[key] = {
+                    evaluation: 'yapamaz', 
+                    text: `'${kazanim.text}' kazanımını henüz edinememiştir. BEP planına bu doğrultuda alınmıştır.`,
+                    unit: kazanim.unit
+                };
+            }
+        });
+        setSelectedKaba(newKabaState);
+
+    }, [bepSelections, isClient]);
+
   
     useEffect(() => {
         const subjectData = ALL_PLANS[selectedBebSubject];
@@ -382,7 +372,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
 
     setSelectedKaba((prev: any) => ({
       ...prev,
-      [key]: { evaluation: value, text: text }
+      [key]: { ...prev[key], evaluation: value, text: text }
     }));
   };
 
@@ -477,23 +467,26 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
         `;
     }
     else if (type === 'kaba') {
-        if (filteredKabaItems.length === 0) return addToast('Bu sınıf için kaba değerlendirme maddesi yok', 'warning');
+        const kabaKeys = Object.keys(selectedKaba);
+        if (kabaKeys.length === 0) return addToast('Kaba değerlendirme için kazanım seçilmemiş', 'warning');
         
         let rows = '';
-        filteredKabaItems.forEach((item: any) => {
-            const key = `${item.unit}-${item.skill}`;
-            const selection = selectedKaba[key];
-            const evalText = selection?.evaluation ? selection.evaluation.toUpperCase() : '-';
-            const note = selection?.text || '';
-            
-            rows += `
-                <tr>
-                    <td style="border:1px solid #000;padding:5px">${item.unit}</td>
-                    <td style="border:1px solid #000;padding:5px">${item.skill}</td>
-                    <td style="border:1px solid #000;padding:5px;text-align:center">${evalText}</td>
-                    <td style="border:1px solid #000;padding:5px">${note}</td>
-                </tr>
-            `;
+        kabaKeys.forEach((kazanimId: string) => {
+            const kazanım = UNIQUE_OUTCOMES.find(k => k.id === kazanimId);
+            const selection = selectedKaba[kazanimId];
+            if(kazanım && selection) {
+                const evalText = selection?.evaluation ? selection.evaluation.toUpperCase() : '-';
+                const note = selection?.text || '';
+                
+                rows += `
+                    <tr>
+                        <td style="border:1px solid #000;padding:5px">${kazanım.unit}</td>
+                        <td style="border:1px solid #000;padding:5px">${kazanım.text}</td>
+                        <td style="border:1px solid #000;padding:5px;text-align:center">${evalText}</td>
+                        <td style="border:1px solid #000;padding:5px">${note}</td>
+                    </tr>
+                `;
+            }
         });
 
         content = `
@@ -859,24 +852,26 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                             <div>
                                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Square size={18} /> Kaba Değerlendirme</h3>
                                 <div className="grid grid-cols-1 gap-4">
-                                    {filteredKabaItems.length > 0 ? filteredKabaItems.map((item: any, idx: number) => {
-                                        const key = `${item.unit}-${item.skill}`;
+                                    {Object.keys(selectedKaba).length > 0 ? Object.keys(selectedKaba).map((kazanimId, idx) => {
+                                        const kazanım = UNIQUE_OUTCOMES.find(k => k.id === kazanimId);
+                                        if (!kazanım) return null;
+                                        const item = selectedKaba[kazanimId];
                                         return (
-                                            <div key={`${item.grade}-${item.unit}-${item.skill}`} className="p-5 border border-slate-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
+                                            <div key={kazanimId} className="p-5 border border-slate-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
                                                 <div className="mb-3">
                                                     <span className="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded">{item.unit}</span>
-                                                    <p className="text-sm text-slate-700 mt-2">{item.skill}</p>
+                                                    <p className="text-sm text-slate-700 mt-2">{kazanım.text}</p>
                                                 </div>
                                                 
                                                 <div className="flex flex-wrap gap-2 mb-3">
                                                     {['yapar', 'yapamaz', 'kısmen'].map(opt => (
-                                                        <label key={opt} className={`flex-1 min-w-[80px] cursor-pointer text-center py-2 rounded-lg border text-sm font-medium transition-all ${selectedKaba[key]?.evaluation === opt ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                                                        <label key={opt} className={`flex-1 min-w-[80px] cursor-pointer text-center py-2 rounded-lg border text-sm font-medium transition-all ${item.evaluation === opt ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
                                                             <input 
                                                                 type="radio" 
                                                                 name={`kaba_${idx}`}
                                                                 className="hidden"
-                                                                checked={selectedKaba[key]?.evaluation === opt}
-                                                                onChange={() => handleKabaEvaluation(key, opt, item.skill)}
+                                                                checked={item.evaluation === opt}
+                                                                onChange={() => handleKabaEvaluation(kazanimId, opt, kazanım.text)}
                                                             />
                                                             <span className="capitalize">{opt}</span>
                                                         </label>
@@ -887,14 +882,14 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                                     rows={2} 
                                                     placeholder="Otomatik oluşturulan gözlem notu (düzenlenebilir)"
                                                     className="w-full p-3 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                                    value={selectedKaba[key]?.text || ''}
-                                                    onChange={(e) => handleKabaTextChange(key, e.target.value)}
+                                                    value={item.text || ''}
+                                                    onChange={(e) => handleKabaTextChange(kazanimId, e.target.value)}
                                                 ></textarea>
                                             </div>
                                         )
                                     }) : (
                                         <div className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-xl">
-                                            Bu sınıf düzeyi için tanımlı kaba değerlendirme maddesi bulunamadı.
+                                            Kaba değerlendirme maddeleri, yukarıdan kazanım seçince otomatik olarak oluşacaktır.
                                         </div>
                                     )}
                                 </div>
