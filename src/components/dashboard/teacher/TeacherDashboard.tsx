@@ -46,7 +46,7 @@ const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/Annua
 const DilekceTab = dynamic(() => import('@/components/dashboard/teacher/DilekceTab').then(mod => mod.DilekceTab), { loading: LoadingSpinner });
 const SurveyTab = dynamic(() => import('@/components/dashboard/teacher/SurveyTab').then(mod => mod.SurveyTab), { loading: LoadingSpinner });
 const DisciplineTab = dynamic(() => import('./DisciplineTab').then(mod => mod.DisciplineTab), { loading: LoadingSpinner });
-const BepTab = dynamic(() => import('./BepTab').then(mod => mod.default), { loading: LoadingSpinner });
+const BepTab = dynamic(() => import('./BepTab').then(mod => mod.BepTab), { loading: LoadingSpinner });
 const VeliToplantisiTab = dynamic(() => import('./VeliToplantisiTab'), { loading: LoadingSpinner });
 const SokTab = dynamic(() => import('./SokTab'), { loading: LoadingSpinner });
 const MebClubTab = dynamic(() => import('./MebClubTab'), { loading: LoadingSpinner });
@@ -526,7 +526,7 @@ export function TeacherDashboard() {
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           case 'agenda': tabContent = <AgendaTab />; break;
-          case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} />; break;
+          case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
           default: tabContent = null;
         }
         return (
@@ -620,7 +620,7 @@ export function TeacherDashboard() {
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
         case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} />; break;
+        case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;

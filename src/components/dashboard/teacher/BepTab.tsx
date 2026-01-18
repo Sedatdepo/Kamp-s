@@ -95,7 +95,7 @@ const downloadAsRTF = (content: any, filename: any) => {
 
 // --- ANA BİLEŞEN ---
 
-export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
+export function BepTab({ teacherProfile, currentClass }: { teacherProfile: any, currentClass: any }) {
   // --- STATE YÖNETİMİ ---
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
@@ -161,6 +161,14 @@ export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
 
 
   // --- AUTO-FILL EFFECT ---
+  const addToast = useCallback((msg: any, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
   useEffect(() => {
     // bepSelections objesinin anahtarları (seçili kazanım ID'leri)
     const selectedIds = Object.keys(bepSelections);
@@ -206,14 +214,6 @@ export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
   }, [bepSelections, addToast, selectedKaba]); 
 
   // --- ACTIONS ---
-
-  const addToast = useCallback((msg: any, type = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  }, []);
 
   const handleSaveTeacher = () => {
     localStorage.setItem('teacherInfo', JSON.stringify(teacherInfo));
@@ -762,7 +762,7 @@ export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
                                                         type="number" min="1" max="4" 
                                                         className="w-12 p-1.5 border border-slate-200 rounded-md text-center text-sm font-bold focus:ring-2 focus:ring-blue-200 outline-none"
                                                         value={selectedPerformance[item.id]?.score || ''}
-                                                        onChange={e => setSelectedPerformance({
+                                                        onChange={(e: any) => setSelectedPerformance({
                                                             ...selectedPerformance,
                                                             [item.id]: { ...selectedPerformance[item.id], score: e.target.value }
                                                         })}
@@ -774,7 +774,7 @@ export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
                                                         placeholder="Gözlem notunuzu buraya yazın..."
                                                         className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                                                         value={selectedPerformance[item.id]?.observation || ''}
-                                                        onChange={e => setSelectedPerformance({
+                                                        onChange={(e: any) => setSelectedPerformance({
                                                             ...selectedPerformance,
                                                             [item.id]: { ...selectedPerformance[item.id], observation: e.target.value }
                                                         })}
@@ -792,7 +792,7 @@ export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
                             <div>
                                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Square size={18} /> Kaba Değerlendirme</h3>
                                 <div className="grid grid-cols-1 gap-4">
-                                    {filteredKabaItems.length > 0 ? filteredKabaItems.map((item: any, idx) => {
+                                    {filteredKabaItems.length > 0 ? filteredKabaItems.map((item: any, idx: number) => {
                                         const key = `${item.unit}-${item.skill}`;
                                         return (
                                             <div key={`${item.grade}-${item.unit}-${item.skill}`} className="p-5 border border-slate-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
