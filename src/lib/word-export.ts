@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Survey, SurveyResponse, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType } from './types';
 import { format, parseISO } from 'date-fns';
 import { ActiveGradingTab, ActiveTerm } from '@/components/dashboard/teacher/GradingToolTab';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -1857,4 +1857,139 @@ export function exportTimetableToRtf({ schedule, periods, days, teacherName, sch
     
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, filename);
+}
+
+// --- SEATING PLAN EXPORT ---
+interface ExportSeatingPlanArgs {
+    seatingPlan: { [key: string]: Student };
+    rowCount: number;
+    colCount: number;
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportSeatingPlanToRtf({ seatingPlan, rowCount, colCount, currentClass, teacherProfile }: ExportSeatingPlanArgs) {
+    const reportTitle = `${currentClass.name} SINIFI OTURMA PLANI`;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - Oturma Planı`;
+
+    let tableRows = '';
+    for (let r = 0; r < rowCount; r++) {
+        tableRows += '<tr>';
+        for (let c = 0; c < colCount; c++) {
+            const deskKey1 = `${r}-${c}-0`;
+            const deskKey2 = `${r}-${c}-1`;
+            const student1 = seatingPlan[deskKey1];
+            const student2 = seatingPlan[deskKey2];
+            tableRows += `
+                <td class="word-export-desk-container">
+                    <table class="word-export-desk">
+                        <tr>
+                            <td class="word-export-seat">${student1 ? student1.name : 'Boş'}</td>
+                            <td class="word-export-seat">${student2 ? student2.name : 'Boş'}</td>
+                        </tr>
+                    </table>
+                </td>
+            `;
+        }
+        tableRows += '</tr>';
+    }
+
+    const content = `
+        ${header}
+        <div class="center" style="background-color: #333; color: white; padding: 8px; margin-bottom: 20px; font-weight: bold;">TAHTA</div>
+        <table style="border-collapse: separate; border-spacing: 10px;">
+            <tbody>
+                ${tableRows}
+            </tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- ELECTION RESULTS EXPORT ---
+interface ExportElectionResultsArgs {
+    electionResult: {
+        winner: Candidate | null;
+        runnerUp: Candidate | null;
+        allCandidates: Candidate[];
+    };
+    electionType: ElectionType;
+    currentClass: Class;
+    students: Student[];
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportElectionResultsToRtf({ electionResult, electionType, currentClass, students, teacherProfile }: ExportElectionResultsArgs) {
+    const electionInfoMap = {
+        class_president: {
+            title: `SINIF BAŞKANI VE BAŞKAN YARDIMCISI SEÇİMİ SONUÇ TUTANAĞI`,
+            winnerLabel: 'Sınıf Başkanı',
+            runnerUpLabel: 'Sınıf Başkan Yardımcısı',
+        },
+        school_representative: {
+            title: `OKUL MECLİSİ TEMSİLCİSİ SEÇİMİ SONUÇ TUTANAĞI`,
+            winnerLabel: 'Sınıf Temsilcisi',
+            runnerUpLabel: null,
+        },
+        honor_board: {
+            title: `ONUR KURULU TEMSİLCİSİ SEÇİMİ SONUÇ TUTANAĞI`,
+            winnerLabel: 'Onur Kurulu Temsilcisi',
+            runnerUpLabel: null,
+        }
+    };
+
+    const electionDetails = electionInfoMap[electionType];
+    const reportTitle = electionDetails.title;
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - Seçim Sonuçları`;
+
+    const winnerSection = electionResult.winner ? `
+        <p><b>${electionDetails.winnerLabel}:</b> ${electionResult.winner.name} (${electionResult.winner.votes} oy)</p>
+    ` : '';
+
+    const runnerUpSection = electionResult.runnerUp && electionDetails.runnerUpLabel ? `
+        <p><b>${electionDetails.runnerUpLabel}:</b> ${electionResult.runnerUp.name} (${electionResult.runnerUp.votes} oy)</p>
+    ` : '';
+
+    const resultsSummary = `
+        <h3>SEÇİM SONUCU</h3>
+        ${winnerSection}
+        ${runnerUpSection}
+        <br/>
+        <p><b>Katılım Oranı:</b> ${electionResult.allCandidates.reduce((sum, c) => sum + c.votes, 0)} / ${students.length} öğrenci</p>
+    `;
+
+    const tableHeader = `
+        <tr>
+            <th>S.No</th>
+            <th>Aday Öğrenci</th>
+            <th>Aldığı Oy Sayısı</th>
+        </tr>
+    `;
+    const dataRows = electionResult.allCandidates.map((c, index) => `
+        <tr>
+            <td class="center">${index + 1}</td>
+            <td>${c.name}</td>
+            <td class="center">${c.votes}</td>
+        </tr>
+    `).join('');
+
+    const content = `
+        ${header}
+        ${resultsSummary}
+        <br>
+        <h3>DETAYLI OY DAĞILIMI</h3>
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
