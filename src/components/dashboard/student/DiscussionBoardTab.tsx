@@ -35,7 +35,7 @@ const TopicList = ({ topics, onSelectTopic }: { topics: DiscussionTopic[], onSel
                     ))}
                 </div>
             ) : (
-                <p className="text-center text-muted-foreground py-6">Henüz tartışma konusu açılmamış.</p>
+                <p className="text-center text-muted-foreground py-6">Henüz aktif bir tartışma konusu yok.</p>
             )}
         </CardContent>
     </Card>
@@ -214,6 +214,11 @@ export const DiscussionBoardTab = () => {
 
     const { data: topics, isLoading: topicsLoading } = useCollection<DiscussionTopic>(topicsQuery);
     
+    const activeTopics = useMemo(() => {
+        if (!topics) return [];
+        return topics.filter(t => t.isActive !== false);
+    }, [topics]);
+
     const isBlocked = useMemo(() => {
         if (!currentClass || !appUser || appUser.type !== 'student') return false;
         return currentClass.discussionBoard?.blockedStudentIds?.includes(appUser.data.id);
@@ -221,22 +226,9 @@ export const DiscussionBoardTab = () => {
 
     if (classLoading || topicsLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     
-    if (!currentClass?.isDiscussionBoardActive) {
-        return (
-             <Card>
-                <CardHeader>
-                    <CardTitle>Tartışma Panosu</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-center text-muted-foreground py-6">Tartışma panosu şu anda aktif değil.</p>
-                </CardContent>
-            </Card>
-        )
-    }
-
     if (selectedTopic) {
         return <TopicView topic={selectedTopic} onBack={() => setSelectedTopic(null)} isBlocked={isBlocked} />
     }
     
-    return <TopicList topics={topics || []} onSelectTopic={setSelectedTopic} />
+    return <TopicList topics={activeTopics || []} onSelectTopic={setSelectedTopic} />
 };

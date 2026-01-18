@@ -21,32 +21,31 @@ import { Label } from '@/components/ui/label';
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-const TopicList = ({ topics, onSelectTopic, onNewTopic, currentClass, onToggleActive }: { topics: DiscussionTopic[], onSelectTopic: (topic: DiscussionTopic) => void, onNewTopic: () => void, currentClass: Class | null, onToggleActive: (checked: boolean) => void }) => (
+const TopicList = ({ topics, onSelectTopic, onNewTopic, onToggleTopicActive }: { topics: DiscussionTopic[], onSelectTopic: (topic: DiscussionTopic) => void, onNewTopic: () => void, onToggleTopicActive: (topicId: string, currentStatus: boolean) => void }) => (
     <Card>
         <CardHeader>
             <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2"><MessagesSquare /> Tartışma Başlıkları</CardTitle>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center space-x-2">
-                        <Switch
-                            id="discussion-active"
-                            checked={currentClass?.isDiscussionBoardActive || false}
-                            onCheckedChange={onToggleActive}
-                        />
-                        <Label htmlFor="discussion-active">Aktif</Label>
-                    </div>
-                    <Button onClick={onNewTopic}><Plus className="mr-2 h-4 w-4" /> Yeni Başlık</Button>
-                </div>
+                <Button onClick={onNewTopic}><Plus className="mr-2 h-4 w-4" /> Yeni Başlık</Button>
             </div>
-            <CardDescription>Sınıfınız için tartışma konuları oluşturun ve yönetin.</CardDescription>
+            <CardDescription>Sınıfınız için tartışma konuları oluşturun ve yönetin. Başlıkları öğrenciler için aktif/pasif hale getirebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent>
             {topics.length > 0 ? (
                 <div className="space-y-2">
                     {topics.map(topic => (
-                        <div key={topic.id} onClick={() => onSelectTopic(topic)} className="p-3 rounded-lg border hover:bg-muted cursor-pointer">
-                            <p className="font-semibold">{topic.title}</p>
-                            <p className="text-xs text-muted-foreground">{topic.studentPostCount || 0} yanıt</p>
+                        <div key={topic.id} className="p-3 rounded-lg border flex items-center justify-between hover:bg-muted transition-colors">
+                            <div onClick={() => onSelectTopic(topic)} className="cursor-pointer flex-grow">
+                                <p className="font-semibold">{topic.title}</p>
+                                <p className="text-xs text-muted-foreground">{topic.studentPostCount || 0} yanıt</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    checked={topic.isActive !== false} // Default to active if undefined
+                                    onCheckedChange={(checked) => onToggleTopicActive(topic.id, checked)}
+                                />
+                                <Label className="text-xs">{topic.isActive !== false ? 'Aktif' : 'Pasif'}</Label>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -56,6 +55,7 @@ const TopicList = ({ topics, onSelectTopic, onNewTopic, currentClass, onToggleAc
         </CardContent>
     </Card>
 );
+
 
 const PostItem = ({ post, allPosts, level = 0, classId, topicId, currentClass }: { post: DiscussionPost; allPosts: DiscussionPost[]; level: number; classId: string; topicId: string; currentClass: Class | null }) => {
     const { db } = useAuth();
@@ -201,6 +201,7 @@ const NewTopicForm = ({ onBack, classId }: { onBack: () => void, classId: string
                 teacherId: appUser.data.uid,
                 title,
                 content,
+                isActive: true,
                 createdAt: serverTimestamp(),
             });
             toast({ title: 'Başlık oluşturuldu!' });
@@ -248,12 +249,12 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         setView('topic');
     }
 
-    const handleToggleActive = async (checked: boolean) => {
-        if (!currentClass || !db) return;
-        const classRef = doc(db, 'classes', classId);
+    const handleToggleTopicActive = async (topicId: string, checked: boolean) => {
+        if (!db) return;
+        const topicRef = doc(db, 'classes', classId, 'discussionTopics', topicId);
         try {
-            await updateDoc(classRef, { isDiscussionBoardActive: checked });
-            toast({ title: 'Başarılı!', description: `Tartışma panosu öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+            await updateDoc(topicRef, { isActive: checked });
+            toast({ title: 'Başarılı!', description: `Tartışma başlığı ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
         }
@@ -269,5 +270,5 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} currentClass={currentClass} />
     }
     
-    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} currentClass={currentClass} onToggleActive={handleToggleActive} />
+    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} onToggleTopicActive={handleToggleTopicActive} />
 };

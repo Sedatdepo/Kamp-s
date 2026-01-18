@@ -192,6 +192,7 @@ export interface DiscussionTopic {
     content: string;
     createdAt: Timestamp;
     studentPostCount?: number;
+    isActive?: boolean;
 }
 
 export interface DiscussionPost {
