@@ -5,8 +5,9 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Homework, Submission, Question, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -18,12 +19,14 @@ import { Label } from '@/components/ui/label';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db } = useAuth();
+    const { db, storage } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
+    const [submissionText, setSubmissionText] = useState('');
+    const [submissionFile, setSubmissionFile] = useState<File | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -36,27 +39,12 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.[0];
     }, [submissions]);
 
-    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
-        setAnswers(prev => {
-            const currentAnswer = prev[questionId];
-            if (isMulti) {
-                const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
-                if (currentArr.includes(answer)) {
-                    return { ...prev, [questionId]: currentArr.filter(a => a !== answer) };
-                } else {
-                    return { ...prev, [questionId]: [...currentArr, answer] };
-                }
-            }
-            return { ...prev, [questionId]: answer };
-        });
-    }
-
-    const handleSubmit = async (isCheckboxMark: boolean = false) => {
-        if (homework.questions && homework.questions.length > 0 && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
-            toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
+    const handleSubmit = async () => {
+        if (!submissionText.trim() && !submissionFile) {
+            toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
-        if (!db || !classId) return;
+        if (!db || !storage || !classId) return;
 
         setIsSubmitting(true);
         
@@ -66,30 +54,27 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
-          answers: answers,
-          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : undefined,
+          text: submissionText || null,
         };
-    
+
         try {
+            if (submissionFile) {
+                const fileRef = ref(storage, `submissions/${classId}/${homework.id}/${student.id}/${submissionFile.name}`);
+                await uploadBytes(fileRef, submissionFile);
+                const downloadURL = await getDownloadURL(fileRef);
+                submissionData.file = {
+                    url: downloadURL,
+                    name: submissionFile.name,
+                    type: submissionFile.type,
+                };
+            }
+
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             
-            const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
-            if (!isLate) {
-                const studentRef = doc(db, 'students', student.id);
-                const currentBadges: string[] = student.badges || [];
-                
-                const updates: any = { behaviorScore: increment(10) };
-                
-                if (!currentBadges.includes('hw-master')) {
-                    updates.badges = [...currentBadges, 'hw-master'];
-                }
-
-                await updateDoc(studentRef, updates);
-                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
-            } else {
-                 toast({ title: "Ödev başarıyla teslim edildi!" });
-            }
+            toast({ title: "Ödev başarıyla teslim edildi!" });
+            setSubmissionText('');
+            setSubmissionFile(null);
             forceRefresh();
 
         } catch (error: any) {
@@ -110,60 +95,29 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                  </div>
                  
-                 {homework.questions && homework.questions.length > 0 ? (
-                    <div className="space-y-6">
-                         <div className="bg-white rounded-lg shadow-md p-4">
-                            <h2 className="text-2xl font-bold text-center mb-4">{homework.text}</h2>
-                            {homework.questions.map((q: Question, index: number) => (
-                                <div key={q.id || index} className="mb-6 pb-4 border-b">
-                                    <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
-                                    {q.type === 'multiple-choice' && q.options && (
-                                        <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
-                                            {q.options.map((opt, i) => (
-                                                <div key={i} className="flex items-center space-x-2">
-                                                    <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
-                                                    <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
-                                    )}
-                                     {q.type === 'checkbox' && q.options && (
-                                        <div className="space-y-2">
-                                          {q.options.map((opt, i) => (
-                                            <div key={i} className="flex items-center space-x-2">
-                                              <Checkbox
-                                                id={`${q.id}-${i}`}
-                                                onCheckedChange={(checked) => handleAnswerChange(q.id, opt, true)}
-                                                disabled={!!existingSubmission}
-                                              />
-                                              <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
-                                            </div>
-                                          ))}
-                                        </div>
-                                    )}
-                                    {q.type === 'open-ended' && (
-                                        <Textarea 
-                                            placeholder="Cevabınızı buraya yazın..."
-                                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                            disabled={!!existingSubmission}
-                                        />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-sm font-semibold">{homework.text}</p>
+                <p className="text-sm font-semibold">{homework.text}</p>
+                {homework.file && (
+                    <a href={homework.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-blue-50 p-2 rounded-md hover:bg-blue-100 text-blue-600">
+                        <Paperclip className="h-4 w-4" />
+                        <span className="truncate">{homework.file.name}</span>
+                        <Download className="h-4 w-4 ml-auto" />
+                    </a>
                 )}
             </div>
 
             {existingSubmission ? (
-                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
-                    <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
+                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border space-y-2'>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold">
                         <CheckCircle className="h-5 w-5"/>
                         <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
+                    {existingSubmission.file && (
+                         <a href={existingSubmission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white p-2 rounded-md hover:bg-slate-50 text-slate-600 border">
+                            <Paperclip className="h-4 w-4" />
+                            <span className="truncate">{existingSubmission.file.name}</span>
+                        </a>
+                    )}
                      {existingSubmission.feedback && (
                          <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
                              <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
@@ -176,15 +130,22 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
-            ) : homework.questions && homework.questions.length > 0 ? (
-                 <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Ödevi Teslim Et
-                 </Button>
             ) : (
-                <div className="flex items-center space-x-2">
-                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={(checked) => handleSubmit(!!checked)} disabled={isSubmitting} />
-                    <Label htmlFor={`hw-done-${homework.id}`} className="text-sm font-medium">Bu ödevi tamamladım olarak işaretle.</Label>
+                <div className="space-y-3 pt-3 border-t">
+                    <Textarea 
+                        placeholder="Cevabınızı buraya yazın..."
+                        value={submissionText}
+                        onChange={(e) => setSubmissionText(e.target.value)}
+                        rows={3}
+                    />
+                    <Input
+                        type="file"
+                        onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                    />
+                    <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Gönder
+                    </Button>
                 </div>
             )}
         </div>

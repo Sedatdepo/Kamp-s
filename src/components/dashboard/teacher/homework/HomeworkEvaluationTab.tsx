@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -5,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Student, Class, TeacherProfile, Submission, Homework, HomeworkStatusDocument } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X, Check, FileText } from 'lucide-react';
+import { Loader2, Download, Edit, Trash2, Calendar as CalendarIcon, Users, Save, X, Check, FileText, Paperclip } from 'lucide-react';
 import { collection, query, where, doc, updateDoc, writeBatch, getDocs, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -143,6 +144,7 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Öğrenci</TableHead>
+                                    <TableHead>Teslimat</TableHead>
                                     {homework.rubric?.map((c: any) => <TableHead key={c.label} className="text-center">{c.label} ({c.score}P)</TableHead>)}
                                     <TableHead className="text-center">Toplam</TableHead>
                                     <TableHead>Geri Bildirim</TableHead>
@@ -157,6 +159,20 @@ const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teac
                                     return (
                                         <TableRow key={student.id} className={!submission ? 'bg-yellow-50/50' : ''}>
                                             <TableCell className="font-medium">{student.name}</TableCell>
+                                            
+                                            <TableCell className="text-xs">
+                                                {submission ? (
+                                                    <>
+                                                        {submission.text && <p className="whitespace-pre-wrap">{submission.text}</p>}
+                                                        {submission.file && (
+                                                            <a href={submission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                                                                <Paperclip className="h-3 w-3" />
+                                                                {submission.file.name}
+                                                            </a>
+                                                        )}
+                                                    </>
+                                                ) : "Teslim edilmedi"}
+                                            </TableCell>
                                             
                                             {homework.rubric?.map((c: any) => (
                                                 <TableCell key={c.label}>
@@ -203,7 +219,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
 
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
+        return query(collection(db, 'classes', classId, 'homeworks'));
     }, [db, classId]);
 
     const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(homeworksQuery);
@@ -261,6 +277,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
         try {
             await deleteDoc(homeworkRef);
             toast({ title: "Ödev silindi." });
+            forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }
@@ -291,7 +308,7 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
     const handleNewRecord = useCallback(() => setSelectedRecordId(null), []);
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
-        setLocalDb(prev => ({ ...prev, homeworkStatusDocuments: (prev.homeworkStatusDocuments || []).filter(d => d.id !== selectedRecordId)}));
+        setLocalDb(prev => ({...prev, homeworkStatusDocuments: (prev.homeworkStatusDocuments || []).filter(d => d.id !== selectedRecordId)}));
         handleNewRecord();
         toast({ title: 'Kayıt Silindi', variant: 'destructive' });
     }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);

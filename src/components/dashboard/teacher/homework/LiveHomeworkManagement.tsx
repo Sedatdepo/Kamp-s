@@ -3,12 +3,13 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -34,6 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 
 const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSubmitted }: { student: Student, homework: Homework, submissions: Submission[], classId: string, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
@@ -57,11 +59,13 @@ const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSub
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
-    const { db } = useAuth();
+    const { db, storage } = useAuth();
   
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
@@ -94,22 +98,43 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     
     
     const handleAddOrUpdateHomework = async () => {
-        if (!db || !classId || !text.trim()) return;
+        if (!db || !storage || !classId || !text.trim()) return;
+
+        setIsUploading(true);
 
         try {
+            let fileData = editingHomework?.file || null;
+
+            if (file) { // New file is being uploaded
+                if(editingHomework?.file?.url) { // if there was an old file, delete it
+                    try {
+                        const oldFileRef = ref(storage, editingHomework.file.url);
+                        await deleteObject(oldFileRef);
+                    } catch (e: any) {
+                         if (e.code !== 'storage/object-not-found') console.error("Old file deletion failed:", e);
+                    }
+                }
+                const newFileRef = ref(storage, `homeworks/${classId}/${editingHomework?.id || 'new'}/${file.name}`);
+                await uploadBytes(newFileRef, file);
+                const downloadURL = await getDownloadURL(newFileRef);
+                fileData = { url: downloadURL, name: file.name, type: file.type };
+            }
+
+            const homeworkData = {
+                text: text,
+                dueDate: dueDate ? dueDate.toISOString() : null,
+                file: fileData,
+            };
+
             if (editingHomework) {
                 const homeworkRef = doc(db, 'classes', classId, 'homeworks', editingHomework.id);
-                await updateDoc(homeworkRef, {
-                    text: text,
-                    dueDate: dueDate ? dueDate.toISOString() : null,
-                });
+                await updateDoc(homeworkRef, homeworkData);
                 toast({ title: "Ödev güncellendi!" });
             } else {
-                await addDoc(collection(db, 'classes', classId, 'homeworks'), {
+                 await addDoc(collection(db, 'classes', classId, 'homeworks'), {
+                    ...homeworkData,
                     classId,
-                    text,
                     assignedDate: new Date().toISOString(),
-                    dueDate: dueDate ? dueDate.toISOString() : null,
                     teacherName: teacherProfile?.name,
                     lessonName: teacherProfile?.branch,
                     assignedStudents: students.map(s => s.id),
@@ -118,24 +143,42 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 });
                 toast({ title: "Ödev eklendi!" });
             }
+            
             setText('');
             setDueDate(undefined);
             setEditingHomework(null);
+            setFile(null);
             forceRefresh();
+
         } catch (error) {
             console.error("Homework error:", error);
             toast({ variant: "destructive", title: "İşlem sırasında bir sorun oluştu." });
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handleDeleteHomework = async (id: string) => {
-        if (!db || !classId) return;
+        if (!db || !storage || !classId) return;
         try {
-            const subsSnapshot = await getDocs(collection(db, `classes/${classId}/homeworks/${id}/submissions`));
+            const hwToDelete = liveHomeworks?.find(hw => hw.id === id);
             const batch = writeBatch(db);
+
+            const subsSnapshot = await getDocs(collection(db, `classes/${classId}/homeworks/${id}/submissions`));
             subsSnapshot.forEach(doc => batch.delete(doc.ref));
+            
             const homeworkRef = doc(db, 'classes', classId, 'homeworks', id);
             batch.delete(homeworkRef);
+
+            if(hwToDelete?.file?.url) {
+                const fileRef = ref(storage, hwToDelete.file.url);
+                try {
+                    await deleteObject(fileRef);
+                } catch (e: any) {
+                    if (e.code !== 'storage/object-not-found') throw e;
+                }
+            }
+
             await batch.commit();
             toast({ title: "Ödev ve tüm teslimler silindi." });
             forceRefresh();
@@ -172,6 +215,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const startEditing = (hw: Homework) => {
         setEditingHomework(hw);
         setText(hw.text);
+        setFile(null);
         if (hw.dueDate) {
             setDueDate(new Date(hw.dueDate));
         }
@@ -180,6 +224,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const cancelEditing = () => {
         setEditingHomework(null);
         setText('');
+        setFile(null);
         setDueDate(undefined);
     };
 
@@ -209,7 +254,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                         placeholder="Ödev açıklamasını buraya yazın..."
                         rows={5}
                     />
-                    <Popover>
+                     <Popover>
                         <PopoverTrigger asChild>
                             <Button
                                 variant={"outline"}
@@ -231,9 +276,28 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                             />
                         </PopoverContent>
                     </Popover>
+
+                    <div>
+                        <Label htmlFor="file-upload">Dosya Eki</Label>
+                        <Input id="file-upload" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1"/>
+                    </div>
+                    
+                    {(file || (editingHomework && editingHomework.file)) && (
+                        <div className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm">
+                            <Paperclip className="h-4 w-4"/>
+                            <span className="truncate flex-1">{file?.name || editingHomework?.file?.name}</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setFile(null); if(editingHomework) setEditingHomework(p => ({...p!, file: undefined}))}}>
+                                <XCircle className="h-4 w-4 text-red-500"/>
+                            </Button>
+                        </div>
+                    )}
+
                     <div className="flex gap-2">
                         {editingHomework && <Button variant="ghost" onClick={cancelEditing}>İptal</Button>}
-                        <Button onClick={handleAddOrUpdateHomework} className="w-full">{editingHomework ? 'Güncelle' : 'Ekle'}</Button>
+                        <Button onClick={handleAddOrUpdateHomework} className="w-full" disabled={isUploading}>
+                            {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            {editingHomework ? 'Güncelle' : 'Ekle'}
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -256,7 +320,10 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                         <AccordionItem value={hw.id} className="border rounded-lg p-4">
                                             <AccordionTrigger>
                                                 <div className="flex flex-col text-left">
-                                                    <p className="font-semibold">{hw.text}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        {hw.file && <Paperclip className="h-4 w-4 text-muted-foreground"/>}
+                                                        <p className="font-semibold">{hw.text}</p>
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground mt-1">
                                                         Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
                                                     </p>

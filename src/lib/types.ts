@@ -55,6 +55,11 @@ export interface Homework {
   instructions?: string;
   assignedStudents?: string[];
   assignmentType?: 'performance' | 'project';
+  file?: {
+    url: string;
+    name: string;
+    type: string;
+  };
 }
 
 
@@ -360,7 +365,6 @@ export interface InfoForm {
   familyLivesWith?: string; // Kiminle oturuyor
   siblingsInfo?: string;
   hasStepSibling?: 'yes' | 'no';
-  economicStatus?: 'low' | 'middle' | 'high';
   parentalAttitude?: string;
   
   // Özel Durum
@@ -580,7 +584,6 @@ export interface Database {
     schoolInfo?: SchoolInfo; // NEW
     studentInfoForms: StudentInfoFormData[];
 }
-
 
 // --- SOCIOGRAM AI ANALYSIS TYPES ---
 
