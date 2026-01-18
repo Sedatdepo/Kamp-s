@@ -4,7 +4,20 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Genel kural: Varsayılan olarak tüm yollara erişimi engelle.
+    // Sınav resimleri için herkese okuma, sadece sahibine yazma izni.
+    match /exam_images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Öğretmen ve öğrencilerin kendi ödev/dosya yüklemeleri için
+    // kendi kullanıcı ID'leri altındaki klasörlere yazma izni.
+    // Okuma izni de şimdilik sadece kendilerine verilir.
+    match /uploads/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Diğer tüm yolları varsayılan olarak engelle.
     match /{allPaths=**} {
       allow read, write: if false;
     }
