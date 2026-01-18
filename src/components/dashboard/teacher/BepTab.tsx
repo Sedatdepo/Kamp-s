@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -25,47 +24,43 @@ import { ALL_PLANS } from '@/lib/plans';
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
-const fizikPlanData = ALL_PLANS.Fizik.data;
-
-const allOutcomes = Object.keys(fizikPlanData).flatMap(gradeKey => {
-    if (!fizikPlanData[gradeKey] || !fizikPlanData[gradeKey].data) return [];
+const allOutcomes = Object.keys(ALL_PLANS).flatMap(gradeKey => {
+    const gradeData = ALL_PLANS[gradeKey];
+    if (!gradeData || !gradeData.data) return [];
     
-    return fizikPlanData[gradeKey].data.map((item: any) => {
-        if (!item.learningOutcome || item.isBreak || item.learningOutcome.includes('Devamı...')) {
-            return null;
-        }
+    // Ensure gradeData.data is treated as an object of grades (like '9', '10')
+    return Object.keys(gradeData.data).flatMap(classLevel => {
+        const classData = gradeData.data[classLevel];
+        if (!classData || !classData.data) return [];
 
-        const match = item.learningOutcome.match(/^(FİZ\.\d+\.\d+\.\d+)\.?\s*(.*)$/);
-        
-        let id, text;
-        if (match && match[1] && match[2]) {
-            id = match[1];
-            text = match[2];
-        } else {
-            // Fallback for entries that don't match the regex pattern perfectly
-            id = item.id; // Use the unique ID from the plan item
-            text = item.learningOutcome;
-        }
+        return classData.data.map((item: any) => {
+            if (!item.learningOutcome || item.isBreak || item.learningOutcome.includes('Devamı...')) {
+                return null;
+            }
 
-        return {
-            id: id,
-            grade: parseInt(gradeKey, 10),
-            unit: item.unit,
-            text: text,
-        };
-    }).filter(Boolean); // Filter out nulls
+            const match = item.learningOutcome.match(/^(FİZ\.\d+\.\d+\.\d+)\.?\s*(.*)$/);
+            
+            let id, text;
+            if (match && match[1] && match[2]) {
+                id = match[1];
+                text = match[2];
+            } else {
+                id = item.id; 
+                text = item.learningOutcome;
+            }
+
+            return {
+                id: id,
+                grade: parseInt(classLevel, 10),
+                unit: item.unit,
+                text: text,
+            };
+        }).filter(Boolean);
+    });
 });
 
-// Remove duplicates based on ID, preferring the first one encountered.
-const PHYSICS_OUTCOMES = Array.from(new Map(allOutcomes.map(item => [item!.id, item])).values());
+const UNIQUE_OUTCOMES = Array.from(new Map(allOutcomes.map(item => [item!.id, item])).values());
 
-
-const PERFORMANCE_ITEMS = [
-  { id: 1, skill: "Temel Kavram Bilgisi: Fiziksel kavramları tanımlama ve temel düzeyde açıklama." },
-  { id: 2, skill: "Soru Sorma ve Merak: Dersle ilgili konularda sorular sorma eğilimi." },
-  { id: 3, skill: "Derse Katılım: Sınıf içi etkinliklere katılma isteği." },
-  { id: 4, skill: "Materyal Kullanımı: Ders araç gereçlerini amacına uygun kullanma." }
-];
 
 const KABA_ITEMS = [
   { grade: 9, unit: "FİZİK BİLİMİ", skill: "Fiziğin ne olduğunu kendi cümleleriyle açıklar." },
@@ -145,11 +140,11 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   // BEP Modülü Stateleri
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [bepDates, setBepDates] = useState({ start: '', end: '' });
-  
   const [bepSelections, setBepSelections] = useState<any>({});
-  
   const [selectedPerformance, setSelectedPerformance] = useState<any>({});
   const [selectedKaba, setSelectedKaba] = useState<any>({});
+  const [dynamicPerformanceItems, setDynamicPerformanceItems] = useState<any[]>([]);
+
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -194,34 +189,50 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
 
    useEffect(() => {
     if (!isClient) return;
+
     const selectedIds = Object.keys(bepSelections);
-    const selectedOutcomeObjects = PHYSICS_OUTCOMES.filter(k => selectedIds.includes(k.id));
+    const selectedOutcomeObjects = UNIQUE_OUTCOMES.filter(k => k && selectedIds.includes(k.id));
     
+    // 1. DYNAMIC Eğitsel Performans
     const units = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
+    const newPerformanceItems = units.map((unit, index) => ({
+        id: `perf-unit-${unit}-${index}`,
+        skill: `${unit} ünitesindeki temel kavram, ilke ve süreçlere ilişkin performans.`
+    }));
+    setDynamicPerformanceItems(newPerformanceItems);
+
+    const performanceTemplates: ((unit: string) => string)[] = [
+        (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
+        (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
+        (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
+        (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
+        (unit: string) => `${unit} ünitesindeki problem çözme becerisi desteklenmelidir.`,
+    ];
     
     setSelectedPerformance(prevPerformance => {
         const newPerformanceState = JSON.parse(JSON.stringify(prevPerformance || {}));
         let hasChanged = false;
 
-        const performanceTemplates: ((unit: string) => string)[] = [
-            (unit: string) => `${unit} ünitesindeki temel kavramları açıklamakta güçlük çekmektedir.`,
-            (unit: string) => `${unit} ünitesiyle ilgili konularda yeterince soru sormamaktadır.`,
-            (unit: string) => `${unit} ünitesindeki etkinliklere katılımı teşvik edilmelidir.`,
-            (unit: string) => `${unit} ünitesinde kullanılan materyallere karşı ilgisi gözlemlenmelidir.`,
-        ];
+        newPerformanceItems.forEach((item, index) => {
+            const unit = units[index];
+            const templateIndex = index % performanceTemplates.length;
+            const newText = unit ? performanceTemplates[templateIndex](unit) : '';
+            const currentItem = newPerformanceState[item.id] || {};
 
-        // Fill performance items with units
-        for (let i = 1; i <= 4; i++) {
-            const unit = units[i - 1];
-            const newText = unit ? performanceTemplates[i - 1](unit) : '';
-            const currentItem = newPerformanceState[i] || {};
-            
-            if (currentItem.observation !== newText) {
-                newPerformanceState[i] = { ...currentItem, observation: newText };
+            if (!currentItem.observation) { // Sadece boşsa doldur
+                newPerformanceState[item.id] = { ...currentItem, observation: newText };
                 hasChanged = true;
             }
-        }
+        });
         
+        // Artık seçili olmayan kazanım ünitelerine ait performans maddelerini temizle
+        Object.keys(newPerformanceState).forEach(key => {
+            if (!newPerformanceItems.some(item => item.id === key)) {
+                delete newPerformanceState[key];
+                hasChanged = true;
+            }
+        });
+
         return hasChanged ? newPerformanceState : prevPerformance;
     });
 
@@ -333,7 +344,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     if (!currentStudent) return [];
     const gradeMatch = currentStudent.class.match(/(\d+)/);
     const grade = gradeMatch ? parseInt(gradeMatch[0]) : 9;
-    return PHYSICS_OUTCOMES.filter(k => k!.grade === grade);
+    return UNIQUE_OUTCOMES.filter(k => k!.grade === grade);
   }, [currentStudent]);
 
   const filteredKabaItems = useMemo(() => {
@@ -451,7 +462,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     } 
     else if (type === 'performance') {
         let rows = '';
-        PERFORMANCE_ITEMS.forEach(item => {
+        dynamicPerformanceItems.forEach(item => {
             const data = selectedPerformance[item.id] || { score: '', observation: '' };
             rows += `
                 <tr>
@@ -674,7 +685,10 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                             value={selectedStudentId}
                             onChange={(e) => {
                                 setSelectedStudentId(e.target.value);
-                                setBepSelections({}); 
+                                setBepSelections({});
+                                setSelectedPerformance({});
+                                setSelectedKaba({});
+                                setDynamicPerformanceItems([]);
                             }}
                         >
                             <option value="">-- Listeden bir öğrenci seçiniz --</option>
@@ -792,7 +806,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                             <div>
                                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Square size={18} /> Eğitsel Performans</h3>
                                 <div className="grid grid-cols-1 gap-4">
-                                    {PERFORMANCE_ITEMS.map(item => (
+                                    {dynamicPerformanceItems.map(item => (
                                         <div key={item.id} className="p-5 border border-slate-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
                                             <p className="text-sm font-semibold text-slate-800 mb-3">{item.skill}</p>
                                             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -823,6 +837,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                             </div>
                                         </div>
                                     ))}
+                                    {dynamicPerformanceItems.length === 0 && <p className="text-sm text-slate-400 italic">Değerlendirme maddeleri, yukarıdan kazanım seçince otomatik olarak oluşacaktır.</p>}
                                 </div>
                             </div>
 
