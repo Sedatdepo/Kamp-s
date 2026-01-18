@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove, getDocs, writeBatch } from 'firebase/firestore';
 import { DiscussionTopic, DiscussionPost, Class } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,13 @@ import { Label } from '@/components/ui/label';
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-const TopicList = ({ topics, onSelectTopic, onNewTopic, onToggleTopicActive }: { topics: DiscussionTopic[], onSelectTopic: (topic: DiscussionTopic) => void, onNewTopic: () => void, onToggleTopicActive: (topicId: string, currentStatus: boolean) => void }) => (
+const TopicList = ({ topics, onSelectTopic, onNewTopic, onToggleTopicActive, onDeleteTopic }: { 
+    topics: DiscussionTopic[], 
+    onSelectTopic: (topic: DiscussionTopic) => void, 
+    onNewTopic: () => void, 
+    onToggleTopicActive: (topicId: string, currentStatus: boolean) => void,
+    onDeleteTopic: (topicId: string) => void
+}) => (
     <Card>
         <CardHeader>
             <div className="flex justify-between items-center">
@@ -45,6 +51,27 @@ const TopicList = ({ topics, onSelectTopic, onNewTopic, onToggleTopicActive }: {
                                     onCheckedChange={(checked) => onToggleTopicActive(topic.id, checked)}
                                 />
                                 <Label className="text-xs">{topic.isActive !== false ? 'Aktif' : 'Pasif'}</Label>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/70 hover:text-destructive">
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Bu Tartışmayı Silmek İstediğinizden Emin Misiniz?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                "{topic.title}" başlıklı tartışma ve içindeki tüm yanıtlar kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => onDeleteTopic(topic.id)} className="bg-destructive hover:bg-destructive/90">
+                                                Sil
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </div>
                     ))}
@@ -260,6 +287,44 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         }
     };
     
+    const handleDeleteTopic = async (topicId: string) => {
+        if (!db) return;
+    
+        try {
+            const postsQuery = query(collection(db, `classes/${classId}/discussionTopics/${topicId}/posts`));
+            const postsSnapshot = await getDocs(postsQuery);
+    
+            const batch = writeBatch(db);
+    
+            postsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            
+            const topicRef = doc(db, 'classes', classId, 'discussionTopics', topicId);
+            batch.delete(topicRef);
+    
+            await batch.commit();
+    
+            toast({
+                title: "Tartışma Silindi",
+                description: "Başlık ve içindeki tüm yanıtlar başarıyla kaldırıldı."
+            });
+            
+            if (selectedTopic?.id === topicId) {
+                setView('list');
+                setSelectedTopic(null);
+            }
+    
+        } catch (error) {
+            console.error("Error deleting topic:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Hata',
+                description: 'Tartışma silinirken bir sorun oluştu.'
+            });
+        }
+    };
+
     if(isLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
     if (view === 'new') {
@@ -270,5 +335,5 @@ export const DiscussionBoardTab = ({ classId, currentClass }: { classId: string;
         return <TopicView topic={selectedTopic} onBack={() => setView('list')} classId={classId} currentClass={currentClass} />
     }
     
-    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} onToggleTopicActive={handleToggleTopicActive} />
+    return <TopicList topics={topics || []} onSelectTopic={handleSelectTopic} onNewTopic={() => setView('new')} onToggleTopicActive={handleToggleTopicActive} onDeleteTopic={handleDeleteTopic} />
 };
