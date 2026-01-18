@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -98,7 +99,14 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     
     const handleAddOrUpdateHomework = async () => {
         const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : null;
-        if (!db || !storage || !classId || !text.trim() || !teacherId) return;
+        if (!db || !storage || !classId || (!text.trim() && !file) || !teacherId) {
+            toast({
+                variant: 'destructive',
+                title: 'Eksik Bilgi',
+                description: 'Lütfen bir ödev açıklaması yazın veya bir dosya ekleyin.',
+            });
+            return;
+        }
 
         setIsUploading(true);
 
