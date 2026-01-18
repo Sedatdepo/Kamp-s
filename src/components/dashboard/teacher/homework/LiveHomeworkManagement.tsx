@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,12 +97,14 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     
     
     const handleAddOrUpdateHomework = async () => {
-        if (!db || !storage || !classId || !text.trim()) return;
+        if (!db || !storage || !classId || !text.trim() || !teacherProfile?.id) return;
 
         setIsUploading(true);
 
         try {
             let fileData = editingHomework?.file || null;
+            const homeworkId = editingHomework ? editingHomework.id : doc(collection(db, 'classes', classId, 'homeworks')).id;
+
 
             if (file) { // New file is being uploaded
                 if(editingHomework?.file?.url) { // if there was an old file, delete it
@@ -114,7 +115,9 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                          if (e.code !== 'storage/object-not-found') console.error("Old file deletion failed:", e);
                     }
                 }
-                const newFileRef = ref(storage, `homeworks/${classId}/${editingHomework?.id || 'new'}/${file.name}`);
+                
+                const newFileRef = ref(storage, `uploads/${teacherProfile.id}/homeworks/${classId}/${homeworkId}/${file.name}`);
+                
                 await uploadBytes(newFileRef, file);
                 const downloadURL = await getDownloadURL(newFileRef);
                 fileData = { url: downloadURL, name: file.name, type: file.type };
@@ -131,7 +134,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 await updateDoc(homeworkRef, homeworkData);
                 toast({ title: "Ödev güncellendi!" });
             } else {
-                 await addDoc(collection(db, 'classes', classId, 'homeworks'), {
+                 const newHomeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+                 await setDoc(newHomeworkRef, {
                     ...homeworkData,
                     classId,
                     assignedDate: new Date().toISOString(),
