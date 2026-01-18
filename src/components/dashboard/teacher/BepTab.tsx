@@ -21,16 +21,17 @@ import {
 } from 'lucide-react';
 import { TeacherProfile, Class } from '@/lib/types';
 import { ALL_PLANS } from '@/lib/plans';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
-const allOutcomes = Object.keys(ALL_PLANS).flatMap(gradeKey => {
-    const gradeData = ALL_PLANS[gradeKey];
-    if (!gradeData || !gradeData.data) return [];
+const allOutcomes = Object.keys(ALL_PLANS).flatMap(subjectKey => {
+    const subjectData = ALL_PLANS[subjectKey];
+    if (!subjectData || !subjectData.data) return [];
     
-    // Ensure gradeData.data is treated as an object of grades (like '9', '10')
-    return Object.keys(gradeData.data).flatMap(classLevel => {
-        const classData = gradeData.data[classLevel];
+    return Object.keys(subjectData.data).flatMap(classLevel => {
+        const classData = subjectData.data[classLevel];
         if (!classData || !classData.data) return [];
 
         return classData.data.map((item: any) => {
@@ -54,6 +55,7 @@ const allOutcomes = Object.keys(ALL_PLANS).flatMap(gradeKey => {
                 grade: parseInt(classLevel, 10),
                 unit: item.unit,
                 text: text,
+                subject: subjectKey,
             };
         }).filter(Boolean);
     });
@@ -144,6 +146,9 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   const [selectedPerformance, setSelectedPerformance] = useState<any>({});
   const [selectedKaba, setSelectedKaba] = useState<any>({});
   const [dynamicPerformanceItems, setDynamicPerformanceItems] = useState<any[]>([]);
+  
+  const [selectedBebSubject, setSelectedBebSubject] = useState(Object.keys(ALL_PLANS)[0]);
+  const [selectedBebGrade, setSelectedBebGrade] = useState('9');
 
 
   // --- INITIALIZATION ---
@@ -193,7 +198,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     const selectedIds = Object.keys(bepSelections);
     const selectedOutcomeObjects = UNIQUE_OUTCOMES.filter(k => k && selectedIds.includes(k.id));
     
-    // 1. DYNAMIC Eğitsel Performans
     const units = [...new Set(selectedOutcomeObjects.map(k => k!.unit))];
     const newPerformanceItems = units.map((unit, index) => ({
         id: `perf-unit-${unit}-${index}`,
@@ -225,7 +229,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
             }
         });
         
-        // Artık seçili olmayan kazanım ünitelerine ait performans maddelerini temizle
         Object.keys(newPerformanceState).forEach(key => {
             if (!newPerformanceItems.some(item => item.id === key)) {
                 delete newPerformanceState[key];
@@ -236,7 +239,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
         return hasChanged ? newPerformanceState : prevPerformance;
     });
 
-    // 2. Kaba Değerlendirme Otomatik Doldurma
     if (selectedIds.length > 0) { 
         const newKabaState = { ...selectedKaba };
         let hasChange = false;
@@ -263,6 +265,13 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     }
 
   }, [bepSelections, addToast, selectedKaba, isClient]);
+  
+    useEffect(() => {
+        const subjectData = ALL_PLANS[selectedBebSubject];
+        if (subjectData && !subjectData.grades.includes(selectedBebGrade)) {
+            setSelectedBebGrade(subjectData.grades[0]);
+        }
+    }, [selectedBebSubject, selectedBebGrade]);
 
   // --- ACTIONS ---
 
@@ -341,18 +350,13 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   }, [students, selectedStudentId]);
 
   const filteredKazanims = useMemo(() => {
-    if (!currentStudent) return [];
-    const gradeMatch = currentStudent.class.match(/(\d+)/);
-    const grade = gradeMatch ? parseInt(gradeMatch[0]) : 9;
-    return UNIQUE_OUTCOMES.filter(k => k!.grade === grade);
-  }, [currentStudent]);
+    return UNIQUE_OUTCOMES.filter(k => k!.subject === selectedBebSubject && k!.grade === parseInt(selectedBebGrade, 10));
+  }, [selectedBebSubject, selectedBebGrade]);
 
   const filteredKabaItems = useMemo(() => {
-    if (!currentStudent) return [];
-    const gradeMatch = currentStudent.class.match(/(\d+)/);
-    const grade = gradeMatch ? parseInt(gradeMatch[0]) : 9;
+    const grade = parseInt(selectedBebGrade, 10);
     return KABA_ITEMS.filter(k => k.grade === grade);
-  }, [currentStudent]);
+  }, [selectedBebGrade]);
 
   // --- BEP ACTIONS ---
 
@@ -676,6 +680,27 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                         <FileText className="text-blue-600" size={24} />
                         <h2 className="text-xl font-bold text-slate-800">BEP ve Değerlendirme</h2>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-4 bg-slate-50 rounded-xl border">
+                        <div>
+                            <Label className="font-semibold text-slate-600">BEP Hazırlanacak Ders</Label>
+                            <Select value={selectedBebSubject} onValueChange={setSelectedBebSubject}>
+                                <SelectTrigger><SelectValue placeholder="Ders seçin..." /></SelectTrigger>
+                                <SelectContent>
+                                    {Object.keys(ALL_PLANS).map(subject => <SelectItem key={subject} value={subject}>{subject}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="font-semibold text-slate-600">Kazanım Sınıf Seviyesi</Label>
+                            <Select value={selectedBebGrade} onValueChange={setSelectedBebGrade}>
+                                <SelectTrigger><SelectValue placeholder="Sınıf seçin..." /></SelectTrigger>
+                                <SelectContent>
+                                    {ALL_PLANS[selectedBebSubject]?.grades.map((grade: string) => <SelectItem key={grade} value={grade}>{grade === '0' ? 'Hazırlık' : `${grade}. Sınıf`}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     
                     {/* Öğrenci Seçimi */}
                     <div className="mb-8">
@@ -794,7 +819,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                                         );
                                     }) : (
                                         <div className="p-8 text-center text-slate-400 italic">
-                                            Bu sınıf düzeyi ({currentStudent.class}) için tanımlı kazanım bulunamadı.
+                                            Bu sınıf düzeyi ({selectedBebGrade}) için tanımlı kazanım bulunamadı.
                                         </div>
                                     )}
                                 </div>
