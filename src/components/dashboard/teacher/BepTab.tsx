@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
@@ -95,7 +95,7 @@ const downloadAsRTF = (content: any, filename: any) => {
 
 // --- ANA BİLEŞEN ---
 
-export function BepTab() {
+export default function BepTab({ teacherProfile }: { teacherProfile: any }) {
   // --- STATE YÖNETİMİ ---
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
@@ -103,10 +103,10 @@ export function BepTab() {
   // Veri
   const [students, setStudents] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({
-    branchTeacher: '',
-    guidanceTeacher: '',
-    schoolPrincipal: '',
-    schoolName: ''
+    branchTeacher: teacherProfile?.name || '',
+    guidanceTeacher: teacherProfile?.guidanceCounselorName || '',
+    schoolPrincipal: teacherProfile?.principalName || '',
+    schoolName: teacherProfile?.schoolName || ''
   });
   const [toasts, setToasts] = useState<any[]>([]);
 
@@ -130,7 +130,6 @@ export function BepTab() {
   useEffect(() => {
     setIsClient(true);
     const savedStudents = localStorage.getItem('students');
-    const savedTeacher = localStorage.getItem('teacherInfo');
     
     if (savedStudents) {
       try {
@@ -138,12 +137,6 @@ export function BepTab() {
       } catch (e) {
         console.error("Veri okuma hatası", e);
       }
-    }
-
-    if (savedTeacher) {
-      try {
-        setTeacherInfo(JSON.parse(savedTeacher));
-      } catch (e) { console.error("Öğretmen veri hatası", e); }
     }
 
     const today = new Date();
@@ -154,6 +147,18 @@ export function BepTab() {
       end: future.toISOString().split('T')[0]
     });
   }, []);
+
+  useEffect(() => {
+    if (teacherProfile) {
+        setTeacherInfo({
+            branchTeacher: teacherProfile.name || '',
+            guidanceTeacher: teacherProfile.guidanceCounselorName || '',
+            schoolPrincipal: teacherProfile.principalName || '',
+            schoolName: teacherProfile.schoolName || ''
+        });
+    }
+  }, [teacherProfile]);
+
 
   // --- AUTO-FILL EFFECT ---
   useEffect(() => {
@@ -186,7 +191,7 @@ export function BepTab() {
                  const outcomeText = relevantKazanims[0].text;
                  newKabaState[key] = {
                     evaluation: 'yapamaz',
-                    text: `Öğrenci "${outcomeText}" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
+                    text: `Öğrenci "${'\'\''}${outcomeText}'\'\''" kazanımında eksiklik yaşamaktadır, BEP planına alınmıştır.`
                 };
                 hasChange = true;
             }
@@ -198,7 +203,7 @@ export function BepTab() {
         addToast('Formlar otomatik güncellendi', 'info');
     }
 
-  }, [bepSelections]); 
+  }, [bepSelections, addToast, selectedKaba]); 
 
   // --- ACTIONS ---
 
