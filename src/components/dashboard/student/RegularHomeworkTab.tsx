@@ -19,6 +19,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { saveAs } from 'file-saver';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
@@ -101,6 +102,10 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         }
     };
     
+    const handleDownload = (file: {dataUrl: string, name: string}) => {
+        saveAs(file.dataUrl, file.name);
+    }
+    
     return (
         <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
             <div>
@@ -113,11 +118,11 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                  
                 <p className="text-sm font-semibold">{homework.text}</p>
                 {homework.file && (
-                    <a href={homework.file.dataUrl} download={homework.file.name} className="flex items-center gap-2 mt-2 bg-blue-50 p-2 rounded-md hover:bg-blue-100 text-blue-600">
+                    <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 mt-2">
                         <Paperclip className="h-4 w-4" />
                         <span className="truncate">{homework.file.name}</span>
                         <Download className="h-4 w-4 ml-auto" />
-                    </a>
+                    </Button>
                 )}
             </div>
 
@@ -129,10 +134,10 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
                     {existingSubmission.file && (
-                         <a href={existingSubmission.file.dataUrl} download={existingSubmission.file.name} className="flex items-center gap-2 bg-white p-2 rounded-md hover:bg-slate-50 text-slate-600 border">
+                         <Button variant="outline" size="sm" onClick={() => handleDownload(existingSubmission.file!)} className="flex items-center gap-2">
                             <Paperclip className="h-4 w-4" />
                             <span className="truncate">{existingSubmission.file.name}</span>
-                        </a>
+                        </Button>
                     )}
                      {existingSubmission.feedback && (
                          <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
@@ -248,3 +253,5 @@ export function RegularHomeworkTab() {
 
   return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
+    
+    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -36,6 +35,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { saveAs } from 'file-saver';
 
 
 const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSubmitted }: { student: Student, homework: Homework, submissions: Submission[], classId: string, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
@@ -242,6 +242,10 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             });
         }
     };
+
+    const handleFileDownload = (file: {dataUrl: string, name: string}) => {
+        saveAs(file.dataUrl, file.name);
+    }
     
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -334,7 +338,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <p className="text-sm font-medium">{(submissions[hw.id] || []).length}/{students.length} öğrenci teslim etti.</p>
+                                                     {hw.file && <Button variant="link" size="sm" onClick={() => handleFileDownload(hw.file!)}>{hw.file.name}</Button>}
                                                     <div>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
                                                         <AlertDialog>
@@ -387,3 +391,5 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
       </div>
     );
 };
+    
+    
