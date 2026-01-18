@@ -40,6 +40,9 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.[0];
     }, [submissions]);
 
+    // **ÇÖZÜM**: Soruların her zaman güncel homework prop'undan gelmesini garantilemek için useMemo kullanıldı.
+    const questions = useMemo(() => homework.questions || [], [homework.questions]);
+
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
         setAnswers(prev => {
             const currentAnswer = prev[questionId as string];
@@ -83,8 +86,8 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     };
 
     const handleSubmit = async (isCheckboxMark: boolean = false) => {
-        const hasQuestions = homework.questions && homework.questions.length > 0;
-        if (hasQuestions && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
+        const hasQuestions = questions.length > 0;
+        if (hasQuestions && !isCheckboxMark && questions.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
@@ -141,11 +144,11 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                  </div>
                  
-                 {homework.questions && homework.questions.length > 0 ? (
+                 {questions.length > 0 ? (
                     <div className="space-y-6">
                         <div className="bg-white rounded-lg p-4">
                             <h2 className="text-xl font-bold text-center mb-4">{homework.text}</h2>
-                            {homework.questions.map((q: Question, index: number) => (
+                            {questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
                                     <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
                                     {q.image && <img src={q.image} alt={`Soru ${index+1}`} className="my-2 rounded-md border max-w-sm"/>}
@@ -223,7 +226,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
-            ) : homework.questions && homework.questions.length > 0 ? (
+            ) : questions.length > 0 ? (
                  <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Ödevi Teslim Et
@@ -253,20 +256,18 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 function RegularHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
     
-    // Fetch all homeworks and filter client-side for robustness against missing fields
-    const allHomeworksQuery = useMemoFirebase(() => {
+    // Fetch only homeworks that are "regular" (rubric is null or undefined)
+    const regularHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'));
+        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
     
-    const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
+    const { data: regularHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
     
     const sortedHomeworks = useMemo(() => {
-        if (!allHomeworks) return [];
-        // Filter for regular homeworks (rubric is null or undefined)
-        const regularHomeworks = allHomeworks.filter(hw => hw.rubric == null);
+        if (!regularHomeworks) return [];
         return [...regularHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [allHomeworks]);
+    }, [regularHomeworks]);
 
 
     if (homeworksLoading) {
@@ -337,3 +338,4 @@ export function RegularHomeworkTab() {
 }
     
     
+
