@@ -85,16 +85,6 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         try {
             const batch = writeBatch(db);
     
-            if (type === 'project') {
-                 for (const studentId of studentIds) {
-                    const studentRef = doc(db, 'students', studentId);
-                    batch.update(studentRef, { 
-                        assignedLesson: `project_${selectedAssignment.id}`,
-                        hasProject: true,
-                    });
-                }
-            }
-
             // Group students by class to create separate homework docs for each class
             const studentsByClass: { [classId: string]: string[] } = {};
             studentIds.forEach(studentId => {
@@ -111,6 +101,16 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             });
     
             for (const classId in studentsByClass) {
+                if (type === 'project') {
+                    for (const studentId of studentsByClass[classId]) {
+                       const studentRef = doc(db, 'students', studentId);
+                       batch.update(studentRef, { 
+                           assignedLesson: `project_${selectedAssignment.id}`,
+                           hasProject: true,
+                       });
+                   }
+               }
+               
                 // Defensive check for classId
                 if (typeof classId !== 'string' || classId.trim() === '') {
                     console.error("Invalid classId detected:", classId);
@@ -131,14 +131,15 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     instructions: selectedAssignment.instructions,
                     assignmentType: type,
                 };
+                
+                const cleanDoc = JSON.parse(JSON.stringify(newHomeworkDoc));
 
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-                // For projects, we want a specific ID to find it later.
                 const newDocRef = type === 'project' 
                     ? doc(homeworksColRef, `project_${selectedAssignment.id}`)
                     : doc(homeworksColRef);
 
-                batch.set(newDocRef, newHomeworkDoc);
+                batch.set(newDocRef, cleanDoc);
             }
     
             await batch.commit();
@@ -217,6 +218,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             
             <LibraryHeader 
                 onOpenAddRubric={() => setAddRubricModalOpen(true)} 
+                onOpenCreateProject={() => setCreateAssignmentModalOpen(true)}
                 history={history}
                 toggleFavoritesOnly={toggleFavoritesOnly}
                 showFavoritesOnly={showFavoritesOnly}
