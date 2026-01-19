@@ -1,49 +1,13 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --- YARDIMCI FONKSİYONLAR ---
-    // Giriş yapmış mı? (Firebase Auth kullanıldığını varsayıyoruz)
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    // Öğretmen mi? (Teacher tablosunda ID'si var mı?)
-    function isTeacher() {
-      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-
-    // --- 1. GİRİŞ KAPISI (Gevşek Bırakılmalı) ---
-    // Öğrenci giriş yaparken sistem "Bu numara doğru mu?" diye bakabilsin.
-    match /classCodes/{document=**} { allow read: if true; }
-    match /students/{document=**}   { allow read: if true; }
-
-    // --- 2. İÇERİSİ (Okul Koridorları) ---
-    // Giriş yapmış herhangi bir öğrenci, sınıfları ve ödevleri görebilir.
-    // (Gizli devlet sırrı saklamıyoruz, öğrenci 9-A'nın ödevini görse de sorun olmaz)
-    match /classes/{document=**} {
-      allow read: if true;  // Okumak serbest (Hataları önler)
-      allow write: if isTeacher(); // Sadece öğretmen ders ekler/siler
-    }
-    
-    // --- 3. ÖĞRENCİ İŞLEMLERİ (Ödev Gönderme vb.) ---
-    // Öğrencilerin sadece buralara yazması gerekiyor.
-    
-    // Ödev Gönderimleri
-    match /classes/{classId}/homeworks/{hwId}/submissions/{subId} {
-      allow read: if true;
-      allow write: if isSignedIn(); // Giriş yapan ödev gönderebilir
-    }
-    
-    // Mesajlar / Anket Cevapları
-    match /messages/{msgId} { allow write: if isSignedIn(); }
-    match /surveyResponses/{resId} { allow write: if isSignedIn(); }
-
-    // --- 4. ÖĞRETMEN (Süper Yetki) ---
-    // Öğretmen her yere her şeyi yapabilir.
+    // Geliştirme aşaması için geçici kural:
+    // Sadece oturum açmış kullanıcıların okuma ve yazma erişimi vardır.
+    // DİKKAT: Bu kuralları canlıya almadan önce kesinlikle daha güvenli hale getirin.
     match /{document=**} {
-      allow read, write: if isTeacher();
+      allow read, write: if request.auth != null;
     }
   }
 }
