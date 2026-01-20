@@ -1,15 +1,16 @@
+'use client';
 
-"use client";
-
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Student, GradingScores } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { doc, writeBatch } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface BulkGradeEntryDialogProps {
   isOpen: boolean;
@@ -31,15 +32,21 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
   const isLiteratureTeacher = teacherBranch === 'Edebiyat' || teacherBranch === 'Türk Dili ve Edebiyatı';
 
-  const sortedStudents = useMemo(() => {
-    return [...students].sort((a, b) => {
-      return a.number.localeCompare(b.number, 'tr', { numeric: true });
-    });
-  }, [students]);
+  const [editableStudents, setEditableStudents] = useState<Student[]>([]);
 
-  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
+  useEffect(() => {
+    // Deep copy students to local state when dialog opens or students prop changes
+    setEditableStudents(JSON.parse(JSON.stringify(students)));
+  }, [students, isOpen]); // Also depends on isOpen to reset when reopened
+
+  const sortedStudents = useMemo(() => {
+    return [...editableStudents].sort((a, b) => {
+       return a.number.localeCompare(b.number, 'tr', { numeric: true });
+     });
+  }, [editableStudents]);
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
-    if (!db) return;
     const pastedText = e.clipboardData.getData('text');
     const lines = pastedText.split(/\r\n|\n|\r/).map(line => line.trim()).filter(line => line);
     
@@ -53,10 +60,8 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         });
         return;
     }
-
-    const batch = writeBatch(db);
-    let updatedCount = 0;
-    const updatedStudents = [...students];
+    
+    const updatedStudents = [...editableStudents];
 
     sortedStudents.forEach((student, index) => {
         if (index < lines.length) {
@@ -64,41 +69,89 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             let grade: number | null = null;
             
             if(lineValue === 'G') {
-                grade = -1; // "G" için özel kod
+                grade = -1;
             } else {
-                const parsedGrade = parseFloat(lineValue);
+                const parsedGrade = parseFloat(lineValue.replace(',', '.')); // Handle comma decimal separator
                 if (!isNaN(parsedGrade)) {
                     grade = parsedGrade;
                 }
             }
             
             if (grade !== null) {
-                const studentRef = doc(db, 'students', student.id);
-                const gradeField = `${termGradesKey}.${gradeType}`;
-                batch.update(studentRef, { [gradeField]: grade });
-
-                const studentIndexInOriginalArray = updatedStudents.findIndex(s => s.id === student.id);
-                if (studentIndexInOriginalArray !== -1) {
-                    const studentToUpdate = { ...updatedStudents[studentIndexInOriginalArray] };
-                    const termGrades = { ...(studentToUpdate[termGradesKey] || {}) };
-                    // @ts-ignore
-                    termGrades[gradeType] = grade;
-                    studentToUpdate[termGradesKey] = termGrades;
-                    updatedStudents[studentIndexInOriginalArray] = studentToUpdate;
+                const studentIndex = updatedStudents.findIndex(s => s.id === student.id);
+                if (studentIndex !== -1) {
+                    const studentToUpdate = updatedStudents[studentIndex];
+                    if (!studentToUpdate[termGradesKey]) {
+                        (studentToUpdate as any)[termGradesKey] = {};
+                    }
+                    (studentToUpdate[termGradesKey] as any)[gradeType] = grade;
                 }
-                
-                updatedCount++;
             }
         }
     });
 
+    setEditableStudents(updatedStudents);
+    toast({
+        title: 'Notlar Yapıştırıldı',
+        description: 'Lütfen kontrol edin ve kaydetmek için "Kaydet ve Kapat" butonuna tıklayın.'
+    });
+  };
+  
+  const handleGradeChange = (studentId: string, gradeType: GradeType, value: string) => {
+    const grade = value.toUpperCase() === 'G' ? -1 : (value === '' ? null : parseFloat(value.replace(',', '.')));
+
+    if (value !== '' && value.toUpperCase() !== 'G' && isNaN(grade as number)) {
+        toast({ variant: 'destructive', title: 'Geçersiz Not', description: 'Lütfen sayı veya "G" girin.'});
+        return;
+    }
+
+    setEditableStudents(prev => 
+        prev.map(s => {
+            if (s.id === studentId) {
+                const updatedStudent = JSON.parse(JSON.stringify(s)); 
+                if (!updatedStudent[termGradesKey]) {
+                    updatedStudent[termGradesKey] = {};
+                }
+                if (grade === null) {
+                    delete updatedStudent[termGradesKey][gradeType];
+                } else {
+                    updatedStudent[termGradesKey][gradeType] = grade;
+                }
+                return updatedStudent;
+            }
+            return s;
+        })
+    );
+  };
+  
+  const handleSave = async () => {
+    if (!db) return;
+    
+    const batch = writeBatch(db);
+    let updatedCount = 0;
+
+    editableStudents.forEach(editedStudent => {
+        const originalStudent = students.find(s => s.id === editedStudent.id);
+        if (JSON.stringify(editedStudent[termGradesKey]) !== JSON.stringify(originalStudent?.[termGradesKey])) {
+            const studentRef = doc(db, 'students', editedStudent.id);
+            batch.update(studentRef, {
+                [termGradesKey]: editedStudent[termGradesKey] || {}
+            });
+            updatedCount++;
+        }
+    });
+
+    if (updatedCount === 0) {
+        toast({ title: 'Değişiklik yok', description: 'Kaydedilecek bir değişiklik bulunamadı.' });
+        setIsOpen(false);
+        return;
+    }
+
     try {
         await batch.commit();
-        onBulkUpdate(updatedStudents);
-        toast({
-            title: 'Notlar Kaydedildi',
-            description: `${updatedCount} öğrencinin notu başarıyla güncellendi.`
-        });
+        onBulkUpdate(editableStudents);
+        toast({ title: 'Notlar Kaydedildi', description: `${updatedCount} öğrencinin notu başarıyla güncellendi.` });
+        setIsOpen(false);
     } catch (error: any) {
         toast({
             variant: 'destructive',
@@ -107,58 +160,44 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         });
     }
   };
-  
-  const displayGrade = (grade: number | undefined | null) => {
-    if (grade === -1) return 'G';
-    if (grade === null || grade === undefined) return 'Girmedi';
-    return grade;
-  }
 
-  const renderGradeHeaders = () => {
-    if (isLiteratureTeacher) {
-      return (
-        <>
-          <TableHead>1. Yazılı</TableHead>
-          <TableHead>1. Konuşma</TableHead>
-          <TableHead>1. Dinleme</TableHead>
-          <TableHead>2. Yazılı</TableHead>
-          <TableHead>2. Konuşma</TableHead>
-          <TableHead>2. Dinleme</TableHead>
-        </>
-      );
-    }
+  const GradeInput = ({ studentId, gradeType }: { studentId: string; gradeType: GradeType }) => {
+    const student = editableStudents.find(s => s.id === studentId);
+    const value = student?.[termGradesKey]?.[gradeType];
+    let displayValue = '';
+    if (value === -1) displayValue = 'G';
+    else if (value !== null && value !== undefined) displayValue = String(value);
+
     return (
-      <>
-        <TableHead>1. Sınav</TableHead>
-        <TableHead>2. Sınav</TableHead>
-        <TableHead>1. Performans</TableHead>
-        <TableHead>2. Performans</TableHead>
-        {activeTerm === 2 && <TableHead>Proje</TableHead>}
-      </>
+        <Input
+            value={displayValue}
+            onChange={e => handleGradeChange(studentId, gradeType, e.target.value)}
+            className="h-9 w-20 text-center"
+            placeholder="-"
+        />
     );
   };
 
   const renderStudentGradeCells = (student: Student) => {
-    const termGrades = student[termGradesKey];
     if (isLiteratureTeacher) {
         return (
             <>
-                <TableCell>{displayGrade(termGrades?.writtenExam1)}</TableCell>
-                <TableCell>{displayGrade(termGrades?.speakingExam1)}</TableCell>
-                <TableCell>{displayGrade(termGrades?.listeningExam1)}</TableCell>
-                <TableCell>{displayGrade(termGrades?.writtenExam2)}</TableCell>
-                <TableCell>{displayGrade(termGrades?.speakingExam2)}</TableCell>
-                <TableCell>{displayGrade(termGrades?.listeningExam2)}</TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="writtenExam1" /></TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="speakingExam1" /></TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="listeningExam1" /></TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="writtenExam2" /></TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="speakingExam2" /></TableCell>
+                <TableCell><GradeInput studentId={student.id} gradeType="listeningExam2" /></TableCell>
             </>
         )
     }
     return (
         <>
-            <TableCell>{displayGrade(termGrades?.exam1)}</TableCell>
-            <TableCell>{displayGrade(termGrades?.exam2)}</TableCell>
-            <TableCell>{displayGrade(termGrades?.perf1)}</TableCell>
-            <TableCell>{displayGrade(termGrades?.perf2)}</TableCell>
-            {activeTerm === 2 && <TableCell>{displayGrade(termGrades?.projectGrade)}</TableCell>}
+            <TableCell><GradeInput studentId={student.id} gradeType="exam1" /></TableCell>
+            <TableCell><GradeInput studentId={student.id} gradeType="exam2" /></TableCell>
+            <TableCell><GradeInput studentId={student.id} gradeType="perf1" /></TableCell>
+            <TableCell><GradeInput studentId={student.id} gradeType="perf2" /></TableCell>
+            {activeTerm === 2 && <TableCell><GradeInput studentId={student.id} gradeType="projectGrade" /></TableCell>}
         </>
     )
   }
@@ -192,14 +231,14 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         </>
      )
   }
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Toplu Not Girişi ({activeTerm}. Dönem)</DialogTitle>
           <DialogDescription>
-            Excel'den bir not sütununu kopyalayıp ilgili sütunun altındaki alana yapıştırın. 'G' harfi de desteklenmektedir.
+            Excel'den bir not sütununu kopyalayıp ilgili sütunun altındaki alana yapıştırın veya doğrudan tablo üzerinden notları girin.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-1">
@@ -208,7 +247,24 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
               <TableRow>
                 <TableHead className="w-[50px]">No</TableHead>
                 <TableHead className="w-1/4">Öğrenci Adı</TableHead>
-                {renderGradeHeaders()}
+                {isLiteratureTeacher ? (
+                  <>
+                    <TableHead>1. Yazılı</TableHead>
+                    <TableHead>1. Konuşma</TableHead>
+                    <TableHead>1. Dinleme</TableHead>
+                    <TableHead>2. Yazılı</TableHead>
+                    <TableHead>2. Konuşma</TableHead>
+                    <TableHead>2. Dinleme</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead>1. Sınav</TableHead>
+                    <TableHead>2. Sınav</TableHead>
+                    <TableHead>1. Performans</TableHead>
+                    <TableHead>2. Performans</TableHead>
+                    {activeTerm === 2 && <TableHead>Proje</TableHead>}
+                  </>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,6 +282,10 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             </TableBody>
           </Table>
         </ScrollArea>
+         <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsOpen(false)}>İptal</Button>
+            <Button onClick={handleSave}>Kaydet ve Kapat</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
