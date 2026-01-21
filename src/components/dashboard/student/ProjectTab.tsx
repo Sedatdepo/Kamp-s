@@ -168,12 +168,14 @@ export function ProjectTab() {
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
   const homeworksQuery = useMemoFirebase(() => {
-    if (!db || !classId || !assignedLessonId) return null;
-    // Find the homework document associated with the project ID
+    if (!db || !classId || !assignedLessonId || !assignedLessonId.startsWith('project_')) return null;
+    
     const projectHomeworkId = assignedLessonId.replace('project_', '');
-    // This query is a bit of a guess, we need to find the homework by the project ID
-    // Assuming the project ID is stored in a field, e.g., `projectId` in the homework document
-    return query(collection(db, `classes/${classId}/homeworks`), where("text", "==", assignmentsData.find(p => p.id.toString() === projectHomeworkId)?.title));
+    const project = assignmentsData.find(p => p.id.toString() === projectHomeworkId);
+
+    if (!project || !project.title) return null;
+
+    return query(collection(db, `classes/${classId}/homeworks`), where("text", "==", project.title));
   }, [db, classId, assignedLessonId]);
 
   const { data: projectHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
