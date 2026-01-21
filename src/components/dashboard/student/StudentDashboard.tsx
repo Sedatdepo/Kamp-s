@@ -11,13 +11,11 @@ import { RegularHomeworkTab } from './RegularHomeworkTab';
 import { ElectionVoteTab } from './ElectionVoteTab';
 import { DutyRosterTab } from './DutyRosterTab';
 import { SeatingPlanTab } from './SeatingPlanTab';
-import { StudentSurveyTab } from './StudentSurveyTab';
 import { AccountSettingsTab } from './AccountSettingsTab';
 import { RiskFormTab } from './RiskFormTab';
 import { InfoFormTab } from './InfoFormTab';
 import { StudentClubTab } from './StudentClubTab';
 import { SociogramTab as StudentSociogramTab } from './SociogramTab';
-import { DiscussionBoardTab as StudentDiscussionBoardTab } from './DiscussionBoardTab';
 import { useNotification } from '@/hooks/useNotification';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -31,12 +29,10 @@ import {
   Vote,
   Users,
   Grid,
-  ClipboardCheck,
   Settings,
   GraduationCap,
   Award,
   Share2,
-  MessagesSquare,
   Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -78,12 +74,10 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoadin
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('home');
   const { appUser, db } = useAuth();
-  const { notifications, markAsSeen, hasUnansweredSurvey } = useNotification();
+  const { notifications, markAsSeen } = useNotification();
   
   const classId = (appUser?.type === 'student' && appUser.data.classId) ? appUser.data.classId : null;
   
-  // KESİN ÇÖZÜM: Sorgu, yalnızca `classId` ve `db` mevcut ve geçerli olduğunda oluşturulur.
-  // Bu, kimlik doğrulama tamamlanmadan veya classId bilgisi eksikken sorgu gönderilmesini engeller.
   const classQuery = useMemoFirebase(() => {
     if (!classId || !db) return null;
     return doc(db, 'classes', classId);
@@ -103,7 +97,6 @@ export function StudentDashboard() {
     else if (activeTab === 'info') markAsSeen('infoForm');
     else if (activeTab === 'homeworks' || activeTab === 'regular-homeworks') markAsSeen('homeworks');
     else if (activeTab === 'election') markAsSeen('election');
-    else if (activeTab === 'surveys') markAsSeen('surveys');
     else if (activeTab === 'teacher-chats') markAsSeen('messages');
   }, [activeTab, markAsSeen]);
   
@@ -121,11 +114,9 @@ export function StudentDashboard() {
           case 'election': return <ElectionVoteTab />;
           case 'dutyRoster': return <DutyRosterTab />;
           case 'seatingPlan': return <SeatingPlanTab />;
-          case 'surveys': return <StudentSurveyTab />;
           case 'account': return <AccountSettingsTab />;
           case 'club': return <StudentClubTab />;
           case 'sociogram': return <StudentSociogramTab />;
-          case 'discussion': return <StudentDiscussionBoardTab />;
           default: return null;
       }
   }
@@ -157,7 +148,6 @@ export function StudentDashboard() {
                 <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('badges')} />
                 <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
                 <MenuCard icon={<Home />} title="Proje Ödevim" description="Proje seçimi yap veya atananı gör." onClick={() => setActiveTab('project')} />
-                <MenuCard icon={<MessagesSquare />} title="Tartışma Panosu" description="Sınıf tartışmalarına katıl." onClick={() => setActiveTab('discussion')} />
                 <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
                 <MenuCard icon={<BookText />} title="Performans Ödevlerim" description="Kütüphaneden atanan ödevleri gör." onClick={() => setActiveTab('homeworks')} hasNotification={notifications.homeworks} />
                 <MenuCard icon={<BookText />} title="Ödevler" description="Öğretmeninin verdiği diğer ödevler." onClick={() => setActiveTab('regular-homeworks')} hasNotification={notifications.homeworks} />
@@ -190,16 +180,6 @@ export function StudentDashboard() {
                     isDisabled={!currentClass?.isElectionActive}
                 />
                 
-                <MenuCard 
-                    isLoading={classLoading}
-                    icon={<ClipboardCheck />} 
-                    title="Anketlerim" 
-                    description="Aktif anketleri cevapla." 
-                    onClick={() => setActiveTab('surveys')} 
-                    hasNotification={notifications.surveys}
-                    isDisabled={!hasUnansweredSurvey}
-                />
-
                 <MenuCard 
                     isLoading={classLoading}
                     icon={<Share2 />}

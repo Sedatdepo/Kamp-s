@@ -44,7 +44,6 @@ const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/Homewor
 const ElectionTab = dynamic(() => import('@/components/dashboard/teacher/ElectionTab').then(mod => mod.ElectionTab), { loading: LoadingSpinner });
 const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/AnnualPlanTab').then(mod => mod.AnnualPlanTab), { loading: LoadingSpinner });
 const DilekceTab = dynamic(() => import('@/components/dashboard/teacher/DilekceTab').then(mod => mod.DilekceTab), { loading: LoadingSpinner });
-const SurveyTab = dynamic(() => import('@/components/dashboard/teacher/SurveyTab').then(mod => mod.SurveyTab), { loading: LoadingSpinner });
 const DisciplineTab = dynamic(() => import('./DisciplineTab').then(mod => mod.DisciplineTab), { loading: LoadingSpinner });
 const BepTab = dynamic(() => import('./BepTab').then(mod => mod.BepTab), { loading: LoadingSpinner });
 const VeliToplantisiTab = dynamic(() => import('./VeliToplantisiTab'), { loading: LoadingSpinner });
@@ -56,12 +55,11 @@ const ZumreTab = dynamic(() => import('./ZumreTab'), { loading: LoadingSpinner }
 const ExamBuilder = dynamic(() => import('./ExamBuilder'), { loading: LoadingSpinner });
 const ExamAnalysisTab = dynamic(() => import('./ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
 const SinifKahramanlariTab = dynamic(() => import('./SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
-const DiscussionBoardTab = dynamic(() => import('./DiscussionBoardTab').then(mod => mod.DiscussionBoardTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('./TimetableTab'), { loading: LoadingSpinner });
 const AgendaTab = dynamic(() => import('./AgendaTab'), { loading: LoadingSpinner });
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "surveys" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "discussion" | "timetable" | "agenda";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable" | "agenda";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -180,7 +178,7 @@ function ClassSelectionScreen({
                 batch.delete(studentDoc.ref);
             });
 
-            const subcollections = ['homeworks', 'discussionTopics'];
+            const subcollections = ['homeworks'];
             for (const sub of subcollections) {
                 const subQuery = query(collection(db, `classes/${classId}/${sub}`));
                 const subSnapshot = await getDocs(subQuery);
@@ -189,11 +187,6 @@ function ClassSelectionScreen({
                         const submissionsQuery = query(collection(db, `classes/${classId}/homeworks/${itemDoc.id}/submissions`));
                         const submissionsSnapshot = await getDocs(submissionsQuery);
                         submissionsSnapshot.forEach(subDoc => batch.delete(subDoc.ref));
-                    }
-                     if(sub === 'discussionTopics') {
-                        const postsQuery = query(collection(db, `classes/${classId}/discussionTopics/${itemDoc.id}/posts`));
-                        const postsSnapshot = await getDocs(postsQuery);
-                        postsSnapshot.forEach(postDoc => batch.delete(postDoc.ref));
                     }
                     batch.delete(itemDoc.ref);
                 }
@@ -407,7 +400,6 @@ const TABS_CONFIG = {
   "forms": { label: "Bilgi Formları", icon: FileSignature },
   "communication": { label: "İletişim Paneli", icon: MessageCircle },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
-  "surveys": { label: "Anket Modülü", icon: ClipboardCheck },
   "discipline": { label: "Disiplin Süreci", icon: Scale },
   "bep": { label: "BEP Modülü", icon: FileHeart },
   "zumre": { label: "Zümre Tutanağı", icon: Users2 },
@@ -420,7 +412,6 @@ const TABS_CONFIG = {
   "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
   "gamification": { label: "Rozetler", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
-  "discussion": { label: "Tartışma Panosu", icon: MessagesSquare },
   "timetable": { label: "Ders Programı", icon: Clock },
   "agenda": { label: "Ajanda", icon: ClipboardCheck },
 } as const;
@@ -592,9 +583,8 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Trophy />} title="Rozetler" description="Puan ve rozetlerle sınıfı oyunlaştırın." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
                 <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
-                <MenuCard icon={<MessagesSquare />} title="Tartışma Panosu" description="Sınıf içi konuları tartışmaya açın." onClick={() => setActiveTab('discussion')} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
-                <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımları analiz et." onClick={() => setActiveTab('exam-analysis')} />
+                <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımlarını analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
                 <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
                 <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
@@ -602,7 +592,6 @@ export function TeacherDashboard() {
                 <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<Drama />} title="Sosyal Kulüpler" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
-                <MenuCard icon={<ClipboardCheck />} title="Anket Modülü" description="Anketler oluşturun ve uygulayın." onClick={() => setActiveTab('surveys')} />
             </div>
         </div>
       );
@@ -618,14 +607,12 @@ export function TeacherDashboard() {
         case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
         case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} students={studentsForSelectedClass} />; break;
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
-        case 'surveys': tabContent = <SurveyTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile}/>; break;
         case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
         case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} />; break;
         case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'discussion': tabContent = <DiscussionBoardTab classId={selectedClassId!} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 

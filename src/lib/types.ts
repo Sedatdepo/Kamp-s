@@ -19,6 +19,11 @@ export interface Announcement {
   text: string;
   date: string;
   seenBy: string[];
+  file?: {
+    url: string;
+    name: string;
+    type: string;
+  };
 }
 
 export interface Submission {
@@ -160,52 +165,20 @@ export interface Kazanım {
   teacherId: string;
 }
 
-
-export interface Survey {
+export interface Message {
   id: string;
-  title: string;
-  description: string;
-  classId: string;
-  teacherId: string;
-  isActive: boolean;
-  questions: Question[];
-  createdAt: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  timestamp: Timestamp;
+  participants: string[];
+  isRead: boolean;
+  file?: {
+    dataUrl: string;
+    name: string;
+    type: string;
+  };
 }
-
-export interface SurveyResponse {
-  id: string;
-  surveyId: string;
-  studentId: string;
-  submittedAt: Timestamp;
-  answers: {
-      questionId: string;
-      answer: string | string[];
-  }[];
-}
-
-// NEW: Discussion Forum Types
-export interface DiscussionTopic {
-    id: string;
-    classId: string;
-    teacherId: string;
-    title: string;
-    content: string;
-    createdAt: Timestamp;
-    studentPostCount?: number;
-    isActive?: boolean;
-}
-
-export interface DiscussionPost {
-    id: string;
-    topicId: string;
-    parentId: string | null; // For replies
-    studentId: string;
-    studentName: string;
-    studentNumber: string;
-    content: string;
-    createdAt: Timestamp;
-}
-
 
 export interface Class {
   id: string;
@@ -218,7 +191,6 @@ export interface Class {
   isElectionActive?: boolean;
   isClubSelectionActive?: boolean;
   isSociogramActive?: boolean;
-  isDiscussionBoardActive?: boolean;
   isDutyRosterPublished?: boolean;
   isSeatingPlanPublished?: boolean;
   announcements?: Announcement[];
@@ -229,9 +201,6 @@ export interface Class {
   seatingPlanRows?: number;
   seatingPlanCols?: number;
   sociogramSurvey?: SociogramSurvey;
-  discussionBoard?: {
-      blockedStudentIds?: string[];
-  };
 }
 
 export type GradingScores = {
@@ -371,22 +340,6 @@ export interface InfoForm {
   // Özel Durum
   hasDisability?: 'yes' | 'no';
   isMartyrVeteranChild?: 'yes' | 'no';
-}
-
-
-export interface Message {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  text: string;
-  timestamp: Timestamp;
-  participants: string[];
-  isRead: boolean;
-  file?: {
-    dataUrl: string;
-    name: string;
-    type: string;
-  };
 }
 
 // --- ARCHIVABLE DOCUMENT TYPES ---
@@ -578,7 +531,6 @@ export interface Database {
     userScenarios: Record<string, string[]>; 
     examAnalysisDocuments?: ExamAnalysisDocument[];
     homeworkStatusDocuments?: HomeworkStatusDocument[];
-    surveyDocuments?: SurveyDocument[];
     infoFormsStatusDocuments?: InfoFormsStatusDocument[];
     guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
     observationDocuments?: ObservationDocument[]; // NEW
@@ -649,9 +601,6 @@ export interface HomeworkStatusDocument extends Archivable {
         homeworks: Homework[]; // Snapshot of homeworks
         submissions: Submission[]; // Snapshot of submissions
     };
-}
-export interface SurveyDocument extends Archivable {
-    data: Survey;
 }
 export interface InfoFormsStatusDocument extends Archivable {
     data: {

@@ -4,10 +4,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { Class, Survey, SurveyResponse, Message } from '@/lib/types';
+import { Class, Message } from '@/lib/types';
 import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore';
 
-type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'surveys' | 'messages';
+type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'messages';
 
 interface NotificationState {
   announcements: boolean;
@@ -15,7 +15,6 @@ interface NotificationState {
   infoForm: boolean;
   homeworks: boolean;
   election: boolean;
-  surveys: boolean;
   messages: boolean;
 }
 
@@ -27,7 +26,6 @@ export const useNotification = () => {
     infoForm: false,
     homeworks: false,
     election: false,
-    surveys: false,
     messages: false,
   });
   
@@ -40,25 +38,6 @@ export const useNotification = () => {
   }, [db, classId]);
   const { data: currentClass } = useDoc<Class>(classQuery);
 
-  const surveysQuery = useMemoFirebase(() => {
-    if (!db || !classId) return null;
-    return query(collection(db, 'surveys'), where('classId', '==', classId), where('isActive', '==', true));
-  }, [db, classId]);
-  const { data: activeSurveys } = useCollection<Survey>(surveysQuery);
-
-  // CRITICAL FIX: Do not run this query if there is no studentId.
-  const responsesQuery = useMemoFirebase(() => {
-    if (!db || !studentId) return null;
-    return query(collection(db, 'surveyResponses'), where('studentId', '==', studentId));
-  }, [db, studentId]);
-  const { data: userResponses } = useCollection<SurveyResponse>(responsesQuery);
-
-  const hasUnansweredSurvey = useMemo(() => {
-    if (!activeSurveys || !userResponses) return false;
-    const respondedSurveyIds = new Set(userResponses.map(r => r.surveyId));
-    return activeSurveys.some(s => !respondedSurveyIds.has(s.id));
-  }, [activeSurveys, userResponses]);
-  
   // CRITICAL FIX: Do not run this query if there is no studentId.
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
@@ -72,7 +51,7 @@ export const useNotification = () => {
         // Eğer kritik data hazır değilse, tüm bildirimleri false yap.
         setNotifications({
             announcements: false, riskForm: false, infoForm: false, 
-            homeworks: false, election: false, surveys: false, messages: false
+            homeworks: false, election: false, messages: false
         });
         return;
     }
@@ -118,11 +97,10 @@ export const useNotification = () => {
       infoForm: hasNewInfoForm,
       homeworks: hasNewHomework,
       election: hasNewElection,
-      surveys: hasUnansweredSurvey,
       messages: hasNewMessage,
     });
 
-  }, [currentClass, studentId, appUser, db, hasUnansweredSurvey, unreadMessages]);
+  }, [currentClass, studentId, appUser, db, unreadMessages]);
 
   useEffect(() => {
     // Sadece gerekli bilgiler hazır olduğunda bildirimleri kontrol et
@@ -163,5 +141,5 @@ export const useNotification = () => {
     checkNotifications();
   }, [studentId, classId, currentClass, checkNotifications, db]);
 
-  return { notifications, markAsSeen, hasUnansweredSurvey };
+  return { notifications, markAsSeen };
 };

@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, SurveyDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument, Timetable, TimetableCell, Class, AgendaEvent
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument, Timetable, TimetableCell, Class, AgendaEvent
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -27,7 +27,6 @@ export interface Database {
   userScenarios: Record<string, string[]>; 
   examAnalysisDocuments?: ExamAnalysisDocument[];
   homeworkStatusDocuments?: HomeworkStatusDocument[];
-  surveyDocuments?: SurveyDocument[];
   infoFormsStatusDocuments?: InfoFormsStatusDocument[];
   guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
   observationDocuments?: ObservationDocument[]; // NEW
@@ -53,7 +52,6 @@ const initialDb: Database = {
   userScenarios: {}, 
   examAnalysisDocuments: [],
   homeworkStatusDocuments: [],
-  surveyDocuments: [],
   infoFormsStatusDocuments: [],
   guidanceReferralRecords: [], // NEW
   observationDocuments: [], // NEW
