@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -115,7 +116,9 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     sanitizedAnswers[key] = answers[key];
                 }
             }
-            submissionData.answers = sanitizedAnswers;
+             if (Object.keys(sanitizedAnswers).length > 0) {
+               submissionData.answers = sanitizedAnswers;
+            }
         }
 
         if(isCheckboxMark) {
@@ -352,12 +355,3 @@ export function RegularHomeworkTab() {
 
   return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
-    
-    
-
-
-
-
-
-
-
