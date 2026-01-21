@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
+import { Homework, Submission, Question, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
@@ -209,7 +209,6 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
 
-            // Check for on-time submission and award badge/XP
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);

@@ -50,11 +50,11 @@ const VeliToplantisiTab = dynamic(() => import('@/components/dashboard/teacher/V
 const SokTab = dynamic(() => import('@/components/dashboard/teacher/SokTab').then(mod => mod.default), { loading: LoadingSpinner });
 const MebClubTab = dynamic(() => import('@/components/dashboard/teacher/MebClubTab').then(mod => mod.default), { loading: LoadingSpinner });
 const SocialClubTab = dynamic(() => import('@/components/dashboard/teacher/SocialClubTab').then(mod => mod.SocialClubTab), { loading: LoadingSpinner });
-const SociogramTab = dynamic(() => import('@/components/dashboard/teacher/SociogramTab').then(mod => mod.default), { loading: LoadingSpinner });
+const SociogramTab = dynamic(() => import('@/components/dashboard/teacher/SociogramTab').then(mod => mod.SociogramTab), { loading: LoadingSpinner });
 const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamBuilder = dynamic(() => import('@/components/dashboard/teacher/ExamBuilder').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
-const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.default), { loading: LoadingSpinner });
+const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
 
 
