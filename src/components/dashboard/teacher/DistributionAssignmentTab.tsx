@@ -53,6 +53,7 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
         const studentRef = doc(db, 'students', student.id);
         batch.update(studentRef, {
           assignedLesson: student.assignedLesson || null,
+          hasProject: !!student.assignedLesson,
         });
       }
     });
@@ -137,7 +138,7 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
                                     <SelectItem key={lesson.id} value={lesson.id}>{lesson.name}</SelectItem>
                                 ))}
                             </SelectContent>
-                        </Select>
+                         </Select>
                      </div>
                 </CardHeader>
                 <CardContent>
