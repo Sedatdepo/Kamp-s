@@ -20,7 +20,6 @@ import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { PerformanceHomeworkTab } from './PerformanceHomeworkTab';
 
 
 function ProjectDetailView({ projectHomework, student, onBack }: { projectHomework: Homework, student: Student, onBack: () => void }) {
@@ -196,21 +195,16 @@ export function ProjectTab() {
     return query(collection(db, 'lessons'), where('teacherId', '==', studentClass.teacherId));
   }, [studentClass?.teacherId, db]);
   const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
-
-  const homeworksQuery = useMemoFirebase(() => {
-    if (!db || !classId || !assignedLessonId || !assignedLessonId.startsWith('project_')) return null;
-    
+  
+  const projectHomeworkRef = useMemoFirebase(() => {
+    if (!db || !classId || !assignedLessonId || !assignedLessonId.startsWith('project_')) {
+      return null;
+    }
     const projectHomeworkId = assignedLessonId.replace('project_', '');
-    const project = assignmentsData.find(p => p.id.toString() === projectHomeworkId);
-
-    if (!project || !project.title) return null;
-
-    return query(collection(db, `classes/${classId}/homeworks`), where("text", "==", project.title));
+    return doc(db, 'classes', classId, 'homeworks', `project_${projectHomeworkId}`);
   }, [db, classId, assignedLessonId]);
 
-  const { data: projectHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
-
-  const projectHomework = useMemo(() => projectHomeworks?.[0], [projectHomeworks]);
+  const { data: projectHomework, isLoading: homeworksLoading } = useDoc<Homework>(projectHomeworkRef);
 
   const isLoading = classLoading || lessonsLoading || (assignedLessonId?.startsWith('project_') ? homeworksLoading : false);
   
@@ -225,10 +219,8 @@ export function ProjectTab() {
   let assignedProjectName = null;
   if (assignedLessonId) {
       if (assignedLessonId.startsWith('project_')) {
-          const projectId = parseInt(assignedLessonId.replace('project_', ''), 10);
-          const project = assignmentsData.find(p => p.id === projectId);
-          if (project) {
-              assignedProjectName = project.title;
+          if (projectHomework) {
+            assignedProjectName = projectHomework.text;
           }
       } else {
           const lesson = lessons?.find(l => l.id === assignedLessonId);

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Student } from '@/lib/types';
+import { Homework, Submission, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
@@ -34,19 +34,12 @@ const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework,
     const submission = useMemo(() => submissions?.[0], [submissions]);
 
     const rubricScores = useMemo(() => {
-        if (homework.assignmentType === 'project') {
-            return student.term2Grades?.projectScores || student.term1Grades?.projectScores;
-        }
         return submission?.rubricScores;
-    }, [homework.assignmentType, student, submission]);
+    }, [submission]);
 
     const totalGrade = useMemo(() => {
-        if (homework.assignmentType === 'project') {
-            if (!rubricScores) return null;
-            return Object.values(rubricScores).reduce((sum, score) => sum + (Number(score) || 0), 0);
-        }
         return submission?.grade;
-    }, [homework.assignmentType, rubricScores, submission]);
+    }, [submission]);
 
     const maxScore = useMemo(() => {
         return homework.rubric?.reduce((sum: number, item: any) => sum + (Number(item.score) || 0), 0) || 100;
@@ -312,7 +305,7 @@ export function PerformanceHomeworkTab() {
 
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
-    return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
+    return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'performance'));
   }, [db, classId]);
 
   const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
