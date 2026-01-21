@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -107,10 +106,19 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
-          answers: hasQuestions ? answers : undefined,
-          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : (submissionText || undefined),
-          file: submissionFile || undefined,
         };
+
+        if(hasQuestions) {
+            submissionData.answers = answers;
+        }
+        if(isCheckboxMark) {
+            submissionData.text = "Öğrenci tarafından tamamlandı olarak işaretlendi.";
+        } else if (submissionText) {
+            submissionData.text = submissionText;
+        }
+        if(submissionFile) {
+            submissionData.file = submissionFile;
+        }
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
@@ -338,6 +346,7 @@ export function RegularHomeworkTab() {
 }
     
     
+
 
 
 
