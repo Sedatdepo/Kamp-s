@@ -537,7 +537,6 @@ export interface Database {
     schoolInfo?: SchoolInfo; // NEW
     studentInfoForms: StudentInfoFormData[];
     dersProgrami: Timetable;
-    agendaEvents?: AgendaEvent[];
 }
 
 // --- SOCIOGRAM AI ANALYSIS TYPES ---
@@ -673,7 +672,6 @@ export interface StudentInfoFormData {
   motherName: string;
   motherBirthPlaceAndDate: string;
   motherIsAlive: string;
-  motherIsHealthy: string;
   motherHasDisability: string;
   motherEducation: string;
   motherOccupation: string;
@@ -689,14 +687,4 @@ fatherName: string;
   familyLivesWith: string;
   familyMemberWithDisability: string;
   familyFinancialIssues: string;
-}
-
-export interface AgendaEvent {
-  id: string;
-  date: string; // ISO string format YYYY-MM-DD
-  title: string;
-  description?: string;
-  color: string; // e.g., 'blue', 'green', 'red'
-  startTime?: string; // "HH:mm"
-  isCompleted?: boolean;
 }

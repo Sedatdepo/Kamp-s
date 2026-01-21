@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument, Timetable, TimetableCell, Class, AgendaEvent
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationDocument, Timetable, TimetableCell
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -33,7 +33,6 @@ export interface Database {
   schoolInfo?: SchoolInfo; // NEW
   studentInfoForms: StudentInfoFormData[];
   dersProgrami: Timetable;
-  agendaEvents?: AgendaEvent[];
 }
 
 // Varsayılan boş veritabanı
@@ -80,7 +79,6 @@ const initialDb: Database = {
       { id: 8, name: 'Müzik', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
     ]
   },
-  agendaEvents: [],
 };
 
 export const useDatabase = () => {
