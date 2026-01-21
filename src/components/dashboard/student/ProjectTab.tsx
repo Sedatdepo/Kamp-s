@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -21,6 +20,7 @@ import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { PerformanceHomeworkTab } from './PerformanceHomeworkTab';
 
 
 function ProjectDetailView({ projectHomework, student, onBack }: { projectHomework: Homework, student: Student, onBack: () => void }) {
@@ -212,7 +212,7 @@ export function ProjectTab() {
 
   const projectHomework = useMemo(() => projectHomeworks?.[0], [projectHomeworks]);
 
-  const isLoading = classLoading || lessonsLoading || (assignedLessonId ? homeworksLoading : false);
+  const isLoading = classLoading || lessonsLoading || (assignedLessonId?.startsWith('project_') ? homeworksLoading : false);
   
   if (isLoading) {
     return <Card><CardContent className="p-6"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></CardContent></Card>
