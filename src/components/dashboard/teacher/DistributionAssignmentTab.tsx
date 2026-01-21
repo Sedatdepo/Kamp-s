@@ -39,8 +39,14 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
 
   const handleFieldChange = (studentId: string, field: keyof Student, value: string | boolean | null) => {
     const finalValue = value === 'unassigned' ? null : value;
-    setLocalStudents(prev => 
-      prev.map(s => s.id === studentId ? { ...s, [field]: finalValue } : s)
+    setLocalStudents(prev =>
+      prev.map(s => {
+        if (s.id === studentId) {
+          // Update both assignedLesson and hasProject in the local state for immediate UI feedback.
+          return { ...s, [field]: finalValue, hasProject: !!finalValue };
+        }
+        return s;
+      })
     );
   };
   
@@ -53,7 +59,7 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
         const studentRef = doc(db, 'students', student.id);
         batch.update(studentRef, {
           assignedLesson: student.assignedLesson || null,
-          hasProject: !!student.assignedLesson,
+          hasProject: student.hasProject || false, // Use the already updated value from local state
         });
       }
     });

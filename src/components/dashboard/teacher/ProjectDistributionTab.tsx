@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { ProjectAssignmentView } from './DistributionAssignmentTab';
@@ -14,11 +14,17 @@ interface ProjectDistributionTabProps {
   teacherProfile: TeacherProfile | null;
   currentClass: Class | null;
   classes: Class[];
-  students: Student[];
+  students: Student[]; // Receives ALL students for the teacher
   lessons: Lesson[];
 }
 
 export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
+  // Filter students for the current class. This is crucial for class-specific tabs.
+  const studentsForCurrentClass = useMemo(() => {
+    if (!props.currentClass) return [];
+    return props.students.filter(s => s.classId === props.currentClass!.id);
+  }, [props.students, props.currentClass]);
+
   return (
     <Tabs defaultValue="library">
       <TabsList className="grid w-full grid-cols-4">
@@ -33,7 +39,7 @@ export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
           teacherId={props.teacherId}
           teacherProfile={props.teacherProfile}
           currentClass={props.currentClass}
-          students={props.students}
+          students={studentsForCurrentClass} // Pass filtered students
           lessons={props.lessons}
         />
       </TabsContent>
@@ -42,7 +48,7 @@ export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
            classId={props.classId}
            teacherProfile={props.teacherProfile}
            classes={props.classes}
-           students={props.students}
+           students={props.students} // The library needs all students to assign across classes
         />
       </TabsContent>
       <TabsContent value="petitions" className="mt-4">
@@ -51,12 +57,12 @@ export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
           teacherProfile={props.teacherProfile}
           currentClass={props.currentClass}
           lessons={props.lessons || []}
-          students={props.students || []}
+          students={studentsForCurrentClass} // Pass filtered students
         />
       </TabsContent>
        <TabsContent value="grading" className="mt-4">
         <ProjectGradingTab
-          students={props.students}
+          students={studentsForCurrentClass} // Pass filtered students
           teacherProfile={props.teacherProfile!}
           currentClass={props.currentClass}
         />
