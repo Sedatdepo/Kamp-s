@@ -109,13 +109,21 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         };
 
         if(hasQuestions) {
-            submissionData.answers = answers;
+            const sanitizedAnswers: { [key: string]: string | string[] } = {};
+            for (const key in answers) {
+                if (Object.prototype.hasOwnProperty.call(answers, key) && answers[key] !== undefined) {
+                    sanitizedAnswers[key] = answers[key];
+                }
+            }
+            submissionData.answers = sanitizedAnswers;
         }
+
         if(isCheckboxMark) {
             submissionData.text = "Öğrenci tarafından tamamlandı olarak işaretlendi.";
-        } else if (submissionText) {
+        } else if (submissionText.trim()) {
             submissionData.text = submissionText;
         }
+        
         if(submissionFile) {
             submissionData.file = submissionFile;
         }
@@ -346,6 +354,7 @@ export function RegularHomeworkTab() {
 }
     
     
+
 
 
 
