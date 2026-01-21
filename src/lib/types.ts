@@ -1,6 +1,10 @@
 import type { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
+export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1:perf1, 2:perf2, 3:project, 4:behavior
+export type ActiveTerm = 1 | 2;
+
+
 export interface TimetableCell {
   ders: string;
   sinif: string;

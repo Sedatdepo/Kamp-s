@@ -8,6 +8,8 @@ import {
   Class,
   GradingScores,
   Criterion,
+  ActiveGradingTab, 
+  ActiveTerm
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,9 +33,6 @@ interface GradingToolTabProps {
   students: Student[];
   currentClass: Class | null;
 }
-
-export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1:perf1, 2:perf2, 3:project, 4:behavior
-export type ActiveTerm = 1 | 2;
 
 type TermKey = 'term1Grades' | 'term2Grades';
 export type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
