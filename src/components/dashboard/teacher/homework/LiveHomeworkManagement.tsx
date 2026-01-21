@@ -391,5 +391,3 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
       </div>
     );
 };
-    
-    
