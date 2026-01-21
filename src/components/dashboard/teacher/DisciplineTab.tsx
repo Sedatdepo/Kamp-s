@@ -390,13 +390,14 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord }: any) => {
     
     const handleNext = () => {
         updateRecord({ phase2Data: localData });
-        onNext();
+        onNext({});
     };
 
     const handleProcessDecision = (decision: 'end' | 'refer') => {
-        updateRecord({ phase2Data: { ...localData, processDecision: decision } });
+        const updatedData = { phase2Data: { ...localData, processDecision: decision } };
+        updateRecord(updatedData);
         if (decision === 'refer') {
-            onNext({ phase2Data: { ...localData, processDecision: decision } });
+            onNext(updatedData);
         } else {
              alert('Süreç bu aşamada sonlandırıldı. Gerekli bildirimleri yapmayı unutmayın.');
         }
@@ -460,7 +461,7 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
     const handleChange = (e: any) => setLocalData((prev: any) => ({ ...prev, [e.target.id]: e.target.value }));
     const handleSave = () => {
         updateRecord({ phase3Data: localData });
-        onNext();
+        onNext({});
     };
     
     const generateDocument = () => {
@@ -528,7 +529,7 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
     const handleSelectChange = (id: string, value: string) => setLocalData((prev: any) => ({ ...prev, [id]: value }));
     const handleSave = () => {
         updateRecord({ phase4Data: localData });
-        onNext();
+        onNext({});
     };
 
     const generateDocument = () => {
