@@ -80,14 +80,15 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
-      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
-    }, [db, classId, homework.id]);
+      // PERFORMANS İYİLEŞTİRMESİ: Tüm teslimler yerine sadece bu öğrencinin teslimini sorgula.
+      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
+    }, [db, classId, homework.id, student.id]);
 
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
-        return submissions?.find(s => s.studentId === student.id);
-    }, [submissions, student.id]);
+        return submissions?.[0];
+    }, [submissions]);
 
     const handleAnswerChange = (questionId: string | number, answer: string) => {
         setAnswers(prev => ({...prev, [questionId]: answer }));

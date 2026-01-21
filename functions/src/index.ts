@@ -33,8 +33,8 @@ export const sendNotificationOnNewAnnouncement = functions
       }
 
       const classId = context.params.classId;
-      // DOĞRU SORGULAMA YÖNTEMİ: Öğrenciler /classes/{classId}/students alt koleksiyonundan alınmalı.
-      const studentsSnapshot = await db.collection("classes").doc(classId).collection("students").get();
+      // SORGULAMA DÜZELTMESİ: Öğrenciler ana 'students' koleksiyonundan 'classId' ile filtrelenerek alınmalı.
+      const studentsSnapshot = await db.collection("students").where("classId", "==", classId).get();
 
       if (studentsSnapshot.empty) {
         console.log("Sınıfta öğrenci bulunamadı:", classId);
