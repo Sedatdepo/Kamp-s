@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { ProjectAssignmentView } from './DistributionAssignmentTab';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
-import { HomeworkLibrary as ProjectLibrary } from './homework/HomeworkLibrary';
+import { ProjectLibrary } from './project-pool/ProjectLibrary';
 import { ProjectGradingTab } from './ProjectGradingTab';
 
 interface ProjectDistributionTabProps {
@@ -44,7 +44,7 @@ export function ProjectDistributionTab(props: ProjectDistributionTabProps) {
         />
       </TabsContent>
       <TabsContent value="library" className="mt-4">
-        <ProjectLibrary
+        <ProjectLibrary 
            classId={props.classId}
            teacherProfile={props.teacherProfile}
            classes={props.classes}

@@ -61,7 +61,7 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
 
     const filteredProjects = projects.filter(item => {
         if (showFavoritesOnly) {
-        return favorites.includes(item.id);
+            return favorites.includes(item.id);
         }
         if (gradeFilter === '' || subjectFilter === '') return false;
         
@@ -85,7 +85,6 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
         try {
             const batch = writeBatch(db);
     
-            // Group students by class to create separate homework docs for each class
             const studentsByClass: { [classId: string]: string[] } = {};
             studentIds.forEach(studentId => {
                 const student = students.find(s => s.id === studentId);
@@ -98,16 +97,14 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             });
     
             for (const classId in studentsByClass) {
-                // Assign project as 'assignedLesson' for each student in this class
                 for (const studentId of studentsByClass[classId]) {
-                    const studentRef = doc(db, 'students', studentId);
-                    batch.update(studentRef, { 
-                        assignedLesson: `project_${selectedProject.id}`,
-                        hasProject: true 
-                    });
-                }
-                
-                // Create one homework doc per class
+                   const studentRef = doc(db, 'students', studentId);
+                   batch.update(studentRef, { 
+                       assignedLesson: `project_${selectedProject.id}`,
+                       hasProject: true 
+                   });
+               }
+               
                 const newHomeworkDoc: Partial<Homework> = {
                     classId: classId,
                     text: selectedProject.title,
@@ -119,7 +116,7 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
                     assignedStudents: studentsByClass[classId],
                     seenBy: [],
                     instructions: selectedProject.instructions,
-                    assignmentType: 'project', // Set assignment type to 'project'
+                    assignmentType: 'project',
                 };
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
                 const newDocRef = doc(homeworksColRef, `project_${selectedProject.id}`);
@@ -144,7 +141,6 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
         }
     };
     
-
     const handleShowRubric = (project: any) => {
         setSelectedProject(project);
         setRubricModalOpen(true);
