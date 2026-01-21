@@ -4,8 +4,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { Class, Message } from '@/lib/types';
-import { doc, getDoc, updateDoc, collection, query, where } from 'firebase/firestore';
+import { Class, Message, Homework } from '@/lib/types';
+import { doc, getDoc, updateDoc, collection, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 
 type NotificationType = 'announcements' | 'riskForm' | 'infoForm' | 'homeworks' | 'election' | 'messages';
 
@@ -38,7 +38,14 @@ export const useNotification = () => {
   }, [db, classId]);
   const { data: currentClass } = useDoc<Class>(classQuery);
 
-  // CRITICAL FIX: Do not run this query if there is no studentId.
+  // Correctly query homeworks subcollection
+  const homeworksQuery = useMemoFirebase(() => {
+    if (!db || !classId) return null;
+    return query(collection(db, 'classes', classId, 'homeworks'));
+  }, [db, classId]);
+  const { data: homeworksData } = useCollection<Homework>(homeworksQuery);
+
+
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(collection(db, 'messages'), where('participants', 'array-contains', studentId), where('isRead', '==', false), where('receiverId', '==', studentId));
@@ -48,7 +55,6 @@ export const useNotification = () => {
 
   const checkNotifications = useCallback(async () => {
     if (!currentClass || !studentId || !db) {
-        // Eğer kritik data hazır değilse, tüm bildirimleri false yap.
         setNotifications({
             announcements: false, riskForm: false, infoForm: false, 
             homeworks: false, election: false, messages: false
@@ -56,12 +62,10 @@ export const useNotification = () => {
         return;
     }
 
-    // 1. Duyuru Kontrolü
     const hasNewAnnouncement = currentClass.announcements?.some(
       (ann) => !ann.seenBy?.includes(studentId)
     ) ?? false;
     
-    // 2. Risk Formu Kontrolü
     let hasNewRiskForm = false;
     if (currentClass.isRiskFormActive) {
       const hasSubmittedRisks = appUser?.type === 'student' && appUser.data.risks && appUser.data.risks.length > 0;
@@ -70,7 +74,6 @@ export const useNotification = () => {
       }
     }
     
-    // 3. Bilgi Formu Kontrolü
     let hasNewInfoForm = false;
     if (currentClass.isInfoFormActive) {
       const infoFormRef = doc(db, 'infoForms', studentId);
@@ -80,15 +83,13 @@ export const useNotification = () => {
       }
     }
 
-    // 4. Ödev Kontrolü
-    const hasNewHomework = currentClass.homeworks?.some(
+    // Use homeworksData from the subcollection query
+    const hasNewHomework = homeworksData?.some(
         (hw) => !hw.seenBy?.includes(studentId)
     ) ?? false;
     
-    // 5. Seçim Kontrolü
     const hasNewElection = currentClass.isElectionActive === true && currentClass.election?.votedStudentIds && !currentClass.election.votedStudentIds.includes(studentId);
 
-    // 6. Mesaj Kontrolü
     const hasNewMessage = unreadMessages && unreadMessages.length > 0;
 
     setNotifications({
@@ -100,10 +101,9 @@ export const useNotification = () => {
       messages: hasNewMessage,
     });
 
-  }, [currentClass, studentId, appUser, db, unreadMessages]);
+  }, [currentClass, studentId, appUser, db, unreadMessages, homeworksData]);
 
   useEffect(() => {
-    // Sadece gerekli bilgiler hazır olduğunda bildirimleri kontrol et
     if (appUser && studentId && classId && db) {
         checkNotifications();
     }
@@ -125,21 +125,22 @@ export const useNotification = () => {
             await updateDoc(classRef, { announcements: updatedAnnouncements });
         }
     } else if (type === 'homeworks') {
-        const updatedHomeworks = currentClass.homeworks?.map(hw => {
-            if (!hw.seenBy?.includes(studentId)) {
-                return { ...hw, seenBy: [...(hw.seenBy || []), studentId] };
-            }
-            return hw;
-        });
-        if (updatedHomeworks) {
-            await updateDoc(classRef, { homeworks: updatedHomeworks });
+        if (!homeworksData) return;
+        const unseenHomeworks = homeworksData.filter(hw => !hw.seenBy?.includes(studentId));
+        if (unseenHomeworks.length > 0) {
+            const batch = writeBatch(db);
+            unseenHomeworks.forEach(hw => {
+                const hwRef = doc(db, 'classes', classId, 'homeworks', hw.id);
+                batch.update(hwRef, { seenBy: arrayUnion(studentId) });
+            });
+            await batch.commit();
         }
     }
     // Message notifications are cleared in the TeacherChatsTab/StudentCommunicationTab components.
     
     // Refresh notifications after marking as seen
     checkNotifications();
-  }, [studentId, classId, currentClass, checkNotifications, db]);
+  }, [studentId, classId, currentClass, checkNotifications, db, homeworksData]);
 
   return { notifications, markAsSeen };
 };
