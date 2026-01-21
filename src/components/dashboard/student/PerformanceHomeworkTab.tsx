@@ -17,14 +17,33 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
-const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
+const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework, student: Student, onBack: () => void }) => {
+
+    const rubricScores = useMemo(() => {
+        if (homework.assignmentType === 'project') {
+            // Project scores are on the student doc
+            return student.term2Grades?.projectScores || student.term1Grades?.projectScores;
+        }
+        // Performance scores are on the submission doc
+        return null; // This view is for performance, project view is separate
+    }, [homework.assignmentType, student]);
+
+    const totalScore = useMemo(() => {
+        if (!rubricScores) return 0;
+        return Object.values(rubricScores).reduce((sum, score) => sum + (Number(score) || 0), 0);
+    }, [rubricScores]);
+
+    const maxScore = useMemo(() => {
+        return homework.rubric?.reduce((sum: number, item: any) => sum + (Number(item.score) || 0), 0) || 100;
+    }, [homework.rubric]);
+    
     return (
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
                         <CardTitle className="font-headline text-2xl">{homework.text}</CardTitle>
-                        <CardDescription>Ödevinizin detayları ve değerlendirme kriterleri aşağıdadır.</CardDescription>
+                        <CardDescription>Ödevin detayları ve değerlendirme kriterleri aşağıdadır.</CardDescription>
                     </div>
                     <Button variant="ghost" onClick={onBack}>
                         <ArrowLeft className="mr-2 h-4 w-4" /> Geri Dön
@@ -34,7 +53,7 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
             <CardContent className="space-y-6">
                 {homework.instructions && (
                     <div>
-                        <h3 className="font-bold mb-2 text-lg">Proje Yönergesi</h3>
+                        <h3 className="font-bold mb-2 text-lg">Yönerge</h3>
                         <div className="p-4 bg-muted/50 rounded-lg text-sm prose">
                             <p>{homework.instructions}</p>
                         </div>
@@ -48,19 +67,35 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Kriter</TableHead>
-                                        <TableHead className="text-right">Puan</TableHead>
+                                        <TableHead className="text-right">Alınan Puan / Maks. Puan</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {homework.rubric.map((item: any) => (
-                                        <TableRow key={item.label}>
-                                            <TableCell>
-                                                <p className="font-medium">{item.label}</p>
-                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
-                                            </TableCell>
-                                            <TableCell className="text-right font-bold text-lg">{item.score}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {homework.rubric.map((item: any) => {
+                                        const score = rubricScores?.[item.label];
+                                        const hasScore = score !== undefined && score !== null;
+                                        return (
+                                            <TableRow key={item.label}>
+                                                <TableCell>
+                                                    <p className="font-medium">{item.label}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-lg w-48">
+                                                    {hasScore ? (
+                                                        <span>{score} / {item.score}</span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground font-normal">- / {item.score}</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                     <TableRow className="bg-muted/50 font-bold text-primary">
+                                        <TableCell>Toplam Not</TableCell>
+                                        <TableCell className="text-right text-xl">
+                                            {totalScore} / {maxScore}
+                                        </TableCell>
+                                    </TableRow>
                                 </TableBody>
                             </Table>
                         </div>
@@ -90,10 +125,6 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
         return submissions?.[0];
     }, [submissions]);
 
-    const handleAnswerChange = (questionId: string | number, answer: string) => {
-        setAnswers(prev => ({...prev, [questionId]: answer }));
-    }
-
     const handleSubmit = async () => {
         if (homework.questions && homework.questions.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
@@ -116,7 +147,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
 
-            // Check for on-time submission and award badge/XP
+            // Check for on-time submission and award badge/score
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
@@ -233,7 +264,7 @@ export function PerformanceHomeworkTab() {
   }, [homeworks]);
 
   if (selectedHomework) {
-    return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
+    return <HomeworkDetailView homework={selectedHomework} student={appUser.data} onBack={() => setSelectedHomework(null)} />;
   }
   
   if (homeworksLoading) {

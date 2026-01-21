@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Badge as BadgeType } from '@/lib/types';
+import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
@@ -338,6 +338,7 @@ export function RegularHomeworkTab() {
 }
     
     
+
 
 
 
