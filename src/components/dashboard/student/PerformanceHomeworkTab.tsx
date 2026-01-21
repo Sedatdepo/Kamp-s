@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Student } from '@/lib/types';
+import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
@@ -169,14 +169,6 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 750 * 1024) { // ~750KB
-                toast({
-                    variant: "destructive",
-                    title: "Dosya Boyutu Çok Büyük",
-                    description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
-                });
-                return;
-            }
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = () => {
@@ -216,10 +208,25 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
+
+            // Check for on-time submission and award badge/XP
+            const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
+            if (!isLate) {
+                const studentRef = doc(db, 'students', student.id);
+                const currentBadges: string[] = student.badges || [];
+                
+                const updates: any = { behaviorScore: increment(10) };
+                
+                if (!currentBadges.includes('hw-master')) {
+                    updates.badges = [...currentBadges, 'hw-master'];
+                }
+
+                await updateDoc(studentRef, updates);
+                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
+            } else {
+                 toast({ title: "Ödev başarıyla teslim edildi!" });
+            }
             
-            toast({ title: "Ödev başarıyla teslim edildi!" });
-            setSubmissionText('');
-            setSubmissionFile(null);
             forceRefresh();
 
         } catch (error: any) {
