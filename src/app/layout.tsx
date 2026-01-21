@@ -4,7 +4,7 @@ import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'İTO KAMPÜS',
+  title: 'KAMPÜS',
   description: 'Lise öğretmenleri için dijital bir asistan ve öğrenciler için bir portal.',
 };
 
