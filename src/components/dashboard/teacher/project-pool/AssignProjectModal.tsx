@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Calendar, Users, Clock, CheckCircle, Send, X } from 'lucide-react';
 import { Student, Class } from '@/lib/types';
@@ -20,9 +21,9 @@ export const AssignProjectModal = ({ isOpen, onClose, project, onConfirm, classe
         if (classes && classes.length > 0) {
             setSelectedClassIds([classes[0].id]);
         }
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 30); // Projects usually have longer deadlines
-        setDueDate(nextWeek.toISOString().split('T')[0]);
+        const nextMonth = new Date();
+        nextMonth.setDate(nextMonth.getDate() + 30);
+        setDueDate(nextMonth.toISOString().split('T')[0]);
       }
     }, [project, classes]);
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
-import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
