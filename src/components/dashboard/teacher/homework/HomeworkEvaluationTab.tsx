@@ -217,12 +217,12 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
 
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
-    const homeworksQuery = useMemoFirebase(() => {
+    const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'));
     }, [db, classId]);
 
-    const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(homeworksQuery);
+    const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(liveHomeworksQuery);
     
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -273,10 +273,23 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
     
     const handleHomeworkDelete = async (homeworkId: string) => {
         if (!db) return;
-        const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
         try {
-            await deleteDoc(homeworkRef);
-            toast({ title: "Ödev silindi." });
+            const batch = writeBatch(db);
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+
+            // Query and delete submissions
+            const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions'));
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            submissionsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+
+            // Delete the homework document
+            batch.delete(homeworkRef);
+
+            await batch.commit();
+
+            toast({ title: "Ödev ve tüm teslimler silindi." });
             forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -102,7 +103,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             toast({
                 variant: "destructive",
                 title: "Dosya Boyutu Çok Büyük",
-                description: "Lütfen 750 KB'tan küçük bir dosya seçin. Bu yöntem daha büyük dosyaları desteklemez.",
+                description: "Lütfen 750 KB'tan küçük bir dosya yükleyin. Bu yöntem daha büyük dosyaları desteklemez.",
             });
             setFile(null);
             e.target.value = ''; // Clear file input
@@ -182,8 +183,22 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const handleDeleteHomework = async (homework: Homework) => {
         if (!db || !classId) return;
         try {
-            await deleteDoc(doc(db, 'classes', classId, 'homeworks', homework.id));
-            toast({ title: "Ödev silindi." });
+            const batch = writeBatch(db);
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homework.id);
+    
+            // Query and delete all submissions in the subcollection
+            const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            submissionsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            
+            // Delete the homework document itself
+            batch.delete(homeworkRef);
+            
+            await batch.commit();
+    
+            toast({ title: "Ödev ve tüm teslimler silindi." });
             forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
