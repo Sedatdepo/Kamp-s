@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { exportProjectGradingToRtf } from '@/lib/word-export';
 
 
 interface ProjectGradingTabProps {
@@ -38,7 +39,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
   const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
 
   const projectStudents = useMemo(() => {
-    return students.filter(s => s.assignedLesson);
+    return students.filter(s => s.hasProject);
   }, [students]);
 
   // Load existing scores when component mounts or students change
@@ -118,6 +119,32 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
     }
   };
   
+  const handleExport = () => {
+    if (!currentClass || !teacherProfile || projectStudents.length === 0) {
+        toast({ title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.', variant: 'destructive' });
+        return;
+    }
+    const studentsWithScores = projectStudents.map(student => {
+        const studentScores = scores[student.id];
+        if (studentScores) {
+            return {
+                ...student,
+                term1Grades: {
+                    ...(student.term1Grades || {}),
+                    projectScores: studentScores
+                }
+            };
+        }
+        return student;
+    });
+    exportProjectGradingToRtf({
+        students: studentsWithScores,
+        projCriteria: projCriteria,
+        currentClass,
+        teacherProfile
+    });
+  };
+
   if (projectStudents.length === 0) {
     return (
         <div className="text-center p-8 bg-muted/50 rounded-lg">
@@ -137,9 +164,12 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
             <CardTitle>Proje Ödevi Değerlendirmesi</CardTitle>
             <CardDescription>Atanan projeleri, belirlenen kriterlere göre notlandırın.</CardDescription>
           </div>
-          <Button onClick={handleSaveAll}>
-            <Save className="mr-2 h-4 w-4" /> Tümünü Kaydet
-          </Button>
+           <div className="flex items-center gap-2">
+              <Button onClick={handleExport} variant="outline"><FileDown className="mr-2 h-4 w-4" /> Değerlendirme Çıktısı</Button>
+              <Button onClick={handleSaveAll}>
+                <Save className="mr-2 h-4 w-4" /> Tümünü Kaydet
+              </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

@@ -1,10 +1,10 @@
 
 
-"use client";
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Class, Lesson, Homework } from '@/lib/types';
+import { Class, Lesson, Homework, Student } from '@/lib/types';
 import {
   collection,
   query,
@@ -23,7 +23,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 
-function ProjectDetailView({ projectHomework, onBack }: { projectHomework: Homework, onBack: () => void }) {
+function ProjectDetailView({ projectHomework, student, onBack }: { projectHomework: Homework, student: Student, onBack: () => void }) {
+
+    const projectScores = useMemo(() => {
+        return student.term2Grades?.projectScores || student.term1Grades?.projectScores;
+    }, [student]);
+
+    const totalScore = useMemo(() => {
+        if (!projectScores) return 0;
+        return Object.values(projectScores).reduce((sum, score) => sum + (Number(score) || 0), 0);
+    }, [projectScores]);
+
+    const maxScore = useMemo(() => {
+        return projectHomework.rubric?.reduce((sum: number, item: any) => sum + (Number(item.score) || 0), 0) || 100;
+    }, [projectHomework.rubric]);
+    
     return (
         <Card>
             <CardHeader>
@@ -54,19 +68,35 @@ function ProjectDetailView({ projectHomework, onBack }: { projectHomework: Homew
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Kriter</TableHead>
-                                        <TableHead className="text-right">Puan</TableHead>
+                                        <TableHead className="text-right">Alınan Puan / Maks. Puan</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {projectHomework.rubric.map((item: any) => (
-                                        <TableRow key={item.label}>
-                                            <TableCell>
-                                                <p className="font-medium">{item.label}</p>
-                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
-                                            </TableCell>
-                                            <TableCell className="text-right font-bold text-lg">{item.score}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {projectHomework.rubric.map((item: any) => {
+                                        const score = projectScores?.[item.label];
+                                        const hasScore = score !== undefined && score !== null;
+                                        return (
+                                            <TableRow key={item.label}>
+                                                <TableCell>
+                                                    <p className="font-medium">{item.label}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-lg w-48">
+                                                    {hasScore ? (
+                                                        <span>{score} / {item.score}</span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground font-normal">- / {item.score}</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                     <TableRow className="bg-muted/50 font-bold text-primary">
+                                        <TableCell>Toplam Proje Notu</TableCell>
+                                        <TableCell className="text-right text-xl">
+                                            {totalScore} / {maxScore}
+                                        </TableCell>
+                                    </TableRow>
                                 </TableBody>
                             </Table>
                         </div>
@@ -189,7 +219,7 @@ export function ProjectTab() {
   }
   
   if (activeProject) {
-      return <ProjectDetailView projectHomework={activeProject} onBack={() => setActiveProject(null)} />
+      return <ProjectDetailView projectHomework={activeProject} student={appUser.data} onBack={() => setActiveProject(null)} />
   }
 
   let assignedProjectName = null;
