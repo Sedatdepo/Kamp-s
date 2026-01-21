@@ -34,7 +34,7 @@ const LoadingSpinner = () => (
 
 // Dynamically import all tab components
 const StudentManagementTab = dynamic(() => import('@/components/dashboard/teacher/StudentManagementTab').then(mod => mod.StudentManagementTab), { loading: LoadingSpinner });
-const KazanımlarTab = dynamic(() => import('./KazanımlarTab'), { loading: LoadingSpinner });
+const KazanımlarTab = dynamic(() => import('@/components/dashboard/teacher/KazanımlarTab'), { loading: LoadingSpinner });
 const ProjectDistributionTab = dynamic(() => import('@/components/dashboard/teacher/ProjectDistributionTab').then(mod => mod.ProjectDistributionTab), { loading: LoadingSpinner });
 const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
 const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.InfoFormsTab), { loading: LoadingSpinner });
@@ -44,18 +44,18 @@ const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/Homewor
 const ElectionTab = dynamic(() => import('@/components/dashboard/teacher/ElectionTab').then(mod => mod.ElectionTab), { loading: LoadingSpinner });
 const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/AnnualPlanTab').then(mod => mod.AnnualPlanTab), { loading: LoadingSpinner });
 const DilekceTab = dynamic(() => import('@/components/dashboard/teacher/DilekceTab').then(mod => mod.DilekceTab), { loading: LoadingSpinner });
-const DisciplineTab = dynamic(() => import('./DisciplineTab').then(mod => mod.DisciplineTab), { loading: LoadingSpinner });
-const BepTab = dynamic(() => import('./BepTab').then(mod => mod.BepTab), { loading: LoadingSpinner });
-const VeliToplantisiTab = dynamic(() => import('./VeliToplantisiTab'), { loading: LoadingSpinner });
-const SokTab = dynamic(() => import('./SokTab'), { loading: LoadingSpinner });
-const MebClubTab = dynamic(() => import('./MebClubTab'), { loading: LoadingSpinner });
-const SocialClubTab = dynamic(() => import('./SocialClubTab').then(mod => mod.SocialClubTab), { loading: LoadingSpinner });
-const SociogramTab = dynamic(() => import('./SociogramTab').then(mod => mod.SociogramTab), { loading: LoadingSpinner });
-const ZumreTab = dynamic(() => import('./ZumreTab'), { loading: LoadingSpinner });
-const ExamBuilder = dynamic(() => import('./ExamBuilder'), { loading: LoadingSpinner });
-const ExamAnalysisTab = dynamic(() => import('./ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
-const SinifKahramanlariTab = dynamic(() => import('./SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
-const TimetableTab = dynamic(() => import('./TimetableTab'), { loading: LoadingSpinner });
+const DisciplineTab = dynamic(() => import('@/components/dashboard/teacher/DisciplineTab').then(mod => mod.DisciplineTab), { loading: LoadingSpinner });
+const BepTab = dynamic(() => import('@/components/dashboard/teacher/BepTab').then(mod => mod.BepTab), { loading: LoadingSpinner });
+const VeliToplantisiTab = dynamic(() => import('@/components/dashboard/teacher/VeliToplantisiTab'), { loading: LoadingSpinner });
+const SokTab = dynamic(() => import('@/components/dashboard/teacher/SokTab'), { loading: LoadingSpinner });
+const MebClubTab = dynamic(() => import('@/components/dashboard/teacher/MebClubTab'), { loading: LoadingSpinner });
+const SocialClubTab = dynamic(() => import('@/components/dashboard/teacher/SocialClubTab').then(mod => mod.SocialClubTab), { loading: LoadingSpinner });
+const SociogramTab = dynamic(() => import('@/components/dashboard/teacher/SociogramTab').then(mod => mod.SociogramTab), { loading: LoadingSpinner });
+const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab'), { loading: LoadingSpinner });
+const ExamBuilder = dynamic(() => import('@/components/dashboard/teacher/ExamBuilder'), { loading: LoadingSpinner });
+const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
+const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
+const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab'), { loading: LoadingSpinner });
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
