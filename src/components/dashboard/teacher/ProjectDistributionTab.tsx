@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
 import { ProjectAssignmentView } from './DistributionAssignmentTab';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
-import { ProjectLibrary } from './project-pool/ProjectLibrary';
+import { HomeworkLibrary as ProjectLibrary } from './homework/HomeworkLibrary';
 import { ProjectGradingTab } from './ProjectGradingTab';
 
 interface ProjectDistributionTabProps {
