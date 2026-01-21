@@ -7,12 +7,23 @@ import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LessonManager } from './LessonManager';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ProjectAssignmentViewProps {
   classId: string;
@@ -43,7 +54,8 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
       prev.map(s => {
         if (s.id === studentId) {
           // Update both assignedLesson and hasProject in the local state for immediate UI feedback.
-          return { ...s, [field]: finalValue, hasProject: !!finalValue };
+          const hasProject = !!finalValue;
+          return { ...s, [field]: finalValue, hasProject };
         }
         return s;
       })
@@ -59,7 +71,7 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
         const studentRef = doc(db, 'students', student.id);
         batch.update(studentRef, {
           assignedLesson: student.assignedLesson || null,
-          hasProject: student.hasProject || false, // Use the already updated value from local state
+          hasProject: student.hasProject || false,
         });
       }
     });
@@ -70,6 +82,34 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Hata', description: 'Değişiklikler kaydedilemedi.' });
+    }
+  };
+  
+  const handleResetProjects = async () => {
+    if (!db || !students || students.length === 0) return;
+
+    const batch = writeBatch(db);
+    students.forEach(student => {
+        const studentRef = doc(db, 'students', student.id);
+        batch.update(studentRef, {
+            assignedLesson: null,
+            hasProject: false,
+            projectPreferences: []
+        });
+    });
+
+    try {
+        await batch.commit();
+        setLocalStudents(prev => prev.map(s => ({
+            ...s,
+            assignedLesson: null,
+            hasProject: false,
+            projectPreferences: []
+        })));
+        toast({ title: 'Tüm Projeler Sıfırlandı', description: 'Tüm öğrencilerin proje atamaları ve tercihleri temizlendi.' });
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Sıfırlama işlemi başarısız oldu.' });
     }
   };
 
@@ -128,9 +168,30 @@ export function ProjectAssignmentView({ classId, teacherId, teacherProfile, curr
                             <CardTitle className="font-headline">Proje Atama</CardTitle>
                             <CardDescription>Öğrenci tercihlerine göre proje dersi ataması yapın.</CardDescription>
                         </div>
-                        <Button onClick={handleSaveChanges}>
-                            <Save className="mr-2 h-4 w-4" /> Atamaları Kaydet
-                        </Button>
+                        <div className="flex gap-2">
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive">
+                                  <RotateCcw className="mr-2 h-4 w-4" /> Tümünü Sıfırla
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Tüm Proje Atamalarını Sıfırla?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Bu işlem, bu sınıftaki TÜM öğrencilerin proje atamalarını ve proje tercihlerini kalıcı olarak temizleyecektir. Bu işlem geri alınamaz. Emin misiniz?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleResetProjects} className="bg-destructive hover:bg-destructive/90">Sıfırla</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            <Button onClick={handleSaveChanges}>
+                                <Save className="mr-2 h-4 w-4" /> Atamaları Kaydet
+                            </Button>
+                        </div>
                     </div>
                      <div className="mt-4">
                         <Label>Filtrele:</Label>
