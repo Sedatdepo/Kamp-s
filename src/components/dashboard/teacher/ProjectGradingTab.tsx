@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, TeacherProfile, Class, Criterion } from '@/lib/types';
+import { Student, TeacherProfile, Class, Criterion, ActiveTerm } from '@/lib/types';
 import { INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,8 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { exportProjectGradingToRtf } from '@/lib/word-export';
-
+import { exportGradingToRtf } from '@/lib/word-export'; // Corrected import
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface ProjectGradingTabProps {
   students: Student[];
@@ -36,23 +37,25 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
   const { db } = useAuth();
   const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
 
+  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
 
   const projectStudents = useMemo(() => {
     return students.filter(s => s.hasProject);
   }, [students]);
 
-  // Load existing scores when component mounts or students change
+  // Load existing scores when component mounts or students/term change
   useEffect(() => {
     const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
+    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
     projectStudents.forEach(student => {
-      // Assuming project grades are stored in term1Grades for now. This can be made more dynamic.
-      if (student.term1Grades?.projectScores) {
-        initialScores[student.id] = student.term1Grades.projectScores;
+      const termGrades = student[termKey];
+      if (termGrades && termGrades.projectScores) {
+        initialScores[student.id] = termGrades.projectScores;
       }
     });
     setScores(initialScores);
-  }, [projectStudents]);
+  }, [projectStudents, activeTerm]);
 
   const handleScoreChange = (studentId: string, criteriaId: string, value: string) => {
     const newScore = parseInt(value, 10);
@@ -72,15 +75,14 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
       toast({ variant: 'destructive', title: 'Veritabanı bağlantısı yok.' });
       return;
     }
-
+    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
     const batch = writeBatch(db);
     projectStudents.forEach(student => {
       const studentScores = scores[student.id];
       if (studentScores) {
         const studentRef = doc(db, 'students', student.id);
-        // This example saves to term1Grades. A term selector could be added for more flexibility.
         batch.update(studentRef, {
-          'term1Grades.projectScores': studentScores
+          [`${termKey}.projectScores`]: studentScores
         });
       }
     });
@@ -124,24 +126,28 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
         toast({ title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.', variant: 'destructive' });
         return;
     }
+    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
     const studentsWithScores = projectStudents.map(student => {
         const studentScores = scores[student.id];
         if (studentScores) {
             return {
                 ...student,
-                term1Grades: {
-                    ...(student.term1Grades || {}),
+                [termKey]: {
+                    ...(student[termKey] || {}),
                     projectScores: studentScores
                 }
             };
         }
         return student;
     });
-    exportProjectGradingToRtf({
+
+    exportGradingToRtf({
+        activeTab: 3, // 3 for project
+        activeTerm,
         students: studentsWithScores,
-        projCriteria: projCriteria,
+        currentCriteria: projCriteria,
         currentClass,
-        teacherProfile
+        teacherProfile,
     });
   };
 
@@ -164,7 +170,19 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
             <CardTitle>Proje Ödevi Değerlendirmesi</CardTitle>
             <CardDescription>Atanan projeleri, belirlenen kriterlere göre notlandırın.</CardDescription>
           </div>
-           <div className="flex items-center gap-2">
+           <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                    <Label>Dönem:</Label>
+                    <Select value={String(activeTerm)} onValueChange={(val) => setActiveTerm(Number(val) as 1 | 2)}>
+                        <SelectTrigger className="w-[120px] h-9">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">1. Dönem</SelectItem>
+                            <SelectItem value="2">2. Dönem</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
               <Button onClick={handleExport} variant="outline"><FileDown className="mr-2 h-4 w-4" /> Değerlendirme Çıktısı</Button>
               <Button onClick={handleSaveAll}>
                 <Save className="mr-2 h-4 w-4" /> Tümünü Kaydet
