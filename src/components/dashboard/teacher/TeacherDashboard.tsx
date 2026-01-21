@@ -506,9 +506,9 @@ export function TeacherDashboard() {
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
-          case 'zumre': tabContent = <ZumreTab />; break;
-          case 'veli-toplantisi': tabContent = <VeliToplantisiTab />; break;
-          case 'sok': tabContent = <SokTab />; break;
+          case 'zumre': tabContent = <ZumreTab teacherProfile={teacherProfile} />; break;
+          case 'veli-toplantisi': tabContent = <VeliToplantisiTab teacherProfile={teacherProfile} />; break;
+          case 'sok': tabContent = <SokTab teacherProfile={teacherProfile} />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
           case 'exam-builder': tabContent = <ExamBuilder classes={classes || []} students={allStudents || []} />; break;
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;

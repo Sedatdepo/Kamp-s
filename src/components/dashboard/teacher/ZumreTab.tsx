@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,8 +14,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
 import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+import { TeacherProfile } from '@/lib/types';
 
 const formSchema = z.object({
+    okulAdi: z.string().optional(),
     academicYear: z.string().min(1, "Eğitim yılı gerekli"),
     donem: z.string().min(1, "Dönem gerekli"),
     sinif: z.string().min(1, "Zümre adı gerekli"), 
@@ -47,22 +49,23 @@ const VARSAYILAN_BRANSLAR = [
     "Matematik Öğretmeni", "Türk Dili ve Edebiyatı Öğretmeni", "Tarih Öğretmeni"
 ];
 
-const defaultValues: FormData = {
-    academicYear: '2025-2026',
-    donem: "Sene Başı", 
-    sinif: "", 
-    tarih: new Date().toISOString().split('T')[0],
-    saat: "15:00",
-    yer: "Zümre Odası",
-    mudurYardimcisi: "", 
-    sinifRehberOgretmeni: "",
-    katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: '' })),
-    gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
-    gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '' })),
-    kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
+const tr = (text: string) => {
+    if (!text) return '';
+    let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+    const replacements: { [key: string]: string } = {
+        'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
+        'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
+        'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
+    };
+
+    for (const char in replacements) {
+        escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
+    }
+    return escapedText;
 };
 
-export default function ZumreTab() {
+
+export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherProfile | null }) {
     const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
     
     const toast = ({ title, description, variant = "default" }: any) => {
@@ -72,12 +75,25 @@ export default function ZumreTab() {
     };
 
     const [isGenerating, setIsGenerating] = useState<number | null>(null);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [previewHtml, setPreviewHtml] = useState("");
     const [archives, setArchives] = useState<ArchivedDocument[]>([]);
-    const [isArchiveListOpen, setIsArchiveListOpen] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveNameInput, setSaveNameInput] = useState("");
+
+    const defaultValues = useMemo<FormData>(() => ({
+        academicYear: '2025-2026',
+        donem: "Sene Başı", 
+        sinif: "", 
+        tarih: new Date().toISOString().split('T')[0],
+        saat: "15:00",
+        yer: "Zümre Odası",
+        mudurYardimcisi: teacherProfile?.principalName || "",
+        sinifRehberOgretmeni: teacherProfile?.name || "",
+        katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: (b === "Zümre Başkanı" ? teacherProfile?.name : "") || '' })),
+        gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
+        gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '' })),
+        kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
+        okulAdi: teacherProfile?.schoolName || "",
+    }), [teacherProfile]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -90,13 +106,24 @@ export default function ZumreTab() {
     useEffect(() => {
         const savedTempData = localStorage.getItem("zumre_temp_data");
         if (savedTempData) {
-            try { form.reset(JSON.parse(savedTempData)); } catch (e) { console.error(e); }
+            try { 
+                const parsedData = JSON.parse(savedTempData);
+                form.reset({
+                    ...defaultValues,
+                    ...parsedData,
+                    okulAdi: parsedData.okulAdi || defaultValues.okulAdi,
+                    mudurYardimcisi: parsedData.mudurYardimcisi || defaultValues.mudurYardimcisi,
+                    sinifRehberOgretmeni: parsedData.sinifRehberOgretmeni || defaultValues.sinifRehberOgretmeni,
+                });
+            } catch (e) { console.error(e); form.reset(defaultValues); }
+        } else {
+            form.reset(defaultValues);
         }
         const savedArchives = localStorage.getItem("zumre_archives");
         if (savedArchives) {
             try { setArchives(JSON.parse(savedArchives)); } catch (e) { console.error(e); }
         }
-    }, [form]);
+    }, [form, defaultValues]);
 
     useEffect(() => {
         const subscription = form.watch((value) => {
@@ -151,7 +178,7 @@ export default function ZumreTab() {
         setIsSaveDialogOpen(false);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
-    
+
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
 
@@ -178,7 +205,7 @@ export default function ZumreTab() {
           <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Zümre Tutanağı</title>
           <style>body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; } .container { width: 90%; margin: auto; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 5px; }</style>
           </head><body><div class="container">
-              <h3 style="text-align: center;">T.C.<br/>${data.academicYear} EĞİTİM-ÖĞRETİM YILI ${data.sinif.toLocaleUpperCase('tr-TR')} ZÜMRESİ<br/>${data.donem.toLocaleUpperCase('tr-TR')} ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
+              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? tr(data.okulAdi.toLocaleUpperCase('tr-TR')) : '......................'}<br/>${tr(data.academicYear)} EĞİTİM-ÖĞRETİM YILI ${tr(data.sinif.toLocaleUpperCase('tr-TR'))} ZÜMRESİ<br/>${tr(data.donem.toLocaleUpperCase('tr-TR'))} ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
               <br/>
               <p><strong>Toplantı Tarihi:</strong> ${formattedDate} &nbsp;&nbsp; <strong>Saat:</strong> ${data.saat} &nbsp;&nbsp; <strong>Yer:</strong> ${data.yer}</p>
               <br/>
@@ -234,6 +261,7 @@ export default function ZumreTab() {
                         <Card>
                             <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <FormField control={form.control} name="okulAdi" render={({ field }: any) => (<FormItem><FormLabel>Okul Adı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="donem" render={({ field }: any) => (<FormItem><FormLabel>Dönem</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Zümre Adı</FormLabel><FormControl><Input placeholder="örn: Fizik Zümresi" {...field} /></FormControl></FormItem>)} />

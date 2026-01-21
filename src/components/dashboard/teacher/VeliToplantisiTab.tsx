@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,9 +14,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
 import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+import { TeacherProfile } from '@/lib/types';
 
 // --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
+    okulAdi: z.string().optional(),
     academicYear: z.string().min(1, "Eğitim yılı gerekli"),
     donem: z.string().min(1, "Dönem gerekli"),
     sinif: z.string().min(1, "Sınıf gerekli"),
@@ -58,23 +60,22 @@ const VELI_TOPLANTISI_KARARLAR = [
     "5. Okul-aile iletişiminin güçlendirilmesi için düzenli bilgi akışının sağlanacağı belirtildi."
 ];
 
-const defaultValues: FormData = {
-    academicYear: '2025-2026',
-    donem: "1. Dönem",
-    sinif: "",
-    tarih: new Date().toISOString().split('T')[0],
-    saat: "18:00",
-    yer: "Konferans Salonu",
-    mudurYardimcisi: "",
-    sinifRehberOgretmeni: "",
-    gundemMaddeleri: VELI_TOPLANTISI_GUNDEM.map(m => ({ madde: m })),
-    gorusmeler: VELI_TOPLANTISI_GUNDEM.map(() => ({ detay: '' })),
-    kararlar: VELI_TOPLANTISI_KARARLAR.join('\n'),
-    katilimcilar: Array(30).fill({ adSoyad: '', ogrenci: '' }),
+const tr = (text: string) => {
+    if (!text) return '';
+    let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
+    const replacements: { [key: string]: string } = {
+        'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
+        'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
+        'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
+    };
+
+    for (const char in replacements) {
+        escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
+    }
+    return escapedText;
 };
 
-export default function VeliToplantisiTab() {
-    // --- STATE MANAGEMENT ---
+export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: TeacherProfile | null }) {
     const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
     
     const toast = ({ title, description, variant = "default" }: any) => {
@@ -84,32 +85,54 @@ export default function VeliToplantisiTab() {
     };
 
     const [isGenerating, setIsGenerating] = useState<number | null>(null);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [previewHtml, setPreviewHtml] = useState("");
     const [archives, setArchives] = useState<ArchivedDocument[]>([]);
-    const [isArchiveListOpen, setIsArchiveListOpen] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveNameInput, setSaveNameInput] = useState("");
 
+    const defaultValues = useMemo<FormData>(() => ({
+        academicYear: '2025-2026',
+        donem: "1. Dönem",
+        sinif: "",
+        tarih: new Date().toISOString().split('T')[0],
+        saat: "18:00",
+        yer: "Konferans Salonu",
+        mudurYardimcisi: teacherProfile?.principalName || "",
+        sinifRehberOgretmeni: teacherProfile?.name || "",
+        gundemMaddeleri: VELI_TOPLANTISI_GUNDEM.map(m => ({ madde: m })),
+        gorusmeler: VELI_TOPLANTISI_GUNDEM.map(() => ({ detay: '' })),
+        kararlar: VELI_TOPLANTISI_KARARLAR.join('\n'),
+        katilimcilar: Array(30).fill({ adSoyad: '', ogrenci: '' }),
+        okulAdi: teacherProfile?.schoolName || "",
+    }), [teacherProfile]);
+    
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues,
     });
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
-    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
-    // --- EFFECTS: LOCAL STORAGE HANDLING ---
     useEffect(() => {
         const savedTempData = localStorage.getItem("veli_temp_data");
         if (savedTempData) {
-            try { form.reset(JSON.parse(savedTempData)); } catch (e) { console.error(e); }
+            try { 
+                 const parsedData = JSON.parse(savedTempData);
+                 form.reset({
+                    ...defaultValues,
+                    ...parsedData,
+                    okulAdi: parsedData.okulAdi || defaultValues.okulAdi,
+                    mudurYardimcisi: parsedData.mudurYardimcisi || defaultValues.mudurYardimcisi,
+                    sinifRehberOgretmeni: parsedData.sinifRehberOgretmeni || defaultValues.sinifRehberOgretmeni,
+                });
+            } catch (e) { console.error(e); form.reset(defaultValues); }
+        } else {
+            form.reset(defaultValues);
         }
         const savedArchives = localStorage.getItem("veli_archives");
         if (savedArchives) {
             try { setArchives(JSON.parse(savedArchives)); } catch (e) { console.error(e); }
         }
-    }, [form]);
+    }, [form, defaultValues]);
 
     useEffect(() => {
         const subscription = form.watch((value) => {
@@ -117,8 +140,6 @@ export default function VeliToplantisiTab() {
         });
         return () => subscription.unsubscribe();
     }, [form]);
-
-    // --- BUSINESS LOGIC ---
 
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
@@ -146,7 +167,6 @@ export default function VeliToplantisiTab() {
         }
     };
     
-    // ARCHIVE HANDLERS
     const openSaveDialog = () => {
         const vals = form.getValues();
         setSaveNameInput(`${vals.academicYear} - ${vals.sinif} Veli Toplantısı`);
@@ -155,24 +175,19 @@ export default function VeliToplantisiTab() {
 
     const handleSaveToArchive = () => {
         if (!saveNameInput.trim()) return;
-
         const newDoc: ArchivedDocument = {
             id: Date.now().toString(),
             name: saveNameInput,
             createdAt: new Date().toLocaleDateString('tr-TR'),
             data: form.getValues()
         };
-
         const updatedArchives = [newDoc, ...archives];
         setArchives(updatedArchives);
         localStorage.setItem("veli_archives", JSON.stringify(updatedArchives));
-        
         setIsSaveDialogOpen(false);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
-    
-    
-    // DRAG & DROP
+
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
 
@@ -184,7 +199,6 @@ export default function VeliToplantisiTab() {
         draggedItem.current = null; draggedOverItem.current = null;
     };
     
-    // DOCUMENT GENERATION
     const generateDocumentHTML = (data: FormData) => {
         const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
@@ -200,7 +214,7 @@ export default function VeliToplantisiTab() {
           <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Veli Toplantı Tutanağı</title>
           <style>body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; } .container { width: 90%; margin: auto; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 5px; }</style>
           </head><body><div class="container">
-              <h3 style="text-align: center;">T.C.<br/>${data.academicYear} EĞİTİM-ÖĞRETİM YILI ${data.sinif} SINIFI<br/>${data.donem.toLocaleUpperCase('tr-TR')} VELİ TOPLANTI TUTANAĞI</h3>
+              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? tr(data.okulAdi.toLocaleUpperCase('tr-TR')) : '......................'}<br/>${tr(data.academicYear)} EĞİTİM-ÖĞRETİM YILI ${tr(data.sinif)} SINIFI<br/>${tr(data.donem.toLocaleUpperCase('tr-TR'))} VELİ TOPLANTI TUTANAĞI</h3>
               <br/>
               <p><strong>Toplantı Tarihi:</strong> ${formattedDate} &nbsp;&nbsp; <strong>Saat:</strong> ${data.saat} &nbsp;&nbsp; <strong>Yer:</strong> ${data.yer}</p>
               <br/>
@@ -256,6 +270,7 @@ export default function VeliToplantisiTab() {
                         <Card>
                             <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="okulAdi" render={({ field }: any) => (<FormItem><FormLabel>Okul Adı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="academicYear" render={({ field }: any) => (<FormItem><FormLabel>Eğitim Yılı</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="donem" render={({ field }: any) => (<FormItem><FormLabel>Dönem</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                 <FormField control={form.control} name="sinif" render={({ field }: any) => (<FormItem><FormLabel>Sınıf</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
