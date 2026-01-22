@@ -13,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
-import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 import { TeacherProfile } from '@/lib/types';
 
 // --- FORM SCHEMAS & TYPES ---
@@ -194,7 +193,6 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
     const handleSortEnd = () => {
         if(draggedItem.current !== null && draggedOverItem.current !== null) {
              moveGundem(draggedItem.current, draggedOverItem.current);
-             moveGorusme(draggedItem.current, draggedOverItem.current);
         }
         draggedItem.current = null; draggedOverItem.current = null;
     };
@@ -288,7 +286,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                                         <div className="flex items-center gap-2">
                                             <GripVertical className="cursor-grab text-slate-300" />
                                             <Input {...form.register(`gundemMaddeleri.${index}.madde`)} className="font-semibold" />
-                                            <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
+                                            <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); }}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                         <div className="pl-8 relative">
                                             <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
@@ -298,7 +296,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                                         </div>
                                     </div>
                                 ))}
-                                <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                                <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                             </CardContent>
                         </Card>
                          <Card>

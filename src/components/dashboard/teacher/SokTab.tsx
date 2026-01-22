@@ -13,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { Loader2 } from 'lucide-react';
-import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 import { TeacherProfile } from '@/lib/types';
 
 // --- FORM SCHEMAS & TYPES ---
