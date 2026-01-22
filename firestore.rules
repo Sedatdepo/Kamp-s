@@ -4,9 +4,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- Public access for student login ---
+    // Allows anyone to check if a class code is valid.
+    match /classCodes/{code} {
+      allow get: if true;
+    }
+
+    // Allows anyone to query for a specific student by class and number for login.
+    // This is required for the student login flow to find the student document
+    // before they are authenticated.
+    match /students/{student} {
+      allow list: if request.query.where.classId is string && request.query.where.number is string;
+      
+      // Allow any signed-in user to read/write student data.
+      // This maintains the existing broad permissions for authenticated users.
+      allow read, write: if request.auth != null;
+    }
+
     // --- General Development Rule ---
-    // This allows all read/write operations for any signed-in user.
-    // This is NOT secure for production. Use with caution.
+    // Fallback rule: Allows all other read/write operations for any SIGNED-IN user.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
