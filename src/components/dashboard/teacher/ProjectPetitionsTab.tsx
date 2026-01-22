@@ -121,9 +121,9 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
               <TableBody>
                 {students.map((student) => (
                   <TableRow key={student.id}>
-                    <TableCell><Input value={student.number} onChange={(e) => updateStudent(student.id!, 'number', e.target.value)} placeholder="No" /></TableCell>
-                    <TableCell><Input value={student.name} onChange={(e) => updateStudent(student.id!, 'name', e.target.value)} placeholder="İsim" /></TableCell>
-                    <TableCell><Input value={student.className} onChange={(e) => updateStudent(student.id!, 'className', e.target.value)} placeholder="Sınıf" /></TableCell>
+                    <TableCell><Input value={student.number || ''} onChange={(e) => updateStudent(student.id!, 'number', e.target.value)} placeholder="No" /></TableCell>
+                    <TableCell><Input value={student.name || ''} onChange={(e) => updateStudent(student.id!, 'name', e.target.value)} placeholder="İsim" /></TableCell>
+                    <TableCell><Input value={student.className || ''} onChange={(e) => updateStudent(student.id!, 'className', e.target.value)} placeholder="Sınıf" /></TableCell>
                     <TableCell><Button variant="ghost" size="icon" onClick={() => removeStudent(student.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
                   </TableRow>
                 ))}
