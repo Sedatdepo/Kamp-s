@@ -1,29 +1,33 @@
 
-"use client";
+'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question, Exam, Badge as BadgeType } from '@/lib/types';
+import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
-import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
+import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ExamPaper } from '../ExamPaper';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { saveAs } from 'file-saver';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
+    const [submissionText, setSubmissionText] = useState('');
+    const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -36,26 +40,63 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
         return submissions?.[0];
     }, [submissions]);
 
+    // **ÇÖZÜM**: Soruların her zaman güncel homework prop'undan gelmesini garantilemek için useMemo kullanıldı.
+    const questions = useMemo(() => homework.questions || [], [homework.questions]);
+
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
         setAnswers(prev => {
-            const currentAnswer = prev[questionId];
+            const currentAnswer = prev[questionId as string];
             if (isMulti) {
                 const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
                 if (currentArr.includes(answer)) {
-                    return { ...prev, [questionId]: currentArr.filter(a => a !== answer) };
+                    return { ...prev, [questionId as string]: currentArr.filter(a => a !== answer) };
                 } else {
-                    return { ...prev, [questionId]: [...currentArr, answer] };
+                    return { ...prev, [questionId as string]: [...currentArr, answer] };
                 }
             }
-            return { ...prev, [questionId]: answer };
+            return { ...prev, [questionId as string]: answer };
         });
-    }
+    };
+
+     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 750 * 1024) { // ~750KB
+                toast({
+                    variant: "destructive",
+                    title: "Dosya Boyutu Çok Büyük",
+                    description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
+                });
+                return;
+            }
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                setSubmissionFile({
+                    dataUrl: reader.result as string,
+                    name: file.name,
+                    type: file.type,
+                });
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                toast({ variant: "destructive", title: "Dosya Okuma Hatası" });
+            };
+        }
+    };
 
     const handleSubmit = async (isCheckboxMark: boolean = false) => {
-        if (homework.questions && homework.questions.length > 0 && !isCheckboxMark && homework.questions.some(q => q.required && !answers[q.id])) {
+        const hasQuestions = questions.length > 0;
+        if (hasQuestions && !isCheckboxMark && questions.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
+
+        if (!hasQuestions && !isCheckboxMark && !submissionText.trim() && !submissionFile) {
+             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
+            return;
+        }
+        
         if (!db || !classId) return;
 
         setIsSubmitting(true);
@@ -66,10 +107,30 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
-          answers: answers,
-          text: isCheckboxMark ? "Öğrenci tarafından tamamlandı olarak işaretlendi." : undefined,
         };
-    
+
+        if(hasQuestions) {
+            const sanitizedAnswers: { [key: string]: string | string[] } = {};
+            for (const key in answers) {
+                if (Object.prototype.hasOwnProperty.call(answers, key) && answers[key] !== undefined) {
+                    sanitizedAnswers[key] = answers[key];
+                }
+            }
+             if (Object.keys(sanitizedAnswers).length > 0) {
+               submissionData.answers = sanitizedAnswers;
+            }
+        }
+
+        if(isCheckboxMark) {
+            submissionData.text = "Öğrenci tarafından tamamlandı olarak işaretlendi.";
+        } else if (submissionText.trim()) {
+            submissionData.text = submissionText;
+        }
+        
+        if(submissionFile) {
+            submissionData.file = submissionFile;
+        }
+
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
@@ -81,15 +142,21 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                 
                 const updates: any = { behaviorScore: increment(10) };
                 
+                let toastDescription = "+10 Davranış Puanı kazanıldı!";
                 if (!currentBadges.includes('hw-master')) {
-                    updates.badges = [...currentBadges, 'hw-master'];
+                    updates.badges = arrayUnion('hw-master');
+                    toastDescription = "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!"
                 }
 
                 await updateDoc(studentRef, updates);
-                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
+                toast({ title: "Ödev başarıyla teslim edildi!", description: toastDescription });
             } else {
                  toast({ title: "Ödev başarıyla teslim edildi!" });
             }
+
+            setSubmissionText('');
+            setSubmissionFile(null);
+            setAnswers({});
             forceRefresh();
 
         } catch (error: any) {
@@ -99,6 +166,10 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             setIsSubmitting(false);
         }
     };
+    
+    const handleDownload = (file: {dataUrl: string, name: string}) => {
+        saveAs(file.dataUrl, file.name);
+    }
     
     return (
         <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
@@ -110,13 +181,14 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                     )}
                  </div>
                  
-                 {homework.questions && homework.questions.length > 0 ? (
+                 {questions.length > 0 ? (
                     <div className="space-y-6">
-                         <div className="bg-white rounded-lg shadow-md p-4">
-                            <h2 className="text-2xl font-bold text-center mb-4">{homework.text}</h2>
-                            {homework.questions.map((q: Question, index: number) => (
+                        <div className="bg-white rounded-lg p-4">
+                            <h2 className="text-xl font-bold text-center mb-4">{homework.text}</h2>
+                            {questions.map((q: Question, index: number) => (
                                 <div key={q.id || index} className="mb-6 pb-4 border-b">
                                     <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
+                                    {q.image && <img src={q.image} alt={`Soru ${index+1}`} className="my-2 rounded-md border max-w-sm"/>}
                                     {q.type === 'multiple-choice' && q.options && (
                                         <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} disabled={!!existingSubmission} className="space-y-2">
                                             {q.options.map((opt, i) => (
@@ -133,7 +205,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                                             <div key={i} className="flex items-center space-x-2">
                                               <Checkbox
                                                 id={`${q.id}-${i}`}
-                                                onCheckedChange={(checked) => handleAnswerChange(q.id, opt, true)}
+                                                onCheckedChange={() => handleAnswerChange(q.id, opt, true)}
                                                 disabled={!!existingSubmission}
                                               />
                                               <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
@@ -153,17 +225,32 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                         </div>
                     </div>
                 ) : (
-                    <p className="text-sm font-semibold">{homework.text}</p>
+                     <div>
+                        <p className="text-sm font-semibold">{homework.text}</p>
+                        {homework.file && (
+                            <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 mt-2">
+                                <Paperclip className="h-4 w-4" />
+                                <span className="truncate">{homework.file.name}</span>
+                                <Download className="h-4 w-4 ml-auto" />
+                            </Button>
+                        )}
+                    </div>
                 )}
             </div>
 
             {existingSubmission ? (
-                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
-                    <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
+                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border space-y-2'>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold">
                         <CheckCircle className="h-5 w-5"/>
                         <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
+                    {existingSubmission.file && (
+                         <Button variant="outline" size="sm" onClick={() => handleDownload(existingSubmission.file!)} className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4" />
+                            <span className="truncate">{existingSubmission.file.name}</span>
+                        </Button>
+                    )}
                      {existingSubmission.feedback && (
                          <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
                              <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
@@ -176,15 +263,27 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                          </div>
                     )}
                 </div>
-            ) : homework.questions && homework.questions.length > 0 ? (
+            ) : questions.length > 0 ? (
                  <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Ödevi Teslim Et
                  </Button>
             ) : (
-                <div className="flex items-center space-x-2">
-                    <Checkbox id={`hw-done-${homework.id}`} onCheckedChange={(checked) => handleSubmit(!!checked)} disabled={isSubmitting} />
-                    <Label htmlFor={`hw-done-${homework.id}`} className="text-sm font-medium">Bu ödevi tamamladım olarak işaretle.</Label>
+                <div className="space-y-3 pt-3 border-t">
+                    <Textarea 
+                        placeholder="Cevabınızı buraya yazın..."
+                        value={submissionText}
+                        onChange={(e) => setSubmissionText(e.target.value)}
+                        rows={3}
+                    />
+                    <Input
+                        type="file"
+                        onChange={handleFileChange}
+                    />
+                    <Button onClick={() => handleSubmit(false)} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Gönder
+                    </Button>
                 </div>
             )}
         </div>
@@ -193,18 +292,20 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 
 function RegularHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
     const { db } = useAuth();
-    const homeworksQuery = useMemoFirebase(() => {
+    
+    // Fetch only homeworks that are "regular" (rubric is null or undefined)
+    const regularHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
     
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
-
+    const { data: regularHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
+    
     const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
+        if (!regularHomeworks) return [];
+        return [...regularHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [regularHomeworks]);
+
 
     if (homeworksLoading) {
         return (
@@ -226,17 +327,19 @@ function RegularHomeworkTabContent({ student, classId }: { student: any, classId
             <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            {sortedHomeworks.length > 0 ? (
-                sortedHomeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                ))
-            ) : (
-                <div className="text-center py-10 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+            <ScrollArea className="h-[60vh] pr-2">
+                <div className="space-y-4">
+                    {sortedHomeworks.length > 0 ? (
+                        sortedHomeworks.map((hw) => (
+                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
+                        ))
+                    ) : (
+                        <div className="text-center py-10 bg-muted/50 rounded-lg">
+                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                        </div>
+                    )}
                 </div>
-            )}
-            </div>
+            </ScrollArea>
         </CardContent>
         </Card>
     );
