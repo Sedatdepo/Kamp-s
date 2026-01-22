@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -39,7 +40,7 @@ const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapT
 const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.InfoFormsTab), { loading: LoadingSpinner });
 const GradingToolTab = dynamic(() => import('@/components/dashboard/teacher/GradingToolTab').then(mod => mod.GradingToolTab), { loading: LoadingSpinner });
 const CommunicationTab = dynamic(() => import('@/components/dashboard/teacher/CommunicationTab').then(mod => mod.CommunicationTab), { loading: LoadingSpinner });
-const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/HomeworkTab').then(mod => mod.HomeworkTab), { loading: LoadingSpinner });
+const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/homework/HomeworkTab').then(mod => mod.HomeworkTab), { loading: LoadingSpinner });
 const ElectionTab = dynamic(() => import('@/components/dashboard/teacher/ElectionTab').then(mod => mod.ElectionTab), { loading: LoadingSpinner });
 const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/AnnualPlanTab').then(mod => mod.AnnualPlanTab), { loading: LoadingSpinner });
 const DilekceTab = dynamic(() => import('@/components/dashboard/teacher/DilekceTab').then(mod => mod.DilekceTab), { loading: LoadingSpinner });
