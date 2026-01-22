@@ -88,6 +88,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
                     lessons={lessons}
+                    students={students}
                  />
             </TabsContent>
         </Tabs>
