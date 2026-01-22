@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, BellOff, Bell } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const formSchema = z.object({
@@ -64,7 +65,7 @@ const NotificationSettings = () => {
 }
 
 export function AccountSettingsTab() {
-  const { appUser, auth } = useAuth();
+  const { appUser, auth, db } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -74,12 +75,18 @@ export function AccountSettingsTab() {
   });
   
   const handleUpdatePassword = async (password: string) => {
-      if (!auth?.currentUser) return;
+      if (!auth?.currentUser || !db || appUser?.type !== 'student') return;
       
       setIsLoading(true);
       try {
           await updatePassword(auth.currentUser, password);
-          toast({ title: 'Şifre Başarıyla Güncellendi!' });
+          
+          const studentRef = doc(db, 'students', appUser.data.id);
+          await updateDoc(studentRef, {
+              needsPasswordChange: false
+          });
+
+          toast({ title: 'Şifre Başarıyla Güncellendi!', description: 'Artık paneli kullanabilirsiniz.' });
       } catch (error: any) {
           toast({ variant: 'destructive', title: 'Şifre Güncelleme Hatası', description: 'Bu işlem için yakın zamanda giriş yapmış olmanız gerekebilir. Lütfen çıkış yapıp tekrar deneyin.' });
       } finally {
@@ -93,8 +100,20 @@ export function AccountSettingsTab() {
 
   if (appUser?.type !== 'student') return null;
 
+  const needsPasswordChange = appUser.data.needsPasswordChange;
+
   return (
     <div className="grid gap-6">
+        {needsPasswordChange && (
+            <Card className="border-primary bg-primary/5">
+                <CardHeader>
+                    <CardTitle className="font-headline text-primary">Hoş Geldiniz!</CardTitle>
+                    <CardDescription>
+                        Güvenliğiniz için, sisteme ilk girişinizde şifrenizi belirlemeniz gerekmektedir. Mevcut şifreniz okul numaranızdır. Lütfen aşağıdan yeni bir şifre oluşturun.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        )}
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2">
@@ -142,20 +161,22 @@ export function AccountSettingsTab() {
                 </Form>
             </CardContent>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <Bell />
-                    Bildirim Ayarları
-                </CardTitle>
-                <CardDescription>
-                    Ödevler, duyurular ve diğer önemli güncellemelerden anında haberdar olmak için bildirimlere izin verin.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <NotificationSettings />
-            </CardContent>
-        </Card>
+        {!needsPasswordChange && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2">
+                        <Bell />
+                        Bildirim Ayarları
+                    </CardTitle>
+                    <CardDescription>
+                        Ödevler, duyurular ve diğer önemli güncellemelerden anında haberdar olmak için bildirimlere izin verin.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <NotificationSettings />
+                </CardContent>
+            </Card>
+        )}
     </div>
   );
 }

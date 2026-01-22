@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { GradesTab } from './student/GradesTab';
 import { BadgesTab } from './student/BadgesTab';
 import { StudentCommunicationTab } from './student/StudentCommunicationTab';
@@ -69,11 +69,14 @@ const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoadin
 
 
 export function StudentDashboard() {
-  const [activeTab, setActiveTab] = useState('home');
   const { appUser, db } = useAuth();
+  const studentData = useMemo(() => appUser?.type === 'student' ? appUser.data : null, [appUser]);
+  
+  const [activeTab, setActiveTab] = useState(studentData?.needsPasswordChange ? 'account' : 'home');
+
   const { notifications, markAsSeen } = useNotification();
   
-  const classId = (appUser?.type === 'student' && appUser.data.classId) ? appUser.data.classId : null;
+  const classId = studentData?.classId;
   
   const classQuery = useMemoFirebase(() => {
     if (!classId || !db) return null;
@@ -97,6 +100,10 @@ export function StudentDashboard() {
     else if (activeTab === 'teacher-chats') markAsSeen('messages');
   }, [activeTab, markAsSeen]);
   
+  if (studentData?.needsPasswordChange) {
+      return <AccountSettingsTab />;
+  }
+
   const renderContent = () => {
       switch(activeTab) {
           case 'grades': return <GradesTab />;

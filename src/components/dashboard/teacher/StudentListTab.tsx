@@ -107,6 +107,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         term2Grades: {},
         behaviorScore: 100,
         hasProject: false,
+        needsPasswordChange: true,
       };
       await addDoc(collection(db, 'students'), newStudentData);
       toast({ title: 'Öğrenci eklendi!' });
@@ -131,7 +132,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         const batch = writeBatch(db);
         studentsToAdd.forEach(student => {
             const newStudentRef = doc(collection(db, 'students'));
-            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, teacherId: teacherId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false };
+            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, teacherId: teacherId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false, needsPasswordChange: true };
             batch.set(newStudentRef, newStudentData);
         });
 

@@ -258,6 +258,7 @@ export interface Student {
   badges?: string[]; // Gamification badge IDs
 
   hasProject?: boolean;
+  needsPasswordChange?: boolean;
   
   // New Attendance Field
   attendance?: {
