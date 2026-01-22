@@ -87,9 +87,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     classId={classId}
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
-                    clubs={[]} // This should be lessons, fixing based on component
                     lessons={lessons}
-                    students={students}
                  />
             </TabsContent>
         </Tabs>
