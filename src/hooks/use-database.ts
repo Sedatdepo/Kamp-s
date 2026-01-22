@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -33,6 +33,10 @@ export interface Database {
   schoolInfo?: SchoolInfo;
   studentInfoForms: StudentInfoFormData[];
   dersProgrami: Timetable;
+  performanceAssignments?: AssignmentTemplate[];
+  projectAssignments?: AssignmentTemplate[];
+  performanceFavorites?: number[];
+  projectFavorites?: number[];
 }
 
 // Varsayılan boş veritabanı
@@ -79,6 +83,10 @@ const initialDb: Database = {
       { id: 8, name: 'Müzik', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
     ]
   },
+  performanceAssignments: [],
+  projectAssignments: [],
+  performanceFavorites: [],
+  projectFavorites: [],
 };
 
 export const useDatabase = () => {

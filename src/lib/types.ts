@@ -399,6 +399,19 @@ export interface AnnualPlan {
   };
 }
 
+export interface AssignmentTemplate {
+    id: number;
+    grade: number;
+    subject: "literature" | "physics";
+    title: string;
+    description: string;
+    instructions: string;
+    formats: string;
+    size: string;
+    questions?: Question[];
+    isCustom?: boolean;
+}
+
 export interface DilekceDocument extends Archivable {
     data: {
         id: string;

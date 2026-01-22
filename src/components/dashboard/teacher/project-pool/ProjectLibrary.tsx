@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Class, Student, TeacherProfile, Homework } from '@/lib/types';
+import { Class, Student, TeacherProfile, Homework, AssignmentTemplate } from '@/lib/types';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -19,10 +19,13 @@ import { EditProjectModal } from './EditProjectModal';
 import { CreateProjectModal } from './CreateProjectModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
 import { Heart, Filter } from 'lucide-react';
+import { useDatabase } from '@/hooks/use-database';
 
 export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const { db } = useAuth();
     const { toast } = useToast();
+    const { db: localDb, setDb: setLocalDb } = useDatabase();
+    const { projectAssignments = [], projectFavorites = [] } = localDb;
     
     const [gradeFilter, setGradeFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
@@ -39,11 +42,15 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [assignDetails, setAssignDetails] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
-    const [favorites, setFavorites] = useState<number[]>([]);
-    
-    const [projects, setProjects] = useState(assignmentsData);
+
+    const [favorites, setFavorites] = useState<number[]>(projectFavorites);
     const [rubrics, setRubrics] = useState<any>(initialRubricDefinitions);
 
+    const allProjects = useMemo(() => [...assignmentsData, ...projectAssignments], [projectAssignments]);
+
+    useEffect(() => {
+        setLocalDb(prev => ({...prev, projectFavorites: favorites}));
+    }, [favorites, setLocalDb]);
 
     const toggleFavorite = (id: number) => {
         setFavorites(prev => 
@@ -59,7 +66,7 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
         }
     };
 
-    const filteredProjects = projects.filter(item => {
+    const filteredProjects = allProjects.filter(item => {
         if (showFavoritesOnly) {
             return favorites.includes(item.id);
         }
@@ -152,8 +159,21 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
     };
 
     const handleDeleteProject = (projectId: number) => {
-        setProjects(prev => prev.filter(p => p.id !== projectId));
-        setFavorites(prev => prev.filter(id => id !== projectId));
+        const projectToDelete = allProjects.find(p => p.id === projectId);
+        if (projectToDelete && !projectToDelete.isCustom) {
+            toast({ title: 'Silinemez', description: 'Varsayılan projeler silinemez.', variant: 'destructive'});
+            return;
+        }
+
+        setLocalDb(prev => {
+            const updatedProjects = (prev.projectAssignments || []).filter(p => p.id !== projectId);
+            const updatedFavorites = (prev.projectFavorites || []).filter(id => id !== projectId);
+            return {
+                ...prev,
+                projectAssignments: updatedProjects,
+                projectFavorites: updatedFavorites
+            }
+        });
         toast({ title: 'Proje Silindi', description: 'Proje kütüphaneden kaldırıldı.', variant: 'destructive'});
     };
 
@@ -164,18 +184,33 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
     }
 
     const handleSaveEditedProject = (updatedFields: any) => {
-        setProjects(prev => prev.map(a => 
-        a.id === selectedProject.id ? { ...a, ...updatedFields } : a
-        ));
+        const projectToUpdate = allProjects.find(a => a.id === selectedProject.id);
+        if (projectToUpdate && !projectToUpdate.isCustom) {
+            toast({ title: 'Düzenlenemez', description: 'Varsayılan projeler düzenlenemez.', variant: 'destructive'});
+            return;
+        }
+
+        setLocalDb(prev => ({
+            ...prev,
+            projectAssignments: (prev.projectAssignments || []).map(p => 
+                p.id === selectedProject.id ? { ...p, ...updatedFields, id: selectedProject.id } : p
+            ),
+        }));
+        setEditProjectModalOpen(false);
+        toast({title: 'Proje Güncellendi'});
     };
 
     const handleSaveNewProject = (newProject: any) => {
-        const projectWithId = {
+        const projectWithId: AssignmentTemplate = {
             ...newProject,
             id: Date.now(), 
-            grade: parseInt(newProject.grade)
+            grade: parseInt(newProject.grade),
+            isCustom: true,
         };
-        setProjects(prev => [projectWithId, ...prev]);
+        setLocalDb(prev => ({
+            ...prev,
+            projectAssignments: [...(prev.projectAssignments || []), projectWithId]
+        }));
     };
 
     const handleSaveNewRubric = (newRubric: any) => {
@@ -209,7 +244,7 @@ export const ProjectLibrary = ({ classId, teacherProfile, classes, students }: {
             <div className="mb-8">
                 {!hasSelection && (
                 <StatsCards 
-                    total={projects.length} 
+                    total={allProjects.length} 
                     assignedCount={history.length} 
                     favoritesCount={favorites.length} 
                 />

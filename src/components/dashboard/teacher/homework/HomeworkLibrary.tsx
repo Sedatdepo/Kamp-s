@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Class, Student, TeacherProfile, Homework } from '@/lib/types';
+import { Class, Student, TeacherProfile, Homework, AssignmentTemplate } from '@/lib/types';
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -19,10 +19,13 @@ import { EditAssignmentModal } from './EditAssignmentModal';
 import { CreateAssignmentModal } from './CreateAssignmentModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
 import { Heart, Filter } from 'lucide-react';
+import { useDatabase } from '@/hooks/use-database';
 
 export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const { db } = useAuth();
     const { toast } = useToast();
+    const { db: localDb, setDb: setLocalDb } = useDatabase();
+    const { performanceAssignments = [], performanceFavorites = [] } = localDb;
     
     const [gradeFilter, setGradeFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
@@ -39,11 +42,16 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
     const [assignDetails, setAssignDetails] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
-    const [favorites, setFavorites] = useState<number[]>([]);
     
-    const [assignments, setAssignments] = useState(assignmentsData);
+    const [favorites, setFavorites] = useState<number[]>(performanceFavorites);
+    
     const [rubrics, setRubrics] = useState<any>(initialRubricDefinitions);
 
+    const allAssignments = useMemo(() => [...assignmentsData, ...performanceAssignments], [performanceAssignments]);
+
+    useEffect(() => {
+        setLocalDb(prev => ({...prev, performanceFavorites: favorites}));
+    }, [favorites, setLocalDb]);
 
     const toggleFavorite = (id: number) => {
         setFavorites(prev => 
@@ -59,7 +67,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         }
     };
 
-    const filteredAssignments = assignments.filter(item => {
+    const filteredAssignments = allAssignments.filter(item => {
         if (showFavoritesOnly) {
         return favorites.includes(item.id);
         }
@@ -172,8 +180,21 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     };
 
     const handleDeleteAssignment = (assignmentId: number) => {
-        setAssignments(prev => prev.filter(a => a.id !== assignmentId));
-        setFavorites(prev => prev.filter(id => id !== assignmentId));
+        const assignmentToDelete = allAssignments.find(a => a.id === assignmentId);
+        if (assignmentToDelete && !assignmentToDelete.isCustom) {
+            toast({ title: 'Silinemez', description: 'Varsayılan ödevler silinemez.', variant: 'destructive'});
+            return;
+        }
+
+        setLocalDb(prev => {
+            const updatedAssignments = (prev.performanceAssignments || []).filter(a => a.id !== assignmentId);
+            const updatedFavorites = (prev.performanceFavorites || []).filter(id => id !== assignmentId);
+            return {
+                ...prev,
+                performanceAssignments: updatedAssignments,
+                performanceFavorites: updatedFavorites
+            }
+        });
         toast({ title: 'Ödev Silindi', description: 'Ödev kütüphaneden kaldırıldı.', variant: 'destructive'});
     };
 
@@ -183,18 +204,33 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     }
 
     const handleSaveEditedAssignment = (updatedFields: any) => {
-        setAssignments(prev => prev.map(a => 
-        a.id === selectedAssignment.id ? { ...a, ...updatedFields } : a
-        ));
+        const assignmentToUpdate = allAssignments.find(a => a.id === selectedAssignment.id);
+        if (assignmentToUpdate && !assignmentToUpdate.isCustom) {
+            toast({ title: 'Düzenlenemez', description: 'Varsayılan ödevler düzenlenemez.', variant: 'destructive'});
+            return;
+        }
+        
+        setLocalDb(prev => ({
+            ...prev,
+            performanceAssignments: (prev.performanceAssignments || []).map(a => 
+                a.id === selectedAssignment.id ? { ...a, ...updatedFields, id: selectedAssignment.id } : a
+            ),
+        }));
+        setEditAssignmentModalOpen(false);
+        toast({title: 'Ödev Güncellendi'});
     };
 
     const handleSaveNewAssignment = (newAssignment: any) => {
-        const assignmentWithId = {
+        const assignmentWithId: AssignmentTemplate = {
             ...newAssignment,
             id: Date.now(), 
-            grade: parseInt(newAssignment.grade)
+            grade: parseInt(newAssignment.grade),
+            isCustom: true,
         };
-        setAssignments(prev => [assignmentWithId, ...prev]);
+        setLocalDb(prev => ({
+            ...prev,
+            performanceAssignments: [...(prev.performanceAssignments || []), assignmentWithId]
+        }));
     };
 
     const handleSaveNewRubric = (newRubric: any) => {
@@ -228,7 +264,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             <div className="mb-8">
                 {!hasSelection && (
                 <StatsCards 
-                    total={assignments.length} 
+                    total={allAssignments.length} 
                     assignedCount={history.length} 
                     favoritesCount={favorites.length} 
                 />
