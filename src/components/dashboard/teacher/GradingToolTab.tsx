@@ -459,7 +459,9 @@ export function GradingToolTab({
         students={students}
         activeTerm={activeTerm}
         teacherBranch={teacherProfile?.branch || ''}
-        onBulkUpdate={(updatedStudents) => setStudents(updatedStudents)}
+        onBulkUpdate={setStudents}
+        perfCriteria={perfCriteria}
+        projCriteria={projCriteria}
       />
 
       {teacherProfile && (

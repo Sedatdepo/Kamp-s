@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, GradingScores } from '@/lib/types';
+import { Student, GradingScores, Criterion } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,8 @@ interface BulkGradeEntryDialogProps {
   teacherBranch: string;
   activeTerm: 1 | 2;
   onBulkUpdate: (updatedStudents: Student[]) => void;
+  perfCriteria: Criterion[];
+  projCriteria: Criterion[];
 }
 
 export type GradeType = 
@@ -26,7 +28,7 @@ export type GradeType =
     | 'writtenExam1' | 'speakingExam1' | 'listeningExam1'
     | 'writtenExam2' | 'speakingExam2' | 'listeningExam2';
 
-export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate }: BulkGradeEntryDialogProps) {
+export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate, perfCriteria, projCriteria }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
   const { db } = useAuth();
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
@@ -35,9 +37,8 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   const [editableStudents, setEditableStudents] = useState<Student[]>([]);
 
   useEffect(() => {
-    // Deep copy students to local state when dialog opens or students prop changes
     setEditableStudents(JSON.parse(JSON.stringify(students)));
-  }, [students, isOpen]); // Also depends on isOpen to reset when reopened
+  }, [students, isOpen]);
 
   const sortedStudents = useMemo(() => {
     return [...editableStudents].sort((a, b) => {
@@ -71,20 +72,46 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             if(lineValue === 'G') {
                 grade = -1;
             } else {
-                const parsedGrade = parseFloat(lineValue.replace(',', '.')); // Handle comma decimal separator
+                const parsedGrade = parseFloat(lineValue.replace(',', '.'));
                 if (!isNaN(parsedGrade)) {
                     grade = parsedGrade;
                 }
             }
             
-            if (grade !== null) {
-                const studentIndex = updatedStudents.findIndex(s => s.id === student.id);
-                if (studentIndex !== -1) {
-                    const studentToUpdate = updatedStudents[studentIndex];
-                    if (!studentToUpdate[termGradesKey]) {
-                        (studentToUpdate as any)[termGradesKey] = {};
+            const studentIndex = updatedStudents.findIndex(s => s.id === student.id);
+            if (grade !== null && studentIndex !== -1) {
+                const studentToUpdate = updatedStudents[studentIndex];
+                if (!studentToUpdate[termGradesKey]) {
+                    (studentToUpdate as any)[termGradesKey] = {};
+                }
+                const termGrades = studentToUpdate[termGradesKey] as GradingScores;
+                
+                (termGrades as any)[gradeType] = grade;
+
+                let criteriaToUse: Criterion[] | null = null;
+                let scoreKey: keyof GradingScores | null = null;
+
+                if (gradeType === 'perf1') {
+                    criteriaToUse = perfCriteria;
+                    scoreKey = 'scores1';
+                } else if (gradeType === 'perf2') {
+                    criteriaToUse = perfCriteria;
+                    scoreKey = 'scores2';
+                } else if (gradeType === 'projectGrade') {
+                    criteriaToUse = projCriteria;
+                    scoreKey = 'projectScores';
+                }
+
+                if (criteriaToUse && scoreKey && grade >= 0) {
+                    const totalMax = criteriaToUse.reduce((sum, c) => sum + (c.max || 0), 0);
+                    const newScores: { [key: string]: number } = {};
+                    if (totalMax > 0) {
+                        criteriaToUse.forEach(c => {
+                            const proportion = (c.max || 0) / totalMax;
+                            newScores[c.id] = Math.round(grade! * proportion);
+                        });
                     }
-                    (studentToUpdate[termGradesKey] as any)[gradeType] = grade;
+                    termGrades[scoreKey] = newScores;
                 }
             }
         }
