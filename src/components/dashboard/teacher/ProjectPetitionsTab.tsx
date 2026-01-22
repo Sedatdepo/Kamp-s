@@ -13,7 +13,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { exportClubPetitionsToRtf } from '@/lib/word-export';
+import { exportProjectPetitionsToRtf } from '@/lib/word-export';
 
 
 interface ProjectPetitionsTabProps {
@@ -73,72 +73,11 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
   };
 
   const handleDownloadDoc = () => {
-    const css = `
-      <style>
-        body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin: 0; padding: 0; }
-        .page-break { page-break-after: always; }
-        .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
-        .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
-        .tarih-sag { text-align: right; margin-bottom: 10px; font-size: 11pt; }
-        .content { text-align: justify; margin-bottom: 15px; line-height: 1.4; }
-        .tercihler { margin-left: 10px; margin-bottom: 20px; }
-        .tercih-satir { margin-bottom: 8px; font-weight: bold; }
-        .imza-tablosu { width: 100%; margin-top: 25px; border-collapse: collapse; }
-        .imza-hucre { vertical-align: top; width: 50%; padding: 5px; border: none;}
-        .imza-baslik { font-weight: bold; margin-bottom: 40px; display: block; }
-        .imza-isim { font-weight: bold; display: block; margin-top: 40px; text-transform: uppercase; }
-        .imza-unvan { font-size: 10pt; }
-      </style>
-    `;
-
-    let htmlContent = '';
-
-    students.forEach((student, index) => {
-      const isThirdItem = (index + 1) % 3 === 0;
-      
-      const tercihlerHtml = Array.from({ length: 5 }).map((_, i) => {
-        const preferenceId = student.projectPreferences?.[i];
-        const lessonName = preferenceId ? lessons.find(l => l.id === preferenceId)?.name : '....................................................................';
-        return `<div class="tercih-satir"><b>${i + 1}.</b> ${lessonName}</div>`;
-      }).join('');
-
-      htmlContent += `
-        <div class="dilekce-container">
-          <div class="header">${schoolName || '........................................... OKULU MÜDÜRLÜĞÜNE'}</div>
-          <div class="tarih-sag">${new Date().toLocaleDateString('tr-TR')}</div>
-          <div class="content">
-            Okulunuzun <b>${student.className || '.......'}</b> sınıfı, <b>${student.number || '.......'}</b> numaralı öğrencisiyim.
-            <b>${academicYear}</b> Eğitim-Öğretim yılında proje ödevi almak istediğim derslere ait tercihlerim öncelik sırasına göre aşağıdadır.
-            <br/>Gereğini bilgilerinize arz ederim.
-          </div>
-          <div class="tercihler">${tercihlerHtml}</div>
-          <table class="imza-tablosu">
-            <tr>
-              <td class="imza-hucre" align="center">
-                <span class="imza-baslik">Uygundur</span><br/><br/>
-                <span class="imza-isim">${teacherName || '...................................'}</span><br/>
-                <span class="imza-unvan">Sınıf Rehber Öğretmeni</span>
-              </td>
-              <td class="imza-hucre" align="center">
-                <div style="height: 40px;"></div>
-                <span class="imza-isim">${student.name || '...................................'}</span><br/>
-                <span>İmza</span>
-              </td>
-            </tr>
-          </table>
-        </div>
-        ${isThirdItem ? '<br class="page-break" />' : ''}
-      `;
-    });
-
-    const fullHtml = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><meta charset='utf-8'><title>Proje Tercih Dilekçeleri</title>${css}</head>
-      <body>${htmlContent}</body></html>
-    `;
-    
-    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword;charset=utf-8;' });
-    saveAs(blob, 'proje_tercih_dilekceleri.doc');
+    if (!currentClass || !teacherProfile) {
+        toast({ title: "Hata", description: "Gerekli bilgiler yüklenemedi.", variant: "destructive" });
+        return;
+    }
+    exportProjectPetitionsToRtf({ students, lessons, currentClass, teacherProfile });
   };
 
   return (
