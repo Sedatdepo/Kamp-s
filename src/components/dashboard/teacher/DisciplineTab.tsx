@@ -234,8 +234,8 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
                             <PhaseIndicator currentPhase={phase} />
 
                             <div className='mt-8'>
-                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateRecord={updateCurrentRecord} students={sortedStudents} teacherProfile={teacherProfile} currentClass={currentClass} />
-                                <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} />
+                                <Phase1 isVisible={phase === 1} onNext={handleNextPhase} data={formData} updateRecord={updateCurrentRecord} students={sortedStudents} teacherProfile={teacherProfile} currentClass={currentClass} toast={toast} />
+                                <Phase2 isVisible={phase === 2} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} toast={toast} />
                                 <Phase3 isVisible={phase === 3} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />
                                 <Phase4 isVisible={phase === 4} onNext={handleNextPhase} onPrev={handlePrevPhase} data={formData} updateRecord={updateCurrentRecord} teacherProfile={teacherProfile} />
                                 <Phase5 isVisible={phase === 5} onPrev={handlePrevPhase} data={formData} teacherProfile={teacherProfile} />
@@ -266,7 +266,7 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
     );
 };
 
-const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfile, currentClass }: any) => {
+const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfile, currentClass, toast }: any) => {
     const [localData, setLocalData] = useState(data.phase1Data || {});
     const [studentInfo, setStudentInfo] = useState(data.studentInfo || {});
     
@@ -296,7 +296,11 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
 
     const handleSave = () => {
         if (!studentInfo.studentName || !localData.teacherName || !localData.behaviorType || !localData.incidentDetails) {
-            alert('Lütfen öğrenci seçimi dahil tüm zorunlu alanları doldurun.');
+            toast({
+                title: "Eksik Bilgi",
+                description: "Lütfen öğrenci seçimi dahil tüm zorunlu alanları doldurun.",
+                variant: "destructive"
+            });
             return;
         }
         onNext({ phase1Data: localData, studentInfo });
@@ -381,7 +385,7 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
     );
 };
 
-const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord }: any) => {
+const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord, toast }: any) => {
     const [localData, setLocalData] = useState(data.phase2Data || {});
     useEffect(() => setLocalData(data.phase2Data || {}), [data.phase2Data]);
 
@@ -399,7 +403,11 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord }: any) => {
         if (decision === 'refer') {
             onNext(updatedData);
         } else {
-             alert('Süreç bu aşamada sonlandırıldı. Gerekli bildirimleri yapmayı unutmayın.');
+             toast({
+                title: "Süreç Sonlandırıldı",
+                description: "Süreç bu aşamada sonlandırılmıştır. Gerekli bildirimleri yapmayı unutmayın.",
+                variant: "default"
+             });
         }
     };
     
@@ -693,3 +701,5 @@ const StudentInfoDisplay = ({ studentInfo }: any) => {
         </Card>
     );
 };
+
+    
