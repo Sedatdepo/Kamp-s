@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, FileDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
@@ -13,23 +12,28 @@ import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { exportClubPetitionsToRtf } from '@/lib/word-export';
+
 
 interface ProjectPetitionsTabProps {
     classId: string;
     teacherProfile: TeacherProfile | null;
     currentClass: Class | null;
     lessons: Lesson[];
+    students: Student[];
 }
 
-export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, lessons }: ProjectPetitionsTabProps) {
+export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, lessons, students: initialStudents }: ProjectPetitionsTabProps) {
   const { db } = useAuth();
+  const { toast } = useToast();
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2025-2026');
   const [students, setStudents] = useState<Partial<Student>[]>([]);
 
   const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
-  const { data: initialStudents } = useCollection<Student>(studentsQuery);
+  const { data: fetchedStudents } = useCollection<Student>(studentsQuery);
 
   useEffect(() => {
     if (teacherProfile) {
@@ -37,10 +41,16 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
         setSchoolName(teacherProfile.schoolName || '');
     }
   }, [teacherProfile]);
+  
+  useEffect(() => {
+    if (initialStudents) {
+      setStudents(initialStudents);
+    }
+  }, [initialStudents]);
 
   const importClassList = () => {
-    if(!initialStudents) return;
-    const classStudents = initialStudents.map(s => ({
+    if(!fetchedStudents) return;
+    const classStudents = fetchedStudents.map(s => ({
       id: s.id,
       number: s.number,
       name: s.name,
@@ -65,7 +75,7 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
   const handleDownloadDoc = () => {
     const css = `
       <style>
-        body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin: 0; padding: 0; }
         .page-break { page-break-after: always; }
         .dilekce-container { height: 9.5cm; border-bottom: 1px dashed #999; padding: 20px 40px; box-sizing: border-box; position: relative; }
         .header { text-align: center; font-weight: bold; font-size: 12pt; margin-bottom: 10px; text-transform: uppercase; }
@@ -74,7 +84,7 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
         .tercihler { margin-left: 10px; margin-bottom: 20px; }
         .tercih-satir { margin-bottom: 8px; font-weight: bold; }
         .imza-tablosu { width: 100%; margin-top: 25px; border-collapse: collapse; }
-        .imza-hucre { vertical-align: top; width: 50%; padding: 5px; }
+        .imza-hucre { vertical-align: top; width: 50%; padding: 5px; border: none;}
         .imza-baslik { font-weight: bold; margin-bottom: 40px; display: block; }
         .imza-isim { font-weight: bold; display: block; margin-top: 40px; text-transform: uppercase; }
         .imza-unvan { font-size: 10pt; }
