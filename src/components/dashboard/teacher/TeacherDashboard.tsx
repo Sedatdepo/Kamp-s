@@ -35,7 +35,6 @@ const LoadingSpinner = () => (
 // Dynamically import all tab components
 const StudentManagementTab = dynamic(() => import('@/components/dashboard/teacher/StudentManagementTab').then(mod => mod.StudentManagementTab), { loading: LoadingSpinner });
 const KazanımlarTab = dynamic(() => import('@/components/dashboard/teacher/KazanımlarTab').then(mod => mod.default), { loading: LoadingSpinner });
-const ProjectDistributionTab = dynamic(() => import('@/components/dashboard/teacher/ProjectDistributionTab').then(mod => mod.ProjectDistributionTab), { loading: LoadingSpinner });
 const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
 const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.InfoFormsTab), { loading: LoadingSpinner });
 const GradingToolTab = dynamic(() => import('@/components/dashboard/teacher/GradingToolTab').then(mod => mod.GradingToolTab), { loading: LoadingSpinner });
@@ -58,7 +57,7 @@ const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teache
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "projects" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -392,8 +391,7 @@ const TABS_CONFIG = {
   "grading": { label: "Değerlendirme Aracı", icon: Gauge },
   "planning": { label: "Yıllık Plan", icon: ClipboardList },
   "election": { label: "Sınıf Seçimleri", icon: Vote },
-  "projects": { label: "Proje Dağıtımı", icon: BookText },
-  "homework": { label: "Ödev Takibi", icon: BookText },
+  "homework": { label: "Ödevler & Projeler", icon: BookText },
   "risks": { label: "Sınıf Risk Haritası", icon: List },
   "forms": { label: "Bilgi Formları", icon: FileSignature },
   "communication": { label: "İletişim Paneli", icon: MessageCircle },
@@ -582,8 +580,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımlarını analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
-                <MenuCard icon={<BookText />} title="Proje Dağıtımı" description="Öğrencilerin proje tercihlerini yönetin." onClick={() => setActiveTab('projects')} />
-                <MenuCard icon={<BookText />} title="Ödev Takibi" description="Ödev oluşturun ve takibini yapın." onClick={() => setActiveTab('homework')} />
+                <MenuCard icon={<BookText />} title="Ödevler & Projeler" description="Ödev ve proje yönetimi." onClick={() => setActiveTab('homework')} />
                 <MenuCard icon={<List />} title="Sınıf Risk Haritası" description="Risk haritası ve istatistiklerini görüntüleyin." onClick={() => setActiveTab('risks')} />
                 <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
@@ -598,8 +595,7 @@ export function TeacherDashboard() {
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile!} students={studentsForSelectedClass} currentClass={currentClass} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
         case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'projects': tabContent = <ProjectDistributionTab classId={selectedClassId!} teacherId={teacherId!} teacherProfile={teacherProfile} currentClass={currentClass} classes={classes || []} students={allStudents || []} lessons={lessons || []} />; break;
-        case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []}/>; break;
+        case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []} lessons={lessons || []} />; break;
         case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
         case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} students={studentsForSelectedClass} />; break;
         case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
