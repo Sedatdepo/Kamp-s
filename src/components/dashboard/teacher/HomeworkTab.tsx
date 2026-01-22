@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Class, Student, TeacherProfile, Lesson } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,16 +19,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { LessonManager } from './LessonManager';
 
-
-interface HomeworkTabProps {
-  classId: string;
-  currentClass: Class | null;
-  teacherProfile: TeacherProfile | null;
-  students: Student[];
-  classes: Class[];
-  lessons: Lesson[];
-}
 
 export function ProjectAssignmentView({
     classId,
@@ -108,58 +100,65 @@ export function ProjectAssignmentView({
     if (!lessons) return <Loader2 className="animate-spin" />;
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle>Proje Ödevi Tercih ve Atama</CardTitle>
-                     <div className="flex items-center space-x-2">
-                        <label htmlFor="election-toggle" className="text-sm font-medium">Öğrenci Tercihi Aktif</label>
-                        <Switch id="election-toggle" checked={currentClass?.isProjectSelectionActive || false} onCheckedChange={handleToggleChange} disabled={!currentClass} />
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Öğrenci</TableHead>
-                            <TableHead>Tercihleri</TableHead>
-                            <TableHead className="w-[200px]">Atanan Proje</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredStudents.map(student => (
-                            <TableRow key={student.id}>
-                                <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
-                                <TableCell>
-                                    <ol className="list-decimal list-inside text-xs">
-                                        {(student.projectPreferences || []).map(prefId => {
-                                            const lesson = lessons.find(l => l.id === prefId);
-                                            return <li key={prefId}>{lesson ? lesson.name : 'Bilinmeyen Ders'}</li>
-                                        })}
-                                    </ol>
-                                </TableCell>
-                                <TableCell>
-                                    <select
-                                        value={student.assignedLesson || ''}
-                                        onChange={(e) => handleAssignmentChange(student.id, e.target.value || null)}
-                                        className="w-full p-2 border rounded-md text-sm"
-                                    >
-                                        <option value="">Proje Ata</option>
-                                        {lessons.map(lesson => (
-                                            <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
-                                        ))}
-                                    </select>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-                 <div className="flex justify-end mt-4">
-                    <Button onClick={handleSaveChanges}>Değişiklikleri Kaydet</Button>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-4">
+                <LessonManager teacherId={teacherId} students={students} />
+            </div>
+            <div className="lg:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Proje Ödevi Tercih ve Atama</CardTitle>
+                             <div className="flex items-center space-x-2">
+                                <label htmlFor="election-toggle" className="text-sm font-medium">Öğrenci Tercihi Aktif</label>
+                                <Switch id="election-toggle" checked={currentClass?.isProjectSelectionActive || false} onCheckedChange={handleToggleChange} disabled={!currentClass} />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Öğrenci</TableHead>
+                                    <TableHead>Tercihleri</TableHead>
+                                    <TableHead className="w-[200px]">Atanan Proje</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredStudents.map(student => (
+                                    <TableRow key={student.id}>
+                                        <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
+                                        <TableCell>
+                                            <ol className="list-decimal list-inside text-xs">
+                                                {(student.projectPreferences || []).map(prefId => {
+                                                    const lesson = lessons.find(l => l.id === prefId);
+                                                    return <li key={prefId}>{lesson ? lesson.name : 'Bilinmeyen Ders'}</li>
+                                                })}
+                                            </ol>
+                                        </TableCell>
+                                        <TableCell>
+                                            <select
+                                                value={student.assignedLesson || ''}
+                                                onChange={(e) => handleAssignmentChange(student.id, e.target.value || null)}
+                                                className="w-full p-2 border rounded-md text-sm"
+                                            >
+                                                <option value="">Proje Ata</option>
+                                                {lessons.map(lesson => (
+                                                    <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+                                                ))}
+                                            </select>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                         <div className="flex justify-end mt-4">
+                            <Button onClick={handleSaveChanges}>Değişiklikleri Kaydet</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     );
 }
 
