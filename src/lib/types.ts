@@ -536,9 +536,9 @@ export interface Database {
     examAnalysisDocuments?: ExamAnalysisDocument[];
     homeworkStatusDocuments?: HomeworkStatusDocument[];
     infoFormsStatusDocuments?: InfoFormsStatusDocument[];
-    guidanceReferralRecords: GuidanceReferralRecord[]; // NEW
-    observationDocuments?: ObservationDocument[]; // NEW
-    schoolInfo?: SchoolInfo; // NEW
+    guidanceReferralRecords: GuidanceReferralRecord[];
+    observationRecords?: ObservationRecord[];
+    schoolInfo?: SchoolInfo;
     studentInfoForms: StudentInfoFormData[];
     dersProgrami: Timetable;
 }
@@ -627,21 +627,24 @@ export interface GuidanceReferralRecord extends Archivable {
     referrerSignature?: string;
 }
 
-export interface ObservationDocument extends Archivable {
-    data: {
-        id: string;
-        name: string;
-        classId: string;
-        observations: {
-            studentId: string;
-            observationDate: string;
-            academicObservation?: string;
-            socialObservation?: string;
-            behavioralObservation?: string;
-            teacherNotes?: string;
-            recommendations?: string;
-        }[];
-    }
+export interface ObservationRecord {
+    id: string;
+    recordDate: string;
+    studentId: string;
+    studentName?: string;
+    studentClassNumber?: string;
+    studentSchool?: string;
+    classTeacherName?: string;
+    observationPlace: string;
+    observationDateTime: string;
+    observationDuration: string;
+    observationBehavior: string;
+    observationPlanning: string;
+    teacherObservations: string;
+    observationEvaluation: string;
+    conclusionAndSuggestions: string;
+    observerName: string;
+    observerTitle: string;
 }
 
 export interface SchoolInfo {

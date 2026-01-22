@@ -194,25 +194,24 @@ interface ExportObservationFormArgs {
 }
 
 export function exportObservationFormToRtf({ record, teacherProfile, currentClass }: ExportObservationFormArgs) {
-    const title = "ÖĞRENCİ GÖZLEM KAYDI";
-    const filename = `Gozlem_Kaydi_${record.studentName.replace(/ /g, '_')}.rtf`;
+    const title = "ÖĞRENCİ GÖZLEM FORMU";
+    const filename = `Gozlem_Kaydi_${record.studentName!.replace(/ /g, '_')}.rtf`;
     const schoolName = teacherProfile?.schoolName || "..................";
     
     const content = `
         <div style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.4;">
             <div style="text-align:center;">
                 <p style="margin:0; font-weight: bold; font-size: 10pt;">T.C.</p>
-                <p style="margin:0; font-weight: bold; font-size: 12pt;">${teacherProfile?.schoolName?.toLocaleUpperCase('tr-TR') || schoolName.toLocaleUpperCase('tr-TR')}</p>
-                <p style="margin:0; font-weight: bold; font-size: 12pt;">${teacherProfile?.reportConfig?.academicYear || '20...-20...'} EĞİTİM ÖĞRETİM YILI</p>
+                <p style="margin:0; font-weight: bold; font-size: 12pt;">${(teacherProfile?.schoolName || schoolName).toLocaleUpperCase('tr-TR')}</p>
+                <p style="margin:0; font-weight: bold; font-size: 12pt;">${(teacherProfile?.reportConfig?.academicYear || '20...-20...')} EĞİTİM ÖĞRETİM YILI</p>
                 <h1 style="font-size: 14pt; font-weight: bold; margin-top: 15px;">${title}</h1>
             </div>
             <div style="text-align: right; margin-bottom: 10px; font-size: 11pt;">Tarih: ${new Date(record.recordDate).toLocaleDateString('tr-TR')}</div>
             
             <table style="width:100%; border-collapse: collapse;">
                 <tr><td style="border:1px solid black; padding: 5px; width: 40%; background-color:#f2f2f2;"><b>Adı Soyadı</b></td><td style="border:1px solid black; padding: 5px;">${record.studentName}</td></tr>
-                <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Yaşı/Cinsiyeti</b></td><td style="border:1px solid black; padding: 5px;">${record.studentAgeGender}</td></tr>
-                <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Okulu</b></td><td style="border:1px solid black; padding: 5px;">${record.studentSchool}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Sınıfı/Okul Numarası</b></td><td style="border:1px solid black; padding: 5px;">${record.studentClassNumber}</td></tr>
+                <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Okulu</b></td><td style="border:1px solid black; padding: 5px;">${record.studentSchool}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Sınıf/Şube Rehber Öğretmeni</b></td><td style="border:1px solid black; padding: 5px;">${record.classTeacherName}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Yapılan Yer</b></td><td style="border:1px solid black; padding: 5px;">${record.observationPlace}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Yapılan Tarih/Saat</b></td><td style="border:1px solid black; padding: 5px;">${record.observationDateTime}</td></tr>
@@ -236,6 +235,7 @@ export function exportObservationFormToRtf({ record, teacherProfile, currentClas
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, filename);
 }
+
 
 // --- STUDENT INFO FORM EXPORT ---
 interface ExportStudentInfoFormArgs {
