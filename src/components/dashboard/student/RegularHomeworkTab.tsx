@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -6,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
-import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -135,7 +134,25 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             await addDoc(submissionsColRef, submissionData);
             
-            toast({ title: "Ödev başarıyla teslim edildi!" });
+            const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
+            if (!isLate) {
+                const studentRef = doc(db, 'students', student.id);
+                const currentBadges: string[] = student.badges || [];
+                
+                const updates: any = { behaviorScore: increment(10) };
+                
+                let toastDescription = "+10 Davranış Puanı kazanıldı!";
+                if (!currentBadges.includes('hw-master')) {
+                    updates.badges = arrayUnion('hw-master');
+                    toastDescription = "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!"
+                }
+
+                await updateDoc(studentRef, updates);
+                toast({ title: "Ödev başarıyla teslim edildi!", description: toastDescription });
+            } else {
+                 toast({ title: "Ödev başarıyla teslim edildi!" });
+            }
+
             setSubmissionText('');
             setSubmissionFile(null);
             setAnswers({});

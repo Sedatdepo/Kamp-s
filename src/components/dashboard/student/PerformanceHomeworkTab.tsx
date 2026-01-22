@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Homework, Submission, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
-import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -209,12 +209,14 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                 
                 const updates: any = { behaviorScore: increment(10) };
                 
+                let toastDescription = "+10 Davranış Puanı kazanıldı!";
                 if (!currentBadges.includes('hw-master')) {
-                    updates.badges = [...currentBadges, 'hw-master'];
+                    updates.badges = arrayUnion('hw-master');
+                    toastDescription = "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!"
                 }
 
                 await updateDoc(studentRef, updates);
-                toast({ title: "Ödev başarıyla teslim edildi!", description: "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!" });
+                toast({ title: "Ödev başarıyla teslim edildi!", description: toastDescription });
             } else {
                  toast({ title: "Ödev başarıyla teslim edildi!" });
             }
