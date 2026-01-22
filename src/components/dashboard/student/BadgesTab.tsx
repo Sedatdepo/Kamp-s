@@ -35,7 +35,7 @@ export function BadgesTab() {
   const { data: teacherProfile } = useDoc<TeacherProfile>(teacherQuery);
   const behaviorCriteria = teacherProfile?.behaviorCriteria || INITIAL_BEHAVIOR_CRITERIA;
 
-  const ownedBadges = studentData?.badges || [];
+  const ownedBadges: string[] = studentData?.badges || [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
