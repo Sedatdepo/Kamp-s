@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Student, Class, TeacherProfile, Lesson } from '@/lib/types';
-import { ProjectAssignmentView } from './DistributionAssignmentTab';
+import { ProjectAssignmentView } from './HomeworkTab';
 import { ProjectPetitionsTab } from './ProjectPetitionsTab';
 import { ProjectLibrary } from './project-pool/ProjectLibrary';
 import { ProjectGradingTab } from './ProjectGradingTab';
