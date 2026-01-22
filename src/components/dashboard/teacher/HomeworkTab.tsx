@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Class, Student, TeacherProfile, Lesson } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -300,7 +300,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
                     <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
-                    <TabsTrigger value="project-petitions">Proje Dilekçeleri</TabsTrigger>
+                    <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -338,12 +338,13 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     lessons={lessons}
                 />
             </TabsContent>
-            <TabsContent value="project-petitions" className="mt-4">
+            <TabsContent value="petitions" className="mt-4">
                  <ProjectPetitionsTab 
                     classId={classId}
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
                     lessons={lessons}
+                    students={students}
                  />
             </TabsContent>
         </Tabs>
