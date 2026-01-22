@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Class, Student, TeacherProfile } from '@/lib/types';
+import { Class, Student, TeacherProfile, Lesson } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
@@ -10,10 +10,20 @@ import { LiveHomeworkManagement } from './LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
 import { HomeworkLibrary } from './HomeworkLibrary';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-
+import { ProjectAssignmentView } from '../HomeworkTab';
+import { ProjectPetitionsTab } from '../ProjectPetitionsTab';
+import { ProjectLibrary as ProjectPoolLibrary } from '../project-pool/ProjectLibrary';
+import { ProjectGradingTab } from '../ProjectGradingTab';
 
 // --- MAIN EXPORTED COMPONENT ---
-export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[], classes: Class[] }) {
+export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes, lessons }: {
+    classId: string;
+    currentClass: Class | null;
+    teacherProfile: TeacherProfile | null;
+    students: Student[];
+    classes: Class[];
+    lessons: Lesson[];
+}) {
     
     const { db } = useAuth();
     
@@ -26,6 +36,11 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
 
     const { data: allStudents } = useCollection<Student>(allStudentsForTeacherQuery);
 
+    const studentsForCurrentClass = useMemo(() => {
+        if (!currentClass) return [];
+        return students.filter(s => s.classId === currentClass!.id);
+      }, [students, currentClass]);
+
     return (
         <Tabs defaultValue="live">
             <ScrollArea className="w-full whitespace-nowrap rounded-lg">
@@ -33,6 +48,10 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
+                    <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
+                    <TabsTrigger value="project-library">Proje Havuzu</TabsTrigger>
+                    <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
+                    <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -58,6 +77,40 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     teacherProfile={teacherProfile}
                     classes={classes}
                     students={allStudents || []}
+                />
+            </TabsContent>
+             <TabsContent value="project-assignment" className="mt-4">
+                <ProjectAssignmentView
+                    classId={classId}
+                    teacherId={teacherProfile!.id}
+                    teacherProfile={teacherProfile}
+                    currentClass={currentClass}
+                    students={studentsForCurrentClass}
+                    lessons={lessons}
+                />
+            </TabsContent>
+            <TabsContent value="project-library" className="mt-4">
+                <ProjectPoolLibrary 
+                    classId={classId}
+                    teacherProfile={teacherProfile}
+                    classes={classes}
+                    students={allStudents || []}
+                />
+            </TabsContent>
+            <TabsContent value="petitions" className="mt-4">
+                 <ProjectPetitionsTab 
+                    classId={classId}
+                    teacherProfile={teacherProfile}
+                    currentClass={currentClass}
+                    lessons={lessons || []}
+                    students={studentsForCurrentClass}
+                 />
+            </TabsContent>
+             <TabsContent value="grading" className="mt-4">
+                <ProjectGradingTab
+                  students={studentsForCurrentClass}
+                  teacherProfile={teacherProfile!}
+                  currentClass={currentClass}
                 />
             </TabsContent>
         </Tabs>
