@@ -42,6 +42,7 @@ Amacın: Benim talimatlarımı tam, eksiksiz ve projenin mevcut yapısını bozm
 * **Kayıt Noktası 1:** 2024-07-26 15:00 - Kullanıcı tarafından oluşturulan ilk geri yükleme noktası. Sınıf kartlarına sürükle-bırak özelliği ve gezinme butonları eklendikten sonraki stabil durum.
 * **Versiyon 2:** 2024-07-28 12:00 - Çok kullanıcılı (multi-tenant) yapıya geçiş öncesi son stabil durum. Rehberlik modülü entegre edilmiş ve tüm bilinen derleme hataları giderilmiştir.
 * **Versiyon 3:** 2024-07-29 10:00 - Firestore güvenlik protokolü uyumluluğu tamamlandı. Öğretmen ve öğrenci panellerindeki tüm veri sorguları, katı güvenlik kurallarıyla çalışacak şekilde düzeltildi. Bilinen tüm veritabanı erişim hataları giderildi.
+* **Versiyon 4:** 2024-07-29 12:00 - Oturma planı ve öğrenci bilgi formu modüllerindeki kritik veri sorgulama hataları giderildi. Uygulamanın tüm bilinen derleme hataları temizlendi ve stabil bir çalışma durumu sağlandı. Bu, gelecekteki geliştirmeler için güvenilir bir temel noktasıdır.
 
 ---
 
