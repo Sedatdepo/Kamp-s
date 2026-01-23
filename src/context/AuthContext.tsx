@@ -201,51 +201,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInStudent = async (classCode: string, studentNumber: string, passwordFromForm: string) => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
-        
+    
         console.log(`Checking class code: ${classCode}`);
         const classCodeRef = doc(db, 'classCodes', classCode);
         const classCodeSnap = await getDoc(classCodeRef);
-
+    
         if (!classCodeSnap.exists()) {
             throw new Error("Sınıf kodu bulunamadı.");
         }
         
         const classId = classCodeSnap.data().classId;
         console.log(`Class ID found: ${classId}`);
-
+    
         const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
         const querySnapshot = await getDocs(q);
-
+    
         if (querySnapshot.empty) {
             console.log("No student found with that number in this class.");
             throw new Error("Sınıf kodu veya öğrenci numarası hatalı.");
         }
-
+    
         const studentDoc = querySnapshot.docs[0];
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-
+    
         try {
+            // First, try to sign in with the password as entered by the user
             await signInWithEmailAndPassword(auth, studentEmail, passwordFromForm);
         } catch (error: any) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                // If it's a first-time login attempt (user entered their student number)
                 if (passwordFromForm === studentNumber) {
+                    
+                    // This is the default password logic that ensures it's 6+ chars
+                    const defaultPassword = studentNumber.padEnd(6, '0');
+    
                     try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, passwordFromForm);
+                        // Try to create the user with the compliant default password
+                        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, defaultPassword);
                         await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
+                        // User is created and logged in, will be forced to change password. This is the happy path for first login.
                     } catch (creationError: any) {
-                        console.error("Student account creation failed:", creationError);
-                        throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
+                        if (creationError.code === 'auth/email-already-in-use') {
+                            // This means the user account exists. This could happen if they tried to log in before,
+                            // the account was created with the default password, but they failed to change it and logged out.
+                            // Now we try to log them in with the *default* password.
+                            try {
+                                await signInWithEmailAndPassword(auth, studentEmail, defaultPassword);
+                                // If this works, they are logged in and will be forced to change password.
+                            } catch (defaultLoginError: any) {
+                                // If even the default password fails, it implies they must have already
+                                // successfully changed their password. So the password they entered originally
+                                // was simply incorrect.
+                                throw new Error("Girdiğiniz şifre hatalı.");
+                            }
+                        } else {
+                            // Another error during creation (not 'email-already-in-use')
+                            console.error("Student account creation failed:", creationError);
+                            throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
+                        }
                     }
                 } else {
-                    throw new Error("Şifre hatalı. İlk girişiniz ise şifre alanına öğrenci numaranızı girmelisiniz.");
+                    // The password entered was not the student number, so it's just a regular wrong password.
+                    throw new Error("Girdiğiniz şifre hatalı.");
                 }
-            } else if (error.code === 'auth/wrong-password') {
-                 throw new Error('Girdiğiniz şifre yanlış.');
             } else {
-                console.error("Student sign-in error:", error);
-                throw new Error("Giriş yapılırken beklenmedik bir hata oluştu.");
+                // A different kind of auth error (e.g., network issue, too-many-requests)
+                throw error;
             }
         }
     };
