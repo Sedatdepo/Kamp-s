@@ -3,18 +3,101 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
     function isTeacher() {
-      return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
-    match /{path=**} {
-      allow read, write: if isTeacher();
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Rules for Collections ---
+
+    // TEACHERS: Can read any profile, but only write to their own.
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId);
+    }
+
+    // STUDENTS:
+    match /students/{studentId} {
+      // A teacher can manage (read, write, delete) students assigned to them.
+      allow read, write: if isTeacher() && (
+        (request.method == 'create' && request.resource.data.teacherId == request.auth.uid) ||
+        (request.method != 'create' && get(/databases/$(database)/documents/students/$(studentId)).data.teacherId == request.auth.uid)
+      );
+      
+      // A student can read their own document.
+      allow get: if isSignedIn() && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
+      
+      // A student can update a limited set of fields on their own document.
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['risks', 'projectPreferences', 'clubPreferences', 'fcmTokens', 'password', 'needsPasswordChange', 'positiveSelections', 'negativeSelections', 'leadershipSelections']);
+    }
+
+    // CLASSES & SUBCOLLECTIONS:
+    match /classes/{classId} {
+      // Teachers can manage their own classes.
+      allow write: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      
+      // Any signed-in user can read class-level info (announcements, flags).
+      allow read: if isSignedIn();
+
+      // SUBCOLLECTIONS:
+      match /homeworks/{homeworkId} {
+        // Teacher can manage homework.
+        allow write: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+        // Any signed-in user can read homework details.
+        allow read: if isSignedIn();
+
+        match /submissions/{submissionId} {
+          // Teacher can manage submissions.
+          allow read, write: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+          
+          // Student can create their own submission.
+          allow create: if isSignedIn() && get(/databases/$(database)/documents/students/$(request.resource.data.studentId)).data.authUid == request.auth.uid;
+          
+          // Student can read their own submission.
+          allow get: if isSignedIn() && get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.authUid == request.auth.uid;
+        }
+      }
+    }
+
+    // MESSAGES:
+    match /messages/{messageId} {
+      // Any authenticated user can create a message (client must set sender correctly).
+      allow create: if isSignedIn();
+      // Any authenticated user can read messages (client is responsible for filtering).
+      // This is permissive but necessary without data model changes.
+      allow read: if isSignedIn();
+    }
+
+    // INFO FORMS:
+    match /infoForms/{studentId} {
+      // The student and their teacher can read/write the form.
+      allow read, write: if (isSignedIn() && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid) ||
+                         (isTeacher() && get(/databases/$(database)/documents/students/$(studentId)).data.teacherId == request.auth.uid);
     }
     
-    match /students/{studentId} {
-      // A student can read their own document if their auth uid matches
-      allow get: if request.auth != null && request.auth.uid == resource.data.authUid;
+    // OTHER COLLECTIONS:
+    
+    // Publicly readable for login process
+    match /classCodes/{code} {
+      allow get: if isSignedIn();
     }
+
+    // Teacher-managed content, readable by all signed-in users.
+    match /lessons/{docId} { allow read: if isSignedIn(); allow write: if isTeacher(); }
+    match /riskFactors/{docId} { allow read: if isSignedIn(); allow write: if isTeacher(); }
+    match /clubs/{docId} { allow read: if isSignedIn(); allow write: if isTeacher(); }
+    match /kazanims/{docId} { allow read: if isSignedIn(); allow write: if isTeacher(); }
+    match /questions/{docId} { allow read: if isSignedIn(); allow write: if isTeacher(); }
   }
 }
