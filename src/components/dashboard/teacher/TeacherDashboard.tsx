@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -28,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDialog } from './ProfileDialog';
+import { SinifKahramanlariTab } from '@/components/dashboard/teacher/SinifKahramanlariTab';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -54,7 +54,6 @@ const SociogramTab = dynamic(() => import('@/components/dashboard/teacher/Sociog
 const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamBuilder = dynamic(() => import('@/components/dashboard/teacher/ExamBuilder').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
-const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
 
 

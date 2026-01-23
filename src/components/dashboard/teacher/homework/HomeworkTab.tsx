@@ -10,12 +10,159 @@ import { LiveHomeworkManagement } from './LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
 import { HomeworkLibrary } from './HomeworkLibrary';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { ProjectAssignmentView } from '../HomeworkTab';
 import { ProjectPetitionsTab } from '../ProjectPetitionsTab';
-import { ProjectLibrary as ProjectPoolLibrary } from '../project-pool/ProjectLibrary';
 import { ProjectGradingTab } from '../ProjectGradingTab';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { LessonManager } from '../LessonManager';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 
-// --- MAIN EXPORTED COMPONENT ---
+
+export function ProjectAssignmentView({
+    classId,
+    teacherId,
+    teacherProfile,
+    currentClass,
+    students,
+    lessons
+}: {
+    classId: string;
+    teacherId: string;
+    teacherProfile: TeacherProfile | null;
+    currentClass: Class | null;
+    students: Student[];
+    lessons: Lesson[];
+}) {
+    const { db } = useAuth();
+    const { toast } = useToast();
+
+    const [localStudents, setLocalStudents] = useState<Student[]>([]);
+    const [filterLessonId, setFilterLessonId] = useState<string>('all');
+    
+    useEffect(() => {
+        const sorted = [...students].sort((a, b) => {
+            const aPref = a.projectPreferences || [];
+            const bPref = b.projectPreferences || [];
+            if (aPref.length === 0 && bPref.length > 0) return 1;
+            if (aPref.length > 0 && bPref.length === 0) return -1;
+            return a.number.localeCompare(b.number, 'tr', { numeric: true });
+        });
+        setLocalStudents(sorted);
+    }, [students]);
+
+    const filteredStudents = useMemo(() => {
+        if (filterLessonId === 'all') {
+            return localStudents;
+        }
+        return localStudents.filter(s => (s.projectPreferences || [])[0] === filterLessonId);
+    }, [localStudents, filterLessonId]);
+
+    const handleAssignmentChange = (studentId: string, lessonId: string | null) => {
+        setLocalStudents(prev =>
+            prev.map(s => (s.id === studentId ? { ...s, assignedLesson: lessonId } : s))
+        );
+    };
+    
+    const handleSaveChanges = async () => {
+        if (!db) return;
+        const batch = writeBatch(db);
+        localStudents.forEach(student => {
+            const originalStudent = students.find(s => s.id === student.id);
+            if (student.assignedLesson !== originalStudent?.assignedLesson) {
+                const studentRef = doc(db, 'students', student.id);
+                batch.update(studentRef, { assignedLesson: student.assignedLesson, hasProject: !!student.assignedLesson });
+            }
+        });
+        try {
+            await batch.commit();
+            toast({ title: "Başarılı!", description: "Tüm proje atamaları güncellendi." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Hata", description: "Değişiklikler kaydedilemedi." });
+        }
+    };
+
+     const handleToggleChange = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', classId);
+        try {
+            await updateDoc(classRef, { isProjectSelectionActive: checked });
+            toast({ title: 'Başarılı', description: `Proje seçimi öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+        } catch {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
+        }
+    };
+
+
+    if (!lessons) return <Loader2 className="animate-spin" />;
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-4">
+                <LessonManager teacherId={teacherId} students={students} />
+            </div>
+            <div className="lg:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Proje Ödevi Tercih ve Atama</CardTitle>
+                             <div className="flex items-center space-x-2">
+                                <label htmlFor="election-toggle" className="text-sm font-medium">Öğrenci Tercihi Aktif</label>
+                                <Switch id="election-toggle" checked={currentClass?.isProjectSelectionActive || false} onCheckedChange={handleToggleChange} disabled={!currentClass} />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Öğrenci</TableHead>
+                                    <TableHead>Tercihleri</TableHead>
+                                    <TableHead className="w-[200px]">Atanan Proje</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredStudents.map(student => (
+                                    <TableRow key={student.id}>
+                                        <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
+                                        <TableCell>
+                                            <ol className="list-decimal list-inside text-xs">
+                                                {(student.projectPreferences || []).map(prefId => {
+                                                    const lesson = lessons.find(l => l.id === prefId);
+                                                    return <li key={prefId}>{lesson ? lesson.name : 'Bilinmeyen Ders'}</li>
+                                                })}
+                                            </ol>
+                                        </TableCell>
+                                        <TableCell>
+                                            <select
+                                                value={student.assignedLesson || ''}
+                                                onChange={(e) => handleAssignmentChange(student.id, e.target.value || null)}
+                                                className="w-full p-2 border rounded-md text-sm"
+                                            >
+                                                <option value="">Proje Ata</option>
+                                                {lessons.map(lesson => (
+                                                    <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+                                                ))}
+                                            </select>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                         <div className="flex justify-end mt-4">
+                            <Button onClick={handleSaveChanges}>Değişiklikleri Kaydet</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
 export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes, lessons }: {
     classId: string;
     currentClass: Class | null;
@@ -85,7 +232,7 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     teacherId={teacherProfile!.id}
                     teacherProfile={teacherProfile}
                     currentClass={currentClass}
-                    students={studentsForCurrentClass}
+                    students={studentsForCurrentClass} // Pass filtered students
                     lessons={lessons}
                 />
             </TabsContent>
