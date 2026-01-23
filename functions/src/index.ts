@@ -149,3 +149,123 @@ export const sendNotificationOnGradeUpdate = functions
         return null;
     });
 
+export const sendNotificationOnNewHomework = functions
+    .region("us-central1")
+    .firestore.document("classes/{classId}/homeworks/{homeworkId}")
+    .onCreate(async (snapshot, context) => {
+        const homeworkData = snapshot.data();
+        const classId = context.params.classId;
+
+        if (!homeworkData) {
+            console.log("No data associated with the event");
+            return null;
+        }
+
+        const classNameDoc = await db.collection("classes").doc(classId).get();
+        const className = classNameDoc.data()?.name || "sınıfınıza";
+
+        const assignedStudents = homeworkData.assignedStudents || [];
+
+        if (assignedStudents.length === 0) {
+            // If no specific students assigned, send to all students in the class
+             const studentsSnapshot = await db.collection("students").where("classId", "==", classId).get();
+             if (studentsSnapshot.empty) {
+                console.log("Sınıfta öğrenci bulunamadı:", classId);
+                return null;
+             }
+             studentsSnapshot.forEach(doc => assignedStudents.push(doc.id));
+        }
+
+        if (assignedStudents.length === 0) {
+            console.log("Bildirim gönderilecek öğrenci bulunamadı.");
+            return null;
+        }
+        
+        const studentDocs = await db.collection("students").where(admin.firestore.FieldPath.documentId(), "in", assignedStudents).get();
+
+        const tokens: string[] = [];
+        studentDocs.forEach(doc => {
+            const student = doc.data();
+            if (student.fcmTokens && Array.isArray(student.fcmTokens)) {
+                tokens.push(...student.fcmTokens);
+            }
+        });
+
+
+        if (tokens.length === 0) {
+            console.log("Bildirim gönderilecek token bulunamadı.");
+            return null;
+        }
+        
+        const uniqueTokens = [...new Set(tokens)];
+
+        const payload = {
+            notification: {
+                title: `Yeni Ödev: ${className}`,
+                body: homeworkData.text,
+                clickAction: "/dashboard/student", // Redirect to student dashboard
+            },
+        };
+
+        try {
+            const response = await messaging.sendToDevice(uniqueTokens, payload);
+            console.log("Ödev bildirimleri başarıyla gönderildi:", response.successCount);
+        } catch (error) {
+            console.error("Ödev bildirimi gönderme hatası:", error);
+        }
+
+        return null;
+    });
+
+export const sendNotificationOnNewMessage = functions
+    .region("us-central1")
+    .firestore.document("messages/{messageId}")
+    .onCreate(async (snapshot, context) => {
+        const messageData = snapshot.data();
+        if (!messageData) {
+            return null;
+        }
+
+        const receiverId = messageData.receiverId;
+        const senderId = messageData.senderId;
+
+        // We only care about teacher -> student messages for this notification
+        const receiverDoc = await db.collection("students").doc(receiverId).get();
+        if (!receiverDoc.exists) {
+            console.log("Alıcı bir öğrenci değil veya bulunamadı:", receiverId);
+            return null;
+        }
+
+        const senderDoc = await db.collection("teachers").doc(senderId).get();
+        if (!senderDoc.exists) {
+            console.log("Gönderen bir öğretmen değil:", senderId);
+            return null;
+        }
+
+        const studentData = receiverDoc.data();
+        const teacherData = senderDoc.data();
+
+        const tokens = studentData?.fcmTokens;
+        if (!tokens || tokens.length === 0) {
+            console.log("Öğrencinin bildirim token'ı bulunamadı:", receiverId);
+            return null;
+        }
+        
+        const payload = {
+            notification: {
+                title: `Yeni Mesaj: ${teacherData?.name}`,
+                body: messageData.text,
+                clickAction: "/dashboard/student",
+            },
+        };
+        
+        try {
+            await messaging.sendToDevice(tokens, payload);
+            console.log("Mesaj bildirimi başarıyla gönderildi:", receiverId);
+        } catch (error) {
+            console.error("Mesaj bildirimi gönderme hatası:", error);
+        }
+
+        return null;
+    });
+
