@@ -322,26 +322,30 @@ export const resetStudentPassword = functions
 
             return { success: true, message: 'Öğrenci şifresi başarıyla okul numarasına sıfırlandı.' };
         } catch (error: any) {
-            console.error(`Error resetting password for authUid ${studentAuthUid}:`, error);
+            console.error(`Error resetting password for authUid ${studentAuthUid} on student ${studentId}:`, error);
 
             // Handle specific known auth errors
-            if (error.code === 'auth/user-not-found') {
-                // The authUid in Firestore is stale. The Auth user was deleted.
-                // Clean up the Firestore record.
-                await studentRef.update({
-                    authUid: null,
-                    needsPasswordChange: true
-                });
-                return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı. Öğrenci tekrar okul numarasıyla giriş yapabilir.' };
+            if (error && error.code === 'auth/user-not-found') {
+                 try {
+                    // The authUid in Firestore is stale. The Auth user was deleted.
+                    // Clean up the Firestore record.
+                    await studentRef.update({
+                        authUid: null,
+                        needsPasswordChange: true
+                    });
+                    return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı. Öğrenci tekrar okul numarasıyla giriş yapabilir.' };
+                } catch (updateError) {
+                    console.error(`Failed to cleanup student doc ${studentId} after user-not-found error:`, updateError);
+                    throw new functions.https.HttpsError('internal', 'Kullanıcı bulunamadı ve referans temizlenirken bir hata oluştu.');
+                }
             }
             
             // For all other errors, throw a specific but non-generic error.
-            const errorMessage = error.message || 'Bilinmeyen bir sunucu hatası oluştu.';
-            const errorCode = error.code || 'unknown';
+            const errorMessage = (error instanceof Error) ? error.message : String(error);
             
             throw new functions.https.HttpsError(
                 'internal', 
-                `Şifre sıfırlanamadı. Sunucu Hatası: [${errorCode}] ${errorMessage}`
+                `Şifre sıfırlanamadı. Sunucu Hatası: ${errorMessage}`
             );
         }
     });
