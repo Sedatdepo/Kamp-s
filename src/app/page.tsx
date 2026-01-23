@@ -25,43 +25,57 @@ function LoginPage() {
     );
   }
 
+  const LoginHeader = () => (
+    <div className="flex flex-col items-center text-center mb-6">
+      <Logo className="h-12 w-12 text-primary" />
+      <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
+        KAMPÜS
+      </h1>
+      <p className="text-muted-foreground">Okul asistanınız burada başlıyor.</p>
+    </div>
+  );
+
+  const StudentLoginCard = () => (
+     <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Öğrenci Girişi</CardTitle>
+          <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StudentLoginForm />
+        </CardContent>
+      </Card>
+  );
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Tabs defaultValue={defaultTab} className="w-full max-w-md">
-        <div className="flex flex-col items-center text-center mb-6">
-          <Logo className="h-12 w-12 text-primary" />
-          <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
-            KAMPÜS
-          </h1>
-          <p className="text-muted-foreground">Okul asistanınız burada başlıyor.</p>
-        </div>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="teacher">Öğretmen</TabsTrigger>
-          <TabsTrigger value="student">Öğrenci</TabsTrigger>
-        </TabsList>
-        <TabsContent value="teacher">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline">Öğretmen Girişi</CardTitle>
-              <CardDescription>Yönetim panelinize erişmek için bilgilerinizi girin.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TeacherLoginForm />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="student">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline">Öğrenci Girişi</CardTitle>
-              <CardDescription>Öğretmeninizden aldığınız sınıf kodunu ve numaranızı girin.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StudentLoginForm />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <div className="w-full max-w-md">
+        <LoginHeader />
+        {isInvite ? (
+          <StudentLoginCard />
+        ) : (
+          <Tabs defaultValue={defaultTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="teacher">Öğretmen</TabsTrigger>
+              <TabsTrigger value="student">Öğrenci</TabsTrigger>
+            </TabsList>
+            <TabsContent value="teacher">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline">Öğretmen Girişi</CardTitle>
+                  <CardDescription>Yönetim panelinize erişmek için bilgilerinizi girin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TeacherLoginForm />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="student">
+              <StudentLoginCard />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
     </div>
   );
 }
