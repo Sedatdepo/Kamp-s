@@ -41,15 +41,19 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
-const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, isDisabled?: boolean }) => {
+const MenuCard = ({ icon, title, description, onClick, hasNotification, isLoading, show = true }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, hasNotification?: boolean, isLoading?: boolean, show?: boolean }) => {
   if (isLoading) {
     return <Skeleton className="h-28 w-full" />;
   }
-  
+
+  if (!show) {
+    return null;
+  }
+
   return (
-    <Card 
-      onClick={!isDisabled ? onClick : undefined} 
-      className={cn("cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative", isDisabled && "opacity-50 cursor-not-allowed")}
+    <Card
+      onClick={onClick}
+      className={cn("cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative")}
     >
       <CardHeader className="flex flex-row items-center gap-4">
         <div className="bg-primary/10 text-primary p-3 rounded-lg">
@@ -154,39 +158,39 @@ export function StudentDashboard() {
                 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isSeatingPlanPublished}
                     icon={<Grid />} 
                     title="Oturma Planım" 
                     description="Sınıftaki yerini gör." 
                     onClick={() => setActiveTab('seatingPlan')} 
-                    isDisabled={!currentClass?.isSeatingPlanPublished}
                 />
                 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isDutyRosterPublished}
                     icon={<Users />} 
                     title="Nöbetçi Listesi" 
                     description="Sınıf nöbetçi listesini gör." 
                     onClick={() => setActiveTab('dutyRoster')} 
-                    isDisabled={!currentClass?.isDutyRosterPublished}
                 />
                 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isElectionActive}
                     icon={<Vote />} 
                     title="Seçim" 
                     description="Sınıf seçimleri için oy kullan." 
                     onClick={() => setActiveTab('election')} 
                     hasNotification={notifications.election} 
-                    isDisabled={!currentClass?.isElectionActive}
                 />
                 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isSociogramActive}
                     icon={<Share2 />}
                     title="Sosyogram"
                     description="Arkadaşlık ilişkilerini belirt."
                     onClick={() => setActiveTab('sociogram')}
-                    isDisabled={!currentClass?.isSociogramActive}
                 />
 
                 <MenuCard icon={<MessageSquare />} title="Sohbetlerim" description="Öğretmeninden gelen mesajlar." onClick={() => setActiveTab('teacher-chats')} hasNotification={notifications.messages} />
@@ -195,31 +199,31 @@ export function StudentDashboard() {
                 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isClubSelectionActive}
                     icon={<Trophy />} 
                     title="Kulüp" 
                     description="Kulüp tercihi yap veya atamanı gör." 
                     onClick={() => setActiveTab('club')} 
-                    isDisabled={!currentClass?.isClubSelectionActive}
                 />
 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isRiskFormActive}
                     icon={<ShieldAlert />} 
                     title="Risk Formu" 
                     description="Kişisel risk faktörlerini işaretle." 
                     onClick={() => setActiveTab('risks')} 
                     hasNotification={notifications.riskForm} 
-                    isDisabled={!currentClass?.isRiskFormActive}
                 />
 
                 <MenuCard 
                     isLoading={classLoading}
+                    show={currentClass?.isInfoFormActive}
                     icon={<FileText />} 
                     title="Bilgi Formu" 
                     description="Kişisel ve ailevi bilgilerini doldur." 
                     onClick={() => setActiveTab('info')} 
                     hasNotification={notifications.infoForm} 
-                    isDisabled={!currentClass?.isInfoFormActive}
                 />
             </div>
         </div>
