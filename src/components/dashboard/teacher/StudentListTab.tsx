@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Student, Class, TeacherProfile, GradingScores, Criterion } from '@/lib/types';
+import { Student, Class, TeacherProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -14,12 +14,15 @@ import { Input } from '@/components/ui/input';
 import { StudentDetailModal } from './StudentDetailModal';
 import { ClassInviteDialog } from './ClassInviteDialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode, ClipboardPaste } from 'lucide-react';
+import { UserPlus, Trash2, Edit, Save, X, Upload, QrCode, ClipboardPaste, RefreshCw, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { cn } from '@/lib/utils';
+import { getApp } from 'firebase/app';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 interface StudentListTabProps {
@@ -49,8 +52,40 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
   const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
   const [bulkStudentData, setBulkStudentData] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isResetting, setIsResetting] = useState<string | null>(null);
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
+
+  const handleResetPassword = async (student: Student) => {
+    if (!db) return;
+    setIsResetting(student.id);
+    try {
+        const firebaseApp = getApp();
+        const functions = getFunctions(firebaseApp, 'us-central1');
+        const resetStudentPassword = httpsCallable(functions, 'resetStudentPassword');
+        const result = await resetStudentPassword({ studentId: student.id });
+
+        if ((result.data as any).success) {
+            toast({
+                title: 'Şifre Sıfırlandı',
+                description: `${student.name} adlı öğrencinin şifresi, okul numarası olarak güncellendi. Öğrenci ilk girişinde yeni şifre belirlemelidir.`,
+            });
+        } else {
+             throw new Error((result.data as any).message || 'Bilinmeyen bir hata oluştu.');
+        }
+
+    } catch (error: any) {
+        console.error("Password reset error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Hata',
+            description: error.message || 'Şifre sıfırlanamadı.',
+        });
+    } finally {
+        setIsResetting(null);
+    }
+  };
+
 
   const calculateTermAverage = (student: Student, termGrades?: GradingScores): number => {
     if (!termGrades || !teacherProfile) return 0;
@@ -306,6 +341,31 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
                     </TableCell>
                     <TableCell className="text-center"><Checkbox checked={student.hasProject} disabled /></TableCell>
                     <TableCell className="text-right">
+                       <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                  disabled={isResetting === student.id}
+                                  onClick={(e) => e.stopPropagation()}
+                              >
+                                  {isResetting === student.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <RefreshCw className="h-4 w-4"/>}
+                              </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle>Şifreyi Sıfırla</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      {student.name} adlı öğrencinin şifresini sıfırlamak istediğinizden emin misiniz? Şifre, öğrencinin okul numarası olarak ayarlanacaktır ve öğrencinin bir sonraki girişinde yeni şifre belirlemesi gerekecektir.
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleResetPassword(student)}>Sıfırla</AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
                       <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingStudent(student); }}><Edit className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.id); }}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>

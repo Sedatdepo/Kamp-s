@@ -5,6 +5,7 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 const db = admin.firestore();
+const auth = admin.auth();
 const messaging = admin.messaging();
 
 export const sendNotificationOnNewAnnouncement = functions
@@ -269,3 +270,67 @@ export const sendNotificationOnNewMessage = functions
         return null;
     });
 
+export const resetStudentPassword = functions
+    .region("us-central1")
+    .https.onCall(async (data, context) => {
+        // 1. Check if the caller is an authenticated teacher
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'Bu işlemi yapmak için giriş yapmalısınız.');
+        }
+
+        const teacherDoc = await db.collection('teachers').doc(context.auth.uid).get();
+        if (!teacherDoc.exists) {
+            throw new functions.https.HttpsError('permission-denied', 'Bu işlemi yapmak için öğretmen yetkiniz olmalı.');
+        }
+
+        const { studentId } = data;
+        if (!studentId || typeof studentId !== 'string') {
+            throw new functions.https.HttpsError('invalid-argument', 'Öğrenci IDsi sağlanmalıdır.');
+        }
+
+        try {
+            const studentRef = db.collection('students').doc(studentId);
+            const studentDoc = await studentRef.get();
+
+            if (!studentDoc.exists) {
+                throw new functions.https.HttpsError('not-found', 'Öğrenci bulunamadı.');
+            }
+            const studentData = studentDoc.data()!;
+
+            if (studentData.teacherId !== context.auth.uid) {
+                 throw new functions.https.HttpsError('permission-denied', 'Bu öğrenci sizin tarafınızdan yönetilmiyor.');
+            }
+
+            const studentAuthUid = studentData.authUid;
+
+            if (!studentAuthUid) {
+                 await studentRef.update({ needsPasswordChange: true });
+                 return { success: true, message: 'Öğrencinin ilk giriş şifresi okul numarası olarak ayarlandı.' };
+            }
+            
+            const defaultPassword = String(studentData.number).padEnd(6, '0');
+
+            await auth.updateUser(studentAuthUid, {
+                password: defaultPassword,
+            });
+
+            await studentRef.update({
+                needsPasswordChange: true,
+            });
+
+            return { success: true, message: 'Öğrenci şifresi başarıyla okul numarasına sıfırlandı.' };
+        } catch (error: any) {
+            console.error('Şifre sıfırlama hatası:', error);
+            if (error.code === 'auth/user-not-found') {
+                // This case can happen if the auth user was deleted manually.
+                // We can still reset the state in our DB.
+                const studentRef = db.collection('students').doc(studentId);
+                await studentRef.update({
+                    needsPasswordChange: true,
+                    authUid: null // Clear the invalid authUid
+                });
+                return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı.' };
+            }
+            throw new functions.https.HttpsError('internal', 'Şifre sıfırlanırken bir hata oluştu.', error);
+        }
+    });
