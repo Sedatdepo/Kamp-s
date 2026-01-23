@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 const formSchema = z.object({
   classCode: z.string().min(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }).max(6, { message: 'Sınıf kodu 6 karakter olmalıdır.' }),
   studentNumber: z.string().min(1, { message: 'Lütfen öğrenci numaranızı girin.' }),
+  password: z.string().min(1, { message: 'Lütfen şifrenizi girin.' }),
 });
 
 export function StudentLoginForm() {
@@ -30,6 +31,7 @@ export function StudentLoginForm() {
     defaultValues: {
       classCode: '',
       studentNumber: '',
+      password: '',
     },
   });
 
@@ -46,10 +48,11 @@ export function StudentLoginForm() {
       // Sanitize input before sending to the auth function
       const cleanClassCode = values.classCode.trim().toUpperCase();
       const cleanStudentNumber = values.studentNumber.trim();
+      const password = values.password;
       
       console.log('Attempting login with Class Code:', cleanClassCode, 'and Student Number:', cleanStudentNumber);
       
-      await signInStudent(cleanClassCode, cleanStudentNumber);
+      await signInStudent(cleanClassCode, cleanStudentNumber, password);
       // On success, AuthContext will handle navigation.
     } catch (error: any) {
       toast({
@@ -88,10 +91,26 @@ export function StudentLoginForm() {
           name="studentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Öğrenci Numarası (Bu sizin şifrenizdir)</FormLabel>
+              <FormLabel>Öğrenci Numarası</FormLabel>
               <FormControl>
                 <Input type="text" placeholder="Okul Numaranız" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Şifre</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} />
+              </FormControl>
+               <FormDescription>
+                İlk girişinizde şifreniz öğrenci numaranızdır.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

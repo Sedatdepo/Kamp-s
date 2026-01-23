@@ -17,7 +17,7 @@ export type AppUser =
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string) => Promise<boolean>;
+  signInStudent: (classCode: string, studentNumber: string, passwordFromForm: string) => Promise<void>;
   signInTeacher: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
@@ -199,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // onAuthStateChanged will handle the rest
     };
 
-    const signInStudent = async (classCode: string, studentNumber: string): Promise<boolean> => {
+    const signInStudent = async (classCode: string, studentNumber: string, passwordFromForm: string) => {
         if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
         
         console.log(`Checking class code: ${classCode}`);
@@ -225,31 +225,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
         
         const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-        const password = `${studentData.number}-ito`;
 
         try {
-            await signInWithEmailAndPassword(auth, studentEmail, password);
+            await signInWithEmailAndPassword(auth, studentEmail, passwordFromForm);
         } catch (error: any) {
             if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                try {
-                    const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
-                    await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
-                } catch (creationError: any) {
-                    console.error("Student account creation failed:", creationError);
-                    if (creationError.code === 'auth/weak-password') {
-                        throw new Error("Şifre çok zayıf. Lütfen daha karmaşık bir öğrenci numarası/şifre sistemi kullanın.");
+                if (passwordFromForm === studentNumber) {
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, passwordFromForm);
+                        await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
+                    } catch (creationError: any) {
+                        console.error("Student account creation failed:", creationError);
+                        throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
                     }
-                    throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
+                } else {
+                    throw new Error("Şifre hatalı. İlk girişiniz ise şifre alanına öğrenci numaranızı girmelisiniz.");
                 }
             } else if (error.code === 'auth/wrong-password') {
-                 throw new Error('Okul numaranız şifrenizdir. Eğer daha önce değiştirdiyseniz lütfen doğru şifreyi girin veya şifre sıfırlama isteyin.');
+                 throw new Error('Girdiğiniz şifre yanlış.');
             } else {
                 console.error("Student sign-in error:", error);
                 throw new Error("Giriş yapılırken beklenmedik bir hata oluştu.");
             }
         }
-        
-        return true;
     };
   
   const contextValue = useMemo(() => ({ 
@@ -261,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       auth, 
       db, 
       storage 
-  }), [appUser, loading, auth, db, storage, signOut, signInStudent, signInTeacher]);
+  }), [appUser, loading, auth, db, storage, signOut]);
 
   return (
     <AuthContext.Provider value={contextValue}>

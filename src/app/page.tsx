@@ -47,14 +47,23 @@ function LoginPage() {
       </Card>
   );
 
+  if (isInvite) {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+            <div className="w-full max-w-md">
+                <LoginHeader />
+                <StudentLoginCard />
+            </div>
+        </div>
+    );
+  }
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <LoginHeader />
-        {isInvite ? (
-          <StudentLoginCard />
-        ) : (
-          <Tabs defaultValue={defaultTab}>
+        <Tabs defaultValue={defaultTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="teacher">Öğretmen</TabsTrigger>
               <TabsTrigger value="student">Öğrenci</TabsTrigger>
@@ -73,8 +82,7 @@ function LoginPage() {
             <TabsContent value="student">
               <StudentLoginCard />
             </TabsContent>
-          </Tabs>
-        )}
+        </Tabs>
       </div>
     </div>
   );
