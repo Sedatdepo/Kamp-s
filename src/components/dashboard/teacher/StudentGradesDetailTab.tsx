@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -7,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import { exportDetailedGradesToRtf } from '@/lib/word-export'; // Yeni import
@@ -124,9 +122,8 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
                 </div>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="max-h-[70vh] w-full">
                 <Table>
-                    <TableHeader className="sticky top-0 bg-secondary z-10">
+                    <TableHeader>
                         <TableRow>
                             <TableHead rowSpan={2} className="text-left align-middle sticky left-0 bg-secondary z-20">Öğrenci</TableHead>
                             <TableHead colSpan={6} className="text-center">1. Dönem</TableHead>
@@ -194,7 +191,6 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
                         })}
                     </TableBody>
                 </Table>
-                </ScrollArea>
             </CardContent>
         </Card>
     );
