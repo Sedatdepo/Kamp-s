@@ -288,26 +288,28 @@ export const resetStudentPassword = functions
             throw new functions.https.HttpsError('invalid-argument', 'Öğrenci IDsi sağlanmalıdır.');
         }
 
+        const studentRef = db.collection('students').doc(studentId);
+        const studentDoc = await studentRef.get();
+
+        if (!studentDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Öğrenci bulunamadı.');
+        }
+        const studentData = studentDoc.data()!;
+
+        if (studentData.teacherId !== context.auth.uid) {
+             throw new functions.https.HttpsError('permission-denied', 'Bu öğrenci sizin tarafınızdan yönetilmiyor.');
+        }
+
+        const studentAuthUid = studentData.authUid;
+
+        // Case 1: Student has no associated Auth account.
+        if (!studentAuthUid) {
+            await studentRef.update({ needsPasswordChange: true });
+            return { success: true, message: 'Öğrenci henüz hiç giriş yapmamış. Şifresi zaten okul numarası olarak ayarlanmıştır.' };
+        }
+        
+        // Case 2: Student has an Auth account. Try to update it.
         try {
-            const studentRef = db.collection('students').doc(studentId);
-            const studentDoc = await studentRef.get();
-
-            if (!studentDoc.exists) {
-                throw new functions.https.HttpsError('not-found', 'Öğrenci bulunamadı.');
-            }
-            const studentData = studentDoc.data()!;
-
-            if (studentData.teacherId !== context.auth.uid) {
-                 throw new functions.https.HttpsError('permission-denied', 'Bu öğrenci sizin tarafınızdan yönetilmiyor.');
-            }
-
-            const studentAuthUid = studentData.authUid;
-
-            if (!studentAuthUid) {
-                 await studentRef.update({ needsPasswordChange: true });
-                 return { success: true, message: 'Öğrenci henüz hiç giriş yapmamış. Şifresi zaten okul numarası olarak ayarlanmıştır.' };
-            }
-            
             const defaultPassword = String(studentData.number).padEnd(6, '0');
 
             await auth.updateUser(studentAuthUid, {
@@ -320,21 +322,26 @@ export const resetStudentPassword = functions
 
             return { success: true, message: 'Öğrenci şifresi başarıyla okul numarasına sıfırlandı.' };
         } catch (error: any) {
-            console.error('Şifre sıfırlama hatası:', error);
-            
-            if (error instanceof functions.https.HttpsError) {
-                throw error;
-            }
+            console.error(`Error resetting password for authUid ${studentAuthUid}:`, error);
 
-            if (error && error.code === 'auth/user-not-found') {
-                const studentRef = db.collection('students').doc(studentId);
+            // Handle specific known auth errors
+            if (error.code === 'auth/user-not-found') {
+                // The authUid in Firestore is stale. The Auth user was deleted.
+                // Clean up the Firestore record.
                 await studentRef.update({
-                    needsPasswordChange: true,
-                    authUid: null 
+                    authUid: null,
+                    needsPasswordChange: true
                 });
-                return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı.' };
+                return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı. Öğrenci tekrar okul numarasıyla giriş yapabilir.' };
             }
             
-            throw new functions.https.HttpsError('internal', error.message || 'Şifre sıfırlanırken bilinmeyen bir sunucu hatası oluştu.');
+            // For all other errors, throw a specific but non-generic error.
+            const errorMessage = error.message || 'Bilinmeyen bir sunucu hatası oluştu.';
+            const errorCode = error.code || 'unknown';
+            
+            throw new functions.https.HttpsError(
+                'internal', 
+                `Şifre sıfırlanamadı. Sunucu Hatası: [${errorCode}] ${errorMessage}`
+            );
         }
     });
