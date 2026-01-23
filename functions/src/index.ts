@@ -305,7 +305,7 @@ export const resetStudentPassword = functions
 
             if (!studentAuthUid) {
                  await studentRef.update({ needsPasswordChange: true });
-                 return { success: true, message: 'Öğrencinin ilk giriş şifresi okul numarası olarak ayarlandı.' };
+                 return { success: true, message: 'Öğrenci henüz hiç giriş yapmamış. Şifresi zaten okul numarası olarak ayarlanmıştır.' };
             }
             
             const defaultPassword = String(studentData.number).padEnd(6, '0');
@@ -321,16 +321,20 @@ export const resetStudentPassword = functions
             return { success: true, message: 'Öğrenci şifresi başarıyla okul numarasına sıfırlandı.' };
         } catch (error: any) {
             console.error('Şifre sıfırlama hatası:', error);
+            
+            if (error instanceof functions.https.HttpsError) {
+                throw error;
+            }
+
             if (error.code === 'auth/user-not-found') {
-                // This case can happen if the auth user was deleted manually.
-                // We can still reset the state in our DB.
                 const studentRef = db.collection('students').doc(studentId);
                 await studentRef.update({
                     needsPasswordChange: true,
-                    authUid: null // Clear the invalid authUid
+                    authUid: null 
                 });
                 return { success: true, message: 'Öğrencinin kimlik doğrulama kaydı bulunamadı, giriş bilgileri sıfırlandı.' };
             }
-            throw new functions.https.HttpsError('internal', 'Şifre sıfırlanırken bir hata oluştu.', error);
+            
+            throw new functions.https.HttpsError('internal', error.message || 'Şifre sıfırlanırken bilinmeyen bir sunucu hatası oluştu.');
         }
     });
