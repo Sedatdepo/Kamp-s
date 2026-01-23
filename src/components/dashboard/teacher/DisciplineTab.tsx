@@ -356,8 +356,8 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
                 <div className="grid md:grid-cols-2 gap-4">
                     <FormItem label="Öğrenci Seçin *"><Select value={studentInfo.studentId || ''} onValueChange={v => handleStudentInfoChange('studentId', v)}><SelectTrigger><SelectValue placeholder="Öğrenci seçin..." /></SelectTrigger><SelectContent>{students.map((std: any) => (<SelectItem key={std.id} value={std.id}>{std.name} ({std.number})</SelectItem>))}</SelectContent></Select></FormItem>
                 </div>
-                <FormItem id="incidentDate" label="Olay Tarihi *" value={localData.incidentDate} onChange={handleChange} type="date" />
-                <FormItem id="teacherName" label="Bildiren Öğretmen *" value={localData.teacherName} onChange={handleChange} />
+                <FormItem id="incidentDate" label="Olay Tarihi *" value={localData.incidentDate || ''} onChange={handleChange} type="date" />
+                <FormItem id="teacherName" label="Bildiren Öğretmen *" value={localData.teacherName || ''} onChange={handleChange} />
                 <FormItem label="Davranış Türü (Yönetmelik Maddesi) *">
                     <Select value={localData.behaviorType || ''} onValueChange={(val) => setLocalData((prev:any)=>({...prev, behaviorType: val}))}>
                         <SelectTrigger><SelectValue placeholder="Davranış seçin..." /></SelectTrigger>
@@ -371,7 +371,7 @@ const Phase1 = ({ isVisible, onNext, data, updateRecord, students, teacherProfil
                         </SelectContent>
                     </Select>
                 </FormItem>
-                <FormItem id="incidentDetails" label="Olayın Meydana Geldiği Yer ve Zaman, Şahitler, Detaylar *" value={localData.incidentDetails} onChange={handleChange} isTextarea />
+                <FormItem id="incidentDetails" label="Olayın Meydana Geldiği Yer ve Zaman, Şahitler, Detaylar *" value={localData.incidentDetails || ''} onChange={handleChange} isTextarea />
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <div className="flex flex-wrap gap-2">
@@ -444,10 +444,10 @@ const Phase2 = ({ isVisible, onNext, onPrev, data, updateRecord, toast }: any) =
             <CardHeader><CardTitle>2. Savunma ve Değerlendirme</CardTitle></CardHeader>
             <CardContent className="space-y-4">
                 <StudentInfoDisplay studentInfo={data.studentInfo} />
-                <FormItem id="studentStatement" label="Öğrencinin Yazılı İfadesi (Savunması)" value={localData.studentStatement} onChange={handleChange} isTextarea />
-                <FormItem id="counselingDate" label="Rehberlik Görüşme Tarihi" value={localData.counselingDate} onChange={handleChange} type="date" />
-                <FormItem id="counselorName" label="Rehberlik Görevlisi" value={localData.counselorName} onChange={handleChange} />
-                <FormItem id="counselingSummary" label="Görüşme Özeti" value={localData.counselingSummary} onChange={handleChange} isTextarea />
+                <FormItem id="studentStatement" label="Öğrencinin Yazılı İfadesi (Savunması)" value={localData.studentStatement || ''} onChange={handleChange} isTextarea />
+                <FormItem id="counselingDate" label="Rehberlik Görüşme Tarihi" value={localData.counselingDate || ''} onChange={handleChange} type="date" />
+                <FormItem id="counselorName" label="Rehberlik Görevlisi" value={localData.counselorName || ''} onChange={handleChange} />
+                <FormItem id="counselingSummary" label="Görüşme Özeti" value={localData.counselingSummary || ''} onChange={handleChange} isTextarea />
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
@@ -514,7 +514,7 @@ const Phase3 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
             <CardHeader><CardTitle>3. Disiplin Kuruluna Sevk</CardTitle></CardHeader>
             <CardContent className="space-y-4">
                 <StudentInfoDisplay studentInfo={data.studentInfo} />
-                <FormItem id="referralReason" label="Sevk Gerekçesi / Amirin Görüşü" value={localData.referralReason} onChange={handleChange} isTextarea />
+                <FormItem id="referralReason" label="Sevk Gerekçesi / Amirin Görüşü" value={localData.referralReason || ''} onChange={handleChange} isTextarea />
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
@@ -584,9 +584,9 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
             <CardHeader><CardTitle>4. Disiplin Kurulu Toplantısı ve Karar</CardTitle></CardHeader>
             <CardContent className="space-y-4">
                 <StudentInfoDisplay studentInfo={data.studentInfo} />
-                <FormItem id="disciplinaryDate" label="Disiplin Kurulu Tarihi" value={localData.disciplinaryDate} onChange={handleChange} type="date" />
-                <FormItem id="disciplinaryMembers" label="Kurul Üyeleri (Her satıra bir üye)" value={localData.disciplinaryMembers} onChange={handleChange} isTextarea />
-                <FormItem id="guidanceReport" label="Rehberlik Servisi Görüşü" value={localData.guidanceReport} onChange={handleChange} isTextarea />
+                <FormItem id="disciplinaryDate" label="Disiplin Kurulu Tarihi" value={localData.disciplinaryDate || ''} onChange={handleChange} type="date" />
+                <FormItem id="disciplinaryMembers" label="Kurul Üyeleri (Her satıra bir üye)" value={localData.disciplinaryMembers || ''} onChange={handleChange} isTextarea />
+                <FormItem id="guidanceReport" label="Rehberlik Servisi Görüşü" value={localData.guidanceReport || ''} onChange={handleChange} isTextarea />
                 <FormItem label="Disiplin Kurulu Kararı">
                     <Select value={localData.disciplinaryDecision || ''} onValueChange={(val) => handleSelectChange('disciplinaryDecision', val)}>
                         <SelectTrigger><SelectValue placeholder="Karar seçiniz..." /></SelectTrigger>
@@ -600,7 +600,7 @@ const Phase4 = ({ isVisible, onNext, onPrev, data, updateRecord, teacherProfile 
                     </Select>
                 </FormItem>
                 <FormItem label="Oylama Sonucu"><Select value={localData.voteResult || ''} onValueChange={(val) => handleSelectChange('voteResult', val)}><SelectTrigger><SelectValue placeholder="Sonuç seçin..." /></SelectTrigger><SelectContent><SelectItem value="Oy Birliği">Oy Birliği</SelectItem><SelectItem value="Oy Çokluğu">Oy Çokluğu</SelectItem></SelectContent></Select></FormItem>
-                <FormItem id="decisionDetails" label="Kararın Gerekçesi" value={localData.decisionDetails} onChange={handleChange} isTextarea />
+                <FormItem id="decisionDetails" label="Kararın Gerekçesi" value={localData.decisionDetails || ''} onChange={handleChange} isTextarea />
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button variant="secondary" onClick={onPrev}><ArrowLeft className="mr-2" /> Geri</Button>
@@ -661,7 +661,7 @@ const Phase5 = ({ isVisible, onPrev, data, teacherProfile }: any) => {
             <CardContent className="space-y-4">
                  <StudentInfoDisplay studentInfo={data.studentInfo} />
                  <p className="font-bold">Nihai Karar: {data.phase4Data?.disciplinaryDecision}</p>
-                 <FormItem id="notificationDate" label="Veliye Bildirim Tarihi" value={localData.notificationDate} onChange={handleChange} type="date" />
+                 <FormItem id="notificationDate" label="Veliye Bildirim Tarihi" value={localData.notificationDate || ''} onChange={handleChange} type="date" />
                  <FormItem label="Bildirim Yöntemi"><Select value={localData.notificationMethod || ''} onValueChange={(val) => handleSelectChange('notificationMethod', val)}><SelectTrigger><SelectValue placeholder="Yöntem seçin..." /></SelectTrigger><SelectContent><SelectItem value="elden">Elden İmza Karşılığı</SelectItem><SelectItem value="posta">İadeli Taahhütlü Posta</SelectItem><SelectItem value="e-posta">E-Posta</SelectItem></SelectContent></Select></FormItem>
                  <FormItem id="eokulEntry" label="e-Okul İşlemleri" value="Karar e-Okul sistemine işlendi." isTextarea readOnly />
             </CardContent>
@@ -701,5 +701,7 @@ const StudentInfoDisplay = ({ studentInfo }: any) => {
         </Card>
     );
 };
+
+    
 
     
