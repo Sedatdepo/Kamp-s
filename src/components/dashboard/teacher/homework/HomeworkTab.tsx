@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Class, Student, TeacherProfile, Lesson } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { LiveHomeworkManagement } from './LiveHomeworkManagement';
 import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
 import { HomeworkLibrary } from './HomeworkLibrary';
@@ -20,7 +20,6 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { LessonManager } from '../LessonManager';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 
 
 export function ProjectAssignmentView({
@@ -184,9 +183,9 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     const { data: allStudents } = useCollection<Student>(allStudentsForTeacherQuery);
 
     const studentsForCurrentClass = useMemo(() => {
-        if (!currentClass) return [];
-        return students.filter(s => s.classId === currentClass!.id);
-      }, [students, currentClass]);
+      if (!currentClass) return [];
+      return students.filter(s => s.classId === currentClass!.id);
+    }, [students, currentClass]);
 
     return (
         <Tabs defaultValue="live">
@@ -196,7 +195,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
                     <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
-                    <TabsTrigger value="project-library">Proje Havuzu</TabsTrigger>
                     <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
                     <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
                 </TabsList>
@@ -234,14 +232,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     currentClass={currentClass}
                     students={studentsForCurrentClass} // Pass filtered students
                     lessons={lessons}
-                />
-            </TabsContent>
-            <TabsContent value="project-library" className="mt-4">
-                <ProjectPoolLibrary 
-                    classId={classId}
-                    teacherProfile={teacherProfile}
-                    classes={classes}
-                    students={allStudents || []}
                 />
             </TabsContent>
             <TabsContent value="petitions" className="mt-4">
