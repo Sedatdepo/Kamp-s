@@ -326,7 +326,7 @@ export const resetStudentPassword = functions
                 throw error;
             }
 
-            if (error.code === 'auth/user-not-found') {
+            if (error && error.code === 'auth/user-not-found') {
                 const studentRef = db.collection('students').doc(studentId);
                 await studentRef.update({
                     needsPasswordChange: true,
