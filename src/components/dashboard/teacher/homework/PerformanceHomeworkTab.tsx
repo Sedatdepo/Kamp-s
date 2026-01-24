@@ -200,7 +200,8 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
-            await addDoc(submissionsColRef, submissionData);
+            const cleanData = JSON.parse(JSON.stringify(submissionData));
+            await addDoc(submissionsColRef, cleanData);
 
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {

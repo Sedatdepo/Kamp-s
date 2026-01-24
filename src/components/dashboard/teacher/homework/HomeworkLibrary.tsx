@@ -67,9 +67,14 @@ const EditableAssignment = ({
 
     const addQuestion = (type: QuestionType) => {
         const newQuestion: Question = {
-            id: uuidv4(), text: '', type, points: 10,
+            id: uuidv4(),
+            text: '',
+            type,
+            points: 10,
             options: type === 'multiple-choice' ? Array(4).fill('') : undefined,
             matchingPairs: type === 'matching' ? [{id: uuidv4(), question: '', answer: ''}, {id: uuidv4(), question: '', answer: ''}] : undefined,
+            correctAnswer: null,
+            kazanimId: undefined,
         };
         updateField('questions', [...(assignment.questions || []), newQuestion]);
     };
@@ -183,13 +188,13 @@ const EditableAssignment = ({
                         {q.type === 'multiple-choice' && (
                             <div className="space-y-2">
                                 {(q.options || []).map((opt, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        <Label className="text-sm font-semibold">{String.fromCharCode(65 + i)})</Label>
-                                        <Input value={opt} onChange={e => { const newOpts = [...(q.options || [])]; newOpts[i] = e.target.value; updateQuestion(q.id, 'options', newOpts); }}/>
+                                     <div key={i} className="flex items-center gap-2">
+                                        <Label htmlFor={`option-${i}`} className='p-2 bg-slate-100 rounded-md'>{String.fromCharCode(65 + i)})</Label>
+                                        <Input id={`option-${i}`} value={opt} onChange={e => { const newOpts = [...(q.options || [])]; newOpts[i] = e.target.value; updateQuestion(q.id, 'options', newOpts); }}/>
                                         <RadioGroup value={q.correctAnswer === opt ? 'correct' : ''} onValueChange={() => updateQuestion(q.id, 'correctAnswer', opt)}>
                                             <RadioGroupItem value="correct" id={`${q.id}-${i}`} />
                                         </RadioGroup>
-                                    </div>
+                                     </div>
                                 ))}
                             </div>
                         )}
@@ -354,10 +359,12 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     questions: selectedAssignment.questions || [],
                     file: selectedAssignment.file || null,
                 };
+                
+                const cleanDoc = JSON.parse(JSON.stringify(homeworkDocData));
 
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
                 const newDocRef = doc(homeworksColRef); // Auto-generate ID
-                batch.set(newDocRef, homeworkDocData);
+                batch.set(newDocRef, cleanDoc);
             }
 
             await batch.commit();
