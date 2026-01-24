@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Plus, GraduationCap, Heart, Bell, X, PlusCircle } from 'lucide-react';
 import { CheckCircle } from 'lucide-react';
 
-export const LibraryHeader = ({ onOpenAddRubric, onOpenCreateProject, history, toggleFavoritesOnly, showFavoritesOnly }: any) => {
+export const LibraryHeader = ({ onAddNewAssignment, onOpenAddRubric, history, toggleFavoritesOnly, showFavoritesOnly }: any) => {
     const [showHistory, setShowHistory] = useState(false);
   
     return (
@@ -28,7 +28,7 @@ export const LibraryHeader = ({ onOpenAddRubric, onOpenCreateProject, history, t
           </button>
   
           <button 
-            onClick={onOpenCreateProject}
+            onClick={onAddNewAssignment}
             className="flex items-center gap-2 text-sm font-medium text-white bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
           >
             <PlusCircle size={16} />
