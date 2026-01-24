@@ -1,78 +1,79 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Printer, X } from 'lucide-react';
+import { FileDown, Plus, Trash2, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { getRubricType } from '@/lib/maarif-modeli-odevleri';
+import { exportPrintableHomeworkToRtf } from '@/lib/word-export';
 
-export const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
-    if (!isOpen || !assignment) return null;
-  
-    const handlePrint = () => {
-      window.print();
+
+export const PrintPreviewModal = ({ isOpen, onClose, assignment, rubrics, teacherProfile }: any) => {
+    const [editableAssignment, setEditableAssignment] = useState(assignment);
+    const [editableRubric, setEditableRubric] = useState<any>(null);
+
+    useEffect(() => {
+        if (assignment && rubrics) {
+            setEditableAssignment(JSON.parse(JSON.stringify(assignment)));
+            const rubricType = getRubricType(assignment.formats);
+            const initialRubric = rubrics[rubricType] || rubrics['research'];
+            setEditableRubric(JSON.parse(JSON.stringify(initialRubric)));
+        }
+    }, [assignment, rubrics]);
+
+    if (!isOpen || !assignment || !editableRubric) return null;
+
+    const handleAssignmentChange = (field: string, value: string) => {
+        setEditableAssignment((prev: any) => ({ ...prev, [field]: value }));
     };
-  
+    
+    const handleRubricItemChange = (index: number, field: string, value: string | number) => {
+        const newItems = [...editableRubric.items];
+        const updatedItem = { ...newItems[index], [field]: value };
+        newItems[index] = updatedItem;
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+    
+    const handleAddRubricItem = () => {
+        const newItems = [...editableRubric.items, { label: '', desc: '', score: '' }];
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+
+    const handleRemoveRubricItem = (index: number) => {
+        const newItems = editableRubric.items.filter((_: any, i: number) => i !== index);
+        setEditableRubric({ ...editableRubric, items: newItems });
+    };
+
+    const handleExport = () => {
+        exportPrintableHomeworkToRtf({
+            assignment: editableAssignment,
+            rubric: editableRubric,
+            teacherProfile: teacherProfile
+        });
+    };
+
+    const totalScore = editableRubric.items.reduce((sum: number, item: any) => sum + parseInt(item.score || '0', 10), 0);
+
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
-        <style>
-          {`
-            @media print {
-              body > *:not(.print-modal-container) {
-                display: none !important;
-              }
-              .print-modal-container {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: white;
-                z-index: 9999;
-                display: block !important;
-              }
-              .print-hidden {
-                display: none !important;
-              }
-              .print-page {
-                padding: 40px !important;
-                box-shadow: none !important;
-                border: none !important;
-              }
-            }
-          `}
-        </style>
-        
-        <div className="print-modal-container bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col print:h-auto print:shadow-none print:w-full">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center print-hidden rounded-t-xl">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Printer size={18} className="text-blue-600" />
-              Ödev Çıktısı Önizleme
-            </h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">Ödev Çıktısını Düzenle ve İndir</h2>
             <div className="flex gap-2">
-              <button 
-                onClick={handlePrint}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Printer size={16} /> Yazdır
-              </button>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><X size={20} /></button>
+              <Button onClick={handleExport}>
+                <FileDown size={16} className="mr-2" /> RTF Olarak İndir
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onClose}><X size={20} /></Button>
             </div>
           </div>
-  
-          <div className="p-8 overflow-y-auto flex-grow bg-gray-100 print:bg-white print:p-0 print-page">
-            <div className="bg-white max-w-2xl mx-auto p-12 shadow-sm min-h-full border border-gray-200 print:border-0 print:shadow-none print:max-w-full">
-              
-              <div className="border-b-2 border-black pb-4 mb-8 flex justify-between items-end">
-                <div>
-                  <h1 className="text-2xl font-bold text-black mb-1">PERFORMANS ÖDEVİ</h1>
-                  <p className="text-sm text-gray-600">Eğitim - Öğretim Yılı: 2025-2026</p>
-                </div>
-                <div className="text-right">
-                  <span className="block text-sm font-bold text-black uppercase">${assignment.subject === 'physics' ? 'FİZİK' : 'TÜRK DİLİ VE EDEBİYATI'}</span>
-                  <span className="block text-sm text-gray-600">${assignment.grade}. Sınıf</span>
-                </div>
+          <div className="p-8 overflow-y-auto flex-grow bg-gray-100">
+            <div className="bg-white max-w-3xl mx-auto p-12 shadow-sm min-h-full border border-gray-200">
+              <div className="text-center mb-10">
+                <Input className="text-2xl font-bold text-black mb-1 text-center border-0 shadow-none focus-visible:ring-0 p-1 h-auto" value={editableAssignment.title} onChange={e => handleAssignmentChange('title', e.target.value)} />
+                <p className="text-sm text-gray-600">{teacherProfile?.reportConfig?.academicYear || '2025-2026'} Eğitim Öğretim Yılı</p>
               </div>
-  
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 p-4 border border-gray-300 rounded bg-gray-50 print:bg-white">
+               <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 p-4 border border-gray-300 rounded bg-gray-50">
                 <div className="border-b border-dashed border-gray-400 pb-1">
                   <span className="font-bold text-sm">Adı Soyadı:</span>
                 </div>
@@ -86,45 +87,28 @@ export const PrintPreviewModal = ({ isOpen, onClose, assignment }: any) => {
                   <span className="font-bold text-sm">Aldığı Not:</span>
                 </div>
               </div>
-  
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                    <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">1</span>
-                    Ödev Konusu
-                  </h3>
-                  <div className="p-4 border-l-4 border-gray-300 bg-gray-50 print:bg-white text-gray-800">
-                    <h4 className="font-bold mb-1">${assignment.title}</h4>
-                    <p className="text-sm">${assignment.description}</p>
+                  <h3 className="text-lg font-bold text-black mb-2">Yönerge</h3>
+                  <Textarea className="text-sm text-gray-700 leading-relaxed" value={editableAssignment.instructions} onChange={e => handleAssignmentChange('instructions', e.target.value)} rows={4} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-black mb-2">Değerlendirme Kriterleri (Toplam: {totalScore} Puan)</h3>
+                  <div className="space-y-2">
+                    {editableRubric.items.map((item: any, index: number) => (
+                      <div key={index} className="flex gap-2 items-start p-2 border rounded-md">
+                        <div className="flex-grow space-y-1">
+                          <Input placeholder="Kriter Adı" value={item.label} onChange={e => handleRubricItemChange(index, 'label', e.target.value)} className="font-semibold text-sm"/>
+                          <Input placeholder="Açıklama" value={item.desc} onChange={e => handleRubricItemChange(index, 'desc', e.target.value)} className="text-xs"/>
+                        </div>
+                        <Input type="number" placeholder="Puan" value={item.score} onChange={e => handleRubricItemChange(index, 'score', e.target.value)} className="w-20 text-center"/>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveRubricItem(index)}><Trash2 className="h-4 w-4 text-red-400"/></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="w-full border-dashed" onClick={handleAddRubricItem}><Plus className="mr-2 h-4 w-4"/> Kriter Ekle</Button>
                   </div>
                 </div>
-  
-                <div>
-                  <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                    <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">2</span>
-                    Yönerge
-                  </h3>
-                  <div className="text-sm text-gray-700 leading-relaxed text-justify">
-                    ${assignment.instructions}
-                  </div>
-                </div>
-  
-                <div>
-                  <h3 className="text-lg font-bold text-black mb-2 flex items-center gap-2">
-                    <span className="bg-black text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">3</span>
-                    Teslim Formatı
-                  </h3>
-                  <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                    <li>Bu ödev <strong>${assignment.formats}</strong> formatında hazırlanmalıdır.</li>
-                    <li>Dijital dosya boyutu <strong>${assignment.size}</strong>'ı geçmemelidir.</li>
-                  </ul>
-                </div>
               </div>
-  
-              <div className="mt-16 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
-                <p>Bu belge E-Ödev Yönetim Sistemi üzerinden oluşturulmuştur.</p>
-              </div>
-  
             </div>
           </div>
         </div>

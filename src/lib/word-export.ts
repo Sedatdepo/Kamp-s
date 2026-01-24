@@ -415,6 +415,82 @@ export function exportDailyPlanToRtf({ dailyPlan, annualPlanEntry, currentClass,
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
+// --- PRINTABLE HOMEWORK EXPORT ---
+interface ExportPrintableHomeworkArgs {
+    assignment: any; 
+    rubric: {
+        items: { label: string; desc: string; score: string | number }[];
+    };
+    teacherProfile: TeacherProfile | null;
+}
+
+export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfile }: ExportPrintableHomeworkArgs) {
+    const title = assignment.title || "Ödev Çıktısı";
+    const filename = `${title.replace(/ /g, '_')}.rtf`;
+
+    const rubricHtml = `
+        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">4. Değerlendirme Kriterleri</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 8px; font-weight: bold;">Kriter</th>
+                    <th style="padding: 8px; font-weight: bold;">Açıklama</th>
+                    <th style="padding: 8px; font-weight: bold; width: 15%;">Puan</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(rubric?.items || []).map((item: any) => `
+                    <tr>
+                        <td style="padding: 8px;">${item.label}</td>
+                        <td style="padding: 8px;">${item.desc}</td>
+                        <td style="padding: 8px; text-align: center;">${item.score}</td>
+                    </tr>
+                `).join('')}
+                <tr>
+                    <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">TOPLAM</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold;">${(rubric?.items || []).reduce((sum: number, item: any) => sum + parseInt(item.score || '0', 10), 0)}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+
+    const content = `
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
+        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
+          <h1 style="margin: 0; font-size: 18pt;">PERFORMANS ÖDEVİ</h1>
+          <p style="margin: 0; font-size: 11pt;">${teacherProfile?.reportConfig?.academicYear || '2025-2026'} Eğitim - Öğretim Yılı</p>
+        </div>
+        <div style="grid-template-columns: 1fr 1fr; display: grid; gap: 20px 30px; margin-bottom: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+            <div><b>Adı Soyadı:</b></div><div><b>Sınıfı / No:</b></div>
+            <div><b>Teslim Tarihi:</b></div><div><b>Aldığı Not:</b></div>
+        </div>
+        <div>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">1. Ödev Konusu</h2>
+          <div style="padding: 10px; background-color:#f8f8f8;">
+            <h3 style="margin-top: 0; font-size: 13pt;">${assignment.title}</h3>
+            <p>${assignment.description}</p>
+          </div>
+        </div>
+        <div>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">2. Yönerge</h2>
+          <p>${assignment.instructions}</p>
+        </div>
+        <div>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">3. Teslim Şartları</h2>
+          <ul>
+            <li>Bu ödev <b>${assignment.formats}</b> formatında hazırlanmalıdır.</li>
+            <li>Dijital dosya boyutu <b>${assignment.size}</b>'ı geçmemelidir.</li>
+          </ul>
+        </div>
+        ${rubric ? rubricHtml : ''}
+      </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
+}
+
+
 // --- DILEKCE EXPORT ---
 export function exportDilekceToRtf(data: DilekceDocument['data']) {
     const ilgiList = data.ilgiler?.filter(i => i.value) || [];

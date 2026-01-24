@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Atom, BookOpen, ClipboardList, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Trash2, Video } from 'lucide-react';
+import { Atom, BookOpen, ClipboardList, FileDown, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Trash2, Video } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,9 +33,9 @@ export const AssignmentCard = ({ item, onAssign, onShowRubric, onEdit, onDelete,
             <button 
               onClick={() => onPrint(item)}
               className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Ödevi Yazdır"
+              title="Ödevi Yazdır/Düzenle"
             >
-              <Printer size={16} />
+              <FileDown size={16} />
             </button>
             <button 
               onClick={() => onToggleFavorite(item.id)}

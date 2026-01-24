@@ -377,6 +377,8 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
             isOpen={printModalOpen}
             onClose={() => setPrintModalOpen(false)}
             assignment={selectedAssignment}
+            rubrics={rubrics}
+            teacherProfile={teacherProfile}
         />
         </div>
     );
