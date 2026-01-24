@@ -162,14 +162,16 @@ export function ProjectAssignmentView({
     );
 }
 
-export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes, lessons }: {
-    classId: string;
-    currentClass: Class | null;
-    teacherProfile: TeacherProfile | null;
-    students: Student[];
-    classes: Class[];
-    lessons: Lesson[];
-}) {
+interface HomeworkTabProps {
+  classId: string;
+  currentClass: Class | null;
+  teacherProfile: TeacherProfile | null;
+  students: Student[];
+  classes: Class[];
+  lessons: Lesson[];
+}
+
+export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes, lessons }: HomeworkTabProps) {
     
     const { db } = useAuth();
     

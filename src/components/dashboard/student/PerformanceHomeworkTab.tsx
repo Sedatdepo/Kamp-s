@@ -2,9 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Student } from '@/lib/types';
+import { Homework, Submission, Student, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip, Download } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -17,6 +17,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { saveAs } from 'file-saver';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework, student: Student, onBack: () => void }) => {
@@ -89,6 +92,20 @@ const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework,
                         </div>
                     </div>
                 )}
+                 {homework.questions && homework.questions.length > 0 && (
+                     <div>
+                        <h3 className="font-bold mb-2 text-lg">Sorular</h3>
+                        <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+                        {homework.questions.map((q, index) => (
+                             <div key={q.id}>
+                                <p className="font-semibold">{index + 1}. {q.text}</p>
+                                {q.image && <img src={q.image} alt={`Soru ${index+1}`} className="my-2 rounded-md border max-w-sm"/>}
+                                <p className="text-xs text-muted-foreground mt-2">Cevabınız: {submission?.answers?.[q.id as string] || "Cevaplanmadı"}</p>
+                             </div>
+                        ))}
+                        </div>
+                     </div>
+                 )}
                 {homework.rubric && (
                     <div>
                         <h3 className="font-bold mb-2 text-lg flex items-center gap-2"><ClipboardList/> Değerlendirme Kriterleri</h3>
@@ -147,6 +164,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
+    const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -159,6 +177,23 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
         return submissions?.[0];
     }, [submissions]);
     
+    const questions = useMemo(() => homework.questions || [], [homework.questions]);
+
+    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
+        setAnswers(prev => {
+            const currentAnswer = prev[questionId as string];
+            if (isMulti) {
+                const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+                if (currentArr.includes(answer)) {
+                    return { ...prev, [questionId as string]: currentArr.filter(a => a !== answer) };
+                } else {
+                    return { ...prev, [questionId as string]: [...currentArr, answer] };
+                }
+            }
+            return { ...prev, [questionId as string]: answer };
+        });
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -179,7 +214,12 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     };
     
     const handleSubmit = async () => {
-        if (!submissionText.trim() && !submissionFile) {
+        if (questions.length > 0 && questions.some(q => q.required && !answers[q.id])) {
+            toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
+            return;
+        }
+
+        if (questions.length === 0 && !submissionText.trim() && !submissionFile) {
              toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
             return;
         }
@@ -193,14 +233,17 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
+          answers: answers,
         };
 
         if (submissionText) submissionData.text = submissionText;
         if (submissionFile) submissionData.file = submissionFile;
+        
+        const cleanData = JSON.parse(JSON.stringify(submissionData));
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
-            await addDoc(submissionsColRef, submissionData);
+            await addDoc(submissionsColRef, cleanData);
 
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
@@ -245,7 +288,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                     )}
                  </div>
                  <h2 className="text-xl font-bold">{homework.text}</h2>
-                 <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
+                 <p className="text-xs text-muted-foreground">(Değerlendirme kriterlerini görmek için tıklayın)</p>
             </div>
 
             {existingSubmission ? (
@@ -275,6 +318,42 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                          </div>
                     )}
                 </div>
+            ) : questions.length > 0 ? (
+                 <div className="space-y-6 pt-3 border-t">
+                    {questions.map((q: Question, index: number) => (
+                        <div key={q.id || index} className="mb-6 pb-4 border-b">
+                            <p className="font-semibold mb-3">{index + 1}. {q.text}</p>
+                            {q.image && <img src={q.image} alt={`Soru ${index+1}`} className="my-2 rounded-md border max-w-sm"/>}
+                            {q.type === 'multiple-choice' && q.options && (
+                                <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)} className="space-y-2">
+                                    {q.options.map((opt, i) => (
+                                        <div key={i} className="flex items-center space-x-2">
+                                            <RadioGroupItem value={opt} id={`${q.id}-${i}`} />
+                                            <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            )}
+                             {q.type === 'checkbox' && q.options && (
+                                <div className="space-y-2">
+                                  {q.options.map((opt, i) => (
+                                    <div key={i} className="flex items-center space-x-2">
+                                      <Checkbox id={`${q.id}-${i}`} onCheckedChange={() => handleAnswerChange(q.id, opt, true)} />
+                                      <Label htmlFor={`${q.id}-${i}`}>{opt}</Label>
+                                    </div>
+                                  ))}
+                                </div>
+                            )}
+                            {q.type === 'open-ended' && (
+                                <Textarea placeholder="Cevabınızı buraya yazın..." onChange={(e) => handleAnswerChange(q.id, e.target.value)} />
+                            )}
+                        </div>
+                    ))}
+                    <Button onClick={() => handleSubmit()} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Gönder
+                    </Button>
+                </div>
             ) : (
                 <div className="space-y-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
                     <Textarea 
@@ -287,7 +366,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                         type="file"
                         onChange={handleFileChange}
                     />
-                    <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)} className="w-full">
+                    <Button onClick={() => handleSubmit()} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)} className="w-full">
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Gönder
                     </Button>
