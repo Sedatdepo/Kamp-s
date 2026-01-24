@@ -675,7 +675,6 @@ export interface StudentInfoFormData {
   studentName: string;
   studentGender: string;
   studentClassAndNumber: string;
-  studentBirthPlaceAndDate: string;
   studentSchool: string;
   studentAddress: string;
   studentPreschool: string;

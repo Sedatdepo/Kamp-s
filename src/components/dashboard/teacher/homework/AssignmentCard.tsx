@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Atom, BookOpen, ClipboardList, FileDown, FileText, Heart, Mic, Paperclip, Pencil, Printer, Send, Trash2, Video } from 'lucide-react';
+import { Atom, BookOpen, ClipboardList, FileDown, FileText, Heart, Mic, Paperclip, Pencil, Send, Trash2, Video } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
