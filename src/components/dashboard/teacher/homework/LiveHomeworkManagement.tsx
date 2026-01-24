@@ -1,15 +1,15 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Class, Homework, TeacherProfile, Student, Submission } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+import { Class, Homework, TeacherProfile, Student, Submission, Question, QuestionType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -37,6 +37,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSubmitted }: { student: Student, homework: Homework, submissions: Submission[], classId: string, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
@@ -67,6 +68,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [questions, setQuestions] = useState<Question[]>([]);
     
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
@@ -111,14 +113,33 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             setFile(selectedFile || null);
         }
     };
+
+    const addQuestion = (type: QuestionType) => {
+        const newQuestion: Question = {
+            id: uuidv4(),
+            text: '',
+            type: type,
+            options: type === 'multiple-choice' ? ['', '', '', ''] : undefined,
+            points: 10,
+        };
+        setQuestions(prev => [...prev, newQuestion]);
+    };
+
+    const updateQuestionField = (id: string | number, field: keyof Question, value: any) => {
+        setQuestions(prev => prev.map(q => (q.id === id ? { ...q, [field]: value } : q)));
+    };
+
+    const deleteQuestion = (id: string | number) => {
+        setQuestions(prev => prev.filter(q => q.id !== id));
+    };
     
     const handleAddOrUpdateHomework = async () => {
         const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : null;
-        if (!db || !classId || (!text.trim() && !file) || !teacherId) {
+        if (!db || !classId || (!text.trim() && !file && questions.length === 0) || !teacherId) {
             toast({
                 variant: 'destructive',
                 title: 'Eksik Bilgi',
-                description: 'Lütfen bir ödev açıklaması yazın veya bir dosya ekleyin.',
+                description: 'Lütfen bir ödev açıklaması yazın, bir dosya ekleyin veya bir soru oluşturun.',
             });
             return;
         }
@@ -148,6 +169,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 text,
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
+                questions: questions,
             };
 
             if (editingHomework) {
@@ -234,6 +256,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         setEditingHomework(hw);
         setText(hw.text);
         setFile(null); // Clear file input when starting edit
+        setQuestions(hw.questions || []);
         if (hw.dueDate) {
             setDueDate(new Date(hw.dueDate));
         }
@@ -244,6 +267,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         setText('');
         setFile(null);
         setDueDate(undefined);
+        setQuestions([]);
     };
 
     const handleExport = () => {
@@ -274,7 +298,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                         placeholder="Ödev açıklamasını buraya yazın..."
-                        rows={5}
+                        rows={3}
                     />
                      <Popover>
                         <PopoverTrigger asChild>
@@ -313,6 +337,48 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                             </Button>
                         </div>
                     )}
+                    
+                     <div className="space-y-4 pt-4 border-t">
+                        <Label className="text-base font-semibold">Sorular</Label>
+                        {questions.map((q, index) => (
+                            <Card key={q.id} className="p-4 bg-slate-50">
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold text-sm">Soru {index + 1}</p>
+                                    <div className="flex items-center gap-2">
+                                        <Input type="number" value={q.points || 10} onChange={e => updateQuestionField(q.id, 'points', parseInt(e.target.value) || 0)} className="w-20 h-8 text-xs text-center" />
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => deleteQuestion(q.id)}><Trash2 size={16}/></Button>
+                                    </div>
+                                </div>
+                                <Textarea value={q.text} onChange={e => updateQuestionField(q.id, 'text', e.target.value)} placeholder="Soru metnini yazın..."/>
+                                {q.type === 'multiple-choice' && (
+                                    <div className="mt-3 space-y-2">
+                                        {(q.options || []).map((opt, i) => (
+                                            <div key={i} className="flex items-center gap-2">
+                                                <Label htmlFor={`${q.id}-opt-${i}`} className='p-2 bg-slate-200 rounded-md text-xs'>{String.fromCharCode(65 + i)}</Label>
+                                                <Input id={`${q.id}-opt-${i}`} value={opt} onChange={e => {
+                                                    const newOptions = [...(q.options || [])];
+                                                    newOptions[i] = e.target.value;
+                                                    updateQuestionField(q.id, 'options', newOptions);
+                                                }} />
+                                                <RadioGroup value={q.correctAnswer as string} onValueChange={() => updateQuestionField(q.id, 'correctAnswer', opt)}>
+                                                    <RadioGroupItem value={opt} id={`${q.id}-correct-${i}`} />
+                                                </RadioGroup>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </Card>
+                        ))}
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => addQuestion('multiple-choice')}>
+                                <CheckSquare className="mr-2 h-4 w-4" /> Test Sorusu Ekle
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => addQuestion('open-ended')}>
+                                <AlignLeft className="mr-2 h-4 w-4" /> Açık Uçlu Soru Ekle
+                            </Button>
+                        </div>
+                    </div>
+
 
                     <div className="flex gap-2">
                         {editingHomework && <Button variant="ghost" onClick={cancelEditing}>İptal</Button>}
