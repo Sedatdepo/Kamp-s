@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -8,6 +9,7 @@ import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -361,7 +363,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                 };
                 
                 const cleanDoc = JSON.parse(JSON.stringify(homeworkDocData));
-
+                
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
                 const newDocRef = doc(homeworksColRef); // Auto-generate ID
                 batch.set(newDocRef, cleanDoc);
