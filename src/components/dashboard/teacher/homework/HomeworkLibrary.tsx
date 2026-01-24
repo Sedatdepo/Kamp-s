@@ -7,6 +7,7 @@ import { Class, Student, TeacherProfile, Homework, AssignmentTemplate, Question,
 import { doc, collection, addDoc, writeBatch } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from 'date-fns';
 
 import { assignmentsData, initialRubricDefinitions, getRubricType } from '@/lib/maarif-modeli-odevleri';
 import { LibraryHeader } from './LibraryHeader';
@@ -89,8 +90,10 @@ const EditableAssignment = ({
               await uploadString(imageRef, dataUrl, 'data_url');
               const downloadUrl = await getDownloadURL(imageRef);
               updateQuestion(qId, 'image', downloadUrl);
+              toast({title: "Resim Yüklendi", description: "Resim başarıyla yüklendi ve soruya eklendi."});
             } catch(error) {
-              toast({variant: "destructive", title: "Yükleme Hatası"});
+              console.error("Image upload error:", error);
+              toast({variant: "destructive", title: "Yükleme Hatası", description: "Resim yüklenirken bir hata oluştu."});
             } finally {
               setIsUploading(null);
             }
@@ -104,6 +107,7 @@ const EditableAssignment = ({
             const imageRef = storageRef(storage, imageUrl);
             await deleteObject(imageRef);
             updateQuestion(qId, 'image', null);
+            toast({title: "Resim Silindi"});
         } catch(error) {
            console.error("Image delete error:", error);
            if ((error as any).code === 'storage/object-not-found') {
@@ -180,7 +184,7 @@ const EditableAssignment = ({
                             <div className="space-y-2">
                                 {(q.options || []).map((opt, i) => (
                                     <div key={i} className="flex items-center gap-2">
-                                        <Label className="text-sm font-semibold">{String.fromCharCode(65 + i)}</Label>
+                                        <Label className="text-sm font-semibold">{String.fromCharCode(65 + i)})</Label>
                                         <Input value={opt} onChange={e => { const newOpts = [...(q.options || [])]; newOpts[i] = e.target.value; updateQuestion(q.id, 'options', newOpts); }}/>
                                         <RadioGroup value={q.correctAnswer === opt ? 'correct' : ''} onValueChange={() => updateQuestion(q.id, 'correctAnswer', opt)}>
                                             <RadioGroupItem value="correct" id={`${q.id}-${i}`} />
@@ -210,6 +214,7 @@ const EditableAssignment = ({
 
 export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: { classId: string; teacherProfile: TeacherProfile | null, classes: Class[], students: Student[] }) => {
     const { toast } = useToast();
+    const { db } = useAuth();
     const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
     
     // State for local editing
@@ -303,7 +308,6 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     const handleShowRubric = (assignment: any) => { setSelectedAssignment(assignment); setRubricModalOpen(true); };
     const handlePrintAssignment = (assignment: any) => { setSelectedAssignment(assignment); setPrintModalOpen(true); };
 
-    // --- SAVE LOGIC --- (Simplified from previous version)
     const handleSaveNewRubric = (newRubric: any) => {
         const key = `custom_${Date.now()}`;
         setRubrics(prev => ({ ...prev, [key]: newRubric }));
@@ -313,9 +317,61 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         toast({title: 'Kriterler Güncellendi'});
     };
     const handleAssignConfirm = async (details: { studentIds: string[], date: string, type: 'performance' | 'project' }) => {
-        // This function would be quite similar to your existing one, using writeBatch etc.
-        // For brevity, the full implementation is omitted, but the logic remains.
-        toast({title: 'Ödev Atandı', description: `${details.studentIds.length} öğrenciye gönderildi.`});
+        if (!db || !selectedAssignment || !students || !teacherProfile) {
+            toast({ title: 'Hata', description: 'Gerekli bilgiler yüklenemedi.', variant: 'destructive' });
+            return;
+        }
+
+        const { studentIds, date, type } = details;
+        const rubricType = getRubricType(selectedAssignment.formats);
+        const assignedRubric = rubrics[rubricType] || null;
+
+        try {
+            const batch = writeBatch(db);
+            const studentsByClass: { [key: string]: string[] } = {};
+            
+            studentIds.forEach(studentId => {
+                const student = students.find(s => s.id === studentId);
+                if (student) {
+                    if (!studentsByClass[student.classId]) studentsByClass[student.classId] = [];
+                    studentsByClass[student.classId].push(studentId);
+                }
+            });
+
+            for (const classId in studentsByClass) {
+                const homeworkDocData = {
+                    classId: classId,
+                    text: selectedAssignment.title,
+                    instructions: selectedAssignment.instructions,
+                    assignedDate: new Date().toISOString(),
+                    dueDate: date ? new Date(date).toISOString() : null,
+                    teacherName: teacherProfile.name,
+                    lessonName: teacherProfile.branch,
+                    rubric: assignedRubric ? assignedRubric.items : null,
+                    assignmentType: type, // This is crucial
+                    assignedStudents: studentsByClass[classId],
+                    seenBy: [],
+                    questions: selectedAssignment.questions || [],
+                    file: selectedAssignment.file || null,
+                };
+
+                const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
+                const newDocRef = doc(homeworksColRef); // Auto-generate ID
+                batch.set(newDocRef, homeworkDocData);
+            }
+
+            await batch.commit();
+            setAssignSettingsModalOpen(false); // Close the modal
+            setSuccessModalOpen(true); // Open success modal
+            setAssignDetails({
+                assignedTo: `${studentIds.length} öğrenci`,
+                date: date ? format(new Date(date), 'dd MMMM yyyy', { locale: tr }) : 'Tarih yok'
+            });
+
+        } catch (error) {
+            console.error("Assignment error:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.' });
+        }
     };
 
     return (
