@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { doc, collection, addDoc, deleteDoc, query, getDocs, updateDoc, where, writeBatch, setDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { Class, Homework, TeacherProfile, Student, Submission, Question, QuestionType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft, X, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -61,7 +61,7 @@ const SubmissionStatus = ({ student, homework, submissions, classId, onMarkAsSub
 
 export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, students }: { classId: string, currentClass: Class | null, teacherProfile: TeacherProfile | null, students: Student[] }) => {
     const { toast } = useToast();
-    const { db, appUser } = useAuth();
+    const { db, appUser, storage } = useAuth();
   
     const [text, setText] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
@@ -70,6 +70,10 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const [isProcessing, setIsProcessing] = useState(false);
     const [questions, setQuestions] = useState<Question[]>([]);
     
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState<string | number | null>(null);
+    const [questionIdForImageUpload, setQuestionIdForImageUpload] = useState<string | number | null>(null);
+
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
@@ -99,7 +103,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         fetchSubmissions();
     }, [fetchSubmissions]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleHomeworkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile && selectedFile.size > 750 * 1024) { // ~750KB limit
             toast({
@@ -113,6 +117,57 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             setFile(selectedFile || null);
         }
     };
+    
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, qId: string | number) => {
+        if (!e.target.files || !storage || !appUser) return;
+        const file = e.target.files[0];
+        
+        if (file.size > 750 * 1024) { // ~750KB
+            toast({
+                variant: "destructive",
+                title: "Dosya Boyutu Çok Büyük",
+                description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
+            });
+            return;
+        }
+
+        setIsUploading(qId);
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const dataUrl = reader.result as string;
+            const imageRef = storageRef(storage, `exam_images/${appUser.data.uid}/${Date.now()}_${file.name}`);
+            try {
+              await uploadString(imageRef, dataUrl, 'data_url');
+              const downloadUrl = await getDownloadURL(imageRef);
+              updateQuestionField(qId, 'image', downloadUrl);
+              toast({title: "Resim Yüklendi"});
+            } catch(error) {
+              console.error("Image upload error:", error);
+              toast({variant: "destructive", title: "Yükleme Hatası"});
+            } finally {
+              setIsUploading(null);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    
+    const handleDeleteImage = async (qId: string | number, imageUrl: string) => {
+        if (!storage) return;
+        try {
+            const imageRef = storageRef(storage, imageUrl);
+            await deleteObject(imageRef);
+            updateQuestionField(qId, 'image', null);
+            toast({title: "Resim Silindi"});
+        } catch(error) {
+           console.error("Image delete error:", error);
+           if ((error as any).code === 'storage/object-not-found') {
+                updateQuestionField(qId, 'image', null);
+           } else {
+                toast({variant: "destructive", title: "Hata", description: "Resim silinemedi."});
+           }
+        }
+    };
+
 
     const addQuestion = (type: QuestionType) => {
         const newQuestion: Question = {
@@ -325,7 +380,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
                     <div>
                         <Label htmlFor="file-upload">Dosya Eki (Max 750KB)</Label>
-                        <Input id="file-upload" type="file" onChange={handleFileChange} className="mt-1"/>
+                        <Input id="file-upload" type="file" onChange={handleHomeworkFileChange} className="mt-1"/>
                     </div>
                     
                     {(file || (editingHomework && editingHomework.file)) && (
@@ -340,15 +395,25 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                     
                      <div className="space-y-4 pt-4 border-t">
                         <Label className="text-base font-semibold">Sorular</Label>
+                        <input type="file" ref={imageInputRef} onChange={(e) => { if(questionIdForImageUpload) handleImageUpload(e, questionIdForImageUpload) }} accept="image/*" className="hidden" />
                         {questions.map((q, index) => (
                             <Card key={q.id} className="p-4 bg-slate-50">
                                 <div className="flex justify-between items-center mb-2">
                                     <p className="font-semibold text-sm">Soru {index + 1}</p>
                                     <div className="flex items-center gap-2">
                                         <Input type="number" value={q.points || 10} onChange={e => updateQuestionField(q.id, 'points', parseInt(e.target.value) || 0)} className="w-20 h-8 text-xs text-center" />
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400" onClick={() => { setQuestionIdForImageUpload(q.id); imageInputRef.current?.click(); }} disabled={isUploading === q.id}>
+                                             {isUploading === q.id ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16}/>}
+                                        </Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => deleteQuestion(q.id)}><Trash2 size={16}/></Button>
                                     </div>
                                 </div>
+                                {q.image && (
+                                    <div className="relative group/image mb-2">
+                                        <img src={q.image} alt="Soru görseli" className="rounded-md border max-h-48" />
+                                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/image:opacity-100" onClick={() => handleDeleteImage(q.id, q.image!)}><X size={14}/></Button>
+                                    </div>
+                                 )}
                                 <Textarea value={q.text} onChange={e => updateQuestionField(q.id, 'text', e.target.value)} placeholder="Soru metnini yazın..."/>
                                 {q.type === 'multiple-choice' && (
                                     <div className="mt-3 space-y-2">
