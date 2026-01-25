@@ -6,7 +6,7 @@ import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario } from '@/ai/flows/generate-assignment-scenario-flow';
 import { exportMaterialToRtf } from '@/lib/word-export';
-
+import { Button } from '@/components/ui/button';
 
 // --- YENİ EKLENEN SENARYO ŞABLONLARI ---
 const SCENARIO_TEMPLATES = {
@@ -144,34 +144,44 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
     } else {
       title = topicData.konu;
       outcome = topicData.kazanimlar[0];
-      processSteps = isProject ? [
-        "Konuyla ilgili edebi eserlerin/metinlerin taranması.",
-        "Seçilen metinlerin incelenmesi.",
-        "Çalışmanın özgün bir metin haline getirilmesi."
-      ] : [
-        "İlgili metinlerin okunması/dinlenmesi.",
-        "Metin üzerinde analiz yapılması.",
-        "Çalışmanın özetlenmesi."
-      ];
+      if (isProject) {
+         processSteps = [
+           "Konuyla ilgili edebi eserlerin veya metinlerin taranması.",
+           "Seçilen metinlerin yapı, tema ve dil özellikleri açısından incelenmesi.",
+           "İnceleme sonuçlarının tasnif edilmesi ve yorumlanması.",
+           "Çalışmanın özgün bir metin veya sunum haline getirilmesi."
+         ];
+      } else {
+         processSteps = [
+           "İlgili kazanımı içeren metinlerin okunması/dinlenmesi.",
+           "Metin üzerinde gerekli analizlerin yapılması.",
+           "Çalışma kağıdının veya sözlü sunumun hazırlanması."
+         ];
+      }
     }
 
     const templates = SCENARIO_TEMPLATES[lesson as keyof typeof SCENARIO_TEMPLATES];
     const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+    
+    // Şablondaki ${outcome} değişkenini gerçek veriyle değiştir
     const scenarioText = randomTemplate.template.replace("${outcome}", outcome);
     const roleName = randomTemplate.role;
+
+    // Senaryoyu birleştir
     const finalScenario = `${scenarioText} Bu çalışmada aşağıdaki süreç basamaklarını takip etmeniz beklenmektedir.`;
 
     if (isProject) {
-      processSteps.push("Elde edilen verileri içeren bir proje raporu hazırlayınız.", "Çalışmanızı sunmak için bir materyal oluşturunuz.");
+      processSteps.push("Elde edilen verileri ve sonuçları içeren kapsamlı bir proje raporu hazırlayınız.");
+      processSteps.push("Çalışmanızı sunmak için bir poster veya dijital sunum materyali oluşturunuz.");
     } else {
-      processSteps.push("Çalışma sonucunda elde ettiğiniz bulguları sınıfta paylaşınız.");
+      processSteps.push("Çalışma sonucunda elde ettiğiniz bulguları sınıfta paylaşmak üzere özetleyiniz.");
     }
 
     return {
       title: "Görev Senaryosu",
       description: finalScenario,
       outcome: outcome,
-      role: roleName,
+      role: roleName, // Artık rolü de ayrıca döndürüyoruz
       steps: processSteps,
       evaluation: isProject ? [
         "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
@@ -200,7 +210,8 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h2 className="flex items-center gap-2 font-semibold text-lg mb-6 border-b pb-2 text-slate-800">
-              <GraduationCap className="w-5 h-5" /> Ders ve Konu Seçimi
+              <GraduationCap className="w-5 h-5" />
+              Ders ve Konu Seçimi
             </h2>
             <div className="mb-5">
               <label className="block text-sm font-bold text-slate-700 mb-2">Ders</label>
@@ -213,7 +224,7 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
             <div className="mb-5">
               <label className="block text-sm font-bold text-slate-700 mb-2">Sınıf Seviyesi</label>
               <select value={selectedGradeIndex} onChange={(e) => setSelectedGradeIndex(parseInt(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 font-medium" >
-                {KAZANIMLAR[selectedLesson].map((gradeData, idx) => (<option key={idx} value={idx}>{gradeData.unite}</option>))}
+                {KAZANIMLAR[selectedLesson].map((gradeData: any, idx: number) => (<option key={idx} value={idx}>{gradeData.unite}</option>))}
               </select>
             </div>
             <div className="mb-6">
@@ -223,6 +234,25 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                   <option key={idx} value={idx}> {t.konu.length > 60 ? t.konu.substring(0, 60) + "..." : t.konu} </option>
                 ))}
               </select>
+            </div>
+            <div className="mb-5">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Ödev Türü</label>
+              <div className="space-y-2">
+                {taskTypes.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedType(t.id)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      selectedType === t.id
+                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                      : 'border-slate-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="font-bold text-slate-900 text-sm">{t.name}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
@@ -247,6 +277,7 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
         <div className="lg:col-span-8">
           {generatedTask ? (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
               <div className={`bg-slate-900 text-white p-8 border-b-4 relative overflow-hidden ${selectedLesson === 'Fizik' ? 'border-blue-500' : 'border-rose-500'}`}>
                 <div className="relative z-10">
                   <div className="flex justify-between items-start">
@@ -264,20 +295,26 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                   </div>
                 </div>
               </div>
-              <div className="p-8 space-y-8">
+
+              <div className="p-8 space-y-8 print:p-0">
+                
                 <div className={`p-4 rounded-lg border-l-4 ${selectedLesson === 'Fizik' ? 'bg-blue-50 border-blue-600' : 'bg-rose-50 border-rose-600'}`}>
                   <h4 className={`text-sm font-bold uppercase mb-1 ${selectedLesson === 'Fizik' ? 'text-blue-900' : 'text-rose-900'}`}>Hedeflenen Kazanım / Çıktı</h4>
                   <p className={`${selectedLesson === 'Fizik' ? 'text-blue-800' : 'text-rose-800'} font-medium italic`}>"{generatedTask.outcome}"</p>
                 </div>
+
                 <div>
                   <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-3 border-b pb-2">
-                    <Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} /> Görev Açıklaması
+                    <Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
+                    Görev Açıklaması
                   </h4>
                   <p className="text-slate-700 leading-relaxed text-lg" dangerouslySetInnerHTML={{ __html: generatedTask.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
                 </div>
+
                 <div>
                   <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-4 border-b pb-2">
-                    <List className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} /> Süreç Adımları ve Yönerge
+                    <List className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
+                    Süreç Adımları ve Yönerge
                   </h4>
                   <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
                     <ul className="space-y-4">
@@ -290,7 +327,37 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                     </ul>
                   </div>
                 </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900 text-lg mb-4 border-b pb-2">Değerlendirme Kriterleri</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {generatedTask.evaluation.map((criteria: string, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                        <span className="text-slate-700 font-medium">{criteria.split('(%')[0]}</span>
+                        <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-full text-sm border border-slate-200">
+                          %{criteria.split('(%')[1].replace(')', '')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
+
+              <div className="bg-slate-50 p-4 border-t flex justify-between items-center text-sm text-slate-500">
+                <div>* MEB Ortaöğretim Performans ve Proje Yönetmeliği'ne uygundur.</div>
+                <div className="flex gap-2">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors">
+                    <Printer className="w-4 h-4" />
+                    Yazdır
+                  </button>
+                  <button className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors shadow-sm ${selectedLesson === 'Fizik' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
+                    <Save className="w-4 h-4" />
+                    PDF Kaydet
+                  </button>
+                </div>
+              </div>
+
             </div>
           ) : (
             <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50 p-8">
@@ -304,6 +371,7 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
