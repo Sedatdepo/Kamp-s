@@ -515,7 +515,7 @@ export function TeacherDashboard() {
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
-          case 'material-creator': tabContent = <MaterialCreatorTab />; break;
+          case 'material-creator': tabContent = <MaterialCreatorTab teacherProfile={teacherProfile} />; break;
           default: tabContent = null;
         }
         return (

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, FileDown } from 'lucide-react';
+import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, LayoutTemplate, Loader2, FileDown } from 'lucide-react';
+import { generateAssignmentScenario } from '@/ai/flows/generate-assignment-scenario-flow';
 import { TeacherProfile } from '@/lib/types';
 import { exportMaterialToRtf } from '@/lib/word-export';
 
@@ -966,6 +967,54 @@ const KAZANIMLAR: { [key: string]: any[] } = {
         { konu: "Hikâye (Gelecek)", kazanimlar: ["TDE2.3. Çözümleyebilme"] },
         { konu: "Mülakat (Dinleme)", kazanimlar: ["TDE1.2. Anlam oluşturabilme"] }
       ]
+    }
+  ]
+};
+
+// --- YENİ EKLENEN SENARYO ŞABLONLARI ---
+const SCENARIO_TEMPLATES = {
+  Fizik: [
+    {
+      role: "Ar-Ge Mühendisi",
+      template: "Yüksek teknoloji üreten bir firmada **Ar-Ge Mühendisi** olarak çalışıyorsunuz. Şirket yönetimi, yeni geliştirilecek bir ürün prototipi için **${outcome}** prensiplerinin hayati önem taşıdığını belirtti. Sizden bu konuyu derinlemesine incelemeniz ve ekibe rehberlik etmeniz bekleniyor."
+    },
+    {
+      role: "Bilim Merkezi Tasarımcısı",
+      template: "Şehrinize yeni açılacak interaktif bilim merkezinde **Tasarımcı** olarak görevlisiniz. Ziyaretçilerin **${outcome}** kavramını deneyimleyerek öğrenebileceği yaratıcı bir istasyon tasarlamanız gerekiyor."
+    },
+    {
+      role: "Bilim Dergisi Editörü",
+      template: "Popüler bir bilim dergisinde **Editör**sünüz. Önümüzdeki ayın kapak konusu **${outcome}**. Okuyucularınıza bu karmaşık konuyu basit, anlaşılır ve ilgi çekici bir dille aktaracak bir dosya hazırlamalısınız."
+    },
+    {
+      role: "Laboratuvar Direktörü",
+      template: "Ulusal bir araştırma enstitüsünde **Laboratuvar Direktörü**sünüz. Genç araştırmacılardan oluşan ekibinize **${outcome}** konusunda bir eğitim vermeniz ve örnek bir çalışma yürütmeniz gerekiyor."
+    },
+    {
+      role: "Eğitim Teknoloğu",
+      template: "Bir eğitim teknolojileri firmasında **Eğitim Teknoloğu** olarak çalışıyorsunuz. Lise öğrencileri için **${outcome}** kazanımını dijital ortamda simüle edecek bir öğrenme modülü kurgulamanız istendi."
+    }
+  ],
+  Edebiyat: [
+    {
+      role: "Kültür Sanat Muhabiri",
+      template: "Ulusal bir gazetede **Kültür Sanat Muhabiri** olarak çalışıyorsunuz. Editörünüz, **${outcome}** temasını işleyen eserleri ve metinleri inceleyerek okuyucular için kapsamlı bir pazar eki hazırlamanızı istedi."
+    },
+    {
+      role: "Müze Küratörü",
+      template: "Türkiye'nin önde gelen edebiyat müzesinde **Küratör**sünüz. **${outcome}** konusunu merkeze alan, ziyaretçileri edebi bir yolculuğa çıkaracak yeni bir sergi taslağı hazırlamanız bekleniyor."
+    },
+    {
+      role: "Yayınevi Editörü",
+      template: "Köklü bir yayınevinde **Editör** olarak görev yapıyorsunuz. Yayınevi yönetimi, **${outcome}** üzerine odaklanan özel bir antoloji serisi başlatmaya karar verdi. Bu serinin ilk taslağını oluşturmak sizin göreviniz."
+    },
+    {
+      role: "Senarist",
+      template: "Bir yapım şirketi için **Senarist** olarak çalışıyorsunuz. Yeni projenizde karakterlerin iç dünyasını ve çatışmalarını yansıtmak için **${outcome}** konusundaki edebi tekniklerden faydalanmanız gerekiyor."
+    },
+    {
+      role: "Festival Koordinatörü",
+      template: "Uluslararası bir edebiyat festivalinde **Koordinatör**sünüz. Katılımcı yazarların ve okurların **${outcome}** kavramını tartışabileceği bir panel veya atölye çalışması organize etmelisiniz."
     }
   ]
 };

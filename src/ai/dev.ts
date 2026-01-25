@@ -5,3 +5,4 @@ import './flows/generate-student-report-flow';
 import './flows/analyze-sociogram-flow';
 import './flows/generate-performance-grade-flow';
 import './flows/generate-meeting-agenda-item-flow';
+import './flows/generate-assignment-scenario-flow';
