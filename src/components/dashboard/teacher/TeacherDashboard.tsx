@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
@@ -55,9 +55,10 @@ const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab')
 const ExamBuilder = dynamic(() => import('@/components/dashboard/teacher/ExamBuilder').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
+const MaterialCreatorTab = dynamic(() => import('@/components/dashboard/teacher/MaterialCreatorTab').then(mod => mod.default), { loading: LoadingSpinner });
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-builder" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable" | "material-creator";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -376,7 +377,8 @@ function ClassSelectionScreen({
                     <MenuCard icon={<Users />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu tutanakları." onClick={() => setActiveTab('sok')} />
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => setActiveTab('veli-toplantisi')} />
                     <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
-                    <MenuCard icon={<FileQuestion />} title="Soru Bankası" description="AI ile sınav soruları oluşturun." onClick={() => setActiveTab('exam-builder')} />
+                    <MenuCard icon={<Sparkles />} title="Materyal Oluşturucu" description="AI ile öğretim materyalleri oluşturun." onClick={() => setActiveTab('material-creator')} />
+                    <MenuCard icon={<FileQuestion />} title="Ödev Oluşturucu" description="AI ile sınav ve ödev oluşturun." onClick={() => setActiveTab('exam-builder')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<Clock />} title="Ders Programı" description="Haftalık ders programı oluşturun." onClick={() => setActiveTab('timetable')} />
                 </div>
@@ -402,13 +404,14 @@ const TABS_CONFIG = {
   "veli-toplantisi": { label: "Veli Toplantısı Tutanağı", icon: BookText },
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
   "kazanimlar": { label: "Kazanımlar", icon: Target },
-  "exam-builder": { label: "Soru Bankası", icon: FileQuestion },
+  "exam-builder": { label: "Ödev Oluşturucu", icon: FileQuestion },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
   "meb-club": { label: "Kulüp Evrak", icon: Trophy },
   "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
   "gamification": { label: "Rozetler", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
   "timetable": { label: "Ders Programı", icon: Clock },
+  "material-creator": { label: "Materyal Oluşturucu", icon: Sparkles },
 } as const;
 
 
@@ -500,7 +503,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     let tabContent;
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club', 'timetable', 'bep'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'exam-builder', 'meb-club', 'timetable', 'bep', 'material-creator'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
@@ -512,6 +515,7 @@ export function TeacherDashboard() {
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+          case 'material-creator': tabContent = <MaterialCreatorTab />; break;
           default: tabContent = null;
         }
         return (
