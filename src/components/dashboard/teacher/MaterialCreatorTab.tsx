@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Plus } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Plus, X } from 'lucide-react';
 import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario, GenerateAssignmentScenarioInput } from '@/ai/flows/generate-assignment-scenario-flow';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from './RecordManager';
+import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import type { AssignmentTemplate } from '@/lib/types';
 
 const TASK_TYPES = {
@@ -74,39 +74,6 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
         }
     }, [selectedRecordId, performanceAssignments]);
 
-    const generateFromTemplate = () => {
-        setIsGenerating(true);
-        setGeneratedTask(null);
-
-        setTimeout(() => {
-            if (!currentGradeData || !currentGradeData.unite) {
-                toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen geçerli bir sınıf seviyesi seçin.' });
-                setIsGenerating(false);
-                return;
-            }
-            const gradeNumber = parseInt(currentGradeData.unite.match(/\d+/)?.[0] || '9');
-            const subjectKey = selectedLesson === 'Fizik' ? 'physics' : 'literature';
-            const matchingAssignments = assignmentsData.filter(a => a.grade === gradeNumber && a.subject === subjectKey);
-    
-            if (matchingAssignments.length > 0) {
-                const randomAssignment = matchingAssignments[Math.floor(Math.random() * matchingAssignments.length)];
-                setGeneratedTask({
-                    ...randomAssignment,
-                    outcome: randomAssignment.instructions,
-                    steps: [],
-                    evaluation: selectedTaskType === "project" ? [
-                        "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
-                    ] : [
-                        "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
-                    ]
-                });
-            } else {
-                toast({ variant: 'destructive', title: 'Şablon Bulunamadı', description: 'Seçilen kriterlere uygun hazır bir ödev şablonu bulunamadı.' });
-            }
-            setIsGenerating(false);
-        }, 500); 
-    };
-    
     const generateWithAi = async () => {
         if (!currentTopic) return;
         setIsGenerating(true);
@@ -231,6 +198,8 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 md:p-8">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Başlık */}
                 <div className="lg:col-span-12 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${selectedLesson === 'Fizik' ? 'bg-blue-700' : 'bg-rose-700'}`}>
@@ -243,6 +212,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                     </div>
                 </div>
 
+                {/* SOL PANEL: Seçimler */}
                 <div className="lg:col-span-4 space-y-6">
                     <RecordManager
                         records={(performanceAssignments || []).map(r => ({ id: r.id, name: r.title }))}
@@ -257,23 +227,47 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                             <GraduationCap className="w-5 h-5" />
                             Ders ve Konu Seçimi
                         </h2>
+
+                        {/* Ders Seçimi */}
                         <div className="mb-5">
                             <label className="block text-sm font-bold text-slate-700 mb-2">Ders</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {Object.keys(KAZANIMLAR).map(lesson => (
-                                    <button key={lesson} onClick={() => setSelectedLesson(lesson)} className={`py-2 rounded-lg font-medium transition-colors border ${selectedLesson === lesson ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{lesson}</button>
+                                    <button
+                                        key={lesson}
+                                        onClick={() => setSelectedLesson(lesson)}
+                                        className={`py-2 rounded-lg font-medium transition-colors border ${
+                                        selectedLesson === lesson 
+                                        ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
+                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {lesson}
+                                    </button>
                                 ))}
                             </div>
                         </div>
+
+                        {/* Sınıf Seviyesi */}
                         <div className="mb-5">
                             <label className="block text-sm font-bold text-slate-700 mb-2">Sınıf Seviyesi</label>
-                            <select value={selectedGradeIndex} onChange={(e) => setSelectedGradeIndex(parseInt(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 font-medium">
+                            <select 
+                                value={selectedGradeIndex}
+                                onChange={(e) => setSelectedGradeIndex(parseInt(e.target.value))}
+                                className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 font-medium"
+                            >
                                 {KAZANIMLAR[selectedLesson].map((gradeData: any, idx: number) => (<option key={idx} value={idx}>{gradeData.unite}</option>))}
                             </select>
                         </div>
+
+                        {/* Konu/Kazanım */}
                         <div className="mb-6">
                             <label className="block text-sm font-bold text-slate-700 mb-2">Konu / Kazanım</label>
-                            <select value={selectedTopicIndex} onChange={(e) => setSelectedTopicIndex(parseInt(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <select 
+                                value={selectedTopicIndex}
+                                onChange={(e) => setSelectedTopicIndex(parseInt(e.target.value))}
+                                className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            >
                                 {currentGradeData?.konular.map((t: any, idx: number) => (<option key={idx} value={idx}>{t.konu.length > 60 ? t.konu.substring(0, 60) + "..." : t.konu}</option>))}
                             </select>
                         </div>
@@ -297,28 +291,27 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                             </select>
                         </div>
 
+                        {/* Seçili Konu Önizleme */}
                         <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                          <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            {selectedLesson === "Fizik" ? "Süreç Bileşenleri" : "Kazanım Detayı"}
-                          </h4>
-                          <ul className="text-xs text-yellow-900 space-y-1 pl-1">
-                            {currentTopic?.kazanimlar.slice(0, 3).map((c: string, i: number) => (
-                              <li key={i} className="leading-tight opacity-90">• {c}</li>
-                            ))}
-                            {currentTopic?.kazanimlar.length > 3 && <li>...</li>}
-                          </ul>
+                            <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                {selectedLesson === "Fizik" ? "Süreç Bileşenleri" : "Kazanım Detayı"}
+                            </h4>
+                            <ul className="text-xs text-yellow-900 space-y-1 pl-1">
+                                {currentTopic?.kazanimlar.slice(0, 3).map((c: string, i: number) => (
+                                <li key={i} className="leading-tight opacity-90">• {c}</li>
+                                ))}
+                                {currentTopic?.kazanimlar.length > 3 && <li>...</li>}
+                            </ul>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button onClick={generateFromTemplate} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
-                            <Button onClick={generateWithAi} disabled={isGenerating} className="bg-slate-800 hover:bg-slate-900">
-                                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
-                                AI ile Görev Üret
-                            </Button>
-                        </div>
+                        <Button onClick={generateWithAi} disabled={isGenerating} className="w-full bg-slate-800 hover:bg-slate-900">
+                            {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
+                            AI ile Görev Üret
+                        </Button>
                     </div>
                 </div>
 
+                {/* SAĞ PANEL: Çıktı */}
                 <div className="lg:col-span-8">
                     {generatedTask ? (
                         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -386,7 +379,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                             </div>
                             <h3 className="text-xl font-bold text-slate-600 mb-2">Materyal Oluşturmaya Başlayın</h3>
                             <p className="text-center max-w-md text-slate-500 mb-6">
-                                Sol menüden ders, sınıf, konu ve görev türü seçimi yaparak yapay zeka destekli materyal oluşturun veya arşivden bir kayıt seçin.
+                                Sol menüden <strong>{selectedLesson}</strong> dersi için sınıf ve konu seçimi yapın. Sistem, seçtiğiniz kazanımı analiz edip size özel bir senaryo hazırlayacaktır.
                             </p>
                         </div>
                     )}
