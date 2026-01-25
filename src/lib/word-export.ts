@@ -121,13 +121,14 @@ interface ExportMaterialArgs {
 }
 export function exportMaterialToRtf({ task, teacherProfile }: ExportMaterialArgs) {
     const title = task.title || "Öğretim Materyali";
-    const filename = `${title.replace(/ /g, '_')}.rtf`;
+    const filename = `${title.replace(/ /g, '_')}.doc`;
 
     const content = `
       <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1.5cm;">
         <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
           <h1 style="margin: 0; font-size: 18pt;">${task.title}</h1>
           <p style="margin: 0; font-size: 11pt;">${teacherProfile?.reportConfig?.academicYear || '2025-2026'} Öğretim Yılı Performans Görevi</p>
+          ${task.role ? `<p style="margin-top: 5px; font-size: 12pt; font-style: italic;">Rolünüz: <strong>${task.role}</strong></p>` : ''}
         </div>
         <div style="margin-bottom: 20px;">
             <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Hedeflenen Kazanım</h2>
