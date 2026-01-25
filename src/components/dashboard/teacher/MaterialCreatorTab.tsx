@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -10,7 +9,8 @@ import { exportMaterialToRtf } from '@/lib/word-export';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-
+import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
+import { useToast } from '@/hooks/use-toast';
 
 const TASK_TYPES = {
     performance: {
@@ -41,6 +41,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedTask, setGeneratedTask] = useState<any>(null);
+    const { toast } = useToast();
 
     const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
     const currentTopic = currentGradeData?.konular[selectedTopicIndex];
@@ -57,6 +58,52 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     useEffect(() => {
         setSelectedTaskSubtype(TASK_TYPES[selectedTaskType].subtypes[0]);
     }, [selectedTaskType]);
+
+    const generateAssignment = () => {
+        setIsGenerating(true);
+        setGeneratedTask(null);
+
+        setTimeout(() => {
+            if (!currentGradeData || !currentGradeData.unite) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Hata',
+                    description: 'Lütfen geçerli bir sınıf seviyesi seçin.',
+                });
+                setIsGenerating(false);
+                return;
+            }
+            const gradeNumber = parseInt(currentGradeData.unite.match(/\d+/)?.[0] || '9');
+            const subjectKey = selectedLesson === 'Fizik' ? 'physics' : 'literature';
+            const matchingAssignments = assignmentsData.filter(
+                a => a.grade === gradeNumber && a.subject === subjectKey
+            );
+    
+            if (matchingAssignments.length > 0) {
+                const randomAssignment = matchingAssignments[Math.floor(Math.random() * matchingAssignments.length)];
+                
+                const task = {
+                    title: randomAssignment.title,
+                    description: randomAssignment.description,
+                    outcome: randomAssignment.instructions,
+                    steps: [], // Pre-defined tasks don't have separate steps in this data structure
+                    evaluation: selectedTaskType === "project" ? [
+                        "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
+                    ] : [
+                        "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
+                    ]
+                };
+                setGeneratedTask(task);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Şablon Bulunamadı',
+                    description: 'Seçilen kriterlere uygun hazır bir ödev şablonu bulunamadı. Lütfen AI ile üretmeyi deneyin.',
+                });
+            }
+            setIsGenerating(false);
+        }, 500); 
+    };
 
     const generateWithAi = async () => {
         if (!currentTopic) return;
