@@ -16,8 +16,8 @@ const GenerateAssignmentScenarioInputSchema = z.object({
 export type GenerateAssignmentScenarioInput = z.infer<typeof GenerateAssignmentScenarioInputSchema>;
 
 const GenerateAssignmentScenarioOutputSchema = z.object({
-  role: z.string().describe("Öğrencinin bürüneceği profesyonel rol (örn: 'Ar-Ge Mühendisi', 'Müze Küratörü')."),
-  scenario: z.string().describe("Öğrenciyi göreve motive edecek, rolüne uygun, yaratıcı ve gerçekçi bir problem durumu veya görev senaryosu."),
+  taskTitle: z.string().describe("Görev için yaratıcı ve ilgi çekici bir başlık."),
+  taskDescription: z.string().describe("Öğrenciye verilecek görevin açıklaması. Bu bir problem durumu, bir araştırma sorusu, bir tasarım projesi veya yaratıcı bir senaryo olabilir."),
 });
 
 export type GenerateAssignmentScenarioOutput = z.infer<typeof GenerateAssignmentScenarioOutputSchema>;
@@ -33,9 +33,9 @@ export async function generateAssignmentScenario(
     },
     async (input) => {
       const prompt = `
-        Sen deneyimli bir eğitim programı geliştirme uzmanı ve yaratıcı bir senaristtin. Görevin, lise öğrencileri için ilgi çekici ve gerçekçi görev senaryoları oluşturmaktır.
+        Sen deneyimli bir eğitim programı geliştirme uzmanısın. Görevin, lise öğrencileri için, verilen kazanımlara uygun, yaratıcı ve ilgi çekici görevler oluşturmaktır.
 
-        Aşağıdaki bilgileri kullanarak, öğrencinin bir role bürünmesini sağlayacak ve onu belirli bir problemi çözmeye veya bir ürün ortaya koymaya teşvik edecek bir senaryo yaz.
+        Aşağıdaki bilgileri kullanarak, öğrencinin bir konuyu derinlemesine araştırmasını, bir problemi çözmesini veya bir ürün ortaya koymasını sağlayacak bir görev metni oluştur.
 
         - **Ders:** ${input.lesson}
         - **Sınıf Seviyesi:** ${input.grade}
@@ -43,13 +43,13 @@ export async function generateAssignmentScenario(
         - **Hedeflenen Kazanım:** "${input.outcome}"
 
         **Çıktı Kuralları:**
-        1.  **Rol (role):** Öğrenciye profesyonel ve ilginç bir rol ver. (Örnek: 'Bilim Dergisi Editörü', 'Arkeolog', 'Şehir Planlamacısı', 'Yazılım Geliştirici'). Bu rol, konuyla doğrudan ilişkili olmalı.
-        2.  **Senaryo (scenario):** Öğrencinin bu roldeyken karşılaşacağı, hedef kazanımı kullanmasını gerektiren kısa, net ve motive edici bir problem durumu veya görev tanımı yaz. Senaryo, öğrenciye "Ne yapmam gerekiyor?" sorusunun cevabını vermelidir. Cümlelerin kısa ve etkili olsun.
-
+        1.  **Başlık (taskTitle):** Görev için yaratıcı, kısa ve dikkat çekici bir başlık bul. Bu başlık, görevin ne olduğunu özetlemelidir. (Örnek: 'Geçmişin Dedektifleri: Birincil Kaynak Analizi', 'Enerji Dönüşüm Simülatörü', 'Şiirdeki Gizli Anlamlar').
+        2.  **Açıklama (taskDescription):** Görevin detaylı açıklamasını yaz. Bu metin, bir senaryo olmak zorunda değil. Bir araştırma sorusu, bir tasarım problemi, bir analiz görevi veya yaratıcı bir yazma istemi olabilir. Metin, öğrenciye ne yapması gerektiğini net bir şekilde anlatmalı ve onu motive etmelidir.
+        
         Örnek Çıktı (Fizik - Tork konusu için):
         {
-          "role": "Robotik Tasarım Mühendisi",
-          "scenario": "Katıldığınız teknoloji yarışmasında, takımınızın geliştirdiği robot kolunun hassas bir nesneyi devirmeden kaldırıp taşıması gerekiyor. Bu görevi başarmak için, robot kolunun eklemlerindeki tork dengesini ve kuvvetin uygulama noktalarını mükemmel bir şekilde hesaplamalısınız."
+          "taskTitle": "Robotik Kol Dengeleme Meydan Okuması",
+          "taskDescription": "Katıldığınız teknoloji yarışmasında, takımınızın geliştirdiği robot kolunun hassas bir nesneyi devirmeden kaldırıp taşıması gerekiyor. Bu görevi başarmak için, robot kolunun eklemlerindeki tork dengesini ve kuvvetin uygulama noktalarını mükemmel bir şekilde hesaplamalısınız. Analizlerinizi ve hesaplamalarınızı içeren bir rapor hazırlayın."
         }
       `;
 
@@ -61,5 +61,4 @@ export async function generateAssignmentScenario(
     }
   );
 
-  return await scenarioFlow(input);
-}
+  
