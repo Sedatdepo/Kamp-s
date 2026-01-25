@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2 } from 'lucide-react';
+import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2 } from 'lucide-react';
 import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario, GenerateAssignmentScenarioInput } from '@/ai/flows/generate-assignment-scenario-flow';
@@ -9,7 +10,6 @@ import { exportMaterialToRtf } from '@/lib/word-export';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
 
 
 const TASK_TYPES = {
@@ -194,10 +194,25 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                             </select>
                         </div>
 
-                        <Button onClick={generateWithAi} disabled={isGenerating} className="w-full bg-slate-800 hover:bg-slate-900 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-lg hover:shadow-xl transform active:scale-95">
-                            {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                            AI ile Görev Üret
-                        </Button>
+                        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {selectedLesson === "Fizik" ? "Süreç Bileşenleri" : "Kazanım Detayı"}
+                          </h4>
+                          <ul className="text-xs text-yellow-900 space-y-1 pl-1">
+                            {currentTopic?.kazanimlar.slice(0, 3).map((c: string, i: number) => (
+                              <li key={i} className="leading-tight opacity-90">• {c}</li>
+                            ))}
+                            {currentTopic?.kazanimlar.length > 3 && <li>...</li>}
+                          </ul>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button onClick={generateAssignment} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
+                            <Button onClick={generateWithAi} disabled={isGenerating} className="bg-slate-800 hover:bg-slate-900">
+                                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
+                                AI ile Görev Üret
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
@@ -274,7 +289,9 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 <Cpu className="w-16 h-16 text-slate-300" />
                             </div>
                             <h3 className="text-xl font-bold text-slate-600 mb-2">Materyal Oluşturmaya Başlayın</h3>
-                            <p className="text-center max-w-md text-slate-500 mb-6">Sol menüden ders, sınıf, konu ve görev türü seçimi yaparak yapay zeka destekli materyal oluşturun.</p>
+                            <p className="text-center max-w-md text-slate-500 mb-6">
+                                Sol menüden ders, sınıf, konu ve görev türü seçimi yaparak yapay zeka destekli materyal oluşturun.
+                            </p>
                         </div>
                     )}
                 </div>
