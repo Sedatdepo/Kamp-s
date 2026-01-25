@@ -466,7 +466,7 @@ export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfil
         </div>
         <div>
           <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">1. Ödev Konusu</h2>
-          <div style="background-color: #f8f8f8; padding: 15px; border-left: 4px solid #4a90e2; margin-bottom: 20px;">
+          <div style="background-color: #f7f7f7; padding: 15px; border-left: 4px solid #4a90e2; margin-bottom: 20px;">
             <h3 style="margin-top: 0; font-size: 13pt;">${assignment.title}</h3>
             <p>${assignment.description}</p>
           </div>
@@ -1384,8 +1384,7 @@ export function exportQuestionToRtf(question: Question, imageDataUrl: string | n
         const base64String = imageDataUrl.split(',')[1];
         // Cannot get image dimensions synchronously here, so we might need a fixed size or pass them in.
         // Assuming a default display size for now. A better solution would involve loading the image to get its dimensions.
-        const rtfImage = getRtfImageString(base64String, 500, 300); // Placeholder dimensions
-        questionContent = `{\\pard ${rtfImage}\\par}`;
+        questionContent = `{\\pard ${getRtfImageString(base64String, 500, 300)}\\par}`;
     } else {
         const escapedText = question.text
             .replace(/\\/g, '\\\\')
@@ -1557,7 +1556,7 @@ export function exportProjectToRtf(project: any) {
             <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">1. Proje Konusu</h2>
             <div style="background-color: #f7f7f7; padding: 15px; border-left: 4px solid #4a90e2; margin-bottom: 20px;">
                 <h3 style="margin-top: 0; font-size: 13pt;">${project.title}</h3>
-                <p style="margin-bottom: 0;">${project.description}</p>
+                <p>${project.description}</p>
             </div>
 
             <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">2. Yönerge</h2>
@@ -2007,78 +2006,4 @@ export function exportElectionResultsToRtf({ electionResult, electionType, curre
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
-}
-
-// --- MATERIAL CREATOR EXPORT ---
-interface ExportMaterialArgs {
-    task: any;
-    teacherProfile: TeacherProfile | null;
-}
-export function exportMaterialToRtf({ task, teacherProfile }: ExportMaterialArgs) {
-    const title = task.title || "Öğretim Materyali";
-    const filename = `${title.replace(/ /g, '_')}.doc`;
-    const academicYear = teacherProfile?.reportConfig?.academicYear || '2025-2026';
-    
-    const content = `
-        <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1in;">
-            <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
-                <h1 style="margin: 0; font-size: 18pt;">${title.toLocaleUpperCase('tr-TR')}</h1>
-                <p style="margin: 0; font-size: 11pt;">${academicYear} EĞİTİM-ÖĞRETİM YILI PERFORMANS GÖREVİ</p>
-            </div>
-            
-            <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ccc; background-color: #f9f9f9; border-radius: 5px;">
-                <b>Adı Soyadı:</b> ..................................................
-                <b style="margin-left: 30px;">Sınıf/No:</b> ..................................................
-            </div>
-
-            <div style="margin-bottom: 25px; padding: 15px; border-left: 4px solid #4a90e2; background-color: #f0f8ff;">
-                <h3 style="margin-top: 0; font-size: 13pt; color: #3b82f6;">Hedeflenen Kazanım</h3>
-                <p style="margin-bottom: 0; font-style: italic;">"${task.outcome}"</p>
-            </div>
-
-            <div>
-                <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Görev Senaryosu</h2>
-                <p style="text-align: justify;">
-                    Sizden bir <b>${task.role}</b> olarak, ${task.scenario}
-                </p>
-            </div>
-            
-            <div style="margin-top: 25px;">
-                <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Süreç Adımları ve Yönerge</h2>
-                <ol style="padding-left: 20px;">
-                    ${task.steps.map((step: string) => `<li style="margin-bottom: 10px;">${step}</li>`).join('')}
-                </ol>
-            </div>
-            
-            <div style="margin-top: 25px; page-break-before: always;">
-                <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Değerlendirme Kriterleri</h2>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
-                    <thead>
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="padding: 8px; font-weight: bold; width: 70%;">Kriter</th>
-                            <th style="padding: 8px; font-weight: bold; width: 15%;">Ağırlık</th>
-                            <th style="padding: 8px; font-weight: bold; width: 15%;">Alınan Puan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${task.evaluation.map((criteria: string) => `
-                            <tr>
-                                <td style="padding: 8px;">${criteria.split('(%')[0]}</td>
-                                <td style="padding: 8px; text-align: center;">%${criteria.split('(%')[1].replace(')', '')}</td>
-                                <td style="padding: 8px;"></td>
-                            </tr>
-                        `).join('')}
-                        <tr>
-                            <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">TOPLAM PUAN</td>
-                            <td style="padding: 8px;"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-        </div>
-    `;
-
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, filename);
 }

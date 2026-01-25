@@ -61,4 +61,5 @@ export async function generateAssignmentScenario(
     }
   );
 
-  
+  return await scenarioFlow(input);
+}
