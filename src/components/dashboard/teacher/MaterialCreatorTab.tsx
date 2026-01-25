@@ -44,6 +44,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     const [selectedLesson, setSelectedLesson] = useState("Fizik");
     const [selectedGradeIndex, setSelectedGradeIndex] = useState(0);
     const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
+    const [selectedOutcome, setSelectedOutcome] = useState('');
     const [selectedTaskType, setSelectedTaskType] = useState<keyof typeof TASK_TYPES>("performance");
     const [selectedTaskSubtype, setSelectedTaskSubtype] = useState(TASK_TYPES.performance.subtypes[0]);
     
@@ -63,6 +64,15 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     useEffect(() => {
         setSelectedTopicIndex(0);
     }, [selectedGradeIndex]);
+    
+    useEffect(() => {
+        if (currentTopic && currentTopic.kazanimlar.length > 0) {
+            setSelectedOutcome(currentTopic.kazanimlar[0]);
+        } else {
+            setSelectedOutcome('');
+        }
+    }, [currentTopic]);
+
 
     useEffect(() => {
         setSelectedTaskSubtype(TASK_TYPES[selectedTaskType].subtypes[0]);
@@ -76,7 +86,14 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     }, [selectedRecordId, performanceAssignments]);
 
     const generateWithAi = async () => {
-        if (!currentTopic) return;
+        if (!currentTopic || !selectedOutcome) {
+            toast({
+                title: "Eksik Seçim",
+                description: "Lütfen bir ders, sınıf, konu ve kazanım seçin.",
+                variant: "destructive",
+            });
+            return;
+        }
         setIsGenerating(true);
         setGeneratedTask(null);
         try {
@@ -84,7 +101,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                 lesson: selectedLesson,
                 grade: currentGradeData.unite,
                 topic: currentTopic.konu,
-                outcome: currentTopic.kazanimlar[0],
+                outcome: selectedOutcome,
                 taskType: TASK_TYPES[selectedTaskType].label,
                 taskSubtype: selectedTaskSubtype
             };
@@ -97,13 +114,9 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                 size: '10 MB',
                 title: response.taskTitle,
                 description: response.taskDescription,
-                outcome: currentTopic.kazanimlar[0],
-                steps: currentTopic.kazanimlar.slice(1),
-                evaluation: selectedTaskType === "project" ? [
-                    "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
-                ] : [
-                    "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
-                ],
+                outcome: selectedOutcome,
+                steps: [],
+                evaluation: [],
                 isCustom: true,
             };
             setGeneratedTask(task as AssignmentTemplate);
@@ -265,15 +278,33 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 </select>
                             </div>
 
-                            {/* Konu/Kazanım */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Konu / Kazanım</label>
+                            {/* Konu */}
+                            <div className="mb-5">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Konu</label>
                                 <select 
                                     value={selectedTopicIndex}
                                     onChange={(e) => setSelectedTopicIndex(parseInt(e.target.value))}
                                     className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500"
                                 >
-                                    {currentGradeData?.konular.map((t: any, idx: number) => (<option key={idx} value={idx}>{t.konu.length > 60 ? t.konu.substring(0, 60) + "..." : t.konu}</option>))}
+                                    {currentGradeData?.konular.map((t: any, idx: number) => (<option key={idx} value={idx}>{t.konu}</option>))}
+                                </select>
+                            </div>
+                            
+                             {/* Kazanım */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Hedeflenen Kazanım</label>
+                                <select 
+                                    value={selectedOutcome}
+                                    onChange={(e) => setSelectedOutcome(e.target.value)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 h-20"
+                                    disabled={!currentTopic || currentTopic.kazanimlar.length === 0}
+                                    size={5}
+                                >
+                                    {currentTopic?.kazanimlar.map((outcome: string, idx: number) => (
+                                        <option key={idx} value={outcome}>
+                                            {outcome.length > 80 ? outcome.substring(0, 80) + '...' : outcome}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -295,20 +326,6 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                     ))}
                                 </select>
                             </div>
-
-                            {/* Seçili Konu Önizleme */}
-                            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3" />
-                                    {selectedLesson === "Fizik" ? "Süreç Bileşenleri" : "Kazanım Detayı"}
-                                </h4>
-                                <ul className="text-xs text-yellow-900 space-y-1 pl-1">
-                                    {currentTopic?.kazanimlar.slice(0, 3).map((c: string, i: number) => (
-                                    <li key={i} className="leading-tight opacity-90">• {c}</li>
-                                    ))}
-                                    {currentTopic?.kazanimlar.length > 3 && <li>...</li>}
-                                </ul>
-                            </div>
                             
                             <Button onClick={generateWithAi} disabled={isGenerating} className="w-full bg-slate-800 hover:bg-slate-900">
                                 {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
@@ -321,7 +338,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                     <div className="lg:col-span-8">
                         {generatedTask ? (
                             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className={`bg-slate-900 text-white p-8 border-b-4 relative overflow-hidden ${selectedLesson === 'Fizik' ? 'border-blue-500' : 'border-rose-500'}`}>
+                                <div className={`p-8 border-b-4 relative overflow-hidden ${selectedLesson === 'Fizik' ? 'border-blue-500 bg-blue-900 text-white' : 'border-rose-500 bg-rose-900 text-white'}`}>
                                     <div className="relative z-10">
                                     <div className="flex justify-between items-start">
                                         <div>
