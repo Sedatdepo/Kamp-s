@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, FileDown } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { TeacherProfile } from '@/lib/types';
 import { exportMaterialToRtf } from '@/lib/word-export';
+
 
 // --- MÜFREDAT VERİ TABANI (KULLANICI VERİSİ) ---
 const KAZANIMLAR: { [key: string]: any[] } = {
@@ -970,7 +971,368 @@ const KAZANIMLAR: { [key: string]: any[] } = {
 };
 
 const App = () => {
-  // ...
+  const taskTypes = [
+    { id: "performance", name: "Performans Görevi", desc: "Ünite içi kazanımlara yönelik kısa süreli çalışma." },
+    { id: "project", name: "Proje Ödevi", desc: "Daha kapsamlı, araştırma ve ürün odaklı uzun süreli çalışma." }
+  ];
+
+  // State
+  const [selectedLesson, setSelectedLesson] = useState("Fizik");
+  const [selectedGradeIndex, setSelectedGradeIndex] = useState(0);
+  const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
+  const [selectedType, setSelectedType] = useState("performance");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedTask, setGeneratedTask] = useState(null);
+
+  // Veri yardımcıları
+  const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
+  const currentTopic = currentGradeData?.konular[selectedTopicIndex];
+
+  // Ders değişince indexleri sıfırla
+  useEffect(() => {
+    setSelectedGradeIndex(0);
+    setSelectedTopicIndex(0);
+  }, [selectedLesson]);
+
+  // Sınıf değişince konu indexini sıfırla
+  useEffect(() => {
+    setSelectedTopicIndex(0);
+  }, [selectedGradeIndex]);
+
+  const generateAssignment = () => {
+    setIsGenerating(true);
+    setGeneratedTask(null);
+    
+    setTimeout(() => {
+      if (currentTopic) {
+        const task = createFlexibleTask(selectedLesson, currentGradeData.unite, currentTopic, selectedType);
+        setGeneratedTask(task);
+      }
+      setIsGenerating(false);
+    }, 1500);
+  };
+
+  // --- ÖDEV ÜRETİM MOTORU (GÜNCELLENMİŞ) ---
+  const createFlexibleTask = (lesson, gradeName, topicData, type) => {
+    const isProject = type === "project";
+    
+    // Konu Başlığı ve Öğrenme Çıktısı Ayrıştırma
+    let title = "";
+    let outcome = "";
+    let processSteps = [];
+
+    if (lesson === "Fizik") {
+      title = topicData.konu.length > 50 ? topicData.konu.substring(0, 50) + "..." : topicData.konu;
+      outcome = topicData.konu;
+      processSteps = [...topicData.kazanimlar];
+    } else {
+      title = topicData.konu;
+      outcome = topicData.kazanimlar[0];
+      if (isProject) {
+         processSteps = [
+           "Konuyla ilgili edebi eserlerin veya metinlerin taranması.",
+           "Seçilen metinlerin yapı, tema ve dil özellikleri açısından incelenmesi.",
+           "İnceleme sonuçlarının tasnif edilmesi ve yorumlanması.",
+           "Çalışmanın özgün bir metin veya sunum haline getirilmesi."
+         ];
+      } else {
+         processSteps = [
+           "İlgili kazanımı içeren metinlerin okunması/dinlenmesi.",
+           "Metin üzerinde gerekli analizlerin yapılması.",
+           "Çalışma kağıdının veya sözlü sunumun hazırlanması."
+         ];
+      }
+    }
+
+    // --- YENİ SENARYO SEÇİM MANTIĞI ---
+    const templates = SCENARIO_TEMPLATES[lesson];
+    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+    
+    // Şablondaki ${outcome} değişkenini gerçek veriyle değiştir
+    const scenarioText = randomTemplate.template.replace("${outcome}", outcome);
+    const roleName = randomTemplate.role;
+
+    // Senaryoyu birleştir
+    const finalScenario = `${scenarioText} Bu çalışmada aşağıdaki süreç basamaklarını takip etmeniz beklenmektedir.`;
+
+    // Proje ise ek raporlama adımları
+    if (isProject) {
+      processSteps.push("Elde edilen verileri ve sonuçları içeren kapsamlı bir proje raporu hazırlayınız.");
+      processSteps.push("Çalışmanızı sunmak için bir poster veya dijital sunum materyali oluşturunuz.");
+    } else {
+      processSteps.push("Çalışma sonucunda elde ettiğiniz bulguları sınıfta paylaşmak üzere özetleyiniz.");
+    }
+
+    return {
+      title: `${lesson} - ${gradeName} - ${title}`,
+      outcome: outcome,
+      role: roleName, // Artık rolü de ayrıca döndürüyoruz
+      scenario: finalScenario,
+      steps: processSteps,
+      evaluation: isProject ? [
+        "Süreç Yönetimi (%30)",
+        "İçerik Doğruluğu (%30)",
+        "Özgünlük ve Yaratıcılık (%20)",
+        "Raporlama ve Sunum (%20)"
+      ] : [
+        "Yönerge Takibi (%40)",
+        "Konu Hakimiyeti (%40)",
+        "Zamanında Teslim (%20)"
+      ]
+    };
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Başlık */}
+        <div className="lg:col-span-12 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-xl ${selectedLesson === 'Fizik' ? 'bg-blue-700' : 'bg-rose-700'}`}>
+              {selectedLesson === 'Fizik' ? <Brain className="text-white w-8 h-8" /> : <Library className="text-white w-8 h-8" />}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">MEB Ödev Asistanı</h1>
+              <p className="text-slate-500 text-sm">Türkiye Yüzyılı Maarif Modeli - {selectedLesson} (2025-2026)</p>
+            </div>
+          </div>
+          <div className="hidden md:flex flex-col items-end">
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full font-bold mb-1">
+              <CheckCircle className="w-4 h-4" />
+              <span>Veri Tabanı Güncellendi</span>
+            </div>
+            <span className="text-xs text-slate-400">Kaynak: Kullanıcı Tanımlı Müfredat</span>
+          </div>
+        </div>
+
+        {/* SOL PANEL: Seçimler */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 className="flex items-center gap-2 font-semibold text-lg mb-6 border-b pb-2 text-slate-800">
+              <GraduationCap className="w-5 h-5" />
+              Ders ve Konu Seçimi
+            </h2>
+
+            {/* Ders Seçimi */}
+            <div className="mb-5">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Ders</label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.keys(KAZANIMLAR).map(lesson => (
+                  <button
+                    key={lesson}
+                    onClick={() => setSelectedLesson(lesson)}
+                    className={`py-2 rounded-lg font-medium transition-colors border ${
+                      selectedLesson === lesson 
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {lesson}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sınıf Seviyesi */}
+            <div className="mb-5">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Sınıf Seviyesi</label>
+              <select 
+                value={selectedGradeIndex}
+                onChange={(e) => setSelectedGradeIndex(parseInt(e.target.value))}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 font-medium"
+              >
+                {KAZANIMLAR[selectedLesson].map((gradeData, idx) => (
+                  <option key={idx} value={idx}>{gradeData.unite}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Konu/Kazanım */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Konu / Kazanım</label>
+              <select 
+                value={selectedTopicIndex}
+                onChange={(e) => setSelectedTopicIndex(parseInt(e.target.value))}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              >
+                {currentGradeData?.konular.map((t, idx) => (
+                  <option key={idx} value={idx}>
+                    {t.konu.length > 60 ? t.konu.substring(0, 60) + "..." : t.konu}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ödev Tipi */}
+             <div className="mb-5">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Ödev Türü</label>
+              <div className="space-y-2">
+                {taskTypes.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedType(t.id)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      selectedType === t.id
+                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                      : 'border-slate-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="font-bold text-slate-900 text-sm">{t.name}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Seçili Konu Önizleme */}
+            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="text-xs font-bold text-yellow-800 mb-2 uppercase flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {selectedLesson === "Fizik" ? "Süreç Bileşenleri" : "Kazanım Detayı"}
+              </h4>
+              <ul className="text-xs text-yellow-900 space-y-1 pl-1">
+                {currentTopic?.kazanimlar.slice(0, 3).map((c, i) => (
+                  <li key={i} className="leading-tight opacity-90">• {c}</li>
+                ))}
+                {currentTopic?.kazanimlar.length > 3 && <li>...</li>}
+              </ul>
+            </div>
+
+            <button
+              onClick={generateAssignment}
+              disabled={isGenerating}
+              className={`w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-lg hover:shadow-xl transform active:scale-95 ${
+                isGenerating ? 'bg-slate-400 cursor-wait' : 'bg-slate-800 hover:bg-slate-900'
+              }`}
+            >
+              {isGenerating ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  {isGenerating ? 'Senaryo Yazılıyor...' : 'Ödevi Oluştur'}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Ödevi Oluştur
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* SAĞ PANEL: Çıktı */}
+        <div className="lg:col-span-8">
+          {generatedTask ? (
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Belge Başlığı */}
+              <div className={`bg-slate-900 text-white p-8 border-b-4 relative overflow-hidden ${selectedLesson === 'Fizik' ? 'border-blue-500' : 'border-rose-500'}`}>
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-bold font-serif tracking-wide">{generatedTask.title}</h2>
+                      <div className="flex flex-wrap items-center gap-3 mt-3 text-slate-300 text-sm font-medium">
+                        <span className="bg-white/10 px-2 py-1 rounded">2025-2026</span>
+                        <span className="bg-white/10 px-2 py-1 rounded">Ders: {selectedLesson}</span>
+                        <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded border border-green-500/30">
+                          {generatedTask.role}
+                        </span>
+                      </div>
+                    </div>
+                    <FileText className="w-10 h-10 text-white/20" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 space-y-8 print:p-0">
+                
+                {/* Öğrenme Çıktısı */}
+                <div className={`p-4 rounded-lg border-l-4 ${selectedLesson === 'Fizik' ? 'bg-blue-50 border-blue-600' : 'bg-rose-50 border-rose-600'}`}>
+                  <h4 className={`text-sm font-bold uppercase mb-1 ${selectedLesson === 'Fizik' ? 'text-blue-900' : 'text-rose-900'}`}>Hedeflenen Kazanım / Çıktı</h4>
+                  <p className={`${selectedLesson === 'Fizik' ? 'text-blue-800' : 'text-rose-800'} font-medium italic`}>"{generatedTask.outcome}"</p>
+                </div>
+
+                {/* Senaryo */}
+                <div>
+                  <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-3 border-b pb-2">
+                    <Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
+                    Görev Senaryosu
+                  </h4>
+                  <p className="text-slate-700 leading-relaxed text-lg">
+                    {generatedTask.scenario}
+                  </p>
+                </div>
+
+                {/* Süreç Adımları (Esas Kısım) */}
+                <div>
+                  <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-4 border-b pb-2">
+                    <List className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
+                    Süreç Adımları ve Yönerge
+                  </h4>
+                  <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                    <ul className="space-y-4">
+                      {generatedTask.steps.map((step, idx) => (
+                        <li key={idx} className="flex gap-4">
+                          <div className={`flex-shrink-0 w-8 h-8 border-2 rounded-full flex items-center justify-center font-bold shadow-sm bg-white ${selectedLesson === 'Fizik' ? 'border-blue-200 text-blue-700' : 'border-rose-200 text-rose-700'}`}>
+                            {idx + 1}
+                          </div>
+                          <p className="text-slate-800 font-medium mt-1">{step}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Değerlendirme */}
+                <div>
+                  <h4 className="font-bold text-slate-900 text-lg mb-4 border-b pb-2">Değerlendirme Kriterleri</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {generatedTask.evaluation.map((criteria, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                        <span className="text-slate-700 font-medium">{criteria.split('(%')[0]}</span>
+                        <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-full text-sm border border-slate-200">
+                          %{criteria.split('(%')[1].replace(')', '')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Alt Bar */}
+              <div className="bg-slate-50 p-4 border-t flex justify-between items-center text-sm text-slate-500">
+                <div>* MEB Ortaöğretim Performans ve Proje Yönetmeliği'ne uygundur.</div>
+                <div className="flex gap-2">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors">
+                    <Printer className="w-4 h-4" />
+                    Yazdır
+                  </button>
+                  <button className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors shadow-sm ${selectedLesson === 'Fizik' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
+                    <Save className="w-4 h-4" />
+                    PDF Kaydet
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50 p-8">
+              <div className="bg-slate-50 p-8 rounded-full mb-6 border border-slate-100">
+                <Cpu className="w-16 h-16 text-slate-300" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-600 mb-2">Ödev Hazırlamaya Başlayın</h3>
+              <p className="text-center max-w-md text-slate-500 mb-6">
+                Sol menüden <strong>{selectedLesson}</strong> dersi için sınıf ve konu seçimi yapın. Sistem, seçtiğiniz kazanımı analiz edip size özel bir senaryo hazırlayacaktır.
+              </p>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
 };
 
 export default App;
