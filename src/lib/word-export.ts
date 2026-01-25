@@ -114,6 +114,49 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
     `;
 }
 
+// --- MATERIAL EXPORT ---
+interface ExportMaterialArgs {
+    task: any;
+    teacherProfile: TeacherProfile | null;
+}
+export function exportMaterialToRtf({ task, teacherProfile }: ExportMaterialArgs) {
+    const title = task.title || "Öğretim Materyali";
+    const filename = `${title.replace(/ /g, '_')}.rtf`;
+
+    const content = `
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1.5cm;">
+        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
+          <h1 style="margin: 0; font-size: 18pt;">${task.title}</h1>
+          <p style="margin: 0; font-size: 11pt;">${teacherProfile?.reportConfig?.academicYear || '2025-2026'} Öğretim Yılı Performans Görevi</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Hedeflenen Kazanım</h2>
+            <p style="font-style: italic;">"${task.outcome}"</p>
+        </div>
+        <div>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Görev Açıklaması</h2>
+          <p>${(task.description || task.scenario || '').replace(/\n/g, '<br/>')}</p>
+        </div>
+        <div style="margin-top: 20px;">
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Süreç Adımları</h2>
+          <ol>
+            ${(task.steps || []).map((step: string) => `<li>${step}</li>`).join('')}
+          </ol>
+        </div>
+        <div style="margin-top: 20px;">
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Değerlendirme Kriterleri</h2>
+          <ul>
+             ${(task.evaluation || []).map((criteria: string) => `<li>${criteria}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
+}
+
+
 // --- GUIDANCE REFERRAL EXPORT ---
 interface ExportGuidanceReferralArgs {
     record: GuidanceReferralRecord;

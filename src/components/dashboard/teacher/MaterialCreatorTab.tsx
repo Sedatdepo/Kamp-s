@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, FileDown } from 'lucide-react';
+import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2 } from 'lucide-react';
 import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario } from '@/ai/flows/generate-assignment-scenario-flow';
 import { exportMaterialToRtf } from '@/lib/word-export';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 
 // --- YENİ EKLENEN SENARYO ŞABLONLARI ---
 const SCENARIO_TEMPLATES = {
@@ -163,11 +165,9 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
     const templates = SCENARIO_TEMPLATES[lesson as keyof typeof SCENARIO_TEMPLATES];
     const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
     
-    // Şablondaki ${outcome} değişkenini gerçek veriyle değiştir
     const scenarioText = randomTemplate.template.replace("${outcome}", outcome);
     const roleName = randomTemplate.role;
 
-    // Senaryoyu birleştir
     const finalScenario = `${scenarioText} Bu çalışmada aşağıdaki süreç basamaklarını takip etmeniz beklenmektedir.`;
 
     if (isProject) {
@@ -181,7 +181,7 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
       title: "Görev Senaryosu",
       description: finalScenario,
       outcome: outcome,
-      role: roleName, // Artık rolü de ayrıca döndürüyoruz
+      role: roleName,
       steps: processSteps,
       evaluation: isProject ? [
         "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
@@ -189,6 +189,45 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
         "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
       ]
     };
+  };
+
+  const handleTaskChange = (field: string, value: string) => {
+    if (!generatedTask) return;
+    setGeneratedTask((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const handleStepChange = (index: number, value: string) => {
+    if (!generatedTask) return;
+    const newSteps = [...generatedTask.steps];
+    newSteps[index] = value;
+    handleTaskChange('steps', newSteps);
+  };
+
+  const addStep = () => {
+    if (!generatedTask) return;
+    handleTaskChange('steps', [...generatedTask.steps, '']);
+  };
+
+  const removeStep = (index: number) => {
+    if (!generatedTask) return;
+    handleTaskChange('steps', generatedTask.steps.filter((_: any, i: number) => i !== index));
+  };
+
+  const handleEvalChange = (index: number, value: string) => {
+    if (!generatedTask) return;
+    const newEval = [...generatedTask.evaluation];
+    newEval[index] = value;
+    handleTaskChange('evaluation', newEval);
+  };
+
+  const addEval = () => {
+    if (!generatedTask) return;
+    handleTaskChange('evaluation', [...generatedTask.evaluation, 'Yeni Kriter (%10)']);
+  };
+
+  const removeEval = (index: number) => {
+    if (!generatedTask) return;
+    handleTaskChange('evaluation', generatedTask.evaluation.filter((_: any, i: number) => i !== index));
   };
 
   return (
@@ -282,7 +321,11 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                 <div className="relative z-10">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h2 className="text-xl md:text-2xl font-bold font-serif tracking-wide">{generatedTask.title}</h2>
+                      <Input
+                        className="text-xl md:text-2xl font-bold font-serif tracking-wide bg-transparent border-0 border-b-2 border-transparent focus-visible:ring-0 focus-visible:border-white rounded-none -ml-3 h-auto p-1"
+                        value={generatedTask.title}
+                        onChange={(e) => handleTaskChange('title', e.target.value)}
+                      />
                       <div className="flex flex-wrap items-center gap-3 mt-3 text-slate-300 text-sm font-medium">
                         <span className="bg-white/10 px-2 py-1 rounded">2025-2026</span>
                         <span className="bg-white/10 px-2 py-1 rounded">Ders: {selectedLesson}</span>
@@ -308,7 +351,12 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                     <Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
                     Görev Açıklaması
                   </h4>
-                  <p className="text-slate-700 leading-relaxed text-lg" dangerouslySetInnerHTML={{ __html: generatedTask.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+                  <Textarea
+                    className="text-slate-700 leading-relaxed text-lg"
+                    value={generatedTask.description || generatedTask.scenario}
+                    onChange={(e) => handleTaskChange(generatedTask.description ? 'description' : 'scenario', e.target.value)}
+                    rows={5}
+                  />
                 </div>
 
                 <div>
@@ -317,44 +365,57 @@ const App = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
                     Süreç Adımları ve Yönerge
                   </h4>
                   <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                    <ul className="space-y-4">
+                    <div className="space-y-3">
                       {generatedTask.steps.map((step: string, idx: number) => (
-                        <li key={idx} className="flex gap-4">
+                        <div key={idx} className="flex gap-2 items-center">
                           <div className={`flex-shrink-0 w-8 h-8 border-2 rounded-full flex items-center justify-center font-bold shadow-sm bg-white ${selectedLesson === 'Fizik' ? 'border-blue-200 text-blue-700' : 'border-rose-200 text-rose-700'}`}>{idx + 1}</div>
-                          <p className="text-slate-800 font-medium mt-1">{step}</p>
-                        </li>
+                          <Input
+                            value={step}
+                            onChange={(e) => handleStepChange(idx, e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button variant="ghost" size="icon" onClick={() => removeStep(idx)}>
+                            <Trash2 className="h-4 w-4 text-red-500"/>
+                          </Button>
+                        </div>
                       ))}
-                    </ul>
+                       <Button variant="outline" size="sm" onClick={addStep} className="mt-2 w-full border-dashed">
+                            <PlusCircle className="mr-2 h-4 w-4" /> Adım Ekle
+                        </Button>
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-slate-900 text-lg mb-4 border-b pb-2">Değerlendirme Kriterleri</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     {generatedTask.evaluation.map((criteria: string, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                        <span className="text-slate-700 font-medium">{criteria.split('(%')[0]}</span>
-                        <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-full text-sm border border-slate-200">
-                          %{criteria.split('(%')[1].replace(')', '')}
-                        </span>
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={criteria}
+                          onChange={(e) => handleEvalChange(idx, e.target.value)}
+                          className="flex-1"
+                          placeholder="Kriter Adı (% Puan)"
+                        />
+                         <Button variant="ghost" size="icon" onClick={() => removeEval(idx)}>
+                            <Trash2 className="h-4 w-4 text-red-500"/>
+                        </Button>
                       </div>
                     ))}
+                    <Button variant="outline" size="sm" onClick={addEval} className="mt-2 w-full border-dashed">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Kriter Ekle
+                    </Button>
                   </div>
                 </div>
 
               </div>
-
               <div className="bg-slate-50 p-4 border-t flex justify-between items-center text-sm text-slate-500">
                 <div>* MEB Ortaöğretim Performans ve Proje Yönetmeliği'ne uygundur.</div>
                 <div className="flex gap-2">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors">
-                    <Printer className="w-4 h-4" />
-                    Yazdır
-                  </button>
-                  <button className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors shadow-sm ${selectedLesson === 'Fizik' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
-                    <Save className="w-4 h-4" />
-                    PDF Kaydet
-                  </button>
+                  <Button onClick={() => exportMaterialToRtf({ task: generatedTask, teacherProfile })} className={`flex items-center gap-2 text-white rounded-lg font-medium transition-colors shadow-sm ${selectedLesson === 'Fizik' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
+                    <FileDown className="w-4 h-4" />
+                    Word Olarak İndir
+                  </Button>
                 </div>
               </div>
 
