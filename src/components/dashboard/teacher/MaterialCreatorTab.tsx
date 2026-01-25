@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Plus } from 'lucide-react';
 import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario, GenerateAssignmentScenarioInput } from '@/ai/flows/generate-assignment-scenario-flow';
@@ -11,6 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { assignmentsData } from '@/lib/maarif-modeli-odevleri';
 import { useToast } from '@/hooks/use-toast';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+import type { AssignmentTemplate } from '@/lib/types';
 
 const TASK_TYPES = {
     performance: {
@@ -33,6 +36,10 @@ const TASK_TYPES = {
 };
 
 const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile | null }) => {
+    const { toast } = useToast();
+    const { db: localDb, setDb: setLocalDb, loading: dbLoading } = useDatabase();
+    const { performanceAssignments = [] } = localDb;
+    
     const [selectedLesson, setSelectedLesson] = useState("Fizik");
     const [selectedGradeIndex, setSelectedGradeIndex] = useState(0);
     const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
@@ -40,8 +47,9 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     const [selectedTaskSubtype, setSelectedTaskSubtype] = useState(TASK_TYPES.performance.subtypes[0]);
     
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedTask, setGeneratedTask] = useState<any>(null);
-    const { toast } = useToast();
+    const [generatedTask, setGeneratedTask] = useState<AssignmentTemplate | null>(null);
+    const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+    
 
     const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
     const currentTopic = currentGradeData?.konular[selectedTopicIndex];
@@ -59,57 +67,50 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
         setSelectedTaskSubtype(TASK_TYPES[selectedTaskType].subtypes[0]);
     }, [selectedTaskType]);
 
-    const generateAssignment = () => {
+    useEffect(() => {
+        const record = performanceAssignments.find(rec => rec.id === selectedRecordId);
+        if (record) {
+            setGeneratedTask(record);
+        }
+    }, [selectedRecordId, performanceAssignments]);
+
+    const generateFromTemplate = () => {
         setIsGenerating(true);
         setGeneratedTask(null);
 
         setTimeout(() => {
             if (!currentGradeData || !currentGradeData.unite) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Hata',
-                    description: 'Lütfen geçerli bir sınıf seviyesi seçin.',
-                });
+                toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen geçerli bir sınıf seviyesi seçin.' });
                 setIsGenerating(false);
                 return;
             }
             const gradeNumber = parseInt(currentGradeData.unite.match(/\d+/)?.[0] || '9');
             const subjectKey = selectedLesson === 'Fizik' ? 'physics' : 'literature';
-            const matchingAssignments = assignmentsData.filter(
-                a => a.grade === gradeNumber && a.subject === subjectKey
-            );
+            const matchingAssignments = assignmentsData.filter(a => a.grade === gradeNumber && a.subject === subjectKey);
     
             if (matchingAssignments.length > 0) {
                 const randomAssignment = matchingAssignments[Math.floor(Math.random() * matchingAssignments.length)];
-                
-                const task = {
-                    title: randomAssignment.title,
-                    description: randomAssignment.description,
+                setGeneratedTask({
+                    ...randomAssignment,
                     outcome: randomAssignment.instructions,
-                    steps: [], // Pre-defined tasks don't have separate steps in this data structure
+                    steps: [],
                     evaluation: selectedTaskType === "project" ? [
                         "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
                     ] : [
                         "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
                     ]
-                };
-                setGeneratedTask(task);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Şablon Bulunamadı',
-                    description: 'Seçilen kriterlere uygun hazır bir ödev şablonu bulunamadı. Lütfen AI ile üretmeyi deneyin.',
                 });
+            } else {
+                toast({ variant: 'destructive', title: 'Şablon Bulunamadı', description: 'Seçilen kriterlere uygun hazır bir ödev şablonu bulunamadı.' });
             }
             setIsGenerating(false);
         }, 500); 
     };
-
+    
     const generateWithAi = async () => {
         if (!currentTopic) return;
         setIsGenerating(true);
         setGeneratedTask(null);
-
         try {
             const input: GenerateAssignmentScenarioInput = {
                 lesson: selectedLesson,
@@ -120,25 +121,26 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                 taskSubtype: selectedTaskSubtype
             };
             const response = await generateAssignmentScenario(input);
-            
             const task = {
+                id: Date.now(),
+                grade: parseInt(currentGradeData.unite.match(/\d+/)?.[0] || '9'),
+                subject: selectedLesson === 'Fizik' ? 'physics' : 'literature',
+                formats: 'Word, PDF',
+                size: '10 MB',
                 title: response.taskTitle,
                 description: response.taskDescription,
                 outcome: currentTopic.kazanimlar[0],
                 steps: currentTopic.kazanimlar.slice(1),
                 evaluation: selectedTaskType === "project" ? [
-                "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
+                    "Süreç Yönetimi (%30)", "İçerik Doğruluğu (%30)", "Özgünlük ve Yaratıcılık (%20)", "Raporlama ve Sunum (%20)"
                 ] : [
-                "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
-                ]
+                    "Yönerge Takibi (%40)", "Konu Hakimiyeti (%40)", "Zamanında Teslim (%20)"
+                ],
+                isCustom: true,
             };
-            setGeneratedTask(task);
-
-        } catch (error) {
-            console.error("AI Generation Error:", error);
-        } finally {
-            setIsGenerating(false);
-        }
+            setGeneratedTask(task as AssignmentTemplate);
+        } catch (error) { console.error("AI Generation Error:", error);
+        } finally { setIsGenerating(false); }
     };
 
     const handleTaskChange = (field: string, value: string) => {
@@ -147,38 +149,84 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     };
 
     const handleStepChange = (index: number, value: string) => {
-        if (!generatedTask) return;
+        if (!generatedTask || !generatedTask.steps) return;
         const newSteps = [...generatedTask.steps];
         newSteps[index] = value;
-        handleTaskChange('steps', newSteps);
+        handleTaskChange('steps', newSteps as any);
     };
 
     const addStep = () => {
         if (!generatedTask) return;
-        handleTaskChange('steps', [...generatedTask.steps, '']);
+        handleTaskChange('steps', [...(generatedTask.steps || []), ''] as any);
     };
 
     const removeStep = (index: number) => {
-        if (!generatedTask) return;
-        handleTaskChange('steps', generatedTask.steps.filter((_: any, i: number) => i !== index));
+        if (!generatedTask || !generatedTask.steps) return;
+        handleTaskChange('steps', generatedTask.steps.filter((_: any, i: number) => i !== index) as any);
     };
 
     const handleEvalChange = (index: number, value: string) => {
-        if (!generatedTask) return;
+        if (!generatedTask || !generatedTask.evaluation) return;
         const newEval = [...generatedTask.evaluation];
         newEval[index] = value;
-        handleTaskChange('evaluation', newEval);
+        handleTaskChange('evaluation', newEval as any);
     };
 
     const addEval = () => {
         if (!generatedTask) return;
-        handleTaskChange('evaluation', [...generatedTask.evaluation, 'Yeni Kriter (%10)']);
+        handleTaskChange('evaluation', [...(generatedTask.evaluation || []), 'Yeni Kriter (%10)'] as any);
     };
 
     const removeEval = (index: number) => {
-        if (!generatedTask) return;
-        handleTaskChange('evaluation', generatedTask.evaluation.filter((_: any, i: number) => i !== index));
+        if (!generatedTask || !generatedTask.evaluation) return;
+        handleTaskChange('evaluation', generatedTask.evaluation.filter((_: any, i: number) => i !== index) as any);
     };
+    
+    const handleNewTask = useCallback(() => {
+        setSelectedRecordId(null);
+        setGeneratedTask({
+            id: Date.now(),
+            title: 'Yeni Ödev Taslağı',
+            description: 'Ödev için bir açıklama girin.',
+            instructions: 'Öğrencilerin takip etmesi gereken adımları ve yönergeleri buraya yazın.',
+            grade: parseInt(currentGradeData.unite.match(/\d+/)?.[0] || '9'),
+            subject: selectedLesson === 'Fizik' ? 'physics' : 'literature',
+            formats: 'Word, PDF', size: '10 MB',
+            steps: [], evaluation: [], isCustom: true,
+            outcome: ''
+        });
+    }, [currentGradeData.unite, selectedLesson]);
+
+    const handleSaveTask = () => {
+        if (!generatedTask) return;
+        setLocalDb(prevDb => {
+            const existingIndex = (prevDb.performanceAssignments || []).findIndex(a => a.id === generatedTask.id);
+            let newAssignments;
+            if (existingIndex > -1) {
+                newAssignments = [...(prevDb.performanceAssignments || [])];
+                newAssignments[existingIndex] = generatedTask;
+            } else {
+                newAssignments = [generatedTask, ...(prevDb.performanceAssignments || [])];
+            }
+            return { ...prevDb, performanceAssignments: newAssignments };
+        });
+        setSelectedRecordId(generatedTask.id);
+        toast({ title: 'Kaydedildi!', description: `"${generatedTask.title}" kütüphaneye kaydedildi.` });
+    };
+
+    const handleDeleteTask = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({
+            ...prev,
+            performanceAssignments: (prev.performanceAssignments || []).filter(a => a.id !== selectedRecordId)
+        }));
+        handleNewTask();
+        toast({ title: 'Ödev Silindi', variant: 'destructive' });
+    }, [selectedRecordId, setLocalDb, handleNewTask, toast]);
+
+    if (dbLoading) {
+        return <Loader2 className="animate-spin" />
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 md:p-8">
@@ -196,6 +244,14 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                 </div>
 
                 <div className="lg:col-span-4 space-y-6">
+                    <RecordManager
+                        records={(performanceAssignments || []).map(r => ({ id: r.id, name: r.title }))}
+                        selectedRecordId={selectedRecordId}
+                        onSelectRecord={setSelectedRecordId}
+                        onNewRecord={handleNewTask}
+                        onDeleteRecord={handleDeleteTask}
+                        noun="Ödev Taslağı"
+                    />
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                         <h2 className="flex items-center gap-2 font-semibold text-lg mb-6 border-b pb-2 text-slate-800">
                             <GraduationCap className="w-5 h-5" />
@@ -254,7 +310,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                           </ul>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            <Button onClick={generateAssignment} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
+                            <Button onClick={generateFromTemplate} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
                             <Button onClick={generateWithAi} disabled={isGenerating} className="bg-slate-800 hover:bg-slate-900">
                                 {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
                                 AI ile Görev Üret
@@ -270,19 +326,18 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 <div className="relative z-10">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                    <Input
-                                        className="text-xl md:text-2xl font-bold font-serif tracking-wide bg-transparent border-0 border-b-2 border-transparent focus-visible:ring-0 focus-visible:border-white rounded-none -ml-3 h-auto p-1"
-                                        value={generatedTask.title}
-                                        onChange={(e) => handleTaskChange('title', e.target.value)}
-                                    />
+                                    <Input className="text-xl md:text-2xl font-bold font-serif tracking-wide bg-transparent border-0 border-b-2 border-transparent focus-visible:ring-0 focus-visible:border-white rounded-none -ml-3 h-auto p-1" value={generatedTask.title} onChange={(e) => handleTaskChange('title', e.target.value)} />
                                     <div className="flex flex-wrap items-center gap-3 mt-3 text-slate-300 text-sm font-medium">
                                         <span className="bg-white/10 px-2 py-1 rounded">{selectedLesson}</span>
                                         <span className="bg-white/10 px-2 py-1 rounded">{currentGradeData.unite}</span>
                                     </div>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => exportMaterialToRtf({ task: generatedTask, teacherProfile })}>
-                                        <FileDown className="text-white"/>
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="secondary" size="sm" onClick={handleSaveTask}><Save className="mr-2 h-4 w-4"/> Kütüphaneye Kaydet</Button>
+                                        <Button variant="ghost" size="icon" onClick={() => exportMaterialToRtf({ task: generatedTask, teacherProfile })}>
+                                            <FileDown className="text-white"/>
+                                        </Button>
+                                    </div>
                                 </div>
                                 </div>
                             </div>
@@ -292,20 +347,14 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                     <p className={`${selectedLesson === 'Fizik' ? 'text-blue-800' : 'text-rose-800'} font-medium italic`}>"{generatedTask.outcome}"</p>
                                 </div>
                                 <div>
-                                    <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-3 border-b pb-2">
-                                        <Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
-                                        Görev Açıklaması
-                                    </h4>
+                                    <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-3 border-b pb-2"><Brain className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} /> Görev Açıklaması</h4>
                                     <Textarea className="text-slate-700 leading-relaxed text-lg" value={generatedTask.description} onChange={(e) => handleTaskChange('description', e.target.value)} rows={5} />
                                 </div>
                                 <div>
-                                    <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-4 border-b pb-2">
-                                        <List className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} />
-                                        Süreç Adımları ve Yönerge
-                                    </h4>
+                                    <h4 className="flex items-center gap-2 font-bold text-slate-900 text-lg mb-4 border-b pb-2"><List className={`w-5 h-5 ${selectedLesson === 'Fizik' ? 'text-blue-600' : 'text-rose-600'}`} /> Süreç Adımları ve Yönerge</h4>
                                     <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
                                         <div className="space-y-3">
-                                            {generatedTask.steps.map((step: string, idx: number) => (
+                                            {(generatedTask.steps || []).map((step: string, idx: number) => (
                                                 <div key={idx} className="flex gap-2 items-center">
                                                     <div className={`flex-shrink-0 w-8 h-8 border-2 rounded-full flex items-center justify-center font-bold shadow-sm bg-white ${selectedLesson === 'Fizik' ? 'border-blue-200 text-blue-700' : 'border-rose-200 text-rose-700'}`}>{idx + 1}</div>
                                                     <Input value={step} onChange={(e) => handleStepChange(idx, e.target.value)} className="flex-1" />
@@ -319,7 +368,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 <div>
                                     <h4 className="font-bold text-slate-900 text-lg mb-4 border-b pb-2">Değerlendirme Kriterleri</h4>
                                     <div className="space-y-2">
-                                        {generatedTask.evaluation.map((criteria: string, idx: number) => (
+                                        {(generatedTask.evaluation || []).map((criteria: string, idx: number) => (
                                             <div key={idx} className="flex items-center gap-2">
                                                 <Input value={criteria} onChange={(e) => handleEvalChange(idx, e.target.value)} className="flex-1" placeholder="Kriter Adı (% Puan)" />
                                                 <Button variant="ghost" size="icon" onClick={() => removeEval(idx)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
@@ -337,7 +386,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                             </div>
                             <h3 className="text-xl font-bold text-slate-600 mb-2">Materyal Oluşturmaya Başlayın</h3>
                             <p className="text-center max-w-md text-slate-500 mb-6">
-                                Sol menüden ders, sınıf, konu ve görev türü seçimi yaparak yapay zeka destekli materyal oluşturun.
+                                Sol menüden ders, sınıf, konu ve görev türü seçimi yaparak yapay zeka destekli materyal oluşturun veya arşivden bir kayıt seçin.
                             </p>
                         </div>
                     )}
