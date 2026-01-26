@@ -2,502 +2,280 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edutech Pro - v9.6 (Kart Düzeni Düzeltildi)</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF.js & PPTXGenJS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&family=Oswald:wght@500;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <title>Gelişmiş Materyal Editörü</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; transition: background-color 0.3s; }
-        h1, h2, h3, .slide-title { font-family: 'Oswald', sans-serif; }
-        .academic-text { font-family: 'Merriweather', serif; }
-        
-        /* Themes */
-        .theme-blue { --primary: #1e3a8a; --secondary: #3b82f6; --accent: #f59e0b; --bg: #f1f5f9; }
-        .theme-green { --primary: #064e3b; --secondary: #10b981; --accent: #fbbf24; --bg: #ecfdf5; }
-        .theme-purple { --primary: #4c1d95; --secondary: #8b5cf6; --accent: #f472b6; --bg: #f5f3ff; }
-        .theme-dark { --primary: #0f172a; --secondary: #334155; --accent: #38bdf8; --bg: #020617; color: #e2e8f0; }
-
-        /* A4 & Slide */
-        .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 20mm; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); color: black; }
-        .slide-container { aspect-ratio: 16/9; background: white; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid #cbd5e1; color: black; }
-
-        /* Crop Overlay */
-        .crop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; z-index: 10; }
-        .selection-box { border: 2px dashed #f59e0b; background: rgba(245, 158, 11, 0.2); position: absolute; pointer-events: none; }
-
-        /* Components */
-        .flip-card { perspective: 1000px; }
-        .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
-        .flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
-        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; padding: 20px; border-radius: 12px; }
-        .flip-card-back { background-color: var(--secondary); color: white; transform: rotateY(180deg); }
-        .flip-card-front { background-color: white; color: #1e293b; border: 2px solid #e2e8f0; }
-        .jeopardy-card { transition: all 0.3s; transform-style: preserve-3d; cursor: pointer; }
-        .jeopardy-card.flipped { transform: rotateY(180deg); background: white; color: black; border-color: var(--accent); }
-        .jeopardy-card:hover { transform: scale(1.05); }
-
-        /* PDF Viewer */
-        .pdf-canvas-container { overflow: auto; max-height: 70vh; display: flex; justify-content: center; background: #525659; padding: 20px; border-radius: 8px; }
-        canvas { box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-
-        /* Mind Map & Infographic Styles */
-        .mindmap-node { transition: all 0.3s; }
-        .mindmap-node:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-        
-        .infographic-step { position: relative; padding-left: 2rem; border-left: 4px solid var(--secondary); margin-bottom: 1.5rem; }
-        .infographic-step::before { content: ''; position: absolute; left: -0.85rem; top: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent); border: 4px solid white; }
-
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; }
-            .a4-page { box-shadow: none; margin: 0; width: 100%; }
-            .slide-container { break-inside: avoid; border: 1px solid #000; page-break-after: always; }
+        :root {
+            --primary-color: #3b82f6; --secondary-color: #f3f4f6; --text-color: #1f2937;
+            --accent-color: #10b981; --danger-color: #ef4444; --bg-color: #ffffff;
         }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background-color: var(--secondary-color); color: var(--text-color); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 280px; background-color: var(--bg-color); border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { padding: 16px; border-bottom: 1px solid #e5e7eb; background: var(--bg-color); }
+        .content-area { flex-grow: 1; padding: 24px; overflow-y: auto; }
+        .card { background: var(--bg-color); border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 16px; }
+        .card-header { padding: 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+        .card-content { padding: 16px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid transparent; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+        .btn-primary { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: var(--secondary-color); color: var(--text-color); border-color: #d1d5db; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        .pdf-list-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: 6px; margin-bottom: 8px; background: #f9fafb; }
+        #image-preview-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+        .image-preview-item { position: relative; border: 2px dashed #d1d5db; border-radius: 8px; overflow: hidden; height: 100px; }
+        .image-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        #cropper-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        #cropper-wrapper { background: white; padding: 20px; border-radius: 8px; }
+        #loader { display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); align-items: center; justify-content: center; }
+        #loader i { font-size: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        const emptyTemplate = {
-            meta: { topic: "Konu Bekleniyor...", grade: "-", course: "-" },
-            lessonPlan: { hour1: { objective: "...", steps: [] }, hour2: { objective: "...", steps: [] } },
-            slides: [{ type: 'cover', title: "DERS MATERYALİ", subtitle: "Lütfen İçerik Oluşturun" }],
-            flashcardsData: [] 
-        };
-
-        // --- GÖRSEL BİLEŞENLER ---
-        
-        // Zihin Haritası (Mind Map)
-        const ConceptMap = ({ title, items }) => (
-            <div className="flex flex-col items-center justify-center h-full p-4">
-                <div className="bg-blue-900 text-white px-8 py-4 rounded-full shadow-xl mb-10 text-2xl font-bold z-10 mindmap-node relative">
-                    {title}
-                    <div className="absolute bottom-[-20px] left-1/2 w-1 h-5 bg-blue-300 -translate-x-1/2"></div>
-                </div>
-                <div className="flex flex-wrap justify-center gap-6 w-full relative">
-                    <div className="absolute top-[-20px] left-10 right-10 h-1 bg-blue-300 border-t border-blue-200"></div>
-                    {(items || []).map((item, idx) => (
-                        <div key={idx} className="flex flex-col items-center relative group w-1/4 min-w-[150px]">
-                            <div className="absolute top-[-20px] w-1 h-5 bg-blue-300"></div>
-                            <div className="bg-white border-2 border-blue-200 p-4 rounded-xl shadow-md text-center w-full hover:border-blue-500 mindmap-node cursor-pointer">
-                                <div className="font-bold text-blue-800 text-lg mb-1">{item.main}</div>
-                                {item.sub && <div className="text-xs text-slate-500 border-t pt-1 border-slate-100">{item.sub}</div>}
-                            </div>
-                        </div>
-                    ))}
+    <div class="sidebar">
+        <div class="card-header"><strong>Kontrol Paneli</strong></div>
+        <div class="card-content" style="flex-grow:1; overflow-y: auto;">
+            <div class="form-group"><label for="topic">Konu Başlığı</label><input type="text" id="topic" value="Hücre ve Yapısı"></div>
+            <div class="form-group"><label for="course">Ders</label><input type="text" id="course" value="Biyoloji"></div>
+            <div class="form-group"><label for="grade">Sınıf</label><input type="text" id="grade" value="9"></div>
+            <div class="form-group"><label for="pdf-upload" class="btn btn-secondary" style="display:block; text-align: center;">PDF Yükle</label><input type="file" id="pdf-upload" multiple accept=".pdf" style="display:none;"></div>
+            <div id="pdf-list"></div>
+        </div>
+        <div style="padding: 16px; border-top: 1px solid #e5e7eb;">
+            <button id="generate-btn" class="btn btn-primary" style="width: 100%;"><i class="fas fa-bolt"></i> Oluştur</button>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="header"><strong>İçerik Önizleme</strong></div>
+        <div class="content-area">
+             <div class="card">
+                <div class="card-header">Seçilen Görseller</div>
+                <div class="card-content">
+                    <div id="image-preview-area"></div>
                 </div>
             </div>
-        );
-
-        // İnfografik (Timeline/Process)
-        const Infographic = ({ title, steps }) => (
-            <div className="h-full p-8 flex flex-col">
-                <h3 className="text-3xl font-bold text-center mb-8 uppercase tracking-widest text-slate-700">{title}</h3>
-                <div className="flex-1 overflow-y-auto px-4">
-                    {(steps || []).map((step, i) => (
-                        <div key={i} className="infographic-step">
-                            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 ml-4 hover:shadow-md transition">
-                                <div className="text-xl font-bold text-blue-700 mb-1 flex items-center">
-                                    <span className="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">ADIM {i+1}</span>
-                                    {step.title}
-                                </div>
-                                <p className="text-slate-600">{step.desc}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+            <div id="pdf-viewer"></div>
+        </div>
+    </div>
+    <div id="cropper-container">
+        <div id="cropper-wrapper">
+            <div style="width: 60vw; height: 60vh;"><img id="cropper-image" style="max-width: 100%; max-height: 100%;"></div>
+            <div style="text-align: right; margin-top: 10px;">
+                <button id="crop-btn" class="btn btn-primary">Kırp ve Ekle</button>
+                <button id="cancel-crop-btn" class="btn btn-secondary">İptal</button>
             </div>
-        );
+        </div>
+    </div>
+    <div id="loader"><i class="fas fa-spinner"></i></div>
 
-        const menuLabels = { editor: 'Düzenle', presentation: 'Sunum', worksheet: 'Çalışma Kağıdı', exam: 'Sınav' };
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+        let loadedPdfs = [];
+        let cropper;
+        let currentPdfForCropping = null;
+        let currentPageNumForCropping = null;
 
-        function App() {
-            const [content, setContent] = useState(emptyTemplate);
-            const [currentSlide, setCurrentSlide] = useState(0);
-            const [viewMode, setViewMode] = useState('editor');
-            const [showProjectsModal, setShowProjectsModal] = useState(false);
-            const [showPDFModal, setShowPDFModal] = useState(false);
-            
-            const [formData, setFormData] = useState({ grade: '9', course: 'Biyoloji', topic: '' });
-            
-            const [pdfSources, setPdfSources] = useState([]);
-            const [activePdfId, setActivePdfId] = useState(null);
-            const [capturedImages, setCapturedImages] = useState([]); 
-            
-            const [theme, setTheme] = useState('theme-blue');
-            const [savedProjects, setSavedProjects] = useState([]);
-            
-            // PDF Viewer State
-            const [previewPageNum, setPreviewPageNum] = useState(1);
-            const canvasRef = useRef(null);
-            const [pdfDoc, setPdfDoc] = useState(null);
-            const renderTaskRef = useRef(null);
-            
-            // Crop State
-            const [isCropping, setIsCropping] = useState(false);
-            const [selection, setSelection] = useState(null);
-            const [isSelecting, setIsSelecting] = useState(false);
-            const startPos = useRef({ x: 0, y: 0 });
+        document.getElementById('pdf-upload').addEventListener('change', handlePdfUpload);
+        document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
 
-            useEffect(() => {
-                const handleParentMessage = (event) => {
-                    const { type, payload } = event.data;
-                    if (type === 'materialGenerated') {
-                        setContent(payload);
-                    }
+        async function handlePdfUpload(event) {
+            const files = event.target.files;
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const pdfData = new Uint8Array(e.target.result);
+                    const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                    const pdfItem = { file, pdfDoc, pageRanges: `1-${pdfDoc.numPages}` };
+                    loadedPdfs.push(pdfItem);
+                    renderPdfList();
                 };
-
-                window.addEventListener('message', handleParentMessage);
-                loadProjects();
-                document.body.className = theme;
-                return () => window.removeEventListener('message', handleParentMessage);
-            }, [theme]);
-
-
-            // --- PDF VISUALIZER ---
-            useEffect(() => {
-                if (showPDFModal && activePdfId && canvasRef.current) {
-                    const source = pdfSources.find(p => p.id === activePdfId);
-                    if(source) loadPDFDoc(source.file);
-                }
-            }, [showPDFModal, activePdfId]);
-
-            useEffect(() => { if (pdfDoc) renderPDFPage(previewPageNum); }, [pdfDoc, previewPageNum]);
-
-            const loadPDFDoc = async (file) => {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                setPdfDoc(pdf);
-                setPreviewPageNum(1);
-            };
-
-            const renderPDFPage = async (num) => {
-                if (!pdfDoc) return;
-                if (renderTaskRef.current) renderTaskRef.current.cancel();
-
-                try {
-                    const page = await pdfDoc.getPage(num);
-                    const viewport = page.getViewport({ scale: 1.2 });
-                    const canvas = canvasRef.current;
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    
-                    const renderContext = { canvasContext: context, viewport: viewport };
-                    const renderTask = page.render(renderContext);
-                    renderTaskRef.current = renderTask;
-                    await renderTask.promise;
-                    renderTaskRef.current = null;
-                } catch (error) { if (error.name !== 'RenderingCancelledException') console.error(error); }
-            };
-
-            const changePreviewPage = (offset) => {
-                if (!pdfDoc) return;
-                const newPage = previewPageNum + offset;
-                if (newPage >= 1 && newPage <= pdfDoc.numPages) { setPreviewPageNum(newPage); setSelection(null); }
-            };
-
-            // --- CROP LOGIC ---
-            const handleMouseDown = (e) => {
-                if (!isCropping) return;
-                const rect = canvasRef.current.getBoundingClientRect();
-                startPos.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-                setIsSelecting(true);
-                setSelection({ x: startPos.current.x, y: startPos.current.y, w: 0, h: 0 });
-            };
-
-            const handleMouseMove = (e) => {
-                if (!isSelecting || !isCropping) return;
-                const rect = canvasRef.current.getBoundingClientRect();
-                const currentX = e.clientX - rect.left;
-                const currentY = e.clientY - rect.top;
-                
-                setSelection({
-                    x: Math.min(startPos.current.x, currentX),
-                    y: Math.min(startPos.current.y, currentY),
-                    w: Math.abs(currentX - startPos.current.x),
-                    h: Math.abs(currentY - startPos.current.y)
-                });
-            };
-
-            const handleMouseUp = () => setIsSelecting(false);
-
-            const saveCrop = () => {
-                if (!selection || selection.w < 10 || selection.h < 10) return alert("Lütfen bir alan seçin.");
-                const sourceCanvas = canvasRef.current;
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = selection.w;
-                tempCanvas.height = selection.h;
-                const ctx = tempCanvas.getContext('2d');
-                ctx.drawImage(sourceCanvas, selection.x, selection.y, selection.w, selection.h, 0, 0, selection.w, selection.h);
-                const dataUrl = tempCanvas.toDataURL();
-                setCapturedImages(prev => [...prev, dataUrl]);
-                setSelection(null);
-                setIsCropping(false);
-                alert("Görsel yakalandı!");
-            };
-
-            // --- PDF Source Management ---
-            const handleFileAdd = async (e) => {
-                const files = Array.from(e.target.files);
-                const newSources = [];
-                for (const file of files) {
-                    if (file.type === 'application/pdf') {
-                        const arrayBuffer = await file.arrayBuffer();
-                        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                        newSources.push({ id: Date.now() + Math.random(), file: file, name: file.name, totalPages: pdf.numPages, start: 1, end: Math.min(5, pdf.numPages), text: '' });
-                    }
-                }
-                setPdfSources(prev => [...prev, ...newSources]);
-            };
-
-            const removeSource = (id) => setPdfSources(prev => prev.filter(p => p.id !== id));
-            const updateSourceRange = (id, field, value) => setPdfSources(prev => prev.map(p => p.id === id ? { ...p, [field]: parseInt(value) } : p));
-            const openPdfViewer = (id) => { setActivePdfId(id); setShowPDFModal(true); setSelection(null); setIsCropping(false); };
-            const setRangeFromViewer = (type) => { if (activePdfId) updateSourceRange(activePdfId, type, previewPageNum); };
-
-            const extractTextFromAllPDFs = async () => { 
-                if (pdfSources.length === 0) return alert("PDF ekleyin.");
-                let updated = [...pdfSources];
-                let count = 0;
-                for(let i=0; i<updated.length; i++){
-                    try {
-                        const ab = await updated[i].file.arrayBuffer();
-                        const pdf = await pdfjsLib.getDocument(ab).promise;
-                        let txt = "";
-                        const start = Math.max(1, updated[i].start);
-                        const end = Math.min(updated[i].totalPages, updated[i].end);
-                        for(let j=start; j<=end; j++){
-                            txt += (await (await pdf.getPage(j)).getTextContent()).items.map(s=>s.str).join(' ');
-                        }
-                        updated[i].text = txt; count++;
-                    } catch(e){}
-                }
-                setPdfSources(updated); alert(`${count} kaynak okundu.`);
-            };
-
-            // --- MAIN LOGIC ---
-            const loadProjects = () => setSavedProjects(JSON.parse(localStorage.getItem('edu_projects') || '[]'));
-            const saveProject = () => { const newP = { id:Date.now(), name:content.meta.topic, date:new Date().toLocaleDateString(), data:content, images: capturedImages }; const up = [newP, ...savedProjects]; localStorage.setItem('edu_projects', JSON.stringify(up)); setSavedProjects(up); alert("Kaydedildi."); };
-            const loadProject = (p) => { setContent(p.data); setFormData({topic:p.data.meta.topic, course:p.data.meta.course, grade:p.data.meta.grade}); if(p.images) setCapturedImages(p.images); setShowProjectsModal(false); setCurrentSlide(0); };
-            const deleteProject = (id) => { if(confirm("Sil?")) { const up=savedProjects.filter(p=>p.id!==id); localStorage.setItem('edu_projects',JSON.stringify(up)); setSavedProjects(up); }};
-            const downloadJSON = () => { /* Simplified */ }; 
-            const uploadJSON = (e) => { /* Simplified */ };
-            
-            const generateWithGemini = async () => {
-                if (!formData.topic) return alert("Lütfen bir konu girin.");
-                
-                let combinedText = ""; 
-                pdfSources.forEach((s,i) => { 
-                    if(s.text) combinedText += `KAYNAK ${i+1} (Sayfa ${s.start}-${s.end}):\n${s.text.substring(0, 10000)}\n\n`; // Limit text length
-                });
-
-                window.parent.postMessage({
-                    type: 'generateMaterial',
-                    payload: { 
-                        ...formData,
-                        sources: combinedText,
-                        images: capturedImages
-                    }
-                }, '*');
-            };
-
-
-            const insertImageToSlide = (imgUrl) => {
-                const newContent = { ...content };
-                const slide = newContent.slides[currentSlide];
-                if (slide) { slide.type = 'text-image'; slide.imageKeyword = null; slide.customImage = imgUrl; setContent(newContent); }
-            };
-
-            const exportToPPTX = () => { /* Simplified */ };
-
-            // --- RENDERERS ---
-            const SlideRenderer = ({ slide, index }) => {
-                if (!slide) return <div>Hata</div>;
-                const Container = ({ children, title }) => (
-                    <div className="w-full h-full p-10 flex flex-col relative" style={{backgroundColor: theme==='theme-dark'?'#1e293b':'white', color: theme==='theme-dark'?'white':'black'}}>
-                        <div className="flex justify-between items-end border-b-4 pb-4 mb-6" style={{borderColor: 'var(--primary)'}}>
-                            <h2 className="text-3xl font-bold uppercase leading-none" style={{color: 'var(--primary)'}}>{title || slide.title || 'Başlıksız'}</h2>
-                            <div className="opacity-50 text-sm font-bold">{index + 1}</div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">{children}</div>
-                    </div>
-                );
-                const displayImage = slide.customImage || `https://placehold.co/800x600/e2e8f0/475569?text=${encodeURIComponent(slide.imageKeyword || slide.title || 'Görsel')}`;
-
-                switch(slide.type) {
-                    case 'cover': return <div className="w-full h-full flex flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden" style={{backgroundColor: 'var(--primary)'}}>{slide.customImage && <img src={slide.customImage} className="absolute inset-0 w-full h-full object-cover opacity-30" />}<div className="z-10"><h1 className="text-5xl font-bold mb-4 uppercase">{slide.title}</h1><p className="text-2xl opacity-80 academic-text">{slide.subtitle}</p></div></div>;
-                    case 'text-image': return <Container title={slide.title}><div className="flex gap-8 h-full"><div className="w-3/5 text-lg leading-relaxed">{slide.content}</div><div className="w-2/5 h-full flex items-center justify-center bg-gray-100 rounded overflow-hidden border"><img src={displayImage} className="max-w-full max-h-full object-contain" /></div></div></Container>;
-                    case 'text-detailed': case 'text': return <Container title={slide.title}><div className="p-6 rounded-lg border-l-4 mb-4 text-lg academic-text" style={{backgroundColor: theme==='theme-dark'?'#334155':'#eff6ff', borderColor: 'var(--secondary)'}}>{slide.content || ''}</div><div className="space-y-2">{(slide.points || []).map((p,i)=><div key={i} className="flex items-center"><i className="fas fa-check mr-2" style={{color:'var(--secondary)'}}></i>{p}</div>)}</div></Container>;
-                    case 'diagram-map': return <Container title={slide.title}>{slide.data ? <ConceptMap title={slide.data.title || slide.title} items={slide.data.items || []}/> : <div>Diyagram verisi eksik.</div>}</Container>;
-                    case 'diagram-infographic': return <Container title={slide.title}>{slide.data ? <Infographic title={slide.title} steps={slide.data}/> : <div>İnfografik verisi eksik.</div>}</Container>;
-                    case 'table': return <Container title={slide.title}>{slide.data ? (<table className="w-full border-collapse"><thead><tr style={{backgroundColor: 'var(--secondary)', color: 'white'}}>{(slide.data.headers || []).map((h,i)=><th key={i} className="p-2 border">{h}</th>)}</tr></thead><tbody>{(slide.data.rows || []).map((row,i)=><tr key={i} className={i%2?'bg-black/5':''}>{row.map((c,j)=><td key={j} className="p-2 border">{c}</td>)}</tr>)}</tbody></table>) : <div>Tablo verisi eksik.</div>}</Container>;
-                    case 'quiz': return <Container title={slide.title}><div className="text-xl font-bold mb-6 p-4 border-l-4" style={{borderColor: 'var(--accent)', backgroundColor: theme==='theme-dark'?'#334155':'#fff7ed'}}>{slide.question || 'Soru'}</div><div className="grid grid-cols-2 gap-4">{(slide.options || []).map((o,i)=><div key={i} className="p-3 border rounded hover:opacity-80 font-medium" style={{borderColor: 'var(--secondary)'}}><b>{String.fromCharCode(65+i)})</b> {o}</div>)}</div></Container>;
-                    default: return <Container title={slide.title}><div className="text-lg">{slide.content}</div></Container>;
-                }
-            };
-            const WorksheetRenderer = () => <div className="a4-page p-10"><h1 className="text-2xl font-bold mb-4">Çalışma Kağıdı</h1>{content.slides.filter(s=>s.type==='text-detailed').slice(0,5).map((s,i)=><div key={i} className="mb-4"><b>{i+1}.</b> {s.content}</div>)}</div>;
-            const ExamRenderer = () => <div className="a4-page p-10"><h1 className="text-2xl font-bold mb-4">Sınav</h1>{content.slides.filter(s=>s.type==='quiz').map((s,i)=><div key={i} className="mb-4"><b>{i+1}.</b> {s.question}</div>)}</div>;
-            
-            return (
-                <div className="flex flex-col h-screen" style={{backgroundColor: 'var(--bg)'}}>
-                    <header className="text-white h-16 flex items-center justify-between px-6 z-20 shadow-md no-print" style={{backgroundColor: 'var(--primary)'}}>
-                        <div className="flex items-center space-x-3"><i className="fas fa-shapes text-xl"></i><span className="font-bold text-lg">EDUTECH PRO <span className="text-xs opacity-70 ml-2">v9.6</span></span></div>
-                        <div className="flex space-x-1 bg-white/10 p-1 rounded-lg">
-                            {['editor','presentation','worksheet','exam'].map(m => ( <button key={m} onClick={()=>setViewMode(m)} className={`px-3 py-1.5 rounded text-sm ${viewMode===m ? 'bg-white text-black' : 'text-white/70'}`}>{menuLabels[m]}</button>))}
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={()=>setShowProjectsModal(true)} className="px-3 bg-white/20 hover:bg-white/30 rounded text-sm"><i className="fas fa-folder-open"></i></button>
-                            <button onClick={saveProject} className="px-3 bg-white/20 hover:bg-white/30 rounded text-sm"><i className="fas fa-save"></i></button>
-                        </div>
-                    </header>
-
-                    <div className="flex flex-1 overflow-hidden relative">
-                        {viewMode === 'editor' && (
-                            <div className="w-80 border-r flex flex-col z-10 no-print bg-white/50 backdrop-blur-sm" style={{borderColor: 'var(--secondary)'}}>
-                                <div className="p-4 border-b overflow-y-auto max-h-[60vh]">
-                                    <h3 className="text-xs font-bold opacity-50 uppercase mb-3">İçerik</h3>
-                                    <input type="text" placeholder="Konu" className="w-full p-2 border rounded mb-2 text-sm text-black" value={formData.topic} onChange={e=>setFormData({...formData, topic:e.target.value})} />
-                                    
-                                    <div className="border-t pt-2 mt-2">
-                                        <label className="text-xs font-bold text-gray-500 mb-1 flex justify-between">Kaynaklar <span className="bg-gray-200 px-1 rounded">{pdfSources.length}</span></label>
-                                        <label className="w-full py-1 bg-white border border-dashed text-center text-xs rounded cursor-pointer block mb-2 text-black"><i className="fas fa-plus mr-1"></i>PDF Ekle<input type="file" multiple accept="application/pdf" onChange={handleFileAdd} className="hidden" /></label>
-                                        
-                                        <div className="space-y-2">
-                                            {pdfSources.map(src => (
-                                                <div key={src.id} className="bg-white p-2 rounded border shadow-sm text-xs relative text-black">
-                                                    <div className="font-bold truncate pr-6 mb-1">{src.name}</div>
-                                                    <div className="flex gap-1 items-center mb-1">
-                                                        <span className="text-[10px] text-gray-500">Sayfa:</span>
-                                                        <input type="number" value={src.start} onChange={(e)=>updateSourceRange(src.id, 'start', e.target.value)} className="w-10 p-0.5 border rounded text-center" />
-                                                        <span>-</span>
-                                                        <input type="number" value={src.end} onChange={(e)=>updateSourceRange(src.id, 'end', e.target.value)} className="w-10 p-0.5 border rounded text-center" />
-                                                        <button onClick={()=>openPdfViewer(src.id)} className="ml-auto bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded hover:bg-yellow-200"><i className="fas fa-eye"></i></button>
-                                                    </div>
-                                                    <button onClick={()=>removeSource(src.id)} className="text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {pdfSources.length > 0 && <button onClick={extractTextFromAllPDFs} className="w-full py-1 bg-blue-100 text-blue-700 text-xs rounded mt-2 font-bold">Analiz Et</button>}
-                                    </div>
-
-                                    {/* CAPTURED IMAGES */}
-                                    <div className="border-t pt-2 mt-4">
-                                        <h3 className="text-xs font-bold text-gray-500 mb-2">Kırpılanlar ({capturedImages.length})</h3>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {capturedImages.map((img, i) => (
-                                                <div key={i} onClick={() => insertImageToSlide(img)} className="aspect-square border rounded overflow-hidden cursor-pointer hover:border-blue-500 relative group">
-                                                    <img src={img} className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-[8px] text-center">Ekle</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <button onClick={generateWithGemini} className="w-full py-2 text-white rounded font-bold text-sm shadow mt-4" style={{background: 'linear-gradient(to right, var(--primary), var(--secondary))'}}>OLUŞTUR</button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-2 border-t">
-                                    <h4 className="text-xs font-bold text-gray-500">Slaytlar</h4>
-                                    {content.slides.map((s,i)=>(<div key={i} onClick={()=>setCurrentSlide(i)} className={`p-2 text-xs border rounded cursor-pointer truncate ${currentSlide===i ? 'border-2 border-blue-500' : ''}`} style={{color:'black'}}>{i+1}. {s.title}</div>))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex-1 overflow-y-auto p-8 flex justify-center">
-                            {viewMode === 'editor' && <div className="w-full max-w-5xl aspect-video shadow-xl relative"><SlideRenderer slide={content.slides[currentSlide]} index={currentSlide} /></div>}
-                            {viewMode === 'presentation' && <div className="fixed inset-0 z-50 bg-black flex items-center justify-center"><div className="w-full max-w-7xl aspect-video relative"><SlideRenderer slide={content.slides[currentSlide]} index={currentSlide} /><button onClick={()=>setViewMode('editor')} className="absolute top-4 right-4 text-white text-2xl"><i className="fas fa-times"></i></button></div></div>}
-                            {viewMode === 'worksheet' && <WorksheetRenderer />}
-                            {viewMode === 'exam' && <ExamRenderer />}
-                            {viewMode === 'flashcards' && <FlashcardsRenderer />}
-                        </div>
-                    </div>
-
-                    {/* PDF VIEWER MODAL */}
-                    {showPDFModal && (
-                        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
-                            <div className="bg-white rounded-xl w-full max-w-4xl h-[90vh] flex flex-col relative text-black">
-                                <div className="bg-gray-800 text-white p-3 rounded-t-xl flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => changePreviewPage(-1)}><i className="fas fa-chevron-left"></i></button>
-                                        <span className="text-sm">{previewPageNum} / {pdfDoc?.numPages}</span>
-                                        <button onClick={() => changePreviewPage(1)}><i className="fas fa-chevron-right"></i></button>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setRangeFromViewer('start')} className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-xs font-bold">Başlangıç</button>
-                                        <button onClick={() => setRangeFromViewer('end')} className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-xs font-bold">Bitiş</button>
-                                        <div className="w-px bg-gray-600 mx-1"></div>
-                                        <button onClick={() => setIsCropping(!isCropping)} className={`px-3 py-1 rounded text-xs font-bold flex items-center ${isCropping ? 'bg-yellow-500 text-black' : 'bg-gray-600'}`}>
-                                            <i className="fas fa-crop-alt mr-1"></i> {isCropping ? 'Kırp' : 'Kırpma Modu'}
-                                        </button>
-                                        <button onClick={() => setShowPDFModal(false)} className="text-gray-400 hover:text-white ml-2"><i className="fas fa-times text-xl"></i></button>
-                                    </div>
-                                </div>
-                                <div className="flex-1 bg-gray-200 p-4 overflow-auto flex justify-center items-start relative">
-                                    <div className="relative inline-block">
-                                        <canvas ref={canvasRef} className="shadow-2xl border border-gray-400" />
-                                        {isCropping && (
-                                            <div className="crop-overlay" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
-                                                {selection && (
-                                                    <div className="selection-box" style={{ left: selection.x, top: selection.y, width: selection.w, height: selection.h }}>
-                                                        <button onMouseDown={(e) => { e.stopPropagation(); saveCrop(); }} className="absolute -bottom-8 right-0 bg-green-600 text-white text-[10px] px-2 py-1 rounded shadow pointer-events-auto">KAYDET</button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {/* PROJECTS MODAL */}
-                    {showProjectsModal && (
-                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-xl p-6 w-full max-w-2xl text-black h-[80vh] flex flex-col">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg">Proje Yönetimi</h3>
-                                    <button onClick={()=>setShowProjectsModal(false)} className="text-gray-500"><i className="fas fa-times"></i></button>
-                                </div>
-                                <div className="flex gap-2 mb-4">
-                                    <button onClick={downloadJSON} className="flex-1 py-2 border rounded hover:bg-gray-50"><i className="fas fa-download mr-2"></i>Mevcut Projeyi İndir (.edupro)</button>
-                                    <label className="flex-1 py-2 border rounded hover:bg-gray-50 text-center cursor-pointer">
-                                        <i className="fas fa-upload mr-2"></i>Proje Yükle
-                                        <input type="file" accept=".edupro,.json" onChange={uploadJSON} className="hidden" />
-                                    </label>
-                                </div>
-                                <div className="flex-1 overflow-y-auto border rounded p-2 bg-gray-50">
-                                    {savedProjects.length === 0 ? <p className="text-center text-gray-400 mt-10">Henüz kayıtlı proje yok.</p> : (
-                                        <div className="space-y-2">
-                                            {savedProjects.map(p => (
-                                                <div key={p.id} className="bg-white p-3 rounded shadow-sm flex justify-between items-center">
-                                                    <div><div className="font-bold">{p.name}</div><div className="text-xs text-gray-500">{p.date} • {p.data.slides.length} Slayt</div></div>
-                                                    <div className="flex gap-2">
-                                                        <button onClick={()=>loadProject(p)} className="text-blue-600 hover:bg-blue-50 p-2 rounded"><i className="fas fa-folder-open"></i> Aç</button>
-                                                        <button onClick={()=>deleteProject(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded"><i className="fas fa-trash"></i></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+                reader.readAsArrayBuffer(file);
+            }
+        }
+        
+        function renderPdfList() {
+            const listEl = document.getElementById('pdf-list');
+            listEl.innerHTML = '';
+            loadedPdfs.forEach((pdfItem, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'pdf-list-item';
+                itemEl.innerHTML = `
+                    <span style="flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow: ellipsis;">${pdfItem.file.name}</span>
+                    <input type="text" value="${pdfItem.pageRanges}" onchange="updatePageRanges(${index}, this.value)" style="width: 80px; margin: 0 8px; text-align: center;">
+                    <button onclick="viewPdf(${index})" class="btn" style="padding: 4px 8px;"><i class="fas fa-eye"></i></button>
+                `;
+                listEl.appendChild(itemEl);
+            });
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        window.updatePageRanges = (index, value) => {
+            loadedPdfs[index].pageRanges = value;
+        };
+
+        window.viewPdf = async (index) => {
+            const viewer = document.getElementById('pdf-viewer');
+            viewer.innerHTML = '<h3>PDF Yükleniyor...</h3>';
+            const { pdfDoc } = loadedPdfs[index];
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                const imgData = canvas.toDataURL();
+                
+                const pageContainer = document.createElement('div');
+                pageContainer.style.marginBottom = '20px';
+                pageContainer.style.border = '1px solid #ccc';
+                pageContainer.style.padding = '10px';
+                
+                const pageHeader = document.createElement('h4');
+                pageHeader.innerText = `Sayfa ${i}`;
+                pageContainer.appendChild(pageHeader);
+
+                const img = new Image();
+                img.src = imgData;
+                img.style.maxWidth = '100%';
+                pageContainer.appendChild(img);
+
+                const cropButton = document.createElement('button');
+                cropButton.innerText = 'Bu Sayfadan Görsel Kırp';
+                cropButton.className = 'btn btn-secondary';
+                cropButton.onclick = () => startCropping(index, i);
+                pageContainer.appendChild(cropButton);
+
+                viewer.appendChild(pageContainer);
+            }
+            if(viewer.children.length > 0) viewer.children[0].remove(); // Remove loading text
+        };
+
+        function startCropping(pdfIndex, pageNum) {
+            currentPdfForCropping = pdfIndex;
+            currentPageNumForCropping = pageNum;
+            const container = document.getElementById('cropper-container');
+            const image = document.getElementById('cropper-image');
+            const canvas = document.querySelector(`#pdf-viewer canvas:nth-of-type(${pageNum})`) || document.querySelector(`#pdf-viewer img:nth-of-type(${pageNum})`);
+            
+            if (!canvas) {
+                alert("Önizleme bulunamadı.");
+                return;
+            }
+
+            image.src = canvas.toDataURL ? canvas.toDataURL() : canvas.src;
+            container.style.display = 'flex';
+
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(image, { aspectRatio: 16 / 9, viewMode: 1 });
+        }
+        
+        document.getElementById('cancel-crop-btn').onclick = () => {
+            document.getElementById('cropper-container').style.display = 'none';
+            if(cropper) cropper.destroy();
+        };
+
+        document.getElementById('crop-btn').onclick = () => {
+            const croppedCanvas = cropper.getCroppedCanvas();
+            const dataUrl = croppedCanvas.toDataURL();
+            
+            const previewArea = document.getElementById('image-preview-area');
+            const item = document.createElement('div');
+            item.className = 'image-preview-item';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            item.appendChild(img);
+            previewArea.appendChild(item);
+
+            document.getElementById('cropper-container').style.display = 'none';
+            if(cropper) cropper.destroy();
+        };
+        
+        function parsePageRanges(rangesStr) {
+            const pages = new Set();
+            const parts = rangesStr.split(',');
+            for (const part of parts) {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    for (let i = start; i <= end; i++) pages.add(i);
+                } else {
+                    pages.add(Number(part));
+                }
+            }
+            return Array.from(pages);
+        }
+
+        async function handleGenerateClick() {
+            const btn = document.getElementById('generate-btn');
+            const loader = document.getElementById('loader');
+
+            try {
+                btn.disabled = true;
+                loader.style.display = 'flex';
+
+                const topic = document.getElementById('topic').value;
+                const course = document.getElementById('course').value;
+                const grade = document.getElementById('grade').value;
+
+                let sourcesText = '';
+                for (const pdfItem of loadedPdfs) {
+                    if (pdfItem.pdfDoc) {
+                        const pageRanges = parsePageRanges(pdfItem.pageRanges);
+                        for (const pageNum of pageRanges) {
+                            if (pageNum > 0 && pageNum <= pdfItem.pdfDoc.numPages) {
+                                const page = await pdfItem.pdfDoc.getPage(pageNum);
+                                const textContent = await page.getTextContent();
+                                sourcesText += textContent.items.map(item => item.str).join(' ') + '\n\n';
+                            }
+                        }
+                    }
+                }
+                
+                const images = Array.from(document.querySelectorAll('#image-preview-area img')).map(img => img.src);
+
+                const payload = { topic, course, grade, sources: sourcesText, images };
+
+                window.parent.postMessage({ type: 'generateMaterial', payload }, '*');
+
+            } catch (error) {
+                console.error("Oluşturma hatası:", error);
+                alert("Materyal oluşturulurken bir hata oluştu. Lütfen konsolu kontrol edin.");
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+        
+         window.addEventListener('message', (event) => {
+            if (event.data.type === 'materialGenerated') {
+                const { slides } = event.data.payload;
+                const viewer = document.getElementById('pdf-viewer');
+                viewer.innerHTML = '';
+                slides.forEach(slide => {
+                    const slideEl = document.createElement('div');
+                    slideEl.style.border = '1px solid #ccc';
+                    slideEl.style.padding = '20px';
+                    slideEl.style.marginBottom = '20px';
+                    slideEl.style.background = 'white';
+
+                    if(slide.title) slideEl.innerHTML += `<h2>${slide.title}</h2>`;
+                    if(slide.subtitle) slideEl.innerHTML += `<h3>${slide.subtitle}</h3>`;
+                    if(slide.content) slideEl.innerHTML += `<p>${slide.content}</p>`;
+                    if(slide.points) slideEl.innerHTML += `<ul>${slide.points.map(p => `<li>${p}</li>`).join('')}</ul>`;
+                    if(slide.customImage) slideEl.innerHTML += `<img src="${slide.customImage}" style="max-width: 100%; border-radius: 8px; margin-top: 10px;">`;
+                    
+                    viewer.appendChild(slideEl);
+                });
+            }
+        });
+
     </script>
 </body>
 </html>

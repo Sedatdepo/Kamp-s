@@ -250,7 +250,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     }
 
     return (
-        <Tabs defaultValue="ai-generator" className="w-full">
+        <Tabs defaultValue="advanced-editor" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="ai-generator">AI Görev Üretici</TabsTrigger>
                 <TabsTrigger value="advanced-editor">Gelişmiş Editör</TabsTrigger>
