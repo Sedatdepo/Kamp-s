@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -52,6 +53,9 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     const [generatedTask, setGeneratedTask] = useState<AssignmentTemplate | null>(null);
     const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
     
+    const generateAssignment = () => {
+        toast({ title: 'Bu özellik kaldırıldı.', description: 'Lütfen AI ile görev üretin.' });
+    };
 
     const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
     const currentTopic = currentGradeData?.konular[selectedTopicIndex];
@@ -327,10 +331,13 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 </select>
                             </div>
                             
-                            <Button onClick={generateWithAi} disabled={isGenerating} className="w-full bg-slate-800 hover:bg-slate-900">
-                                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
-                                AI ile Görev Üret
-                            </Button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button onClick={generateAssignment} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
+                                <Button onClick={generateWithAi} disabled={isGenerating} className="bg-slate-800 hover:bg-slate-900">
+                                    {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
+                                    AI ile Görev Üret
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
