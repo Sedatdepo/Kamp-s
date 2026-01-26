@@ -6,7 +6,7 @@ import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { generateAssignmentScenario, GenerateAssignmentScenarioInput, GenerateAssignmentScenarioOutput } from '@/ai/flows/generate-assignment-scenario-flow';
 import { generateMaterial, GenerateMaterialInput, GenerateMaterialOutput } from '@/ai/flows/generate-material-flow';
-import { exportMaterialToRtf } from '@/lib/word-export';
+import { exportGeneratedMaterialToRtf, exportMaterialToRtf } from '@/lib/word-export';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -185,6 +185,18 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
         }
     };
     
+    const handleExport = () => {
+        if (!generatedContent) {
+          toast({ title: "İçerik Yok", description: "Lütfen önce bir materyal oluşturun.", variant: "destructive" });
+          return;
+        }
+        if ('taskTitle' in generatedContent) { // This is an Assignment
+          exportMaterialToRtf({ task: generatedContent, teacherProfile });
+        } else { // This is a full Material set
+          exportGeneratedMaterialToRtf({ content: generatedContent, teacherProfile });
+        }
+    };
+
     return (
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* SOL PANEL: Kontroller */}
@@ -269,7 +281,14 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                          <p className="text-center max-w-md text-slate-500">Yapay zeka sizin için en uygun materyali hazırlıyor. Bu işlem biraz zaman alabilir.</p>
                     </div>
                 ) : generatedContent ? (
-                    generatedContent.taskTitle ? <RenderedAssignment content={generatedContent} /> : <RenderedMaterial content={generatedContent} />
+                     <div className="space-y-6">
+                        <div className="flex justify-end">
+                            <Button onClick={handleExport} variant="outline">
+                                <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
+                            </Button>
+                        </div>
+                        {generatedContent.taskTitle ? <RenderedAssignment content={generatedContent} /> : <RenderedMaterial content={generatedContent} />}
+                    </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full min-h-[500px] text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50 p-8">
                         <div className="bg-slate-100 p-8 rounded-full mb-6 border border-slate-200">

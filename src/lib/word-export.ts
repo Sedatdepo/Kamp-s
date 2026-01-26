@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, GenerateMaterialOutput } from './types';
 import { format, parseISO } from 'date-fns';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
 
@@ -113,6 +113,68 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
         </table>
     `;
 }
+
+// --- MATERIAL CREATOR EXPORT ---
+interface ExportGeneratedMaterialArgs {
+    content: GenerateMaterialOutput;
+    teacherProfile: TeacherProfile | null;
+}
+export function exportGeneratedMaterialToRtf({ content, teacherProfile }: ExportGeneratedMaterialArgs) {
+    const title = content.meta.topic || "Oluşturulan Materyal";
+    const filename = `${title.replace(/ /g, '_')}.doc`;
+
+    const lessonPlanHtml = `
+        <h3>DERS PLANI</h3>
+        <h4>1. Ders Saati</h4>
+        <p><b>Hedef:</b> ${content.lessonPlan.hour1.objective}</p>
+        <ul>${content.lessonPlan.hour1.steps.map(step => `<li>${step}</li>`).join('')}</ul>
+        <h4>2. Ders Saati</h4>
+        <p><b>Hedef:</b> ${content.lessonPlan.hour2.objective}</p>
+        <ul>${content.lessonPlan.hour2.steps.map(step => `<li>${step}</li>`).join('')}</ul>
+    `;
+
+    const slidesHtml = `
+        <h3>SUNUM SLAYTLARI</h3>
+        ${content.slides.map((slide, i) => `
+            <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; page-break-inside: avoid;">
+                <p><b>Slayt ${i + 1}: ${slide.title || ''}</b></p>
+                ${slide.subtitle ? `<p><i>${slide.subtitle}</i></p>` : ''}
+                ${slide.content ? `<p>${slide.content}</p>` : ''}
+                ${slide.points ? `<ul>${slide.points.map(p => `<li>${p}</li>`).join('')}</ul>` : ''}
+                ${slide.question ? `<p><b>Soru:</b> ${slide.question}</p>` : ''}
+                ${slide.options ? `<p>Seçenekler: ${slide.options.join(', ')}</p>` : ''}
+            </div>
+        `).join('')}
+    `;
+
+    const flashcardsHtml = `
+        <h3>BİLGİ KARTLARI</h3>
+        <table border="1" style="width:100%; border-collapse: collapse;">
+            <tr><th>Soru</th><th>Cevap</th></tr>
+            ${content.flashcardsData.map(fc => `
+                <tr>
+                    <td style="padding: 5px;">${fc.q}</td>
+                    <td style="padding: 5px;">${fc.a}</td>
+                </tr>
+            `).join('')}
+        </table>
+    `;
+
+    const htmlContent = `
+        <h1>${title}</h1>
+        <h2>Ders: ${content.meta.course} - Sınıf: ${content.meta.grade}</h2>
+        <br/>
+        ${lessonPlanHtml}
+        <br/>
+        ${slidesHtml}
+        <br/>
+        ${flashcardsHtml}
+    `;
+
+    const finalHtml = generateHtmlShell(htmlContent, title);
+    downloadRtf(finalHtml, filename);
+}
+
 
 // --- MATERIAL EXPORT ---
 interface ExportMaterialArgs {
@@ -260,7 +322,7 @@ export function exportObservationFormToRtf({ record, teacherProfile, currentClas
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Yapılan Yer</b></td><td style="border:1px solid black; padding: 5px;">${record.observationPlace}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Yapılan Tarih/Saat</b></td><td style="border:1px solid black; padding: 5px;">${record.observationDateTime}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Süresi</b></td><td style="border:1px solid black; padding: 5px;">${record.observationDuration}</td></tr>
-                <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlem Yapılacak Davranış</b></td><td style="border:1px solid black; padding: 5px;">${record.observationBehavior}</td></tr>
+                <tr><td style="border:1px solid black; padding: 5px; background-color:#f2f2f2;"><b>Gözlemlenecek Davranış</b></td><td style="border:1px solid black; padding: 5px;">${record.observationBehavior}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; min-height: 80px; background-color:#f2f2f2;"><b>Gözlem Sürecinin Planlanması</b><br/><span style="font-weight:normal; font-size:9pt;">(Davranışın Nerede, Ne Zaman, Ne Sıklıkta vs. Gözlemleneceği)</span></td><td style="border:1px solid black; padding: 5px;">${(record.observationPlanning || '').replace(/\n/g, '<br/>')}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; min-height: 100px; background-color:#f2f2f2;"><b>Öğretmenin Gözlemleri</b></td><td style="border:1px solid black; padding: 5px;">${(record.teacherObservations || '').replace(/\n/g, '<br/>')}</td></tr>
                 <tr><td style="border:1px solid black; padding: 5px; min-height: 100px; background-color:#f2f2f2;"><b>Gözlem Sürecinin Değerlendirilmesi</b></td><td style="border:1px solid black; padding: 5px;">${(record.observationEvaluation || '').replace(/\n/g, '<br/>')}</td></tr>
