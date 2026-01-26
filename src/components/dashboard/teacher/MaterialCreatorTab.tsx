@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Plus, X } from 'lucide-react';
 import { TeacherProfile } from '@/lib/types';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
@@ -15,6 +14,7 @@ import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import type { AssignmentTemplate } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { generateMaterial, GenerateMaterialInput } from '@/ai/flows/generate-material-flow';
 
 
 const TASK_TYPES = {
@@ -53,9 +53,40 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
     const [generatedTask, setGeneratedTask] = useState<AssignmentTemplate | null>(null);
     const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
     
-    const generateAssignment = () => {
-        toast({ title: 'Bu özellik kaldırıldı.', description: 'Lütfen AI ile görev üretin.' });
-    };
+    // Iframe communication
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    useEffect(() => {
+        const handleIframeMessage = async (event: MessageEvent) => {
+            const { type, payload } = event.data;
+
+            if (type === 'generateMaterial') {
+                setIsGenerating(true);
+                try {
+                    const result = await generateMaterial(payload as GenerateMaterialInput);
+                    iframeRef.current?.contentWindow?.postMessage({
+                        type: 'materialGenerated',
+                        payload: result,
+                    }, '*'); // Use a specific origin in production
+                } catch (error) {
+                    console.error('Error generating material:', error);
+                    toast({
+                        title: 'Yapay Zeka Hatası',
+                        description: 'Materyal oluşturulurken bir hata meydana geldi.',
+                        variant: 'destructive',
+                    });
+                } finally {
+                    setIsGenerating(false);
+                }
+            }
+        };
+
+        window.addEventListener('message', handleIframeMessage);
+        return () => {
+            window.removeEventListener('message', handleIframeMessage);
+        };
+    }, [toast]);
+
 
     const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
     const currentTopic = currentGradeData?.konular[selectedTopicIndex];
@@ -89,6 +120,11 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
         }
     }, [selectedRecordId, performanceAssignments]);
 
+    const generateAssignment = () => {
+        toast({ title: 'Bu özellik kaldırıldı.', description: 'Lütfen AI ile görev üretin.' });
+    };
+
+    
     const generateWithAi = async () => {
         if (!currentTopic || !selectedOutcome) {
             toast({
@@ -331,13 +367,10 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                                 </select>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={generateAssignment} disabled={isGenerating} variant="outline">Şablondan Senaryo</Button>
-                                <Button onClick={generateWithAi} disabled={isGenerating} className="bg-slate-800 hover:bg-slate-900">
-                                    {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
-                                    AI ile Görev Üret
-                                </Button>
-                            </div>
+                            <Button onClick={generateWithAi} disabled={isGenerating} className="w-full bg-slate-800 hover:bg-slate-900">
+                                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5 mr-2" />}
+                                AI ile Görev Üret
+                            </Button>
                         </div>
                     </div>
 
@@ -417,7 +450,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                 </div>
             </TabsContent>
             <TabsContent value="advanced-editor" className="mt-4">
-                 <iframe src="/material-editor.html" className="w-full border-0 rounded-lg shadow-md" style={{ height: 'calc(100vh - 150px)' }} title="Gelişmiş Materyal Editörü" />
+                 <iframe ref={iframeRef} src="/material-editor.html" className="w-full border-0 rounded-lg shadow-md" style={{ height: 'calc(100vh - 200px)' }} title="Gelişmiş Materyal Editörü" />
             </TabsContent>
         </Tabs>
     );

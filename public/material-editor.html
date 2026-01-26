@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edutech Pro - v9.6 (Kart Düzeni Düzeltildi)</title>
+    <title>Edutech Pro - v9.7 (Entegre AI)</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -131,7 +131,6 @@
             const [showPDFModal, setShowPDFModal] = useState(false);
             
             const [formData, setFormData] = useState({ grade: '9', course: 'Biyoloji', topic: '' });
-            const [apiKey, setApiKey] = useState('');
             const [isApiLoading, setIsApiLoading] = useState(false);
             
             const [pdfSources, setPdfSources] = useState([]);
@@ -159,12 +158,28 @@
             const [flippedCards, setFlippedCards] = useState({});
 
             useEffect(() => {
-                const storedKey = localStorage.getItem('gemini_api_key');
-                if (storedKey) setApiKey(storedKey);
                 loadProjects();
                 document.body.className = theme;
+                // Listen for messages from the parent window
+                window.addEventListener('message', handleParentMessage);
+                return () => {
+                    window.removeEventListener('message', handleParentMessage);
+                };
             }, [theme]);
 
+            const handleParentMessage = (event) => {
+                // IMPORTANT: Check the origin for security
+                // if (event.origin !== "http://allowed-origin.com") return;
+                
+                const { type, payload } = event.data;
+
+                if (type === 'materialGenerated') {
+                    setContent(payload);
+                    setShowAIModal(false);
+                    setIsApiLoading(false);
+                }
+            };
+            
             // --- PDF VISUALIZER ---
             useEffect(() => {
                 if (showPDFModal && activePdfId && canvasRef.current) {
@@ -286,7 +301,7 @@
                 }
                 setPdfSources(updated); alert(`${count} kaynak okundu.`);
             };
-
+            
             // --- MAIN LOGIC ---
             const loadProjects = () => setSavedProjects(JSON.parse(localStorage.getItem('edu_projects') || '[]'));
             const saveProject = () => { const newP = { id:Date.now(), name:content.meta.topic, date:new Date().toLocaleDateString(), data:content, images: capturedImages }; const up = [newP, ...savedProjects]; localStorage.setItem('edu_projects', JSON.stringify(up)); setSavedProjects(up); alert("Kaydedildi."); };
@@ -294,74 +309,25 @@
             const deleteProject = (id) => { if(confirm("Sil?")) { const up=savedProjects.filter(p=>p.id!==id); localStorage.setItem('edu_projects',JSON.stringify(up)); setSavedProjects(up); }};
             const downloadJSON = () => { /* Simplified */ }; 
             const uploadJSON = (e) => { /* Simplified */ };
-            const handleApiKeyChange = (e) => { setApiKey(e.target.value); localStorage.setItem('gemini_api_key', e.target.value); };
-            
-            // --- GÜNCELLENMİŞ AI PROMPT ---
-            const generateWithGemini = async () => {
-                if (!apiKey) return alert("API Key giriniz.");
+
+            const generateWithStudio = async () => {
                 setIsApiLoading(true);
-                let combinedText = ""; pdfSources.forEach((s,i) => { if(s.text) combinedText += `KAYNAK ${i+1} (${s.start}-${s.end}): ${s.text.substring(0,10000)}\n`; });
-                
-                const prompt = `Rol: Eğitimci. Konu: "${formData.topic}" (${formData.course}, ${formData.grade}). 
-                ${combinedText ? "KAYNAK: "+combinedText : ""} 
-                GÖREV: Aşağıdaki JSON yapısında eksiksiz bir materyal seti hazırla.
-                
-                ÖNEMLİ KURALLAR:
-                1. 'flashcardsData' dizisi için en az 10 adet "soru" ve "cevap" çifti oluştur. (Slaytlardan bağımsız)
-                2. 'slides' dizisi içinde MUTLAKA en az bir tane "type": "diagram-infographic" (İnfografik) olsun.
-                3. 'slides' dizisi içinde MUTLAKA en az bir tane "type": "diagram-map" (Zihin Haritası) olsun.
-                4. Toplam slayt sayısı en az 15 olsun.
+                let combinedText = ""; 
+                pdfSources.forEach((s,i) => { 
+                    if(s.text) combinedText += `KAYNAK ${i+1} (${s.start}-${s.end}): ${s.text.substring(0,10000)}\n`; 
+                });
 
-                ÇIKTI (JSON): { 
-                    "meta": {...}, 
-                    "lessonPlan": {...}, 
-                    "flashcardsData": [ {"q": "Soru 1", "a": "Cevap 1"}, ... ],
-                    "slides": [ 
-                        { "type": "cover", "title": "...", "subtitle": "..." },
-                        { "type": "text-detailed", "title": "Giriş", "content": "...", "points": [...] },
-                        { "type": "diagram-map", "title": "Zihin Haritası", "data": { "title": "Merkez", "items": [{"main": "A", "sub": "b"}] } },
-                        { "type": "diagram-infographic", "title": "Süreç İnfografiği", "data": [ {"title": "Adım 1", "desc": "Açıklama"}, {"title": "Adım 2", "desc": "Açıklama"} ] },
-                        { "type": "table", "title": "Tablo", "data": { "headers": ["A","B"], "rows": [["1","2"]] } },
-                        { "type": "quiz", "title": "Soru", "question": "...", "options": ["A","B","C","D"] }
-                    ] 
-                }`;
-                
-                try {
-                    // API Call with correct model
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { 
-                        method:'POST', 
-                        headers:{'Content-Type':'application/json'}, 
-                        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]}) 
-                    });
-                    const d = await res.json();
-                    if (d.error) throw new Error(d.error.message);
-                    
-                    let t = d.candidates[0].content.parts[0].text;
-                    const firstBrace = t.indexOf('{');
-                    const lastBrace = t.lastIndexOf('}');
-                    if (firstBrace !== -1 && lastBrace !== -1) { t = t.substring(firstBrace, lastBrace + 1); }
-
-                    const parsedContent = JSON.parse(t);
-                    if (!parsedContent.flashcardsData) {
-                        parsedContent.flashcardsData = parsedContent.slides
-                            .filter(s => s.type === 'text-detailed' || s.type === 'text')
-                            .slice(0, 8)
-                            .map(s => ({ q: s.title, a: s.content ? s.content.substring(0, 100) + "..." : "Cevap metinde." }));
+                window.parent.postMessage({
+                    type: 'generateMaterial',
+                    payload: {
+                        topic: formData.topic,
+                        course: formData.course,
+                        grade: formData.grade,
+                        sources: combinedText,
                     }
-
-                    setContent(parsedContent); 
-                    setShowAIModal(false);
-                } catch(e) { alert("Hata: "+e.message); console.error(e); } finally { setIsApiLoading(false); }
+                }, '*'); // Be more specific in a real app
             };
-
-            const insertImageToSlide = (imgUrl) => {
-                const newContent = { ...content };
-                const slide = newContent.slides[currentSlide];
-                if (slide) { slide.type = 'text-image'; slide.imageKeyword = null; slide.customImage = imgUrl; setContent(newContent); }
-            };
-
-            const exportToPPTX = () => { /* Simplified */ };
-
+            
             // --- RENDERERS ---
             const SlideRenderer = ({ slide, index }) => {
                 if (!slide) return <div>Hata</div>;
@@ -422,7 +388,7 @@
             return (
                 <div className="flex flex-col h-screen" style={{backgroundColor: 'var(--bg)'}}>
                     <header className="text-white h-16 flex items-center justify-between px-6 z-20 shadow-md no-print" style={{backgroundColor: 'var(--primary)'}}>
-                        <div className="flex items-center space-x-3"><i className="fas fa-shapes text-xl"></i><span className="font-bold text-lg">EDUTECH PRO <span className="text-xs opacity-70 ml-2">v9.6</span></span></div>
+                        <div className="flex items-center space-x-3"><i className="fas fa-shapes text-xl"></i><span className="font-bold text-lg">EDUTECH PRO <span className="text-xs opacity-70 ml-2">v9.7</span></span></div>
                         <div className="flex space-x-1 bg-white/10 p-1 rounded-lg">
                             {['editor','presentation','worksheet','exam','flashcards','game'].map(m => ( <button key={m} onClick={()=>setViewMode(m)} className={`px-3 py-1.5 rounded text-sm ${viewMode===m ? 'bg-white text-black' : 'text-white/70'}`}>{menuLabels[m]}</button> ))}
                         </div>
@@ -536,8 +502,8 @@
                          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-xl p-6 w-full max-w-md text-black">
                                 <h3 className="font-bold text-lg mb-4">İçerik Oluştur</h3>
-                                <input type="password" placeholder="API Key" className="w-full p-2 border rounded mb-4" value={apiKey} onChange={handleApiKeyChange} />
-                                <button onClick={generateWithGemini} disabled={isApiLoading} className="w-full py-3 text-white rounded font-bold" style={{backgroundColor: 'var(--primary)'}}>{isApiLoading ? 'Oluşturuluyor...' : 'Başlat'}</button>
+                                <p className="text-sm text-slate-600 mb-4">Kaynakları, konuyu ve sınıf seviyesini kullanarak yeni bir ders materyali oluşturulacak.</p>
+                                <button onClick={generateWithStudio} disabled={isApiLoading} className="w-full py-3 text-white rounded font-bold" style={{backgroundColor: 'var(--primary)'}}>{isApiLoading ? 'Oluşturuluyor...' : 'Başlat'}</button>
                                 <button onClick={()=>setShowAIModal(false)} className="w-full mt-2 py-2 text-slate-500">İptal</button>
                             </div>
                         </div>

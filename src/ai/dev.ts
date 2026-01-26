@@ -6,3 +6,4 @@ import './flows/analyze-sociogram-flow';
 import './flows/generate-performance-grade-flow';
 import './flows/generate-meeting-agenda-item-flow';
 import './flows/generate-assignment-scenario-flow';
+import './flows/generate-material-flow';
