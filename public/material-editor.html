@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edutech Pro - v9.7 (Entegre AI)</title>
+    <title>Edutech Pro - v9.6 (Kart Düzeni Düzeltildi)</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -120,7 +120,7 @@
             </div>
         );
 
-        const menuLabels = { editor: 'Düzenle', presentation: 'Sunum', worksheet: 'Çalışma Kağıdı', exam: 'Sınav', flashcards: 'Bilgi Kartları', game: 'Yarışma' };
+        const menuLabels = { editor: 'Düzenle', presentation: 'Sunum', worksheet: 'Çalışma Kağıdı', exam: 'Sınav' };
 
         function App() {
             const [content, setContent] = useState(emptyTemplate);
@@ -152,34 +152,32 @@
             const [isSelecting, setIsSelecting] = useState(false);
             const startPos = useRef({ x: 0, y: 0 });
 
-            // Game State
-            const [teamAScore, setTeamAScore] = useState(0);
-            const [teamBScore, setTeamBScore] = useState(0);
-            const [flippedCards, setFlippedCards] = useState({});
-
             useEffect(() => {
                 loadProjects();
                 document.body.className = theme;
-                // Listen for messages from the parent window
-                window.addEventListener('message', handleParentMessage);
-                return () => {
-                    window.removeEventListener('message', handleParentMessage);
-                };
             }, [theme]);
-
-            const handleParentMessage = (event) => {
-                // IMPORTANT: Check the origin for security
-                // if (event.origin !== "http://allowed-origin.com") return;
-                
-                const { type, payload } = event.data;
-
-                if (type === 'materialGenerated') {
-                    setContent(payload);
-                    setShowAIModal(false);
-                    setIsApiLoading(false);
-                }
-            };
             
+            // Listen for messages from the parent window
+            useEffect(() => {
+                const handleMessage = (event) => {
+                    // It's a good practice to check the origin for security
+                    // if (event.origin !== "http://your-app-origin.com") return;
+                    
+                    const { type, payload } = event.data;
+                    
+                    if (type === 'generateMaterial') {
+                        generateWithGemini(payload);
+                    }
+                };
+
+                window.addEventListener('message', handleMessage);
+
+                // Clean up the event listener when the component unmounts
+                return () => {
+                    window.removeEventListener('message', handleMessage);
+                };
+            }, []);
+
             // --- PDF VISUALIZER ---
             useEffect(() => {
                 if (showPDFModal && activePdfId && canvasRef.current) {
@@ -301,7 +299,7 @@
                 }
                 setPdfSources(updated); alert(`${count} kaynak okundu.`);
             };
-            
+
             // --- MAIN LOGIC ---
             const loadProjects = () => setSavedProjects(JSON.parse(localStorage.getItem('edu_projects') || '[]'));
             const saveProject = () => { const newP = { id:Date.now(), name:content.meta.topic, date:new Date().toLocaleDateString(), data:content, images: capturedImages }; const up = [newP, ...savedProjects]; localStorage.setItem('edu_projects', JSON.stringify(up)); setSavedProjects(up); alert("Kaydedildi."); };
@@ -309,25 +307,45 @@
             const deleteProject = (id) => { if(confirm("Sil?")) { const up=savedProjects.filter(p=>p.id!==id); localStorage.setItem('edu_projects',JSON.stringify(up)); setSavedProjects(up); }};
             const downloadJSON = () => { /* Simplified */ }; 
             const uploadJSON = (e) => { /* Simplified */ };
-
-            const generateWithStudio = async () => {
-                setIsApiLoading(true);
-                let combinedText = ""; 
-                pdfSources.forEach((s,i) => { 
-                    if(s.text) combinedText += `KAYNAK ${i+1} (${s.start}-${s.end}): ${s.text.substring(0,10000)}\n`; 
-                });
-
-                window.parent.postMessage({
-                    type: 'generateMaterial',
-                    payload: {
-                        topic: formData.topic,
-                        course: formData.course,
-                        grade: formData.grade,
-                        sources: combinedText,
-                    }
-                }, '*'); // Be more specific in a real app
-            };
             
+            const generateWithGemini = async (generationPayload) => {
+                setIsApiLoading(true);
+                try {
+                    // Send message to parent to trigger the flow
+                    window.parent.postMessage({
+                        type: 'generateMaterial',
+                        payload: generationPayload
+                    }, '*'); // Use a specific origin in production
+
+                    // Wait for the response
+                    const result = await new Promise((resolve, reject) => {
+                        const listener = (event) => {
+                            if (event.data.type === 'materialGenerated') {
+                                window.removeEventListener('message', listener);
+                                resolve(event.data.payload);
+                            }
+                        };
+                        window.addEventListener('message', listener);
+                    });
+                    
+                    setContent(result); 
+                    setShowAIModal(false);
+                } catch(e) { 
+                    alert("Hata: " + e.message); 
+                    console.error(e); 
+                } finally { 
+                    setIsApiLoading(false); 
+                }
+            };
+
+            const insertImageToSlide = (imgUrl) => {
+                const newContent = { ...content };
+                const slide = newContent.slides[currentSlide];
+                if (slide) { slide.type = 'text-image'; slide.imageKeyword = null; slide.customImage = imgUrl; setContent(newContent); }
+            };
+
+            const exportToPPTX = () => { /* Simplified */ };
+
             // --- RENDERERS ---
             const SlideRenderer = ({ slide, index }) => {
                 if (!slide) return <div>Hata</div>;
@@ -353,44 +371,16 @@
                     default: return <Container title={slide.title}><div className="text-lg">{slide.content}</div></Container>;
                 }
             };
-
-            const GameRenderer = () => { /* ... same ... */ return <div className="text-center p-10">Yarışma</div>; };
+            
             const WorksheetRenderer = () => <div className="a4-page p-10"><h1 className="text-2xl font-bold mb-4">Çalışma Kağıdı</h1>{content.slides.filter(s=>s.type==='text-detailed').slice(0,5).map((s,i)=><div key={i} className="mb-4"><b>{i+1}.</b> {s.content}</div>)}</div>;
             const ExamRenderer = () => <div className="a4-page p-10"><h1 className="text-2xl font-bold mb-4">Sınav</h1>{content.slides.filter(s=>s.type==='quiz').map((s,i)=><div key={i} className="mb-4"><b>{i+1}.</b> {s.question}</div>)}</div>;
-            
-            // YENİLENMİŞ FLASHCARDS RENDERER (RESPONSIVE)
-            const FlashcardsRenderer = () => {
-                const items = content.flashcardsData || [];
-                if (items.length === 0) return <div className="p-10 text-center">Kart verisi bulunamadı.</div>;
-                
-                return (
-                    <div className="max-w-6xl mx-auto p-8">
-                        {/* CSS Düzeltmesi: Responsive Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {items.map((item, i) => (
-                                <div key={i} className="flip-card h-64 w-full cursor-pointer">
-                                    <div className="flip-card-inner shadow-xl rounded-xl">
-                                        <div className="flip-card-front flex-col p-4 border-2 border-slate-200">
-                                            <div className="text-3xl text-blue-200 mb-2 opacity-50"><i className="fas fa-question-circle"></i></div>
-                                            <h3 className="text-lg font-bold text-slate-800 text-center">{item.q}</h3>
-                                        </div>
-                                        <div className="flip-card-back flex-col p-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-y-auto">
-                                            <p className="text-sm text-center leading-relaxed">{item.a}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            };
 
             return (
                 <div className="flex flex-col h-screen" style={{backgroundColor: 'var(--bg)'}}>
                     <header className="text-white h-16 flex items-center justify-between px-6 z-20 shadow-md no-print" style={{backgroundColor: 'var(--primary)'}}>
-                        <div className="flex items-center space-x-3"><i className="fas fa-shapes text-xl"></i><span className="font-bold text-lg">EDUTECH PRO <span className="text-xs opacity-70 ml-2">v9.7</span></span></div>
+                        <div className="flex items-center space-x-3"><i className="fas fa-shapes text-xl"></i><span className="font-bold text-lg">EDUTECH PRO <span className="text-xs opacity-70 ml-2">v9.6</span></span></div>
                         <div className="flex space-x-1 bg-white/10 p-1 rounded-lg">
-                            {['editor','presentation','worksheet','exam','flashcards','game'].map(m => ( <button key={m} onClick={()=>setViewMode(m)} className={`px-3 py-1.5 rounded text-sm ${viewMode===m ? 'bg-white text-black' : 'text-white/70'}`}>{menuLabels[m]}</button> ))}
+                            {['editor','presentation','worksheet','exam'].map(m => ( <button key={m} onClick={()=>setViewMode(m)} className={`px-3 py-1.5 rounded text-sm ${viewMode===m ? 'bg-white text-black' : 'text-white/70'}`}>{menuLabels[m]}</button>))}
                         </div>
                         <div className="flex gap-2">
                             <button onClick={()=>setShowProjectsModal(true)} className="px-3 bg-white/20 hover:bg-white/30 rounded text-sm"><i className="fas fa-folder-open"></i></button>
@@ -452,10 +442,8 @@
                         <div className="flex-1 overflow-y-auto p-8 flex justify-center">
                             {viewMode === 'editor' && <div className="w-full max-w-5xl aspect-video shadow-xl relative"><SlideRenderer slide={content.slides[currentSlide]} index={currentSlide} /></div>}
                             {viewMode === 'presentation' && <div className="fixed inset-0 z-50 bg-black flex items-center justify-center"><div className="w-full max-w-7xl aspect-video relative"><SlideRenderer slide={content.slides[currentSlide]} index={currentSlide} /><button onClick={()=>setViewMode('editor')} className="absolute top-4 right-4 text-white text-2xl"><i className="fas fa-times"></i></button></div></div>}
-                            {viewMode === 'game' && <GameRenderer />}
                             {viewMode === 'worksheet' && <WorksheetRenderer />}
                             {viewMode === 'exam' && <ExamRenderer />}
-                            {viewMode === 'flashcards' && <FlashcardsRenderer />}
                         </div>
                     </div>
 
@@ -502,8 +490,7 @@
                          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-xl p-6 w-full max-w-md text-black">
                                 <h3 className="font-bold text-lg mb-4">İçerik Oluştur</h3>
-                                <p className="text-sm text-slate-600 mb-4">Kaynakları, konuyu ve sınıf seviyesini kullanarak yeni bir ders materyali oluşturulacak.</p>
-                                <button onClick={generateWithStudio} disabled={isApiLoading} className="w-full py-3 text-white rounded font-bold" style={{backgroundColor: 'var(--primary)'}}>{isApiLoading ? 'Oluşturuluyor...' : 'Başlat'}</button>
+                                <button onClick={() => generateWithGemini(formData)} disabled={isApiLoading} className="w-full py-3 text-white rounded font-bold" style={{backgroundColor: 'var(--primary)'}}>{isApiLoading ? 'Oluşturuluyor...' : 'Başlat'}</button>
                                 <button onClick={()=>setShowAIModal(false)} className="w-full mt-2 py-2 text-slate-500">İptal</button>
                             </div>
                         </div>
@@ -550,3 +537,5 @@
     </script>
 </body>
 </html>
+
+    
