@@ -381,7 +381,6 @@ function ClassSelectionScreen({
                     <MenuCard icon={<FileQuestion />} title="Ödev Oluşturucu" description="AI ile sınav ve ödev oluşturun." onClick={() => setActiveTab('exam-builder')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<Clock />} title="Ders Programı" description="Haftalık ders programı oluşturun." onClick={() => setActiveTab('timetable')} />
-                    <MenuCard icon={<FileText />} title="Yeni Kart" description="Yeni modül." onClick={() => {}} />
                  </div>
             </TabsContent>
         </Tabs>
