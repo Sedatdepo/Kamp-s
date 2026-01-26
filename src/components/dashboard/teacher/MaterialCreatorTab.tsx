@@ -70,11 +70,6 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
                     }, '*'); // Use a specific origin in production
                 } catch (error) {
                     console.error('Error generating material:', error);
-                    toast({
-                        title: 'Yapay Zeka Hatası',
-                        description: 'Materyal oluşturulurken bir hata meydana geldi.',
-                        variant: 'destructive',
-                    });
                 } finally {
                     setIsGenerating(false);
                 }
@@ -85,7 +80,7 @@ const MaterialCreatorTab = ({ teacherProfile }: { teacherProfile: TeacherProfile
         return () => {
             window.removeEventListener('message', handleIframeMessage);
         };
-    }, [toast]);
+    }, []);
 
 
     const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];

@@ -10,8 +10,6 @@ const GenerateMaterialInputSchema = z.object({
   topic: z.string().describe("Dersin konusu."),
   course: z.string().describe("Dersin adı (örn: Biyoloji)."),
   grade: z.string().describe("Sınıf seviyesi (örn: 9)."),
-  sources: z.string().optional().describe("Kullanıcı tarafından sağlanan PDF kaynaklarından çıkarılan metin içeriği."),
-  images: z.array(z.string()).optional().describe("Kullanıcı tarafından sağlanan görsellerin data URI'leri.")
 });
 
 export type GenerateMaterialInput = z.infer<typeof GenerateMaterialInputSchema>;
@@ -23,7 +21,6 @@ const SlideSchema = z.object({
   content: z.string().optional(),
   points: z.array(z.string()).optional(),
   imageKeyword: z.string().optional(),
-  customImage: z.string().optional(),
   data: z.any().optional(),
   question: z.string().optional(),
   options: z.array(z.string()).optional(),
@@ -68,14 +65,10 @@ export async function generateMaterial(input: GenerateMaterialInput): Promise<Ge
     },
     async (input) => {
       
-      const promptParts: any[] = [];
-      const textPart = `
+      const prompt = `
         Sen bir eğitim materyali hazırlama uzmanısın.
         Konu: "${input.topic}" (${input.course}, ${input.grade}. Sınıf).
-        ${input.sources ? `Aşağıdaki kaynak metinleri ana referans olarak kullan:\nKAYNAKLAR:\n${input.sources}` : ''}
-      
-        ${input.images && input.images.length > 0 ? `Sana sağlanan görselleri, hazırlayacağın slaytlarda 'customImage' alanı için kullanarak anlamlı bir şekilde yerleştir. Görselleri JSON çıktısına olduğu gibi, data URI formatında ekle. Bir görseli birden fazla kullanmaktan kaçın.` : ''}
-
+        
         GÖREV: Aşağıdaki JSON yapısına harfiyen uyarak, lise öğrencileri için ilgi çekici ve öğretici bir ders materyali seti oluştur.
 
         JSON YAPISI:
@@ -91,7 +84,7 @@ export async function generateMaterial(input: GenerateMaterialInput): Promise<Ge
           "slides": [ // Toplamda EN AZ 15 slayt oluştur. Slayt türlerini çeşitlendir.
             { "type": "cover", "title": "...", "subtitle": "..." },
             { "type": "text-detailed", "title": "...", "content": "...", "points": ["...", "...", "..."] },
-            { "type": "text-image", "title": "Görselli Metin", "content": "Metin...", "customImage": "SAĞLANAN GÖRSELLERDEN BİRİNİN DATA URI'Sİ" },
+            { "type": "text-image", "title": "Görselli Metin", "content": "Metin...", "imageKeyword": "görsel için anahtar kelime" },
             { "type": "diagram-map", "title": "Zihin Haritası", "data": { "title": "Ana Kavram", "items": [{"main": "Alt Başlık 1", "sub": "Detay"}, {"main": "Alt Başlık 2", "sub": "Detay"}] } },
             { "type": "diagram-infographic", "title": "Süreç/Zaman Çizelgesi", "data": [ {"title": "Adım 1", "desc": "Açıklama"}, {"title": "Adım 2", "desc": "Açıklama"} ] },
             { "type": "table", "title": "Karşılaştırma Tablosu", "data": { "headers": ["Özellik","Açıklama"], "rows": [["...", "..."]] } },
@@ -99,16 +92,9 @@ export async function generateMaterial(input: GenerateMaterialInput): Promise<Ge
           ]
         }
       `;
-      promptParts.push({ text: textPart });
-
-      if (input.images) {
-        input.images.forEach(imgDataUri => {
-            promptParts.push({ media: { url: imgDataUri } });
-        });
-      }
-
+      
       const { output } = await ai.generate({
-        prompt: promptParts,
+        prompt: prompt,
         output: { schema: GenerateMaterialOutputSchema },
       });
 
