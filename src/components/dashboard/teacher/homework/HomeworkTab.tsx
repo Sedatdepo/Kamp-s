@@ -11,7 +11,6 @@ import { HomeworkEvaluationTab } from './HomeworkEvaluationTab';
 import { HomeworkLibrary } from './HomeworkLibrary';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ProjectPetitionsTab } from '../ProjectPetitionsTab';
-import { ProjectGradingTab } from '../ProjectGradingTab';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -198,7 +197,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
                     <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
                     <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
-                    <TabsTrigger value="grading">Proje Değerlendirme</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -244,13 +242,6 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     lessons={lessons || []}
                     students={studentsForCurrentClass}
                  />
-            </TabsContent>
-             <TabsContent value="grading" className="mt-4">
-                <ProjectGradingTab
-                  students={studentsForCurrentClass}
-                  teacherProfile={teacherProfile!}
-                  currentClass={currentClass}
-                />
             </TabsContent>
         </Tabs>
     );
