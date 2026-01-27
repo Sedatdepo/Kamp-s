@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -30,6 +29,7 @@ import { RecordManager } from '../RecordManager';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const HomeworkEvaluationCard = ({ homework, students, submissions, classId, teacherProfile, onHomeworkDelete, onScoresUpdated }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, teacherProfile: TeacherProfile | null, onHomeworkDelete: (id: string) => void, onScoresUpdated: () => void }) => {
     const { db } = useAuth();
@@ -219,13 +219,23 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
 
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'));
+        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '!=', null));
     }, [db, classId]);
 
     const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(liveHomeworksQuery);
     
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
+    
+    const performanceHomeworks = useMemo(() => 
+        (liveHomeworks || []).filter(hw => hw.assignmentType === 'performance').sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime()), 
+        [liveHomeworks]
+    );
+    const projectHomeworks = useMemo(() => 
+        (liveHomeworks || []).filter(hw => hw.assignmentType === 'project').sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime()),
+        [liveHomeworks]
+    );
+
 
     const fetchSubmissions = useCallback(async () => {
         if (homeworksLoading || !db || !classId || !liveHomeworks || liveHomeworks.length === 0) {
@@ -277,16 +287,16 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
             const batch = writeBatch(db);
             const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
 
-            // Query and delete submissions
+            // Query and delete all submissions in the subcollection
             const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions'));
             const submissionsSnapshot = await getDocs(submissionsQuery);
             submissionsSnapshot.forEach(doc => {
                 batch.delete(doc.ref);
             });
-
-            // Delete the homework document
+            
+            // Delete the homework document itself
             batch.delete(homeworkRef);
-
+            
             await batch.commit();
 
             toast({ title: "Ödev ve tüm teslimler silindi." });
@@ -345,30 +355,62 @@ export const HomeworkEvaluationTab = ({ classId, students, currentClass, teacher
                 </Button>
             </div>
             <div className="lg:col-span-3">
-                <Card>
+                 <Card>
                     <CardHeader>
                         <CardTitle>Ödev Değerlendirme</CardTitle>
-                        <CardDescription>Öğrencilerin teslim ettiği ödevleri değerlendirin.</CardDescription>
+                        <CardDescription>Öğrencilerin teslim ettiği performans ve proje ödevlerini buradan değerlendirin.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        {displayedData.homeworks && displayedData.homeworks.length > 0 ? (
-                            displayedData.homeworks.map(hw => (
-                                <HomeworkEvaluationCard
-                                    key={hw.id}
-                                    homework={hw}
-                                    students={students.filter(s => hw.assignedStudents?.includes(s.id))}
-                                    submissions={displayedData.submissions[hw.id] || []}
-                                    classId={classId}
-                                    teacherProfile={teacherProfile}
-                                    onHomeworkDelete={handleHomeworkDelete}
-                                    onScoresUpdated={handleScoresUpdated}
-                                />
-                            ))
-                        ) : (
-                            <div className="text-center p-10 bg-muted/50 rounded-lg">
-                                <p className="text-muted-foreground">Bu sınıfa atanmış performans ödevi bulunmuyor.</p>
-                            </div>
-                        )}
+                    <CardContent>
+                        <Tabs defaultValue="performance">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="performance">Performans Ödevleri</TabsTrigger>
+                                <TabsTrigger value="project">Proje Ödevleri</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="performance" className="mt-4">
+                                <div className="space-y-4">
+                                    {performanceHomeworks.length > 0 ? (
+                                        performanceHomeworks.map(hw => (
+                                            <HomeworkEvaluationCard
+                                                key={hw.id}
+                                                homework={hw}
+                                                students={students.filter(s => hw.assignedStudents?.includes(s.id))}
+                                                submissions={displayedData.submissions[hw.id] || []}
+                                                classId={classId}
+                                                teacherProfile={teacherProfile}
+                                                onHomeworkDelete={handleHomeworkDelete}
+                                                onScoresUpdated={handleScoresUpdated}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="text-center p-10 bg-muted/50 rounded-lg">
+                                            <p className="text-muted-foreground">Değerlendirilecek performans ödevi bulunmuyor.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+                            <TabsContent value="project" className="mt-4">
+                                <div className="space-y-4">
+                                    {projectHomeworks.length > 0 ? (
+                                        projectHomeworks.map(hw => (
+                                            <HomeworkEvaluationCard
+                                                key={hw.id}
+                                                homework={hw}
+                                                students={students.filter(s => hw.assignedStudents?.includes(s.id))}
+                                                submissions={displayedData.submissions[hw.id] || []}
+                                                classId={classId}
+                                                teacherProfile={teacherProfile}
+                                                onHomeworkDelete={handleHomeworkDelete}
+                                                onScoresUpdated={handleScoresUpdated}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="text-center p-10 bg-muted/50 rounded-lg">
+                                            <p className="text-muted-foreground">Değerlendirilecek proje ödevi bulunmuyor.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </CardContent>
                 </Card>
             </div>
