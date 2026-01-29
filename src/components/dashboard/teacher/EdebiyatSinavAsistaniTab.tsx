@@ -1,15 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock } from 'lucide-react';
+import {
+  BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock
+} from 'lucide-react';
+
+// ShadCN UI components
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+// Custom components & hooks
 import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 
 // MÜFREDAT VERİ TABANI
 const curriculumData = {
@@ -77,8 +85,8 @@ export default function EdebiyatSinavAsistaniTab() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
-  const [dualColumnMode, setDualColumnMode] = useState(false);
-  const [lessonPlanMode, setLessonPlanMode] = useState(true);
+  const [dualColumnMode, setDualColumnMode] = useState(false); 
+  const [lessonPlanMode, setLessonPlanMode] = useState(true); 
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
@@ -208,8 +216,6 @@ export default function EdebiyatSinavAsistaniTab() {
         <div class="info-box">
            Sınıf: ${selectedClass} | Kazanım: ${selectedOutcome || 'Genel'}
         </div>
-
-        <!-- Metinler: Çift Sütun Kontrolü -->
         ${editableResult.text_content.map((txt: any) => {
           if (dualColumnMode && txt.body_modern) {
              return `
@@ -403,7 +409,7 @@ export default function EdebiyatSinavAsistaniTab() {
             </h2>
             <div className="space-y-3">
                <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Sınıf Seviyesi</label>
+                <Label className="block text-xs font-semibold text-gray-500 mb-1">Sınıf Seviyesi</Label>
                 <select 
                   className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-orange-500 bg-orange-50 outline-none font-medium"
                   value={selectedClass}
@@ -414,7 +420,7 @@ export default function EdebiyatSinavAsistaniTab() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</label>
+                <Label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</Label>
                 <select 
                   className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100"
                   value={selectedOutcome}
@@ -475,14 +481,14 @@ export default function EdebiyatSinavAsistaniTab() {
                 { label: 'Tema', val: filters.theme, set: (v: string) => setFilters({...filters, theme: v}), opts: themes },
               ].map((field, i) => (
                 <div key={i}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</label>
+                  <Label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</Label>
                   <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-indigo-500 bg-gray-50 outline-none" value={field.val} onChange={(e) => field.set(e.target.value)}>
                     {field.opts.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
               ))}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Zorluk</label>
+                <Label className="block text-xs font-semibold text-gray-500 mb-1">Zorluk</Label>
                 <div className="flex gap-1">
                   {difficulties.map(d => (
                     <button key={d} onClick={() => setFilters({...filters, difficulty: d})} className={`flex-1 py-1.5 text-xs font-medium rounded border transition-colors ${filters.difficulty === d ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-200'}`}>{d}</button>
@@ -519,9 +525,9 @@ export default function EdebiyatSinavAsistaniTab() {
 
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span className="flex-1">{error}</span></div>}
 
-          <button onClick={handleGenerate} disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70">
-            {loading ? <><RefreshCw className="animate-spin" size={18} /> 'Oluşturuluyor...'</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
-          </button>
+          <Button onClick={handleGenerate} disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+            {loading ? <><RefreshCw className="animate-spin" size={18} /> Oluşturuluyor...</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
+          </Button>
         </aside>
 
         <section className="flex-1 space-y-6">
@@ -673,7 +679,7 @@ export default function EdebiyatSinavAsistaniTab() {
                 )}
 
               </div>
-              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.0 ile oluşturulmuştur.</div>
+              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.1 ile oluşturulmuştur.</div>
             </div>
           )}
         </section>
@@ -686,7 +692,7 @@ export default function EdebiyatSinavAsistaniTab() {
                   <DialogDescription>Bu içeriğe daha sonra erişmek için bir isim verin.</DialogDescription>
               </DialogHeader>
               <div className="py-4">
-                  <label htmlFor="save-name">Kayıt Adı</label>
+                  <Label htmlFor="save-name">Kayıt Adı</Label>
                   <Input id="save-name" value={saveNameInput} onChange={(e) => setSaveNameInput(e.target.value)} />
               </div>
               <DialogFooter>
