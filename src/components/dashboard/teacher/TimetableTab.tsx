@@ -18,6 +18,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useDatabase } from '@/hooks/use-database';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Lesson } from '@/lib/types';
+import { Input } from '@/components/ui/input';
 
 
 export default function TimetableTab({ classes, lessons }: { classes: Class[], lessons: Lesson[] }) {
