@@ -38,6 +38,7 @@ export interface Database {
   performanceFavorites?: number[];
   projectFavorites?: number[];
   edebiyatAsistanArsivi?: EdebiyatAsistanDocument[];
+  edebiyatKazanımlar?: any;
 }
 
 // Varsayılan boş veritabanı
@@ -89,6 +90,7 @@ const initialDb: Database = {
   performanceFavorites: [],
   projectFavorites: [],
   edebiyatAsistanArsivi: [],
+  edebiyatKazanımlar: null,
 };
 
 export const useDatabase = () => {
@@ -136,5 +138,3 @@ export const useDatabase = () => {
 
   return { db, setDb: memoizedSetDb, loading };
 };
-
-    
