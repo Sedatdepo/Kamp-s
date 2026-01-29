@@ -38,6 +38,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverActions: {
+    bodySizeLimit: '10mb',
+  },
 };
 
 export default withPWA(nextConfig);
