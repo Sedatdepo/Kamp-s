@@ -20,6 +20,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Lesson } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 
+const highSchoolLessons = [
+    "Matematik", "Fizik", "Kimya", "Biyoloji", "Türk Dili ve Edebiyatı",
+    "Tarih", "Coğrafya", "Felsefe", "İngilizce", "Almanca", "Fransızca",
+    "Beden Eğitimi", "Müzik", "Görsel Sanatlar", "Din Kültürü ve Ahlak Bilgisi",
+    "Psikoloji", "Sosyoloji", "Girişimcilik", "Astronomi", "Yazılım", "Robotik Kodlama",
+    "Seçmeli Ders 1", "Seçmeli Ders 2", "Rehberlik"
+];
+
 
 export default function TimetableTab({ classes, lessons }: { classes: Class[], lessons: Lesson[] }) {
   const { db, setDb, loading } = useDatabase();
@@ -174,7 +182,7 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
                 <div className="py-4 space-y-4">
                     <Select value={cellSubject.ders || ''} onValueChange={(val) => setCellSubject(prev => ({...prev, ders: val}))}>
                         <SelectTrigger><SelectValue placeholder="Ders seçin..." /></SelectTrigger>
-                        <SelectContent>{lessons.map(l => <SelectItem key={l.id} value={l.name}>{l.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{highSchoolLessons.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                     </Select>
                     <Select value={cellSubject.sinif || ''} onValueChange={(val) => setCellSubject(prev => ({...prev, sinif: val}))}>
                         <SelectTrigger><SelectValue placeholder="Sınıf seçin..." /></SelectTrigger>
