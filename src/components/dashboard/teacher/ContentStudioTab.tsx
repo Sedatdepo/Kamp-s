@@ -499,6 +499,7 @@ const ExamBuilderComponent = ({ classes, students }: { classes: Class[], student
                         <Button onClick={() => handleGenerateQuestion('multiple-choice')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Test</Button>
                         <Button onClick={() => handleGenerateQuestion('open-ended')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Açık Uçlu</Button>
                         <Button onClick={() => handleGenerateQuestion('matching')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>Eşleştirme</Button>
+                        <Button onClick={() => handleGenerateQuestion('true-false')} size="sm" variant="outline" className="text-xs" disabled={isGeneratingQuestion || !selectedKazanım}><Sparkles className="h-3 w-3 mr-1"/>D/Y</Button>
                         {isGeneratingQuestion && <Loader2 className="h-4 w-4 animate-spin"/>}
                     </div>
                 </CardContent>
@@ -518,13 +519,7 @@ const ExamBuilderComponent = ({ classes, students }: { classes: Class[], student
                             </div>
                         ))}
                     </div>
-                    <div className='grid grid-cols-2 gap-2 pt-2 border-t'>
-                        <Button variant="outline" onClick={() => addQuestion('multiple-choice')}><CheckSquare className="mr-2"/>Test</Button>
-                        <Button variant="outline" onClick={() => addQuestion('open-ended')}><AlignLeft className="mr-2"/>Açık Uçlu</Button>
-                        <Button variant="outline" onClick={() => addQuestion('true-false')}><Binary className="mr-2"/>D/Y</Button>
-                        <Button variant="outline" onClick={() => addQuestion('matching')}><Shuffle className="mr-2"/>Eşleştirme</Button>
-                    </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-4 border-t">
                         <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="flex-1"><Eye className='mr-2'/>Önizleme</Button>
                         <Button onClick={() => setIsAssignModalOpen(true)} className="flex-1"><Send className='mr-2'/>Ata & Yayınla</Button>
                     </div>
