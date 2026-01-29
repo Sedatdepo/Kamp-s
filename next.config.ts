@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
     ],
   },
   serverActions: {
-    bodySizeLimit: '50mb',
+    bodySizeLimit: 52428800,
   },
 };
 
