@@ -9,6 +9,7 @@ import { RecordManager } from './RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
 
 // MÜFREDAT VERİ TABANI
 const curriculumData = {
@@ -71,7 +72,7 @@ export default function EdebiyatSinavAsistaniTab() {
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
   
   const [isEditing, setIsEditing] = useState(false);
@@ -81,10 +82,6 @@ export default function EdebiyatSinavAsistaniTab() {
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
-
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-  const [saveNameInput, setSaveNameInput] = useState("");
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedOutcome('');
@@ -294,6 +291,10 @@ export default function EdebiyatSinavAsistaniTab() {
     document.body.removeChild(link);
   };
   
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+    const [saveNameInput, setSaveNameInput] = useState("");
+    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+
     const openSaveDialog = () => {
         if (!editableResult) {
             toast({ title: "Arşivlenemiyor", description: "Lütfen önce bir içerik oluşturun.", variant: "destructive"});
@@ -523,7 +524,6 @@ export default function EdebiyatSinavAsistaniTab() {
           </button>
         </aside>
 
-        {/* SAĞ PANEL: Sonuç */}
         <section className="flex-1 space-y-6">
           {!editableResult && !loading && (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl min-h-[500px]">
@@ -673,7 +673,7 @@ export default function EdebiyatSinavAsistaniTab() {
                 )}
 
               </div>
-              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.1 ile oluşturulmuştur.</div>
+              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.0 ile oluşturulmuştur.</div>
             </div>
           )}
         </section>
@@ -697,6 +697,4 @@ export default function EdebiyatSinavAsistaniTab() {
       </Dialog>
     </div>
   );
-}
-
-    
+};
