@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Message, TeacherProfile, Student } from '@/lib/types';
 import { collection, query, where, writeBatch, doc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
@@ -20,6 +20,35 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 function getInitials(name: string = '') {
     return name.split(' ').map((n) => n[0]).slice(0, 2).join('');
 }
+
+const Linkify = ({ text }: { text: string }) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (!text) return null;
+  
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 underline hover:text-blue-500"
+              onClick={(e) => e.stopPropagation()} 
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      })}
+    </>
+  );
+};
 
 export function TeacherChatsTab() {
     const { appUser, db } = useAuth();
@@ -138,7 +167,7 @@ export function TeacherChatsTab() {
                                 {chatMessages.map(msg => (
                                     <div key={msg.id} className={`flex my-2 ${msg.senderId === studentId ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === studentId ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
-                                            <p>{msg.text}</p>
+                                            <p className="whitespace-pre-wrap"><Linkify text={msg.text} /></p>
                                             <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p', { locale: tr }) : ''}</p>
                                         </div>
                                     </div>
@@ -160,3 +189,5 @@ export function TeacherChatsTab() {
         </div>
     );
 }
+
+    

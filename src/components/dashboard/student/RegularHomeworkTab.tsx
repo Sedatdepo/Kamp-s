@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Homework, Submission, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send, ExternalLink } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -233,6 +234,14 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
                                 <Download className="h-4 w-4 ml-auto" />
                             </Button>
                         )}
+                        {homework.link && (
+                            <Button asChild variant="secondary" className="flex items-center gap-2 mt-2">
+                                <a href={homework.link} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4" />
+                                    {homework.linkText || "İlgili Bağlantı"}
+                                </a>
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
@@ -372,3 +381,5 @@ export function RegularHomeworkTab() {
 
   return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }
+
+    

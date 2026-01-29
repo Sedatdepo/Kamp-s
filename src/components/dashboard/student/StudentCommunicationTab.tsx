@@ -6,9 +6,10 @@ import { useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Class, Announcement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Bell, Clock } from 'lucide-react';
+import { Loader2, Bell, Clock, ExternalLink } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useDoc, useMemoFirebase } from '@/firebase';
+import { Button } from '@/components/ui/button';
 
 export function StudentCommunicationTab() {
   const { appUser, db } = useAuth();
@@ -67,9 +68,17 @@ export function StudentCommunicationTab() {
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {announcements.length > 0 ? (
             [...announcements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((ann) => (
-              <div key={ann.id} className="border p-4 rounded-lg bg-background shadow-sm">
+              <div key={ann.id} className="border p-4 rounded-lg bg-background shadow-sm space-y-3">
                 <p className="text-sm leading-relaxed">{ann.text}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3 pt-2 border-t">
+                {ann.link && (
+                    <Button asChild variant="outline" size="sm">
+                        <a href={ann.link} target="_blank" rel="noopener noreferrer">
+                             {ann.linkText || 'Linki Aç'}
+                             <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                    </Button>
+                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3 pt-3 border-t">
                   <Clock className="h-3 w-3" />
                   <span>Yayınlanma Tarihi: {new Date(ann.date).toLocaleDateString('tr-TR')}</span>
                 </div>
@@ -85,3 +94,5 @@ export function StudentCommunicationTab() {
     </Card>
   );
 }
+
+    

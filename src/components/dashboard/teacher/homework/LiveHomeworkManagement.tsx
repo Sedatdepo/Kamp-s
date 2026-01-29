@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft, X, ImageIcon } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft, X, ImageIcon, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -67,6 +68,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
     const [dueDate, setDueDate] = useState<Date | undefined>();
     const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
     const [file, setFile] = useState<File | null>(null);
+    const [link, setLink] = useState('');
+    const [linkText, setLinkText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [questions, setQuestions] = useState<Question[]>([]);
     
@@ -225,6 +228,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
                 questions: questions,
+                link: link.trim() || undefined,
+                linkText: linkText.trim() || undefined,
             };
 
             if (editingHomework) {
@@ -312,6 +317,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         setText(hw.text);
         setFile(null); // Clear file input when starting edit
         setQuestions(hw.questions || []);
+        setLink(hw.link || '');
+        setLinkText(hw.linkText || '');
         if (hw.dueDate) {
             setDueDate(new Date(hw.dueDate));
         }
@@ -323,6 +330,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         setFile(null);
         setDueDate(undefined);
         setQuestions([]);
+        setLink('');
+        setLinkText('');
     };
 
     const handleExport = () => {
@@ -392,6 +401,10 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                             </Button>
                         </div>
                     )}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="İsteğe bağlı link (https://...)" />
+                        <Input value={linkText} onChange={(e) => setLinkText(e.target.value)} placeholder="Link metni (örn: Videoyu izle)" />
+                    </div>
                     
                      <div className="space-y-4 pt-4 border-t">
                         <Label className="text-base font-semibold">Sorular</Label>
@@ -475,6 +488,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                                 <div className="flex flex-col text-left">
                                                     <div className="flex items-center gap-2">
                                                         {hw.file && <Paperclip className="h-4 w-4 text-muted-foreground"/>}
+                                                        {hw.link && <ExternalLink className="h-4 w-4 text-muted-foreground"/>}
                                                         <p className="font-semibold">{hw.text}</p>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground mt-1">
@@ -537,3 +551,5 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
       </div>
     );
 };
+
+    

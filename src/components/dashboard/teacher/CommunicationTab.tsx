@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
 import { doc, updateDoc, collection, addDoc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
 import { Class, Announcement, Message, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,8 @@ const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(
 
 function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   const [announcementText, setAnnouncementText] = useState('');
+  const [link, setLink] = useState('');
+  const [linkText, setLinkText] = useState('');
   const { toast } = useToast();
   const { db } = useAuth();
   
@@ -53,7 +55,12 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     if (!db || !announcementText.trim() || !currentClass) return;
 
     const newAnnouncement: Announcement = {
-      id: Date.now(), text: announcementText, date: new Date().toISOString(), seenBy: [],
+      id: Date.now(), 
+      text: announcementText, 
+      date: new Date().toISOString(), 
+      seenBy: [],
+      link: link.trim() || undefined,
+      linkText: linkText.trim() || undefined
     };
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = [newAnnouncement, ...(currentClass.announcements || [])];
@@ -61,6 +68,8 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     try {
       await updateDoc(classRef, { announcements: updatedAnnouncements });
       setAnnouncementText('');
+      setLink('');
+      setLinkText('');
       toast({ title: 'Duyuru yayınlandı!' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Duyuru yayınlanamadı.' });
@@ -82,14 +91,21 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   const handleStartEdit = (ann: Announcement) => {
     setEditingAnnouncementId(ann.id);
     setEditingAnnouncementText(ann.text);
+    setLink(ann.link || '');
+    setLinkText(ann.linkText || '');
   };
-  const handleCancelEdit = () => { setEditingAnnouncementId(null); setEditingAnnouncementText(''); };
+  const handleCancelEdit = () => { 
+      setEditingAnnouncementId(null); 
+      setEditingAnnouncementText('');
+      setLink('');
+      setLinkText('');
+  };
 
   const handleSaveEdit = async () => {
     if (!db || !currentClass || editingAnnouncementId === null || !editingAnnouncementText.trim()) return;
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = (currentClass.announcements || []).map(ann => 
-        ann.id === editingAnnouncementId ? { ...ann, text: editingAnnouncementText } : ann
+        ann.id === editingAnnouncementId ? { ...ann, text: editingAnnouncementText, link: link.trim() || undefined, linkText: linkText.trim() || undefined } : ann
     );
     try {
         await updateDoc(classRef, { announcements: updatedAnnouncements });
@@ -109,7 +125,11 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
           <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <Textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Duyuru metnini buraya yazın..." rows={5}/>
+            <Textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Duyuru metnini buraya yazın..." rows={4}/>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="İsteğe bağlı link (https://...)" />
+                <Input value={linkText} onChange={(e) => setLinkText(e.target.value)} placeholder="Link metni (örn: Detaylar için tıkla)" />
+            </div>
             <Button onClick={handleAddAnnouncement}>Yayınla</Button>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
             {displayedAnnouncements.length > 0 ? (
@@ -118,6 +138,10 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
                     {editingAnnouncementId === ann.id ? (
                         <div className="w-full space-y-2">
                             <Textarea value={editingAnnouncementText} onChange={(e) => setEditingAnnouncementText(e.target.value)} className="bg-white"/>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="İsteğe bağlı link (https://...)" />
+                                <Input value={linkText} onChange={(e) => setLinkText(e.target.value)} placeholder="Link metni" />
+                            </div>
                             <div className="flex gap-2"><Button size="sm" onClick={handleSaveEdit}><Save className="mr-2 h-4 w-4"/>Kaydet</Button><Button size="sm" variant="ghost" onClick={handleCancelEdit}>İptal</Button></div>
                         </div>
                     ) : ( <>
@@ -145,6 +169,36 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     </Card>
   )
 }
+
+const Linkify = ({ text }: { text: string }) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (!text) return null;
+  
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 underline hover:text-blue-500"
+              onClick={(e) => e.stopPropagation()} 
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      })}
+    </>
+  );
+};
+
 
 function MessagesPanel({ classId, students }: { classId: string, students: Student[] }) {
     const { appUser, db } = useAuth();
@@ -243,7 +297,7 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
                                 {chatMessages.map(msg => (
                                     <div key={msg.id} className={`flex my-2 ${msg.senderId === teacherId ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === teacherId ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
-                                            <p>{msg.text}</p>
+                                            <p className="whitespace-pre-wrap"><Linkify text={msg.text} /></p>
                                             <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p', { locale: tr }) : ''}</p>
                                         </div>
                                     </div>
@@ -287,3 +341,5 @@ export function CommunicationTab({ classId, currentClass }: { classId: string; c
     </Tabs>
   );
 }
+
+    

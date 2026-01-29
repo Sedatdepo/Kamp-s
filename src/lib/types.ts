@@ -28,6 +28,8 @@ export interface Announcement {
     name: string;
     type: string;
   };
+  link?: string;
+  linkText?: string;
 }
 
 export interface Submission {
@@ -69,6 +71,8 @@ export interface Homework {
     name: string;
     type: string;
   };
+  link?: string;
+  linkText?: string;
 }
 
 
@@ -708,3 +712,5 @@ fatherName: string;
   familyMemberWithDisability: string;
   familyFinancialIssues: string;
 }
+
+    
