@@ -356,7 +356,7 @@ export interface Archivable {
     id: string;
     name: string;
     date: string;
-    classId?: string; // classId is optional for some documents like Dilekce
+    classId?: string; // classId is optional for some documents
     data: any;
 }
 
@@ -712,5 +712,8 @@ fatherName: string;
   familyMemberWithDisability: string;
   familyFinancialIssues: string;
 }
+
+export interface EdebiyatAsistanDocument extends Archivable {}
+    
 
     

@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useDatabase } from '@/hooks/use-database';
+import { RecordManager } from './RecordManager';
+import { EdebiyatAsistanDocument } from '@/lib/types';
+import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // MÜFREDAT VERİ TABANI
 const curriculumData = {
@@ -59,21 +66,25 @@ const curriculumData = {
 };
 
 export default function EdebiyatSinavAsistaniTab() {
+  const { db: localDb, setDb: setLocalDb } = useDatabase();
+  const { edebiyatAsistanArsivi: archives = [] } = localDb;
+  const { toast } = useToast();
+  
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
-  const [retryStatus, setRetryStatus] = useState('');
   
-  // YENİ ÖZELLİK STATE'LERİ
   const [isEditing, setIsEditing] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
-  const [dualColumnMode, setDualColumnMode] = useState(false); // Çift Sütun Modu
-  const [lessonPlanMode, setLessonPlanMode] = useState(true); // Ders Planı Modu (Varsayılan Açık)
+  const [dualColumnMode, setDualColumnMode] = useState(false);
+  const [lessonPlanMode, setLessonPlanMode] = useState(true);
   
-  // MÜFREDAT STATE'LERİ
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
+
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [saveNameInput, setSaveNameInput] = useState("");
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedOutcome('');
@@ -85,7 +96,7 @@ export default function EdebiyatSinavAsistaniTab() {
     fillInBlank: { id: 'fillInBlank', label: 'Boşluk Doldurma', active: false, count: 4 }
   });
 
-  const updateQSetting = (id: any, field: any, value: any) => {
+  const updateQSetting = (id: string, field: string, value: boolean | number) => {
     setQSettings(prev => ({
       ...prev,
       [id]: { ...prev[id], [field]: value }
@@ -106,8 +117,6 @@ export default function EdebiyatSinavAsistaniTab() {
   const themes = ['Yalnızlık', 'Aşk', 'Ölüm', 'Doğa', 'Savaş', 'Toplum Eleştirisi', 'Kahramanlık', 'Yabancılaşma', 'Adalet', 'Dilin Zenginliği', 'Sanatın Dili', 'Tarihin İzleri', 'Hayatın Yankısı'];
   const difficulties = ['Temel', 'Orta', 'İleri'];
 
-  const wait = (ms: any) => new Promise(resolve => setTimeout(resolve, ms));
-
   const [editableResult, setEditableResult] = useState<any>(null);
 
   useEffect(() => {
@@ -116,7 +125,7 @@ export default function EdebiyatSinavAsistaniTab() {
     }
   }, [result]);
 
-  const handleEditChange = (section: any, key: any, value: any, index: any = null) => {
+  const handleEditChange = (section: string, key: string, value: string, index: number | null = null) => {
     const newResult = { ...editableResult };
     if (section === 'meta' || section === 'analysis' || section === 'lesson_plan') {
       newResult[section][key] = value;
@@ -131,10 +140,6 @@ export default function EdebiyatSinavAsistaniTab() {
   };
 
   const handleGenerate = async () => {
-    if (!apiKey) {
-      setError("Lütfen önce geçerli bir Google Gemini API anahtarı giriniz.");
-      return;
-    }
     if (!selectedClass) {
       setError("Lütfen bir sınıf seviyesi seçiniz.");
       return;
@@ -144,7 +149,6 @@ export default function EdebiyatSinavAsistaniTab() {
     setResult(null);
     setEditableResult(null);
     setError('');
-    setRetryStatus('');
     setIsEditing(false);
 
     const questionRequest = Object.values(qSettings)
@@ -152,117 +156,28 @@ export default function EdebiyatSinavAsistaniTab() {
       .map(q => `${q.count} adet ${q.label}`)
       .join(', ');
     
-    // Prompt Hazırlama
-    const systemPrompt = `
-      Sen uzman bir Türk Dili ve Edebiyatı öğretmenisin. Aşağıdaki müfredat kriterlerine tam uyumlu sınav materyali hazırlamalısın.
-      
-      MÜFREDAT VE HEDEF KİTLE:
-      - Sınıf Seviyesi: ${selectedClass}
-      - Hedef Kazanım / Ünite / Konu: ${selectedOutcome || 'Genel Değerlendirme'}
-      
-      MOD AYARLARI:
-      - Çift Sütun (Sadeleştirme): ${dualColumnMode ? 'EVET (Orijinal Metin ve Günümüz Türkçesi Yan Yana)' : 'HAYIR'}
-      - Ders Planı: ${lessonPlanMode ? 'EVET (40 Dakikalık Ders Akışı)' : 'HAYIR'}
-      - Karşılaştırma Modu: ${comparisonMode ? 'EVET' : 'HAYIR'}
+    const input = {
+      selectedClass,
+      selectedOutcome,
+      dualColumnMode,
+      lessonPlanMode,
+      comparisonMode,
+      filters,
+      questionRequest,
+    };
 
-      METİN KRİTERLERİ:
-      - Tür: ${filters.type}
-      - Alan: ${filters.scope}
-      - Dönem: ${filters.period}
-      - Tema: ${filters.theme}
-      
-      ÇOK ÖNEMLİ - METİN SEÇİMİ KURALLARI (ZORUNLU):
-      1. GERÇEKLİK ZORUNLULUĞU: Sadece edebiyat literatüründe var olan, yayımlanmış, GERÇEK kitaplardan/eserlerden BİREBİR alıntı yap.
-      2. DOĞRULANABİLİRLİK: Yazarın üslubuna benzetilerek yazılmış taklit metinler KABUL EDİLEMEZ.
-      3. ÇİFT SÜTUN VARSA: "body_original" kısmına eserin orijinalini, "body_modern" kısmına ise günümüz Türkçesine çevrilmiş/sadeleştirilmiş halini yaz. Çift sütun kapalıysa "body_modern" boş kalabilir.
-      
-      SINAV SORULARI VE RUBRİK TALİMATI:
-      Toplamda ${questionRequest || '10 adet soru'} hazırla.
-      HER SORU İÇİN "rubric" (Puanlama Anahtarı) OLUŞTUR. Örneğin: "Yazar adı 5 puan, Eser adı 5 puan."
-
-      İSTENEN ÇIKTI FORMATI (SADECE JSON):
-      {
-        "meta": {
-          "title": "${comparisonMode ? 'Karşılaştırmalı Edebiyat Analizi' : 'Eser Başlığı'}",
-          "author": "${comparisonMode ? 'Çeşitli Yazarlar' : 'Yazar Adı'}",
-          "period": "Dönem Bilgisi"
-        },
-        "text_content": [
-          { 
-            "title": "Metin Başlığı", 
-            "author": "Yazar", 
-            "body_original": "Gerçek metin alıntısı (Orijinal dil)...",
-            "body_modern": "Günümüz Türkçesi / Sadeleştirilmiş Hali (Sadece çift sütun modundaysa dolacak)"
-          }
-          ${comparisonMode ? ', { "title": "2. Metin", "author": "2. Yazar", "body_original": "...", "body_modern": "..." }' : ''}
-        ],
-        "glossary": [
-          { "word": "Zor Kelime", "mean": "Anlamı" }
-        ],
-        "analysis": {
-          "summary": "Özet",
-          "theme": "Tema",
-          "narrator": "Anlatıcı",
-          "style": "Dil ve Üslup",
-          "structure": "Yapı",
-          "context": "Dönem İlişkisi",
-          "inference": "Kazanım Yorumu"
-        },
-        "questions": [
-          { "q": "Soru metni", "a": "Cevap", "type": "Soru Tipi", "rubric": "Puanlama kriteri ve puan dağılımı (Örn: Tanım 10p)" }
-        ],
-        "lesson_plan": {
-          "intro": "Ders Girişi (5 dk) - Dikkat çekme sorusu vb.",
-          "development": "Gelişme (25 dk) - Metni işleme yöntemi",
-          "activity": "Sınıf İçi Etkinlik - Örn: Beyin fırtınası",
-          "conclusion": "Kapanış ve Değerlendirme (10 dk)"
-        }
-      }
-    `;
-
-    let attempts = 0;
-    const maxAttempts = 3;
-    let delay = 2000;
-
-    while (attempts < maxAttempts) {
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          if (data.error.code === 503 || data.error.message.includes('overloaded')) throw new Error("overloaded");
-          throw new Error(data.error.message);
-        }
-
-        let rawText = data.candidates[0].content.parts[0].text;
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsedData = JSON.parse(rawText);
-        setResult(parsedData);
-        setError('');
-        setRetryStatus('');
-        break;
-
-      } catch (err: any) {
-        attempts++;
-        if (attempts < maxAttempts && (err.message.includes('overloaded') || err.message.includes('503'))) {
-          setRetryStatus(`Sunucu yoğun, tekrar deneniyor... (${attempts}/${maxAttempts})`);
-          await wait(delay);
-          delay *= 2;
-        } else {
-          setError("Hata: " + err.message);
-          setRetryStatus('');
-        }
-      }
+    try {
+      const response = await generateEdebiyatMateryal(input);
+      setResult(response);
+      setError('');
+    } catch (err: any) {
+      setError("Hata: " + err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const exportToWord = (mode: any) => {
+  const exportToWord = (mode: 'student' | 'teacher') => {
     if (!editableResult) return;
     const isTeacher = mode === 'teacher';
     
@@ -270,7 +185,7 @@ export default function EdebiyatSinavAsistaniTab() {
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
       <head>
         <meta charset="utf-8">
-        <title>${(editableResult as any).meta.title}</title>
+        <title>${editableResult.meta.title}</title>
         <style>
           body { font-family: 'Times New Roman', serif; font-size: 12pt; }
           h1 { font-size: 16pt; font-weight: bold; text-align: center; }
@@ -290,15 +205,15 @@ export default function EdebiyatSinavAsistaniTab() {
         </style>
       </head>
       <body>
-        <h1>${(editableResult as any).meta.title}</h1>
-        <p class="meta">${(editableResult as any).meta.author} - ${(editableResult as any).meta.period}</p>
+        <h1>${editableResult.meta.title}</h1>
+        <p class="meta">${editableResult.meta.author} - ${editableResult.meta.period}</p>
         
         <div class="info-box">
            Sınıf: ${selectedClass} | Kazanım: ${selectedOutcome || 'Genel'}
         </div>
 
         <!-- Metinler: Çift Sütun Kontrolü -->
-        ${(editableResult as any).text_content.map((txt: any) => {
+        ${editableResult.text_content.map((txt: any) => {
           if (dualColumnMode && txt.body_modern) {
              return `
                <h3>${txt.title} (${txt.author})</h3>
@@ -319,11 +234,11 @@ export default function EdebiyatSinavAsistaniTab() {
           }
         }).join('')}
 
-        ${(editableResult as any).glossary && (editableResult as any).glossary.length > 0 ? `
+        ${editableResult.glossary && editableResult.glossary.length > 0 ? `
           <div class="glossary">
             <h3>Bilinmeyen Kelimeler</h3>
             <ul>
-              ${(editableResult as any).glossary.map((g: any) => `<li><b>${g.word}:</b> ${g.mean}</li>`).join('')}
+              ${editableResult.glossary.map((g: any) => `<li><b>${g.word}:</b> ${g.mean}</li>`).join('')}
             </ul>
           </div>
         ` : ''}
@@ -331,19 +246,19 @@ export default function EdebiyatSinavAsistaniTab() {
         ${isTeacher ? `
           <div class="analysis-box">
             <h2>Edebi Analiz</h2>
-            <p><b>Özet:</b> ${(editableResult as any).analysis.summary}</p>
-            <p><b>Tema:</b> ${(editableResult as any).analysis.theme}</p>
-            <p><b>Anlatıcı:</b> ${(editableResult as any).analysis.narrator}</p>
-            <p><b>Dil ve Üslup:</b> ${(editableResult as any).analysis.style}</p>
-            <p><b>Yapı:</b> ${(editableResult as any).analysis.structure}</p>
-            <p><b>Dönem İlişkisi:</b> ${(editableResult as any).analysis.context}</p>
-            <p><b>Kazanım Yorumu:</b> ${(editableResult as any).analysis.inference}</p>
+            <p><b>Özet:</b> ${editableResult.analysis.summary}</p>
+            <p><b>Tema:</b> ${editableResult.analysis.theme}</p>
+            <p><b>Anlatıcı:</b> ${editableResult.analysis.narrator}</p>
+            <p><b>Dil ve Üslup:</b> ${editableResult.analysis.style}</p>
+            <p><b>Yapı:</b> ${editableResult.analysis.structure}</p>
+            <p><b>Dönem İlişkisi:</b> ${editableResult.analysis.context}</p>
+            <p><b>Kazanım Yorumu:</b> ${editableResult.analysis.inference}</p>
           </div>
         ` : ''}
 
         <h2>Sınav Soruları</h2>
         <ol>
-          ${(editableResult as any).questions.map((q: any) => `
+          ${editableResult.questions.map((q: any) => `
             <li class="question">
               ${q.q}
               ${isTeacher ? `
@@ -354,13 +269,13 @@ export default function EdebiyatSinavAsistaniTab() {
           `).join('')}
         </ol>
         
-        ${isTeacher && lessonPlanMode && (editableResult as any).lesson_plan ? `
+        ${isTeacher && lessonPlanMode && editableResult.lesson_plan ? `
           <div class="lesson-plan">
             <h2>40 Dakikalık Ders Akış Planı</h2>
-            <p><b>1. Giriş (5 dk):</b> ${(editableResult as any).lesson_plan.intro}</p>
-            <p><b>2. Gelişme (25 dk):</b> ${(editableResult as any).lesson_plan.development}</p>
-            <p><b>3. Etkinlik:</b> ${(editableResult as any).lesson_plan.activity}</p>
-            <p><b>4. Kapanış (10 dk):</b> ${(editableResult as any).lesson_plan.conclusion}</p>
+            <p><b>1. Giriş (5 dk):</b> ${editableResult.lesson_plan.intro}</p>
+            <p><b>2. Gelişme (25 dk):</b> ${editableResult.lesson_plan.development}</p>
+            <p><b>3. Etkinlik:</b> ${editableResult.lesson_plan.activity}</p>
+            <p><b>4. Kapanış (10 dk):</b> ${editableResult.lesson_plan.conclusion}</p>
           </div>
         ` : ''}
 
@@ -373,11 +288,89 @@ export default function EdebiyatSinavAsistaniTab() {
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = href;
-    link.download = `${(editableResult as any).meta.title}_${mode === 'student' ? 'Ogrenci' : 'Ogretmen'}.doc`;
+    link.download = `${editableResult.meta.title}_${mode === 'student' ? 'Ogrenci' : 'Ogretmen'}.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+  
+    const openSaveDialog = () => {
+        if (!editableResult) {
+            toast({ title: "Arşivlenemiyor", description: "Lütfen önce bir içerik oluşturun.", variant: "destructive"});
+            return;
+        }
+        const defaultName = editableResult?.meta?.title || `${selectedClass} Materyali`;
+        setSaveNameInput(defaultName);
+        setIsSaveDialogOpen(true);
+    };
+
+    const handleSaveToArchive = () => {
+        if (!saveNameInput.trim() || !editableResult) return;
+        
+        const dataToSave = {
+            result: editableResult,
+            filters,
+            selectedClass,
+            selectedOutcome,
+            qSettings,
+            dualColumnMode,
+            lessonPlanMode,
+            comparisonMode,
+        };
+
+        const newDoc: EdebiyatAsistanDocument = {
+            id: `edebiyat_${Date.now()}`,
+            name: saveNameInput,
+            date: new Date().toLocaleDateString('tr-TR'),
+            data: dataToSave,
+        };
+        
+        setLocalDb(prev => ({
+            ...prev,
+            edebiyatAsistanArsivi: [newDoc, ...(prev.edebiyatAsistanArsivi || [])]
+        }));
+        
+        setIsSaveDialogOpen(false);
+        toast({ title: "Arşivlendi", description: "Materyal başarıyla kaydedildi."});
+    };
+
+    const handleNewRecord = useCallback(() => {
+        setSelectedRecordId(null);
+        setResult(null);
+        setEditableResult(null);
+    }, []);
+
+    const handleDeleteFromArchive = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({
+            ...prev,
+            edebiyatAsistanArsivi: (prev.edebiyatAsistanArsivi || []).filter(r => r.id !== selectedRecordId)
+        }));
+        handleNewRecord();
+        toast({ title: "Silindi", description: "Kayıt arşivden silindi.", variant: "destructive" });
+    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
+    
+    useEffect(() => {
+        if (selectedRecordId) {
+            const record = archives.find(r => r.id === selectedRecordId);
+            if (record?.data) {
+                const data = record.data;
+                setResult(data.result);
+                setEditableResult(data.result);
+                setFilters(data.filters);
+                setSelectedClass(data.selectedClass);
+                setSelectedOutcome(data.selectedOutcome);
+                setQSettings(data.qSettings);
+                setDualColumnMode(data.dualColumnMode);
+                setLessonPlanMode(data.lessonPlanMode);
+                setComparisonMode(data.comparisonMode);
+                setIsEditing(false); // Start in view mode
+            }
+        } else {
+            handleNewRecord();
+        }
+    }, [selectedRecordId, archives, handleNewRecord]);
+
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
@@ -385,32 +378,22 @@ export default function EdebiyatSinavAsistaniTab() {
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <BookOpen size={28} />
-            <h1 className="text-2xl font-bold tracking-tight">Edebiyat Sınav Asistanı v3.0</h1>
-          </div>
-          <div className="text-sm bg-indigo-600 px-3 py-1 rounded-full opacity-90 flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-green-400' : 'bg-red-400'}`}></div>
-            {apiKey ? 'Hazır' : 'Key Yok'}
+            <h1 className="text-2xl font-bold tracking-tight">Edebiyat Sınav Asistanı v3.1</h1>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6">
         
-        {/* SOL PANEL: Ayarlar */}
         <aside className="w-full lg:w-1/4 space-y-4">
-          
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-indigo-100">
-            <h2 className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-2">
-              <Key size={14} /> API Anahtarı
-            </h2>
-            <input 
-              type="password"
-              placeholder="Google Gemini API Key"
-              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </div>
+          <RecordManager
+            records={archives.map(r => ({ id: r.id, name: r.name }))}
+            selectedRecordId={selectedRecordId}
+            onSelectRecord={setSelectedRecordId}
+            onNewRecord={handleNewRecord}
+            onDeleteRecord={handleDeleteFromArchive}
+            noun="Materyal"
+          />
 
           <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
             <h2 className="text-sm font-bold text-orange-700 mb-3 flex items-center gap-2">
@@ -445,8 +428,7 @@ export default function EdebiyatSinavAsistaniTab() {
               </div>
             </div>
           </div>
-
-          {/* YENİ MODLAR (RUBRİK, ÇİFT SÜTUN, DERS PLANI) */}
+          
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
               <ClipboardList size={18} />
@@ -486,10 +468,10 @@ export default function EdebiyatSinavAsistaniTab() {
             </h2>
             <div className="space-y-3">
               {[
-                { label: 'Edebiyat Alanı', val: filters.scope, set: (v: any) => setFilters({...filters, scope: v}), opts: scopes },
-                { label: 'Metin Türü', val: filters.type, set: (v: any) => setFilters({...filters, type: v}), opts: types },
-                { label: 'Dönem / Akım', val: filters.period, set: (v: any) => setFilters({...filters, period: v}), opts: periods },
-                { label: 'Tema', val: filters.theme, set: (v: any) => setFilters({...filters, theme: v}), opts: themes },
+                { label: 'Edebiyat Alanı', val: filters.scope, set: (v: string) => setFilters({...filters, scope: v}), opts: scopes },
+                { label: 'Metin Türü', val: filters.type, set: (v: string) => setFilters({...filters, type: v}), opts: types },
+                { label: 'Dönem / Akım', val: filters.period, set: (v: string) => setFilters({...filters, period: v}), opts: periods },
+                { label: 'Tema', val: filters.theme, set: (v: string) => setFilters({...filters, theme: v}), opts: themes },
               ].map((field, i) => (
                 <div key={i}>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</label>
@@ -523,7 +505,7 @@ export default function EdebiyatSinavAsistaniTab() {
                   {type.active && (
                     <div className="flex items-center gap-1 bg-gray-50 rounded-md border border-gray-200 px-2 py-1">
                       <Hash size={12} className="text-gray-400"/>
-                      <input type="number" min="1" max="20" value={type.count} onChange={(e) => updateQSetting(type.id, 'count', e.target.value)} className="w-8 text-center bg-transparent text-xs font-bold text-indigo-700 focus:outline-none"/>
+                      <input type="number" min="1" max="20" value={type.count} onChange={(e) => updateQSetting(type.id, 'count', Number(e.target.value))} className="w-8 text-center bg-transparent text-xs font-bold text-indigo-700 focus:outline-none"/>
                     </div>
                   )}
                 </div>
@@ -537,7 +519,7 @@ export default function EdebiyatSinavAsistaniTab() {
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span className="flex-1">{error}</span></div>}
 
           <button onClick={handleGenerate} disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70">
-            {loading ? <><RefreshCw className="animate-spin" size={18} /> {retryStatus ? 'Tekrar Deneniyor...' : 'Oluşturuluyor...'}</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
+            {loading ? <><RefreshCw className="animate-spin" size={18} /> 'Oluşturuluyor...'</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
           </button>
         </aside>
 
@@ -558,7 +540,7 @@ export default function EdebiyatSinavAsistaniTab() {
             <div className="h-full flex flex-col items-center justify-center min-h-[500px]">
               <div className="animate-pulse flex flex-col items-center max-w-lg text-center">
                 <div className="h-4 w-48 bg-indigo-200 rounded mb-4"></div>
-                <p className="text-lg font-medium text-gray-700 mb-2">{retryStatus || "Yapay Zeka İçerik Üretiyor..."}</p>
+                <p className="text-lg font-medium text-gray-700 mb-2">Yapay Zeka İçerik Üretiyor...</p>
                 <p className="text-sm text-gray-500">
                   {selectedClass} müfredatına uygun gerçek metin taranıyor...
                   <br/>Rubrikler ve {lessonPlanMode ? 'ders planı' : ''} hazırlanıyor.
@@ -579,12 +561,13 @@ export default function EdebiyatSinavAsistaniTab() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <button onClick={() => exportToWord('student')} className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors">
+                  <Button variant="outline" size="sm" onClick={openSaveDialog}><Save className="mr-2 h-4 w-4"/> Arşive Kaydet</Button>
+                  <Button onClick={() => exportToWord('student')} size="sm" className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors">
                     <Download size={14} /> Word (Öğrenci)
-                  </button>
-                  <button onClick={() => exportToWord('teacher')} className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition-colors">
+                  </Button>
+                  <Button onClick={() => exportToWord('teacher')} size="sm" className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition-colors">
                     <Download size={14} /> Word (Öğretmen)
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -592,22 +575,22 @@ export default function EdebiyatSinavAsistaniTab() {
                 
                 <div className="mb-6 border-b pb-4 text-center">
                   {isEditing ? (
-                    <input className="text-2xl font-serif font-bold text-gray-900 text-center w-full border-b border-dashed border-gray-300 focus:outline-none focus:border-indigo-500 mb-2" value={(editableResult as any).meta.title} onChange={(e) => handleEditChange('meta', 'title', e.target.value)} />
+                    <input className="text-2xl font-serif font-bold text-gray-900 text-center w-full border-b border-dashed border-gray-300 focus:outline-none focus:border-indigo-500 mb-2" value={editableResult.meta.title} onChange={(e) => handleEditChange('meta', 'title', e.target.value)} />
                   ) : (
-                    <h2 className="text-2xl font-serif font-bold text-gray-900">{(editableResult as any).meta.title}</h2>
+                    <h2 className="text-2xl font-serif font-bold text-gray-900">{editableResult.meta.title}</h2>
                   )}
                   <div className="text-sm text-gray-600 italic flex justify-center gap-4 mt-2">
-                     <span>{(editableResult as any).meta.author}</span>
+                     <span>{editableResult.meta.author}</span>
                      <span className="w-px h-4 bg-gray-300"></span>
-                     <span>{(editableResult as any).meta.period}</span>
+                     <span>{editableResult.meta.period}</span>
                   </div>
                   <div className="mt-2 text-xs text-gray-400 border px-2 py-1 inline-block rounded-full">
                      {selectedClass} - {selectedOutcome ? 'Kazanım Odaklı' : 'Genel'}
                   </div>
                 </div>
 
-                <div className={`mb-8 ${(editableResult as any).text_content.length > 1 && !dualColumnMode ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : ''}`}>
-                  {(editableResult as any).text_content.map((txt: any, idx: any) => (
+                <div className={`mb-8 ${editableResult.text_content.length > 1 && !dualColumnMode ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : ''}`}>
+                  {editableResult.text_content.map((txt: any, idx: any) => (
                     <div key={idx} className="bg-yellow-50/30 p-5 rounded-lg border border-yellow-100">
                       <h3 className="font-bold text-gray-800 mb-2 text-center">{txt.title} <span className="text-xs font-normal text-gray-500">({txt.author})</span></h3>
                       
@@ -631,11 +614,11 @@ export default function EdebiyatSinavAsistaniTab() {
                   ))}
                 </div>
 
-                {(editableResult as any).glossary && (editableResult as any).glossary.length > 0 && (
+                {editableResult.glossary && editableResult.glossary.length > 0 && (
                   <div className="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h4 className="font-bold text-gray-700 text-sm mb-2 flex items-center gap-2"><BookOpen size={16} /> BİLİNMEYEN KELİMELER (LÜGATÇE)</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
-                      {(editableResult as any).glossary.map((item: any, idx: any) => (
+                      {editableResult.glossary.map((item: any, idx: any) => (
                         <div key={idx} className="text-sm">
                            <span className="font-bold text-gray-800">{item.word}:</span> <span className="text-gray-600">{item.mean}</span>
                         </div>
@@ -650,7 +633,7 @@ export default function EdebiyatSinavAsistaniTab() {
                     {['summary', 'theme', 'narrator', 'style', 'structure', 'context', 'inference'].map((key) => (
                       <div key={key} className="bg-gray-50 p-3 rounded border border-gray-100">
                         <h4 className="font-bold text-gray-700 text-xs uppercase mb-1">{key}</h4>
-                        <p className="text-gray-700 text-sm">{(editableResult as any).analysis[key]}</p>
+                        <p className="text-gray-700 text-sm">{editableResult.analysis[key]}</p>
                       </div>
                     ))}
                   </div>
@@ -659,7 +642,7 @@ export default function EdebiyatSinavAsistaniTab() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2"><FileJson className="text-indigo-600" /> Sınav Soruları ve Rubrik</h3>
                   <div className="space-y-6">
-                    {(editableResult as any).questions.map((q: any, idx: any) => (
+                    {editableResult.questions.map((q: any, idx: any) => (
                       <div key={idx} className="break-inside-avoid">
                         <div className="flex gap-2 font-medium text-gray-900">
                           <span className="font-bold text-indigo-700">{idx + 1}.</span>
@@ -677,24 +660,43 @@ export default function EdebiyatSinavAsistaniTab() {
                   </div>
                 </div>
 
-                {lessonPlanMode && (editableResult as any).lesson_plan && (
+                {lessonPlanMode && editableResult.lesson_plan && (
                   <div className="mt-10 border-t-2 border-dashed border-orange-200 pt-6">
                     <h3 className="text-xl font-bold text-orange-800 mb-4 flex items-center gap-2"><CalendarClock className="text-orange-600" /> 40 Dakikalık Ders Akış Planı</h3>
                     <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-4">
-                       <div><div className="font-bold text-orange-900 text-sm">1. GİRİŞ (5 Dk)</div><p className="text-sm text-gray-700">{(editableResult as any).lesson_plan.intro}</p></div>
-                       <div><div className="font-bold text-orange-900 text-sm">2. GELİŞME (25 Dk)</div><p className="text-sm text-gray-700">{(editableResult as any).lesson_plan.development}</p></div>
-                       <div><div className="font-bold text-orange-900 text-sm">3. SINIF İÇİ ETKİNLİK</div><p className="text-sm text-gray-700">{(editableResult as any).lesson_plan.activity}</p></div>
-                       <div><div className="font-bold text-orange-900 text-sm">4. KAPANIŞ VE DEĞERLENDİRME (10 Dk)</div><p className="text-sm text-gray-700">{(editableResult as any).lesson_plan.conclusion}</p></div>
+                       <div><div className="font-bold text-orange-900 text-sm">1. GİRİŞ (5 Dk)</div><p className="text-sm text-gray-700">{editableResult.lesson_plan.intro}</p></div>
+                       <div><div className="font-bold text-orange-900 text-sm">2. GELİŞME (25 Dk)</div><p className="text-sm text-gray-700">{editableResult.lesson_plan.development}</p></div>
+                       <div><div className="font-bold text-orange-900 text-sm">3. SINIF İÇİ ETKİNLİK</div><p className="text-sm text-gray-700">{editableResult.lesson_plan.activity}</p></div>
+                       <div><div className="font-bold text-orange-900 text-sm">4. KAPANIŞ VE DEĞERLENDİRME (10 Dk)</div><p className="text-sm text-gray-700">{editableResult.lesson_plan.conclusion}</p></div>
                     </div>
                   </div>
                 )}
 
               </div>
-              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.0 ile oluşturulmuştur.</div>
+              <div className="bg-gray-50 p-4 text-center text-xs text-gray-400">Bu materyal Edebiyat Sınav Asistanı v3.1 ile oluşturulmuştur.</div>
             </div>
           )}
         </section>
       </main>
+      
+       <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Materyali Arşive Kaydet</DialogTitle>
+                  <DialogDescription>Bu içeriğe daha sonra erişmek için bir isim verin.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <label htmlFor="save-name">Kayıt Adı</label>
+                  <Input id="save-name" value={saveNameInput} onChange={(e) => setSaveNameInput(e.target.value)} />
+              </div>
+              <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsSaveDialogOpen(false)}>İptal</Button>
+                  <Button onClick={handleSaveToArchive}>Kaydet</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    

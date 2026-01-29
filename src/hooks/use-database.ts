@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -37,6 +37,7 @@ export interface Database {
   projectAssignments?: AssignmentTemplate[];
   performanceFavorites?: number[];
   projectFavorites?: number[];
+  edebiyatAsistanArsivi?: EdebiyatAsistanDocument[];
 }
 
 // Varsayılan boş veritabanı
@@ -87,6 +88,7 @@ const initialDb: Database = {
   projectAssignments: [],
   performanceFavorites: [],
   projectFavorites: [],
+  edebiyatAsistanArsivi: [],
 };
 
 export const useDatabase = () => {
@@ -134,3 +136,5 @@ export const useDatabase = () => {
 
   return { db, setDb: memoizedSetDb, loading };
 };
+
+    
