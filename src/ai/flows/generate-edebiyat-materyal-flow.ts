@@ -4,7 +4,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 // Input Schema
-export const GenerateEdebiyatMateryalInputSchema = z.object({
+const GenerateEdebiyatMateryalInputSchema = z.object({
   selectedClass: z.string(),
   selectedOutcome: z.string(),
   dualColumnMode: z.boolean(),
@@ -58,7 +58,7 @@ const LessonPlanSchema = z.object({
   conclusion: z.string(),
 });
 
-export const GenerateEdebiyatMateryalOutputSchema = z.object({
+const GenerateEdebiyatMateryalOutputSchema = z.object({
   meta: MetaSchema,
   text_content: z.array(TextContentSchema),
   glossary: z.array(GlossarySchema),
@@ -129,5 +129,3 @@ export async function generateEdebiyatMateryal(
 
   return await edebiyatFlow(input);
 }
-
-    

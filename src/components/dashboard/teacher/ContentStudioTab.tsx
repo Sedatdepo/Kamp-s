@@ -512,7 +512,8 @@ const ExamBuilderComponent = ({ classes, students }: { classes: Class[], student
                 </CardHeader>
                 <CardContent className='space-y-2 flex-1 flex flex-col'>
                     <Input placeholder="Sınav Başlığı" value={currentExam.examInfo.title} onChange={e => updateExamInfo('title', e.target.value)} />
-                    <div className='flex-1 space-y-2 overflow-y-auto pr-2 mt-2'>
+                    <div className="flex-1 space-y-2 overflow-y-auto pr-2 mt-2">
+                        <Button variant="outline" className="w-full border-dashed mb-2" onClick={() => addQuestion('open-ended')}><PlusCircle className="mr-2 h-4 w-4"/>Manuel Soru Ekle</Button>
                         {currentExam.questions.map((q, index) => (
                             <div key={q.id} onClick={() => setSelectedQuestionId(q.id)} className={`p-2 border rounded-md cursor-pointer ${selectedQuestionId === q.id ? 'bg-blue-100 border-blue-400' : 'bg-white hover:bg-slate-50'}`}>
                                 <div className='flex justify-between items-center'><span className='text-sm font-semibold'>Soru {index + 1} ({q.points || 0} Puan)</span><Trash2 className='h-4 w-4 text-red-500 hover:text-red-700' onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id)}}/></div>
