@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
-  BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Search, Plus, X, Check, ChevronsUpDown, AlignLeft, CheckSquare, Binary, Shuffle, ImageIcon, Send, Paperclip, Eye, KeySquare
+  BookOpen, Cpu, Save, RefreshCw, Printer, Brain, CheckCircle, GraduationCap, FileText, List, AlertCircle, Library, Sparkles, Wand2, PlusCircle, Trash2, FileDown, Loader2, Search, Plus, X, Check, ChevronsUpDown, AlignLeft, CheckSquare, Binary, Shuffle, ImageIcon, Send, Paperclip, Eye, KeySquare, FileQuestion
 } from 'lucide-react';
 import { TeacherProfile, Class, Student, AssignmentTemplate, Question, QuestionType, MatchingPair } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
