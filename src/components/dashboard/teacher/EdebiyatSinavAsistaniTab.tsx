@@ -14,6 +14,8 @@ import { RecordManager } from './RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
 import { extractOutcomesFromPdf } from '@/ai/flows/extract-outcomes-from-pdf-flow';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 const App = () => {
   const { db: localDb, setDb: setLocalDb } = useDatabase();
@@ -27,8 +29,8 @@ const App = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
-  const [dualColumnMode, setDualColumnMode] = useState(false);
-  const [lessonPlanMode, setLessonPlanMode] = useState(true);
+  const [dualColumnMode, setDualColumnMode] = useState(false); // Çift Sütun Modu
+  const [lessonPlanMode, setLessonPlanMode] = useState(true); // Ders Planı Modu (Varsayılan Açık)
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedUnite, setSelectedUnite] = useState('');
@@ -41,6 +43,7 @@ const App = () => {
   const curriculum = useMemo(() => dynamicCurriculum?.Edebiyat || [], [dynamicCurriculum]);
 
   const uniteOptions = useMemo(() => {
+    if (!selectedClass) return [];
     const classData = curriculum.find((c: any) => c.unite.startsWith(selectedClass.split('.')[0]));
     return classData ? classData.konular.map((k: any) => k.konu) : [];
   }, [curriculum, selectedClass]);
@@ -184,7 +187,120 @@ const App = () => {
   };
 
   const exportToWord = (mode: 'student' | 'teacher') => {
-    // ... same as before
+    if (!editableResult) return;
+    const isTeacher = mode === 'teacher';
+    
+    let contentHTML = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset="utf-8">
+        <title>${editableResult.meta.title}</title>
+        <style>
+          body { font-family: 'Times New Roman', serif; font-size: 12pt; }
+          h1 { font-size: 16pt; font-weight: bold; text-align: center; }
+          h2 { font-size: 14pt; font-weight: bold; margin-top: 10px; border-bottom: 1px solid #ccc; }
+          h3 { font-size: 12pt; font-weight: bold; margin-top: 5px; }
+          .meta { text-align: center; font-style: italic; color: #555; margin-bottom: 20px; }
+          .info-box { border: 1px solid #ddd; padding: 5px; margin-bottom: 10px; font-size: 10pt; color: #444; text-align: center; background: #fafafa; }
+          .text-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          .text-table td { border: 1px solid #ccc; padding: 10px; vertical-align: top; width: 50%; }
+          .text-box { background-color: #fdfdfd; padding: 10px; border: 1px solid #eee; margin-bottom: 15px; }
+          .question { margin-bottom: 15px; }
+          .answer { color: green; font-style: italic; margin-left: 20px; display: ${isTeacher ? 'block' : 'none'}; }
+          .rubric { color: #d97706; font-size: 10pt; margin-left: 20px; border: 1px dashed #d97706; padding: 5px; display: ${isTeacher ? 'block' : 'none'}; margin-top: 5px; }
+          .glossary { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+          .analysis-box { background-color: #f0f4f8; padding: 10px; border: 1px solid #ccc; margin-top: 20px; display: ${isTeacher ? 'block' : 'none'}; }
+          .lesson-plan { background-color: #fff7ed; padding: 15px; border: 2px double #f97316; margin-top: 30px; page-break-before: always; display: ${isTeacher && lessonPlanMode ? 'block' : 'none'}; }
+        </style>
+      </head>
+      <body>
+        <h1>${editableResult.meta.title}</h1>
+        <p class="meta">${editableResult.meta.author} - ${editableResult.meta.period}</p>
+        
+        <div class="info-box">
+           Sınıf: ${selectedClass} | Kazanım: ${selectedOutcome || 'Genel'}
+        </div>
+
+        <!-- Metinler: Çift Sütun Kontrolü -->
+        ${editableResult.text_content.map((txt: any) => {
+          if (dualColumnMode && txt.body_modern) {
+             return `
+               <h3>${txt.title} (${txt.author})</h3>
+               <table class="text-table">
+                 <tr>
+                   <td><b>Orijinal Metin</b><br/><br/>${txt.body_original.replace(/\n/g, '<br/>')}</td>
+                   <td><b>Günümüz Türkçesi</b><br/><br/>${txt.body_modern.replace(/\n/g, '<br/>')}</td>
+                 </tr>
+               </table>
+             `;
+          } else {
+             return `
+               <div class="text-box">
+                 <h3>${txt.title} (${txt.author})</h3>
+                 <p>${txt.body_original.replace(/\n/g, '<br/>')}</p>
+               </div>
+             `;
+          }
+        }).join('')}
+
+        ${editableResult.glossary && editableResult.glossary.length > 0 ? `
+          <div class="glossary">
+            <h3>Bilinmeyen Kelimeler</h3>
+            <ul>
+              ${editableResult.glossary.map((g: any) => `<li><b>${g.word}:</b> ${g.mean}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${isTeacher ? `
+          <div class="analysis-box">
+            <h2>Edebi Analiz</h2>
+            <p><b>Özet:</b> ${editableResult.analysis.summary}</p>
+            <p><b>Tema:</b> ${editableResult.analysis.theme}</p>
+            <p><b>Anlatıcı:</b> ${editableResult.analysis.narrator}</p>
+            <p><b>Dil ve Üslup:</b> ${editableResult.analysis.style}</p>
+            <p><b>Yapı:</b> ${editableResult.analysis.structure}</p>
+            <p><b>Dönem İlişkisi:</b> ${editableResult.analysis.context}</p>
+            <p><b>Kazanım Yorumu:</b> ${editableResult.analysis.inference}</p>
+          </div>
+        ` : ''}
+
+        <h2>Sınav Soruları</h2>
+        <ol>
+          ${editableResult.questions.map((q: any) => `
+            <li class="question">
+              ${q.q}
+              ${isTeacher ? `
+                <br/><span class="answer"><b>Cevap:</b> ${q.a}</span>
+                <div class="rubric"><b>Puanlama Anahtarı (Rubrik):</b> ${q.rubric}</div>
+              ` : '<br/><br/><br/>'}
+            </li>
+          `).join('')}
+        </ol>
+        
+        ${isTeacher && lessonPlanMode && editableResult.lesson_plan ? `
+          <div class="lesson-plan">
+            <h2>40 Dakikalık Ders Akış Planı</h2>
+            <p><b>1. Giriş (5 dk):</b> ${editableResult.lesson_plan.intro}</p>
+            <p><b>2. Gelişme (25 dk):</b> ${editableResult.lesson_plan.development}</p>
+            <p><b>3. Etkinlik:</b> ${editableResult.lesson_plan.activity}</p>
+            <p><b>4. Kapanış (10 dk):</b> ${editableResult.lesson_plan.conclusion}</p>
+          </div>
+        ` : ''}
+
+        <br/>
+        <p style="text-align: center; font-size: 10pt; color: #888;">Bu sınav materyali Yapay Zeka desteğiyle hazırlanmıştır.</p>
+      </body>
+      </html>
+    `;
+    const blob = new Blob(['\ufeff', contentHTML], { type: 'application/msword' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `${editableResult.meta.title}_${mode === 'student' ? 'Ogrenci' : 'Ogretmen'}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -383,14 +499,14 @@ const App = () => {
                 { label: 'Tema', val: filters.theme, set: (v: string) => setFilters({...filters, theme: v}), opts: themes },
               ].map((field, i) => (
                 <div key={i}>
-                  <Label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</Label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</label>
                   <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-indigo-500 bg-gray-50 outline-none" value={field.val} onChange={(e) => field.set(e.target.value)}>
                     {field.opts.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
               ))}
               <div>
-                <Label className="block text-xs font-semibold text-gray-500 mb-1">Zorluk</Label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Zorluk</label>
                 <div className="flex gap-1">
                   {difficulties.map(d => (
                     <button key={d} onClick={() => setFilters({...filters, difficulty: d})} className={`flex-1 py-1.5 text-xs font-medium rounded border transition-colors ${filters.difficulty === d ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-200'}`}>{d}</button>
@@ -432,7 +548,7 @@ const App = () => {
           </Button>
         </aside>
 
-        {/* The rest of the component remains the same for displaying results */}
+        {/* SAĞ PANEL: Sonuç */}
         <section className="flex-1 space-y-6">
            {!editableResult && !loading && (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl min-h-[500px]">
@@ -460,6 +576,7 @@ const App = () => {
           
           {editableResult && !loading && (
              <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden`}>
+              
               <div className="bg-gray-50 p-3 border-b flex flex-wrap gap-2 justify-between items-center">
                 <div className="flex items-center gap-2">
                    <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${isEditing ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
@@ -477,6 +594,7 @@ const App = () => {
                   </Button>
                 </div>
               </div>
+
                <div className="p-8">
                   {/* ... OMITTED FOR BREVITY, content is the same as before ... */}
               </div>
