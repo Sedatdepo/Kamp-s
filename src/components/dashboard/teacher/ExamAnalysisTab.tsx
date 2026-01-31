@@ -38,6 +38,7 @@ import { KAZANIMLAR } from '@/lib/kazanimlar';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface ExamAnalysisTabProps {
   students: Student[];
@@ -90,13 +91,21 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
         const filtered: { [key: string]: any[] } = {};
         for (const ders in KAZANIMLAR) {
             const uniteler = (KAZANIMLAR[ders] as any[]).map(unite => {
-                const konular = unite.konular.map((konu: any) => {
-                    const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
+                if (unite.konular) {
+                    const konular = unite.konular.map((konu: any) => {
+                        const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
+                            kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
+                        );
+                        return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
+                    }).filter(Boolean);
+                    return konular.length > 0 ? { ...unite, konular } : null;
+                } else if (unite.kazanimlar) {
+                     const kazanimlar = unite.kazanimlar.filter((kazanim: string) => 
                         kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
                     );
-                    return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
-                }).filter(Boolean);
-                return konular.length > 0 ? { ...unite, konular } : null;
+                    return kazanimlar.length > 0 ? { ...unite, kazanimlar } : null;
+                }
+                return null;
             }).filter(Boolean);
             if (uniteler.length > 0) {
                 filtered[ders] = uniteler;
@@ -126,26 +135,50 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
                         <div key={ders} className="mb-4">
                             <h3 className="text-lg font-bold text-primary px-2 py-1 bg-primary/10 rounded-md">{ders}</h3>
                             <div className="pl-2">
-                                {(uniteler as any[]).map(unite => (
-                                    <div key={unite.unite} className="mt-2">
-                                        <h4 className="font-semibold text-gray-800">{unite.unite}</h4>
-                                        <div className="pl-4">
-                                            {(unite.konular as any[]).map((konu: any) => (
-                                                 <div key={konu.konu} className="mt-1">
-                                                    <p className="text-sm font-medium text-gray-600">{konu.konu}</p>
-                                                    <div className="pl-4 border-l-2 border-gray-200">
-                                                        {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                            <DialogClose asChild key={i}>
-                                                                <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
-                                                                    {kazanimText}
-                                                                </div>
-                                                            </DialogClose>
+                                {(uniteler as any[]).map((unite, uniteIndex) => (
+                                    <Accordion type="single" collapsible key={`${unite.unite}-${uniteIndex}`} className="w-full">
+                                        <AccordionItem value={unite.unite}>
+                                            <AccordionTrigger className="text-md font-semibold text-gray-800">
+                                                {unite.unite}
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                {unite.konular ? (
+                                                    <Accordion type="single" collapsible className="w-full pl-4">
+                                                        {unite.konular.map((konu: any, konuIndex: number) => (
+                                                            <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`} key={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`}>
+                                                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                                                    {konu.konu}
+                                                                </AccordionTrigger>
+                                                                <AccordionContent className="pl-4 border-l">
+                                                                    <div className="pl-2">
+                                                                        {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                                            <DialogClose asChild key={i}>
+                                                                                <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                                                    {kazanimText}
+                                                                                </div>
+                                                                            </DialogClose>
+                                                                        ))}
+                                                                    </div>
+                                                                </AccordionContent>
+                                                            </AccordionItem>
                                                         ))}
+                                                    </Accordion>
+                                                ) : unite.kazanimlar ? (
+                                                    <div className="pl-4 border-l">
+                                                        <div className="pl-2">
+                                                            {(unite.kazanimlar as any[]).map((kazanimText: string, i: number) => (
+                                                                <DialogClose asChild key={i}>
+                                                                    <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                                        {kazanimText}
+                                                                    </div>
+                                                                </DialogClose>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                                ) : null}
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
                                 ))}
                             </div>
                         </div>
@@ -667,3 +700,5 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
     </div>
   );
 }
+
+    
