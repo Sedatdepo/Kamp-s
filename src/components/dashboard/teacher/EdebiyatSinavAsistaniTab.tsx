@@ -384,7 +384,7 @@ const App = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
-                  <Layout size={18} /> Metin Kriterleri
+                  <ListFilter size={18} /> Metin Kriterleri
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -482,3 +482,5 @@ const App = () => {
 };
 
 export default App;
+
+    
