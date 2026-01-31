@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock, Upload, Loader2
+  BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock, Upload, Loader2, Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,13 +41,13 @@ const App = () => {
 
   const uniteOptions = useMemo(() => {
     if (!selectedClass) return [];
-    const classData = curriculum.find((c: any) => c.unite.startsWith(selectedClass.split('.')[0]));
+    const classData = curriculum.find((c: any) => c.unite === selectedClass);
     return classData ? classData.konular.map((k: any) => k.konu) : [];
   }, [curriculum, selectedClass]);
   
   const konuOptions = useMemo(() => {
     if (!selectedUnite) return [];
-    const classData = curriculum.find((c: any) => c.unite.startsWith(selectedClass.split('.')[0]));
+    const classData = curriculum.find((c: any) => c.unite === selectedClass);
     const uniteData = classData?.konular.find((k: any) => k.konu === selectedUnite);
     return uniteData ? uniteData.kazanimlar : [];
   }, [curriculum, selectedClass, selectedUnite]);
@@ -361,11 +361,13 @@ const App = () => {
                 noun="Materyal"
             />
             
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
-                <h2 className="text-sm font-bold text-orange-700 mb-3 flex items-center gap-2">
-                    <ListFilter size={18} /> Müfredat Seçimi
-                </h2>
-                <div className="space-y-3">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm font-bold text-green-700 flex items-center gap-2">
+                        <ListFilter size={18} /> Müfredat Seçimi
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                     <div>
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Sınıf Seviyesi</Label>
                         <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-orange-500 bg-orange-50 outline-none font-medium" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
@@ -382,20 +384,21 @@ const App = () => {
                     </div>
                      <div>
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</Label>
-                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedUnite}>
+                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedUnite} multiple={false} size={5}>
                             <option value="">Önce konu seçin...</option>
-                            {konuOptions.map((kazanim: string) => <option key={kazanim} value={kazanim}>{kazanim}</option>)}
+                            {konuOptions.map((kazanim: string) => <option key={kazanim} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
                         </select>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-              <ClipboardList size={18} />
-              Gelişmiş Seçenekler
-            </h2>
-            <div className="space-y-2">
+            <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                    <ClipboardList size={18} /> Gelişmiş Seçenekler
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <button 
                 onClick={() => setDualColumnMode(!dualColumnMode)}
                 className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium border transition-all ${dualColumnMode ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
@@ -419,15 +422,16 @@ const App = () => {
                 <span className="flex items-center gap-2"><SplitSquareHorizontal size={14}/> Mukayese (Karşılaştırma)</span>
                 <span className={`w-2 h-2 rounded-full ${comparisonMode ? 'bg-indigo-600' : 'bg-gray-300'}`}></span>
               </button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
-              <Layout size={18} />
-              Metin Kriterleri
-            </h2>
-            <div className="space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                <Layout size={18} /> Metin Kriterleri
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               {[
                 { label: 'Edebiyat Alanı', val: filters.scope, set: (v: string) => setFilters({...filters, scope: v}), opts: scopes },
                 { label: 'Metin Türü', val: filters.type, set: (v: string) => setFilters({...filters, type: v}), opts: types },
@@ -449,14 +453,14 @@ const App = () => {
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-             <div className="flex justify-between items-center mb-3">
-               <h2 className="text-sm font-bold text-indigo-700 flex items-center gap-2"><CheckSquare size={18} /> Soru Ayarları</h2>
-             </div>
-            <div className="space-y-3">
+          <Card>
+             <CardHeader>
+               <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2"><CheckSquare size={18} /> Soru Ayarları</CardTitle>
+             </CardHeader>
+            <CardContent className="space-y-3">
               {Object.values(qSettings).map((type) => (
                 <div key={type.id} className="flex items-center justify-between group">
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer flex-1">
@@ -471,11 +475,11 @@ const App = () => {
                   )}
                 </div>
               ))}
-            </div>
-            <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-right text-gray-400">
-              Toplam Soru: <span className="font-bold text-indigo-600">{Object.values(qSettings).filter(q => q.active).reduce((sum, q) => sum + Number(q.count), 0)}</span>
-            </div>
-          </div>
+              <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-right text-gray-400">
+                Toplam Soru: <span className="font-bold text-indigo-600">{Object.values(qSettings).filter(q => q.active).reduce((sum, q) => sum + Number(q.count), 0)}</span>
+              </div>
+            </CardContent>
+          </Card>
 
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span className="flex-1">{error}</span></div>}
 
