@@ -10,17 +10,18 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
-import { RecordManager } from './RecordManager';
+import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { KAZANIMLAR } from '@/lib/kazanimlar';
 
 
 const App = () => {
   const { db: localDb, setDb: setLocalDb } = useDatabase();
   const { toast } = useToast();
 
-  const { edebiyatAsistanArsivi: archives = [], edebiyatKazanımlar: dynamicCurriculum } = localDb;
+  const { edebiyatAsistanArsivi: archives = [] } = localDb;
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -36,7 +37,7 @@ const App = () => {
   const [selectedKonu, setSelectedKonu] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
 
-  const curriculum = useMemo(() => dynamicCurriculum?.Edebiyat || [], [dynamicCurriculum]);
+  const curriculum = useMemo(() => KAZANIMLAR.Edebiyat || [], []);
 
   const uniteOptions = useMemo(() => {
     if (!selectedClass) return [];
