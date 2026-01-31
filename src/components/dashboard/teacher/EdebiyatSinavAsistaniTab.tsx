@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BookOpen, FileText, Download, Save, PenTool, GraduationCap, AlertCircle, CheckSquare, Edit, ListFilter
+  BookOpen, FileText, Download, Save, PenTool, GraduationCap, AlertCircle, CheckSquare, Edit, ListFilter, Library
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -482,5 +482,3 @@ const App = () => {
 };
 
 export default App;
-
-    
