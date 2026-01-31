@@ -37,22 +37,32 @@ export default function KazanımlarTab() {
                                             {unite.unite}
                                         </AccordionTrigger>
                                         <AccordionContent>
-                                            <Accordion type="single" collapsible className="w-full pl-4">
-                                                {unite.konular.map((konu: any) => (
-                                                    <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}`} key={`${ders}-${unite.unite}-${konu.konu}`}>
-                                                        <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-                                                            {konu.konu}
-                                                        </AccordionTrigger>
-                                                        <AccordionContent className="pl-4 border-l">
-                                                            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                                                                {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                                    <li key={i}>{kazanimText}</li>
-                                                                ))}
-                                                            </ul>
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                ))}
-                                            </Accordion>
+                                            {unite.konular ? (
+                                                <Accordion type="single" collapsible className="w-full pl-4">
+                                                    {unite.konular.map((konu: any) => (
+                                                        <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}`} key={`${ders}-${unite.unite}-${konu.konu}`}>
+                                                            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                                                {konu.konu}
+                                                            </AccordionTrigger>
+                                                            <AccordionContent className="pl-4 border-l">
+                                                                <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                                                                    {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                                        <li key={i}>{kazanimText}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    ))}
+                                                </Accordion>
+                                            ) : unite.kazanimlar ? (
+                                                <div className="pl-4 border-l">
+                                                    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                                                        {unite.kazanimlar.map((kazanimText: string, i: number) => (
+                                                            <li key={i} className="whitespace-pre-line">{kazanimText}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ) : null}
                                         </AccordionContent>
                                     </AccordionItem>
                                 ))}
