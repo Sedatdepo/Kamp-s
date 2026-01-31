@@ -13,7 +13,6 @@ import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
-import { extractOutcomesFromPdf } from '@/ai/flows/extract-outcomes-from-pdf-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
@@ -36,9 +35,6 @@ const App = () => {
   const [selectedUnite, setSelectedUnite] = useState('');
   const [selectedKonu, setSelectedKonu] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
-  
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const curriculum = useMemo(() => dynamicCurriculum?.Edebiyat || [], [dynamicCurriculum]);
 
@@ -103,50 +99,6 @@ const App = () => {
     }
     setEditableResult(newResult);
   };
-  
-    const handlePdfUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file && file.type === "application/pdf") {
-            setPdfFile(file);
-        } else {
-            toast({ title: "Geçersiz Dosya", description: "Lütfen bir PDF dosyası seçin.", variant: "destructive"});
-            setPdfFile(null);
-        }
-    };
-    
-    const handleAnalyzePdf = async () => {
-        if (!pdfFile) return;
-
-        setIsAnalyzing(true);
-        toast({ title: "Analiz Başladı", description: "Ders kitabı analiz ediliyor, bu işlem birkaç dakika sürebilir." });
-
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfFile);
-        reader.onload = async () => {
-            const dataUrl = reader.result as string;
-            try {
-                const result = await extractOutcomesFromPdf({ textbookPdf: dataUrl });
-                if (result && result.curriculum) {
-                    setLocalDb(prev => ({
-                        ...prev,
-                        edebiyatKazanımlar: result.curriculum,
-                    }));
-                    toast({ title: "Başarılı!", description: "Kazanımlar başarıyla güncellendi ve kaydedildi."});
-                } else {
-                    throw new Error("Yapay zeka geçerli bir kazanım yapısı döndürmedi.");
-                }
-            } catch (err: any) {
-                console.error(err);
-                toast({ title: "Analiz Başarısız", description: err.message || "Kazanımlar çıkarılırken bir hata oluştu.", variant: "destructive" });
-            } finally {
-                setIsAnalyzing(false);
-            }
-        };
-        reader.onerror = () => {
-            toast({ title: "Dosya Okuma Hatası", variant: "destructive" });
-            setIsAnalyzing(false);
-        };
-    };
 
   const handleGenerate = async () => {
     if (!selectedClass) {
@@ -407,24 +359,7 @@ const App = () => {
                 onDeleteRecord={handleDeleteFromArchive}
                 noun="Materyal"
             />
-             <Card>
-                <CardHeader>
-                    <CardTitle className="text-sm font-bold text-green-700 flex items-center gap-2">
-                        <Upload size={18} /> Kazanım Yöneticisi
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                        Ders kitabınızı (PDF) yükleyerek kazanım listesini otomatik güncelleyin.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <Input type="file" accept=".pdf" onChange={handlePdfUpload} className="text-xs"/>
-                    <Button onClick={handleAnalyzePdf} disabled={!pdfFile || isAnalyzing} className="w-full">
-                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
-                        Analiz Et ve Güncelle
-                    </Button>
-                </CardContent>
-            </Card>
-
+            
             <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
                 <h2 className="text-sm font-bold text-orange-700 mb-3 flex items-center gap-2">
                     <ListFilter size={18} /> Müfredat Seçimi
@@ -434,7 +369,7 @@ const App = () => {
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Sınıf Seviyesi</Label>
                         <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-orange-500 bg-orange-50 outline-none font-medium" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
                             <option value="">Seçiniz...</option>
-                            {Object.keys(curriculum).map(cls => <option key={cls} value={cls}>{curriculum[cls][0]?.unite || cls}</option>)}
+                            {(curriculum || []).map((cls: any, index: number) => <option key={index} value={cls.unite}>{cls.unite}</option>)}
                         </select>
                     </div>
                     <div>
