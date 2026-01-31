@@ -2,18 +2,19 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BookOpen, FileText, Download, Save, RefreshCw, PenTool, Library, GraduationCap, Layout, Key, AlertCircle, CheckSquare, FileJson, Edit, SplitSquareHorizontal, Hash, ListFilter, Columns, ClipboardList, CalendarClock, Upload, Loader2, Wand2
+  BookOpen, FileText, Download, Save, PenTool, GraduationCap, AlertCircle, CheckSquare, Edit, ListFilter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
 import { EdebiyatAsistanDocument } from '@/lib/types';
 import { generateEdebiyatMateryal } from '@/ai/flows/generate-edebiyat-materyal-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 import { KAZANIMLAR } from '@/lib/kazanimlar';
 
 
@@ -33,25 +34,20 @@ const App = () => {
   const [lessonPlanMode, setLessonPlanMode] = useState(true); // Ders Planı Modu (Varsayılan Açık)
   
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedUnite, setSelectedUnite] = useState('');
-  const [selectedKonu, setSelectedKonu] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
 
   const curriculum = useMemo(() => KAZANIMLAR.Edebiyat || [], []);
 
-  const uniteOptions = useMemo(() => {
+  useEffect(() => {
+    setSelectedOutcome('');
+  }, [selectedClass]);
+
+  const kazanimOptions = useMemo(() => {
     if (!selectedClass) return [];
     const classData = curriculum.find((c: any) => c.unite === selectedClass);
-    return classData ? classData.konular.map((k: any) => k.konu) : [];
+    return classData ? classData.kazanimlar : [];
   }, [curriculum, selectedClass]);
   
-  const konuOptions = useMemo(() => {
-    if (!selectedUnite) return [];
-    const classData = curriculum.find((c: any) => c.unite === selectedClass);
-    const uniteData = classData?.konular.find((k: any) => k.konu === selectedUnite);
-    return uniteData ? uniteData.kazanimlar : [];
-  }, [curriculum, selectedClass, selectedUnite]);
-
   const [qSettings, setQSettings] = useState({
     multipleChoice: { id: 'multipleChoice', label: 'Çoktan Seçmeli', active: true, count: 5 },
     classic: { id: 'classic', label: 'Klasik', active: true, count: 5 },
@@ -375,117 +371,42 @@ const App = () => {
                             {(curriculum || []).map((cls: any, index: number) => <option key={index} value={cls.unite}>{cls.unite}</option>)}
                         </select>
                     </div>
-                    <div>
-                        <Label className="block text-xs font-semibold text-gray-500 mb-1">Ünite / Konu</Label>
-                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100" value={selectedUnite} onChange={e => setSelectedUnite(e.target.value)} disabled={!selectedClass}>
-                            <option value="">Önce sınıf seçin...</option>
-                            {uniteOptions.map((konu: string) => <option key={konu} value={konu}>{konu}</option>)}
-                        </select>
-                    </div>
                      <div>
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</Label>
-                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedUnite} multiple={false} size={5}>
-                            <option value="">Önce konu seçin...</option>
-                            {konuOptions.map((kazanim: string) => <option key={kazanim} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
+                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedClass} multiple={false} size={5}>
+                            <option value="">Önce sınıf seçin...</option>
+                            {kazanimOptions.map((kazanim: string, index: number) => <option key={index} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
                         </select>
                     </div>
                 </CardContent>
             </Card>
 
             <Card>
-            <CardHeader>
+              <CardHeader>
                 <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
-                    <ClipboardList size={18} /> Gelişmiş Seçenekler
+                  <Layout size={18} /> Metin Kriterleri
                 </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <button 
-                onClick={() => setDualColumnMode(!dualColumnMode)}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium border transition-all ${dualColumnMode ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
-              >
-                <span className="flex items-center gap-2"><Columns size={14}/> Çift Sütun / Sadeleştirme</span>
-                <span className={`w-2 h-2 rounded-full ${dualColumnMode ? 'bg-indigo-600' : 'bg-gray-300'}`}></span>
-              </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { label: 'Edebiyat Alanı', val: filters.scope, set: (v: string) => setFilters({...filters, scope: v}), opts: scopes },
+                  { label: 'Metin Türü', val: filters.type, set: (v: string) => setFilters({...filters, type: v}), opts: types },
+                  { label: 'Dönem / Akım', val: filters.period, set: (v: string) => setFilters({...filters, period: v}), opts: periods },
+                  { label: 'Tema', val: filters.theme, set: (v: string) => setFilters({...filters, theme: v}), opts: themes },
+                ].map((field, i) => (
+                  <div key={i}>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</label>
+                    <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-indigo-500 bg-gray-50 outline-none" value={field.val} onChange={(e) => field.set(e.target.value)}>
+                      {field.opts.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
 
-              <button 
-                onClick={() => setLessonPlanMode(!lessonPlanMode)}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium border transition-all ${lessonPlanMode ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
-              >
-                <span className="flex items-center gap-2"><CalendarClock size={14}/> Ders Akış Planı Oluştur</span>
-                <span className={`w-2 h-2 rounded-full ${lessonPlanMode ? 'bg-indigo-600' : 'bg-gray-300'}`}></span>
-              </button>
-
-              <button 
-                onClick={() => setComparisonMode(!comparisonMode)}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium border transition-all ${comparisonMode ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
-              >
-                <span className="flex items-center gap-2"><SplitSquareHorizontal size={14}/> Mukayese (Karşılaştırma)</span>
-                <span className={`w-2 h-2 rounded-full ${comparisonMode ? 'bg-indigo-600' : 'bg-gray-300'}`}></span>
-              </button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2">
-                <Layout size={18} /> Metin Kriterleri
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { label: 'Edebiyat Alanı', val: filters.scope, set: (v: string) => setFilters({...filters, scope: v}), opts: scopes },
-                { label: 'Metin Türü', val: filters.type, set: (v: string) => setFilters({...filters, type: v}), opts: types },
-                { label: 'Dönem / Akım', val: filters.period, set: (v: string) => setFilters({...filters, period: v}), opts: periods },
-                { label: 'Tema', val: filters.theme, set: (v: string) => setFilters({...filters, theme: v}), opts: themes },
-              ].map((field, i) => (
-                <div key={i}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">{field.label}</label>
-                  <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-indigo-500 bg-gray-50 outline-none" value={field.val} onChange={(e) => field.set(e.target.value)}>
-                    {field.opts.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Zorluk</label>
-                <div className="flex gap-1">
-                  {difficulties.map(d => (
-                    <button key={d} onClick={() => setFilters({...filters, difficulty: d})} className={`flex-1 py-1.5 text-xs font-medium rounded border transition-colors ${filters.difficulty === d ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-200'}`}>{d}</button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-             <CardHeader>
-               <CardTitle className="text-sm font-bold text-indigo-700 flex items-center gap-2"><CheckSquare size={18} /> Soru Ayarları</CardTitle>
-             </CardHeader>
-            <CardContent className="space-y-3">
-              {Object.values(qSettings).map((type) => (
-                <div key={type.id} className="flex items-center justify-between group">
-                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer flex-1">
-                    <input type="checkbox" checked={type.active} onChange={(e) => updateQSetting(type.id, 'active', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"/>
-                    <span className={type.active ? 'text-gray-900 font-medium' : 'text-gray-400'}>{type.label}</span>
-                  </label>
-                  {type.active && (
-                    <div className="flex items-center gap-1 bg-gray-50 rounded-md border border-gray-200 px-2 py-1">
-                      <Hash size={12} className="text-gray-400"/>
-                      <input type="number" min="1" max="20" value={type.count} onChange={(e) => updateQSetting(type.id, 'count', Number(e.target.value))} className="w-8 text-center bg-transparent text-xs font-bold text-indigo-700 focus:outline-none"/>
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-right text-gray-400">
-                Toplam Soru: <span className="font-bold text-indigo-600">{Object.values(qSettings).filter(q => q.active).reduce((sum, q) => sum + Number(q.count), 0)}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 shrink-0" /><span className="flex-1">{error}</span></div>}
-
-          <Button onClick={handleGenerate} disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70">
-            {loading ? <><Loader2 className="animate-spin" size={18} /> Oluşturuluyor...</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
-          </Button>
+            <Button onClick={handleGenerate} disabled={loading} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+              {loading ? <><Loader2 className="animate-spin" size={18} /> Oluşturuluyor...</> : <><PenTool size={18} /> Metin ve Analiz Oluştur</>}
+            </Button>
         </aside>
 
         {/* SAĞ PANEL: Sonuç */}
@@ -494,10 +415,6 @@ const App = () => {
             <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl min-h-[500px]">
               <Library size={64} className="mb-4 opacity-50" />
               <p className="text-lg text-center px-4">Lütfen sol panelden <b>Sınıf Seviyesi</b> seçerek başlayın.</p>
-              <div className="flex gap-2 mt-4 text-xs">
-                {dualColumnMode && <span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100">Çift Sütun Aktif</span>}
-                {lessonPlanMode && <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-100">Ders Planı Aktif</span>}
-              </div>
             </div>
           )}
 
@@ -508,7 +425,7 @@ const App = () => {
                 <p className="text-lg font-medium text-gray-700 mb-2">Yapay Zeka İçerik Üretiyor...</p>
                 <p className="text-sm text-gray-500">
                   Seçilen kriterlere uygun metin taranıyor...
-                  <br/>Rubrikler ve {lessonPlanMode ? 'ders planı' : ''} hazırlanıyor.
+                  <br/>Rubrikler ve ders planı hazırlanıyor.
                 </p>
               </div>
             </div>
