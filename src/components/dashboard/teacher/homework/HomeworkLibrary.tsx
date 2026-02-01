@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -254,7 +253,20 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     const favorites = useMemo(() => localDb.performanceFavorites || [], [localDb.performanceFavorites]);
 
     const handleUpdateAssignment = (id: number, updatedData: Partial<AssignmentTemplate>) => {
-        setLocalAssignments(prev => prev.map(a => a.id === id ? { ...a, ...updatedData } : a));
+        setLocalAssignments(prev =>
+            prev.map(a => {
+                if (a.id === id) {
+                    // Create a new object with the updates
+                    const updatedAssignment = { ...a, ...updatedData };
+                    // If the original assignment was not custom, this edit makes it custom.
+                    if (!a.isCustom) {
+                        updatedAssignment.isCustom = true;
+                    }
+                    return updatedAssignment;
+                }
+                return a;
+            })
+        );
     };
 
     const handleDeleteAssignment = (id: number) => {
