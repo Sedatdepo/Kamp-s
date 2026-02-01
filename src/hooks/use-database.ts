@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { 
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
@@ -9,7 +9,7 @@ import {
 } from '@/lib/types';
 
 // localStorage anahtarı
-const DB_KEY = 'ito_kampus_database';
+export const DB_KEY = 'ito_kampus_database';
 
 // Veritabanı yapısı
 export interface Database {
@@ -44,7 +44,7 @@ export interface Database {
 }
 
 // Varsayılan boş veritabanı
-const initialDb: Database = {
+export const initialDb: Database = {
   annualPlans: [],
   dilekceDocuments: [],
   dutyRosterDocuments: [],
@@ -97,48 +97,18 @@ const initialDb: Database = {
   edebiyatKazanımlar: null,
 };
 
+// Create the context
+export const DatabaseContext = createContext<{
+  db: Database;
+  setDb: React.Dispatch<React.SetStateAction<Database>>;
+  loading: boolean;
+} | undefined>(undefined);
+
+// Update the hook to use the context
 export const useDatabase = () => {
-  const [db, setDb] = useState<Database>(initialDb);
-  const [loading, setLoading] = useState(true);
-
-  // Component mount olduğunda localStorage'dan veriyi yükle
-  useEffect(() => {
-    setLoading(true);
-    try {
-      const storedDb = localStorage.getItem(DB_KEY);
-      if (storedDb && storedDb.trim().length > 2) { // Basic check for non-empty JSON
-        const parsedDb = JSON.parse(storedDb);
-        // Merge with initialDb to ensure all keys are present and the app doesn't crash on new fields
-        setDb(prevDb => ({ ...initialDb, ...parsedDb }));
-      } else {
-        // If no valid data, initialize localStorage with the default structure
-        localStorage.setItem(DB_KEY, JSON.stringify(initialDb));
-        setDb(initialDb);
-      }
-    } catch (error) {
-      console.error("Failed to load or parse database from localStorage, resetting:", error);
-      // On parsing error, reset to initial state to prevent crash loop
-      localStorage.setItem(DB_KEY, JSON.stringify(initialDb));
-      setDb(initialDb);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // `db` state'i her değiştiğinde localStorage'ı güncelle
-  useEffect(() => {
-    if (!loading) {
-      try {
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-      } catch (error) {
-        console.error("Failed to save database to localStorage:", error);
-      }
-    }
-  }, [db, loading]);
-  
-  const memoizedSetDb = useCallback((value: React.SetStateAction<Database>) => {
-    setDb(value);
-  }, []);
-
-  return { db, setDb: memoizedSetDb, loading };
+  const context = useContext(DatabaseContext);
+  if (context === undefined) {
+    throw new Error('useDatabase must be used within a DatabaseProvider');
+  }
+  return context;
 };
