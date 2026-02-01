@@ -1,66 +1,50 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BookOpen, ChevronsUpDown } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KAZANIMLAR as EDEBIYAT_KAZANIMLAR } from '@/lib/kazanimlar';
 import { ALL_PLANS } from '@/lib/plans';
 
 export default function KazanımlarTab() {
 
-    const FIZIK_KAZANIMLAR = useMemo(() => {
-        const fizikPlanData = ALL_PLANS.Fizik?.data;
-        if (!fizikPlanData) return [];
-
-        return Object.keys(fizikPlanData).map(grade => {
-            const gradeData = fizikPlanData[grade].data;
+    const KAZANIMLAR = useMemo(() => {
+        const result: { [key: string]: any[] } = {};
+        
+        for (const subject in ALL_PLANS) {
+            const subjectData = ALL_PLANS[subject].data;
+            result[subject] = [];
             
-            const groupedByUnit = gradeData.reduce((acc: { [key: string]: { [key: string]: Set<string> } }, week: any) => {
-                if (!week.unit || !week.topic || week.isBreak || !week.learningOutcome || week.learningOutcome.includes('Devamı...')) {
+            for (const gradeKey in subjectData) {
+                const gradePlan = subjectData[gradeKey].data;
+                const uniteName = `${gradeKey === '0' ? 'Hazırlık' : gradeKey}. Sınıf`;
+
+                const konularMap = gradePlan.reduce((acc: any, week: any) => {
+                    if (week.isBreak || !week.topic || !week.learningOutcome) return acc;
+                    
+                    if (!acc[week.topic]) {
+                        acc[week.topic] = new Set();
+                    }
+                    
+                    const cleanOutcome = week.learningOutcome.replace(/^[A-ZİÖÜÇĞŞ]+\.\\d+\.\\d+\.\\d+\\.\\s*/, '');
+                    acc[week.topic].add(cleanOutcome);
                     return acc;
-                }
-                
-                if (!acc[week.unit]) {
-                    acc[week.unit] = {};
-                }
-                
-                if (!acc[week.unit][week.topic]) {
-                    acc[week.unit][week.topic] = new Set();
-                }
-                
-                const cleanOutcome = week.learningOutcome.replace(/^[A-ZİÖÜÇĞŞ]+\.\d+\.\d+\.\d+\.\s*/, '');
-                acc[week.unit][week.topic].add(cleanOutcome);
-                
-                return acc;
-            }, {});
+                }, {});
 
-            const konular = Object.entries(groupedByUnit).map(([unitName, topics]) => {
-                const subKonular = Object.entries(topics).map(([topicName, outcomesSet]) => ({
-                    konu: topicName,
-                    kazanimlar: Array.from(outcomesSet),
+                const konular = Object.keys(konularMap).map(konu => ({
+                    konu,
+                    kazanimlar: Array.from(konularMap[konu] as Set<string>)
                 }));
-                // We'll use the main unit name as the 'konu' for the accordion trigger
-                return {
-                    konu: unitName,
-                    // We can flatten the kazanımlar for simplicity if sub-topics aren't displayed separately
-                    kazanimlar: subKonular.flatMap(sk => sk.kazanimlar),
-                };
-            });
-            
-            return {
-                unite: `${grade}. Sınıf`,
-                konular: konular.filter(k => k.kazanimlar.length > 0),
-            };
-        });
+
+                result[subject].push({
+                    unite: uniteName,
+                    konular: konular,
+                });
+            }
+        }
+        return result;
     }, []);
-
-    const KAZANIMLAR = useMemo(() => ({
-        "Fizik": FIZIK_KAZANIMLAR,
-        "Edebiyat": EDEBIYAT_KAZANIMLAR.Edebiyat
-    }), [FIZIK_KAZANIMLAR]);
-
 
     return (
         <Card>
@@ -91,32 +75,22 @@ export default function KazanımlarTab() {
                                             {unite.unite}
                                         </AccordionTrigger>
                                         <AccordionContent>
-                                            {unite.konular ? (
-                                                <Accordion type="single" collapsible className="w-full pl-4">
-                                                    {unite.konular.map((konu: any, konuIndex: number) => (
-                                                        <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`} key={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`}>
-                                                            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-                                                                {konu.konu}
-                                                            </AccordionTrigger>
-                                                            <AccordionContent className="pl-4 border-l">
-                                                                <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                                                                    {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                                        <li key={i}>{kazanimText}</li>
-                                                                    ))}
-                                                                </ul>
-                                                            </AccordionContent>
-                                                        </AccordionItem>
-                                                    ))}
-                                                </Accordion>
-                                            ) : unite.kazanimlar ? (
-                                                <div className="pl-4 border-l">
-                                                    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                                                        {unite.kazanimlar.map((kazanimText: string, i: number) => (
-                                                            <li key={i} className="whitespace-pre-line">{kazanimText}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            ) : null}
+                                            <Accordion type="single" collapsible className="w-full pl-4">
+                                                {unite.konular.map((konu: any, konuIndex: number) => (
+                                                    <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`} key={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`}>
+                                                        <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                                            {konu.konu}
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="pl-4 border-l">
+                                                            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                                                                {konu.kazanimlar.map((kazanimText: string, i: number) => (
+                                                                    <li key={i}>{kazanimText}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                ))}
+                                            </Accordion>
                                         </AccordionContent>
                                     </AccordionItem>
                                 ))}

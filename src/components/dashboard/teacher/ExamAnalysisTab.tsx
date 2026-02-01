@@ -34,7 +34,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { KAZANIMLAR } from '@/lib/kazanimlar';
+import { ALL_PLANS } from '@/lib/plans';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
@@ -86,29 +86,32 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
 
     const filteredKazanims = useMemo(() => {
         const normalizedSearch = searchTerm.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
-        if (!normalizedSearch) return KAZANIMLAR;
+        if (!normalizedSearch) return ALL_PLANS;
 
-        const filtered: { [key: string]: any[] } = {};
-        for (const ders in KAZANIMLAR) {
-            const uniteler = (KAZANIMLAR[ders] as any[]).map(unite => {
-                if (unite.konular) {
-                    const konular = unite.konular.map((konu: any) => {
-                        const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
-                            kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
-                        );
-                        return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
-                    }).filter(Boolean);
-                    return konular.length > 0 ? { ...unite, konular } : null;
-                } else if (unite.kazanimlar) {
-                     const kazanimlar = unite.kazanimlar.filter((kazanim: string) => 
-                        kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
-                    );
-                    return kazanimlar.length > 0 ? { ...unite, kazanimlar } : null;
+        const filtered: { [key: string]: any } = {};
+        for (const ders in ALL_PLANS) {
+            const subjectData = ALL_PLANS[ders].data;
+            const filteredGrades: any = {};
+            
+            for (const grade in subjectData) {
+                const gradeData = subjectData[grade].data;
+                const filteredWeeks = gradeData.filter((week: any) => 
+                    week.learningOutcome && week.learningOutcome.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
+                );
+                
+                if (filteredWeeks.length > 0) {
+                    if (!filteredGrades[grade]) {
+                        filteredGrades[grade] = { ...subjectData[grade], data: [] };
+                    }
+                    filteredGrades[grade].data.push(...filteredWeeks);
                 }
-                return null;
-            }).filter(Boolean);
-            if (uniteler.length > 0) {
-                filtered[ders] = uniteler;
+            }
+            if (Object.keys(filteredGrades).length > 0) {
+                if (!filtered[ders]) {
+                    filtered[ders] = { grades: [], data: {} };
+                }
+                filtered[ders].data = filteredGrades;
+                filtered[ders].grades = Object.keys(filteredGrades);
             }
         }
         return filtered;
@@ -130,52 +133,25 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
                 />
             </div>
             <ScrollArea className="flex-1 mt-4">
-                <div className="p-1">
-                    {Object.entries(filteredKazanims).map(([ders, uniteler]) => (
+                 <div className="p-1">
+                    {Object.entries(filteredKazanims).map(([ders, subjectData]) => (
                         <div key={ders} className="mb-4">
                             <h3 className="text-lg font-bold text-primary px-2 py-1 bg-primary/10 rounded-md">{ders}</h3>
                             <div className="pl-2">
-                                {(uniteler as any[]).map((unite, uniteIndex) => (
-                                    <Accordion type="single" collapsible key={`${unite.unite}-${uniteIndex}`} className="w-full">
-                                        <AccordionItem value={unite.unite}>
+                                {Object.entries((subjectData as any).data).map(([grade, gradeData]: [string, any]) => (
+                                    <Accordion type="single" collapsible key={`${ders}-${grade}`} className="w-full">
+                                        <AccordionItem value={`${ders}-${grade}`}>
                                             <AccordionTrigger className="text-md font-semibold text-gray-800">
-                                                {unite.unite}
+                                                {grade}. Sınıf
                                             </AccordionTrigger>
                                             <AccordionContent>
-                                                {unite.konular ? (
-                                                    <Accordion type="single" collapsible className="w-full pl-4">
-                                                        {unite.konular.map((konu: any, konuIndex: number) => (
-                                                            <AccordionItem value={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`} key={`${ders}-${unite.unite}-${konu.konu}-${konuIndex}`}>
-                                                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-                                                                    {konu.konu}
-                                                                </AccordionTrigger>
-                                                                <AccordionContent className="pl-4 border-l">
-                                                                    <div className="pl-2">
-                                                                        {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                                            <DialogClose asChild key={i}>
-                                                                                <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
-                                                                                    {kazanimText}
-                                                                                </div>
-                                                                            </DialogClose>
-                                                                        ))}
-                                                                    </div>
-                                                                </AccordionContent>
-                                                            </AccordionItem>
-                                                        ))}
-                                                    </Accordion>
-                                                ) : unite.kazanimlar ? (
-                                                    <div className="pl-4 border-l">
-                                                        <div className="pl-2">
-                                                            {(unite.kazanimlar as any[]).map((kazanimText: string, i: number) => (
-                                                                <DialogClose asChild key={i}>
-                                                                    <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
-                                                                        {kazanimText}
-                                                                    </div>
-                                                                </DialogClose>
-                                                            ))}
+                                                {gradeData.data.map((week: any, i: number) => (
+                                                     <DialogClose asChild key={i}>
+                                                        <div onClick={() => onSelect(week.learningOutcome)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                            {week.learningOutcome}
                                                         </div>
-                                                    </div>
-                                                ) : null}
+                                                    </DialogClose>
+                                                ))}
                                             </AccordionContent>
                                         </AccordionItem>
                                     </Accordion>
@@ -701,4 +677,3 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
   );
 }
 
-    

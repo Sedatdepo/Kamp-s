@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
-import { KAZANIMLAR } from '@/lib/kazanimlar';
+import { ALL_PLANS } from '@/lib/plans';
 
 
 const App = () => {
@@ -36,7 +36,27 @@ const App = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState('');
 
-  const curriculum = useMemo(() => KAZANIMLAR.Edebiyat || [], []);
+  const curriculum = useMemo(() => {
+    const edebiyatData = ALL_PLANS.Edebiyat?.data;
+    if (!edebiyatData) return [];
+
+    return Object.keys(edebiyatData).map(gradeKey => {
+      const gradePlan = edebiyatData[gradeKey]?.data || [];
+      const uniteName = `${gradeKey === '0' ? 'Hazırlık' : gradeKey}. Sınıf`;
+
+      const allKazanims = gradePlan.reduce((acc: Set<string>, week: any) => {
+        if (week.learningOutcome && !week.isBreak) {
+          acc.add(week.learningOutcome.replace(/^[A-ZİÖÜÇĞŞ]+\.\d+\.\d+\.\d+\.\s*/, ''));
+        }
+        return acc;
+      }, new Set<string>());
+
+      return {
+        unite: uniteName,
+        kazanimlar: Array.from(allKazanims)
+      };
+    });
+  }, []);
 
   useEffect(() => {
     setSelectedOutcome('');
@@ -368,12 +388,12 @@ const App = () => {
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Sınıf Seviyesi</Label>
                         <select className="w-full p-2 text-sm border rounded-lg focus:ring-1 focus:ring-orange-500 bg-orange-50 outline-none font-medium" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
                             <option value="">Seçiniz...</option>
-                            {(curriculum || []).map((cls: any, index: number) => <option key={index} value={cls.unite}>{cls.unite}</option>)}
+                            {curriculum.map((cls: any, index: number) => <option key={index} value={cls.unite}>{cls.unite}</option>)}
                         </select>
                     </div>
                      <div>
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</Label>
-                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedClass} multiple={false} size={5}>
+                         <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedClass} multiple={false}>
                             <option value="">Önce sınıf seçin...</option>
                             {kazanimOptions.map((kazanim: string, index: number) => <option key={index} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
                         </select>

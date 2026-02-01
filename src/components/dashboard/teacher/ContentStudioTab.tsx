@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { TeacherProfile, Class, Student, AssignmentTemplate, Question, QuestionType, MatchingPair } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KAZANIMLAR } from '@/lib/kazanimlar';
+import { ALL_PLANS } from '@/lib/plans';
 import { generateAssignmentScenario, GenerateAssignmentScenarioInput, GenerateAssignmentScenarioOutput } from '@/ai/flows/generate-assignment-scenario-flow';
 import { generateMaterial, GenerateMaterialInput, GenerateMaterialOutput } from '@/ai/flows/generate-material-flow';
 import { exportGeneratedMaterialToRtf, exportMaterialToRtf } from '@/lib/word-export';
@@ -62,7 +62,44 @@ const MaterialCreator = ({ teacherProfile }: { teacherProfile: TeacherProfile | 
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedContent, setGeneratedContent] = useState<any | null>(null);
 
-    const currentGradeData = KAZANIMLAR[selectedLesson][selectedGradeIndex];
+    const KAZANIMLAR = useMemo(() => {
+        const result: { [key: string]: any[] } = {};
+        
+        for (const subject in ALL_PLANS) {
+            const subjectData = ALL_PLANS[subject].data;
+            result[subject] = [];
+            
+            for (const gradeKey in subjectData) {
+                const gradePlan = subjectData[gradeKey].data;
+                const uniteName = `${gradeKey === '0' ? 'Hazırlık' : gradeKey}. Sınıf`;
+
+                const konularMap = gradePlan.reduce((acc: any, week: any) => {
+                    if (week.isBreak || !week.topic || !week.learningOutcome) return acc;
+                    
+                    if (!acc[week.topic]) {
+                        acc[week.topic] = new Set();
+                    }
+                    
+                    const cleanOutcome = week.learningOutcome.replace(/^[A-ZİÖÜÇĞŞ]+\.\\d+\.\\d+\.\\d+\\.\\s*/, '');
+                    acc[week.topic].add(cleanOutcome);
+                    return acc;
+                }, {});
+
+                const konular = Object.keys(konularMap).map(konu => ({
+                    konu,
+                    kazanimlar: Array.from(konularMap[konu] as Set<string>)
+                }));
+                
+                result[subject].push({
+                    unite: uniteName,
+                    konular: konular,
+                });
+            }
+        }
+        return result;
+    }, []);
+
+    const currentGradeData = KAZANIMLAR[selectedLesson]?.[selectedGradeIndex];
     const currentTopic = currentGradeData?.konular[selectedTopicIndex];
 
     // Reset subordinate selections when a primary selection changes
@@ -145,18 +182,18 @@ const MaterialCreator = ({ teacherProfile }: { teacherProfile: TeacherProfile | 
                         <div>
                             <Label>Sınıf Seviyesi</Label>
                             <select value={selectedGradeIndex} onChange={(e) => setSelectedGradeIndex(parseInt(e.target.value))} className="w-full p-2.5 mt-1 bg-slate-50 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                {KAZANIMLAR[selectedLesson].map((gradeData: any, idx: number) => (<option key={idx} value={idx}>{gradeData.unite}</option>))}
+                                {KAZANIMLAR[selectedLesson]?.map((gradeData: any, idx: number) => (<option key={idx} value={idx}>{gradeData.unite}</option>))}
                             </select>
                         </div>
                         <div>
                             <Label>Konu</Label>
                             <select value={selectedTopicIndex} onChange={(e) => setSelectedTopicIndex(parseInt(e.target.value))} className="w-full p-2.5 mt-1 bg-slate-50 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                {currentGradeData?.konular.map((t: any, idx: number) => (<option key={idx} value={idx}>{t.konu}</option>))}
+                                {currentGradeData?.konular?.map((t: any, idx: number) => (<option key={idx} value={idx}>{t.konu}</option>))}
                             </select>
                         </div>
                         <div>
                             <Label>Hedeflenen Kazanım</Label>
-                            <select value={selectedOutcome} onChange={(e) => setSelectedOutcome(e.target.value)} className="w-full p-2.5 mt-1 bg-slate-50 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 h-24" multiple={false} size={5}>
+                            <select value={selectedOutcome} onChange={(e) => setSelectedOutcome(e.target.value)} className="w-full p-2.5 mt-1 bg-slate-50 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 h-24" multiple={false}>
                                 {currentTopic?.kazanimlar.map((outcome: string, idx: number) => (
                                     <option key={idx} value={outcome}>{outcome.length > 80 ? outcome.substring(0, 80) + '...' : outcome}</option>
                                 ))}
@@ -570,21 +607,32 @@ const KazanımSelector = ({ onSelect }: { onSelect: (kazanim: string) => void })
 
     const filteredKazanims = useMemo(() => {
         const normalizedSearch = searchTerm.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
-        if (!normalizedSearch) return KAZANIMLAR;
+        if (!normalizedSearch) return ALL_PLANS;
 
-        const filtered: { [key: string]: any[] } = {};
-        for (const ders in KAZANIMLAR) {
-            const uniteler = (KAZANIMLAR[ders] as any[]).map(unite => {
-                const konular = unite.konular.map((konu: any) => {
-                    const kazanimlar = konu.kazanimlar.filter((kazanim: string) => 
-                        kazanim.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
-                    );
-                    return kazanimlar.length > 0 ? { ...konu, kazanimlar } : null;
-                }).filter(Boolean);
-                return konular.length > 0 ? { ...unite, konular } : null;
-            }).filter(Boolean);
-            if (uniteler.length > 0) {
-                filtered[ders] = uniteler;
+        const filtered: { [key: string]: any } = {};
+        for (const ders in ALL_PLANS) {
+            const subjectData = ALL_PLANS[ders].data;
+            const filteredGrades: any = {};
+            
+            for (const grade in subjectData) {
+                const gradeData = subjectData[grade].data;
+                const filteredWeeks = gradeData.filter((week: any) => 
+                    week.learningOutcome && week.learningOutcome.toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g').includes(normalizedSearch)
+                );
+                
+                if (filteredWeeks.length > 0) {
+                    if (!filteredGrades[grade]) {
+                        filteredGrades[grade] = { ...subjectData[grade], data: [] };
+                    }
+                    filteredGrades[grade].data.push(...filteredWeeks);
+                }
+            }
+            if (Object.keys(filteredGrades).length > 0) {
+                if (!filtered[ders]) {
+                    filtered[ders] = { grades: [], data: {} };
+                }
+                filtered[ders].data = filteredGrades;
+                filtered[ders].grades = Object.keys(filteredGrades);
             }
         }
         return filtered;
@@ -607,30 +655,23 @@ const KazanımSelector = ({ onSelect }: { onSelect: (kazanim: string) => void })
             </div>
             <ScrollArea className="flex-1 mt-4">
                 <div className="p-1">
-                    {Object.entries(filteredKazanims).map(([ders, uniteler]) => (
+                    {Object.entries(filteredKazanims).map(([ders, subjectData]) => (
                         <div key={ders} className="mb-4">
                             <h3 className="text-lg font-bold text-primary px-2 py-1 bg-primary/10 rounded-md">{ders}</h3>
                             <div className="pl-2">
-                                {(uniteler as any[]).map(unite => (
-                                    <Accordion type="single" collapsible key={unite.unite} className="w-full">
-                                        <AccordionItem value={unite.unite}>
+                                {Object.entries((subjectData as any).data).map(([grade, gradeData]: [string, any]) => (
+                                    <Accordion type="single" collapsible key={`${ders}-${grade}`} className="w-full">
+                                        <AccordionItem value={`${ders}-${grade}`}>
                                             <AccordionTrigger className="text-md font-semibold text-gray-800">
-                                                {unite.unite}
+                                                {grade}. Sınıf
                                             </AccordionTrigger>
                                             <AccordionContent>
-                                                {(unite.konular as any[]).map((konu: any) => (
-                                                     <div key={konu.konu} className="ml-4 pl-4 border-l-2 my-2">
-                                                        <p className="text-sm font-medium text-gray-600">{konu.konu}</p>
-                                                        <div className="pl-2">
-                                                            {konu.kazanimlar.map((kazanimText: string, i: number) => (
-                                                                <DialogClose asChild key={i}>
-                                                                    <div onClick={() => onSelect(kazanimText)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
-                                                                        {kazanimText}
-                                                                    </div>
-                                                                </DialogClose>
-                                                            ))}
+                                                {gradeData.data.map((week: any, i: number) => (
+                                                     <DialogClose asChild key={i}>
+                                                        <div onClick={() => onSelect(week.learningOutcome)} className="text-xs text-gray-700 p-2 rounded-md hover:bg-accent cursor-pointer">
+                                                            {week.learningOutcome}
                                                         </div>
-                                                    </div>
+                                                    </DialogClose>
                                                 ))}
                                             </AccordionContent>
                                         </AccordionItem>
