@@ -117,7 +117,11 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
-    }, []);
+        form.reset({
+          ...defaultValues,
+          id: `veli_${Date.now()}`,
+        });
+    }, [form, defaultValues]);
     
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
@@ -125,23 +129,20 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
             ...prev,
             veliToplantisiDocuments: (prev.veliToplantisiDocuments || []).filter(r => r.id !== selectedRecordId)
         }));
-        setSelectedRecordId(null); // Switch to new record state
+        handleNewRecord();
         toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
-    }, [selectedRecordId, setLocalDb, toast]);
+    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
     useEffect(() => {
         if (selectedRecordId) {
             const record = archives.find(r => r.id === selectedRecordId);
             if (record) {
                 form.reset(record.data);
-            } else {
-                 setSelectedRecordId(null);
-                 form.reset({ ...defaultValues, id: `veli_${Date.now()}` });
             }
         } else {
-            form.reset({ ...defaultValues, id: `veli_${Date.now()}` });
+            handleNewRecord();
         }
-    }, [selectedRecordId, archives, form, defaultValues]);
+    }, [selectedRecordId, archives, form, handleNewRecord]);
     
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
@@ -227,7 +228,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
         setSelectedRecordId(newDoc.id);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
-
+    
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
     

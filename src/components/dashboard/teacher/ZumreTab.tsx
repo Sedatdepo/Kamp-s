@@ -48,6 +48,23 @@ const VARSAYILAN_BRANSLAR = [
     "Matematik Öğretmeni", "Türk Dili ve Edebiyatı Öğretmeni", "Tarih Öğretmeni"
 ];
   
+const SOK_GUNDEM_MADDELERI = [
+    "Açılış ve yoklama",
+    "Bir önceki toplantı tutanaklarının okunması",
+    "Öğrencilerin başarı durumlarının değerlendirilmesi",
+    "Öğrencilerin davranış durumlarının değerlendirilmesi",
+    "Sosyal etkinliklerin planlanması",
+    "Dilek ve temenniler",
+    "Kapanış"
+  ];
+  
+const SOK_VARSAYILAN_KARARLAR = [
+    "1. Toplantı Kurul Başkanı tarafından iyi dileklerle açıldı.",
+    "2. Bir önceki toplantıda alınan kararların uygulandığı görüldü.",
+    "3. Başarısı düşük öğrencilerin velileriyle görüşülmesi kararlaştırıldı.",
+    "4. Sınıf içi olumlu davranışların ödüllendirilmesine devam edileceği belirtildi."
+];
+
 const tr = (text: string) => {
     if (!text) return '';
     let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
@@ -108,7 +125,11 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
-    }, []);
+        form.reset({
+          ...defaultValues,
+          id: `zumre_${Date.now()}`,
+        });
+    }, [form, defaultValues]);
     
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
@@ -125,14 +146,11 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
             const record = archives.find(r => r.id === selectedRecordId);
             if (record) {
                 form.reset(record.data);
-            } else {
-                 setSelectedRecordId(null);
-                 form.reset({ ...defaultValues, id: `zumre_${Date.now()}` });
             }
         } else {
-            form.reset({ ...defaultValues, id: `zumre_${Date.now()}` });
+            handleNewRecord();
         }
-    }, [selectedRecordId, archives, form, defaultValues, setSelectedRecordId]);
+    }, [selectedRecordId, archives, form, handleNewRecord]);
     
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
