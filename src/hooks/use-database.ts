@@ -23,24 +23,24 @@ export interface Database {
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
   disciplineRecords: DisciplineRecord[];
-  zumreDocuments?: ZumreDocument[];
-  sokDocuments?: SokDocument[];
-  veliToplantisiDocuments?: VeliToplantisiDocument[];
+  zumreDocuments: ZumreDocument[];
+  sokDocuments: SokDocument[];
+  veliToplantisiDocuments: VeliToplantisiDocument[];
   userScenarios: Record<string, string[]>; 
-  examAnalysisDocuments?: ExamAnalysisDocument[];
-  homeworkStatusDocuments?: HomeworkStatusDocument[];
-  infoFormsStatusDocuments?: InfoFormsStatusDocument[];
+  examAnalysisDocuments: ExamAnalysisDocument[];
+  homeworkStatusDocuments: HomeworkStatusDocument[];
+  infoFormsStatusDocuments: InfoFormsStatusDocument[];
   guidanceReferralRecords: GuidanceReferralRecord[];
-  observationRecords?: ObservationRecord[];
-  schoolInfo?: SchoolInfo;
+  observationRecords: ObservationRecord[];
+  schoolInfo: SchoolInfo | null;
   studentInfoForms: StudentInfoFormData[];
   dersProgrami: Timetable;
-  performanceAssignments?: AssignmentTemplate[];
-  projectAssignments?: AssignmentTemplate[];
-  performanceFavorites?: number[];
-  projectFavorites?: number[];
-  edebiyatAsistanArsivi?: EdebiyatAsistanDocument[];
-  edebiyatKazanımlar?: any;
+  performanceAssignments: AssignmentTemplate[];
+  projectAssignments: AssignmentTemplate[];
+  performanceFavorites: number[];
+  projectFavorites: number[];
+  edebiyatAsistanArsivi: EdebiyatAsistanDocument[];
+  edebiyatKazanımlar: any | null;
 }
 
 // Varsayılan boş veritabanı
