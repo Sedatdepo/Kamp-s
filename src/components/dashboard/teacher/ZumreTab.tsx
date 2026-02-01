@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
+import { generateMeetingDecisions } from '@/ai/flows/generate-meeting-decisions-flow';
 import { Loader2 } from 'lucide-react';
 import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 import { TeacherProfile } from '@/lib/types';
@@ -75,6 +76,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     };
 
     const [isGenerating, setIsGenerating] = useState<number | null>(null);
+    const [isGeneratingDecisions, setIsGeneratingDecisions] = useState(false);
     const [archives, setArchives] = useState<ArchivedDocument[]>([]);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [saveNameInput, setSaveNameInput] = useState("");
@@ -155,6 +157,30 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
           toast({ title: 'Yapay Zeka Hatası', description: 'İçerik oluşturulurken bir hata oluştu.', variant: 'destructive' });
         } finally {
           setIsGenerating(null);
+        }
+    };
+
+    const handleGenerateDecisions = async () => {
+        const agendaItems = form.getValues('gundemMaddeleri').map(item => item.madde);
+        if (agendaItems.length === 0 || agendaItems.every(item => !item.trim())) {
+            toast({ title: 'Hata', description: 'Lütfen önce gündem maddelerini girin.', variant: 'destructive' });
+            return;
+        }
+        setIsGeneratingDecisions(true);
+        try {
+            const response = await generateMeetingDecisions({
+                meetingType: 'Zümre',
+                agendaItems,
+            });
+            if (response.generatedDecisions) {
+                form.setValue('kararlar', response.generatedDecisions, { shouldDirty: true });
+                toast({ title: 'Kararlar Oluşturuldu', description: 'Alınan kararlar metni yapay zeka ile dolduruldu.', variant: 'success' });
+            }
+        } catch (error) {
+            console.error("AI Decisions Error:", error);
+            toast({ title: 'Yapay Zeka Hatası', description: 'Kararlar oluşturulurken bir hata oluştu.', variant: 'destructive' });
+        } finally {
+            setIsGeneratingDecisions(false);
         }
     };
     
@@ -295,7 +321,15 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                             </CardContent>
                         </Card>
                          <Card>
-                            <CardHeader><CardTitle>Alınan Kararlar</CardTitle></CardHeader>
+                            <CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <CardTitle>Alınan Kararlar</CardTitle>
+                                    <Button type="button" variant="secondary" size="sm" onClick={handleGenerateDecisions} disabled={isGeneratingDecisions}>
+                                        {isGeneratingDecisions ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
+                                        AI ile Doldur
+                                    </Button>
+                                </div>
+                            </CardHeader>
                             <CardContent>
                                 <Textarea {...form.register('kararlar')} rows={6} className="font-mono text-sm" />
                             </CardContent>
