@@ -96,25 +96,27 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
                                 Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Yok'}
                             </p>
                         </div>
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-500" onClick={(e) => e.stopPropagation()}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Bu proje ödevini ve tüm öğrenci teslimlerini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => onDelete(homework.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <div role="button" className="inline-flex items-center justify-center p-2 rounded-md hover:bg-red-100 cursor-pointer">
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                    </div>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Bu proje ödevini ve tüm öğrenci teslimlerini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => onDelete(homework.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="border border-t-0 rounded-b-lg p-0">
