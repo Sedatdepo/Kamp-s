@@ -108,22 +108,31 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
-        form.reset({
-          ...defaultValues,
-          id: `zumre_${Date.now()}`,
-        });
-    }, [form, defaultValues]);
-    
+    }, []);
+
+    const handleDeleteRecord = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({
+            ...prev,
+            zumreDocuments: (prev.zumreDocuments || []).filter(r => r.id !== selectedRecordId)
+        }));
+        setSelectedRecordId(null); // Switch to new record state
+        toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
+    }, [selectedRecordId, setLocalDb, toast]);
+
     useEffect(() => {
         if (selectedRecordId) {
             const record = archives.find(r => r.id === selectedRecordId);
             if (record) {
                 form.reset(record.data);
+            } else {
+                 setSelectedRecordId(null);
+                 form.reset({ ...defaultValues, id: `zumre_${Date.now()}` });
             }
         } else {
-            handleNewRecord();
+            form.reset({ ...defaultValues, id: `zumre_${Date.now()}` });
         }
-    }, [selectedRecordId, archives, form, handleNewRecord]);
+    }, [selectedRecordId, archives, form, defaultValues]);
     
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
@@ -209,16 +218,6 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         setSelectedRecordId(newDoc.id);
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
-
-    const handleDeleteRecord = useCallback(() => {
-        if (!selectedRecordId) return;
-        setLocalDb(prev => ({
-            ...prev,
-            zumreDocuments: (prev.zumreDocuments || []).filter(r => r.id !== selectedRecordId)
-        }));
-        handleNewRecord();
-        toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
-    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
     
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
@@ -299,7 +298,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
             <main className="max-w-7xl mx-auto p-6 grid md:grid-cols-4 gap-8">
                  <div className="md:col-span-1 space-y-4">
                     <RecordManager
-                        records={(archives || []).map(r => ({ id: r.id, name: r.name }))}
+                        records={archives.map(r => ({ id: r.id, name: r.name }))}
                         selectedRecordId={selectedRecordId}
                         onSelectRecord={setSelectedRecordId}
                         onNewRecord={handleNewRecord}

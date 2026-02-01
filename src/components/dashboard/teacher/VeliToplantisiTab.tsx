@@ -117,22 +117,31 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
-        form.reset({
-          ...defaultValues,
-          id: `veli_${Date.now()}`,
-        });
-    }, [form, defaultValues]);
+    }, []);
     
+    const handleDeleteRecord = useCallback(() => {
+        if (!selectedRecordId) return;
+        setLocalDb(prev => ({
+            ...prev,
+            veliToplantisiDocuments: (prev.veliToplantisiDocuments || []).filter(r => r.id !== selectedRecordId)
+        }));
+        setSelectedRecordId(null); // Switch to new record state
+        toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
+    }, [selectedRecordId, setLocalDb, toast]);
+
     useEffect(() => {
         if (selectedRecordId) {
             const record = archives.find(r => r.id === selectedRecordId);
             if (record) {
                 form.reset(record.data);
+            } else {
+                 setSelectedRecordId(null);
+                 form.reset({ ...defaultValues, id: `veli_${Date.now()}` });
             }
         } else {
-            handleNewRecord();
+            form.reset({ ...defaultValues, id: `veli_${Date.now()}` });
         }
-    }, [selectedRecordId, archives, form, handleNewRecord]);
+    }, [selectedRecordId, archives, form, defaultValues]);
     
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
@@ -219,16 +228,6 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
         toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
 
-    const handleDeleteRecord = useCallback(() => {
-        if (!selectedRecordId) return;
-        setLocalDb(prev => ({
-            ...prev,
-            veliToplantisiDocuments: (prev.veliToplantisiDocuments || []).filter(r => r.id !== selectedRecordId)
-        }));
-        handleNewRecord();
-        toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
-    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
-    
     const draggedItem = useRef<number | null>(null);
     const draggedOverItem = useRef<number | null>(null);
     
@@ -369,7 +368,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                                 </CardContent>
                             </Card>
                         </form>
-                     </Form>
+                    </Form>
                 </div>
             </main>
         </div>
