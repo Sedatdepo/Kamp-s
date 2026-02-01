@@ -6,7 +6,7 @@ import { Student, Submission, Homework, TeacherProfile } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save, Trash2, Paperclip } from 'lucide-react';
-import { collection, doc, getDocs, query, updateDoc, where, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, updateDoc, where, writeBatch, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScoresUpdated }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, onScoresUpdated: () => void }) => {
+
+const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScoresUpdated, onDelete }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, onScoresUpdated: () => void, onDelete: (homeworkId: string) => void }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [scores, setScores] = useState<{ [studentId: string]: { [criteriaLabel: string]: number } }>({});
@@ -57,9 +58,9 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
             const submission = submissions.find((s: Submission) => s.studentId === student.id);
             const studentScores = scores[student.id];
             const studentFeedback = feedback[student.id];
-            
+
             const hasDataToSave = (studentScores && Object.keys(studentScores).length > 0) || (studentFeedback && studentFeedback.trim() !== '');
-            
+
             const totalScore = homework.rubric?.reduce((sum: number, c: any) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
 
             if (submission) {
@@ -70,8 +71,7 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
                 if (totalScore !== submission.grade) updates.grade = totalScore;
                 
                 if (Object.keys(updates).length > 0) batch.update(subRef, updates);
-
-            } else if (hasDataToSave) {
+            } else if(hasDataToSave) {
                 const newSubRef = doc(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
                 batch.set(newSubRef, {
                     studentId: student.id, studentName: student.name, studentNumber: student.number,
@@ -84,16 +84,37 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
         toast({ title: 'Değerlendirmeler kaydedildi.' });
         onScoresUpdated();
     };
-    
+
     return (
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value={homework.id}>
                 <AccordionTrigger className="p-4 border rounded-lg data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
-                    <div className="text-left">
-                        <p className="font-semibold">{homework.text}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Yok'}
-                        </p>
+                    <div className="flex justify-between items-center w-full">
+                        <div className="text-left">
+                            <p className="font-semibold">{homework.text}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Son Teslim: {homework.dueDate ? format(new Date(homework.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Yok'}
+                            </p>
+                        </div>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-500" onClick={(e) => e.stopPropagation()}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu proje ödevini ve tüm öğrenci teslimlerini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => onDelete(homework.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="border border-t-0 rounded-b-lg p-0">
@@ -122,7 +143,7 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
                                             <TableCell className="font-medium">{student.name}</TableCell>
                                             <TableCell className="text-xs">
                                                 {submission ? (
-                                                    <>
+                                                     <>
                                                         {submission.text && <p className="whitespace-pre-wrap">{submission.text}</p>}
                                                         {submission.file && (
                                                             <a href={submission.file.dataUrl} download={submission.file.name} className="flex items-center gap-1 text-blue-600 hover:underline">
@@ -176,12 +197,14 @@ interface ProjectHomeworkEvaluationTabProps {
 
 export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile }: ProjectHomeworkEvaluationTabProps) => {
     const { db } = useAuth();
+    const { toast } = useToast();
+
     const projectHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'project'));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading } = useCollection<Homework>(projectHomeworksQuery);
+    const { data: homeworks, isLoading, forceRefresh } = useCollection<Homework>(projectHomeworksQuery);
     
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -208,6 +231,31 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
         fetchSubmissions();
     }, [fetchSubmissions]);
 
+    const handleDeleteHomework = async (homeworkId: string) => {
+        if (!db || !classId) return;
+        try {
+            const batch = writeBatch(db);
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+
+            const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions'));
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            submissionsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            
+            batch.delete(homeworkRef);
+            await batch.commit();
+
+            toast({ 
+                title: "Proje ödevi ve tüm teslimler silindi.",
+                description: "Ödevleri düzenlemek için 'Canlı Ödev Yönetimi' sekmesini kullanabilirsiniz."
+            });
+            forceRefresh();
+        } catch (error) {
+            toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
+        }
+    };
+
     if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
 
     const sortedHomeworks = [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
@@ -223,6 +271,7 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
                         submissions={allSubmissions[hw.id] || []}
                         classId={classId}
                         onScoresUpdated={fetchSubmissions}
+                        onDelete={handleDeleteHomework}
                     />
                 ))
             ) : (
