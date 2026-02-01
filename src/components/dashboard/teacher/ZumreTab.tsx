@@ -104,21 +104,21 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     });
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
-    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
+    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
     }, []);
-
+    
     const handleDeleteRecord = useCallback(() => {
         if (!selectedRecordId) return;
         setLocalDb(prev => ({
             ...prev,
             zumreDocuments: (prev.zumreDocuments || []).filter(r => r.id !== selectedRecordId)
         }));
-        setSelectedRecordId(null); // Switch to new record state
+        handleNewRecord();
         toast({ title: 'Silindi', description: 'Tutanak arşivden silindi.', variant: 'destructive' });
-    }, [selectedRecordId, setLocalDb, toast]);
+    }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
 
     useEffect(() => {
         if (selectedRecordId) {
@@ -132,7 +132,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         } else {
             form.reset({ ...defaultValues, id: `zumre_${Date.now()}` });
         }
-    }, [selectedRecordId, archives, form, defaultValues]);
+    }, [selectedRecordId, archives, form, defaultValues, setSelectedRecordId]);
     
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
