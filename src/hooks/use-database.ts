@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument
 } from '@/lib/types';
 
 // localStorage anahtarı
@@ -23,7 +23,7 @@ export interface Database {
   communicationDocuments: CommunicationDocument[];
   homeworkDocuments: HomeworkDocument[];
   disciplineRecords: DisciplineRecord[];
-  zumreDocuments?: any[]; // Keep as any for now
+  zumreDocuments?: ZumreDocument[];
   sokDocuments?: SokDocument[];
   veliToplantisiDocuments?: VeliToplantisiDocument[];
   userScenarios: Record<string, string[]>; 

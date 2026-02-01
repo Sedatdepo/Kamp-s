@@ -438,6 +438,26 @@ export interface DilekceDocument extends Archivable {
     }
 }
 
+export interface ZumreDocument extends Archivable {
+    data: {
+        id: string;
+        okulAdi?: string;
+        academicYear: string;
+        donem: string;
+        sinif: string; // Zümre Adı
+        tarih: string;
+        saat: string;
+        yer: string;
+        mudurYardimcisi: string;
+        sinifRehberOgretmeni: string; // Zümre Başkanı
+        katilimcilar: { brans: string; adSoyad: string }[];
+        gundemMaddeleri: { madde: string }[];
+        gorusmeler: { detay: string }[];
+        kararlar: string;
+    };
+}
+
+
 export interface SokDocument extends Archivable {
     data: {
         id: string;
