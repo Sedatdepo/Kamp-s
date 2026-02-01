@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -482,65 +481,66 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                         {homeworksLoading ? <Loader2 className="mx-auto h-8 w-8 animate-spin" /> : (
                             <div className="space-y-4">
                                 {liveHomeworks && liveHomeworks.length > 0 ? liveHomeworks.map(hw => (
-                                    <Accordion key={hw.id} type="single" collapsible>
-                                        <AccordionItem value={hw.id} className="border rounded-lg p-4">
-                                            <AccordionTrigger>
-                                                <div className="flex flex-col text-left">
-                                                    <div className="flex items-center gap-2">
-                                                        {hw.file && <Paperclip className="h-4 w-4 text-muted-foreground"/>}
-                                                        {hw.link && <ExternalLink className="h-4 w-4 text-muted-foreground"/>}
-                                                        <p className="font-semibold">{hw.text}</p>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
-                                                    </p>
+                                    <div key={hw.id} className="border rounded-lg bg-white shadow-sm">
+                                        <div className="flex items-start p-4">
+                                            <div className="flex-1 space-y-2">
+                                                <p className="font-semibold">{hw.text}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
+                                                </p>
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                                    {hw.file && <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleFileDownload(hw.file!)}><Paperclip className="h-3 w-3 mr-1"/>{hw.file.name}</Button>}
+                                                    {hw.link && <a href={hw.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3"/>{hw.linkText || 'İlgili Bağlantı'}</a>}
                                                 </div>
-                                            </AccordionTrigger>
-                                            <AccordionContent className="pt-4">
-                                                <div className="flex justify-between items-center mb-2">
-                                                     {hw.file && <Button variant="link" size="sm" onClick={() => handleFileDownload(hw.file!)}>{hw.file.name}</Button>}
-                                                    <div>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"><Trash2 className="h-4 w-4"/></Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>Bu ödevi ve tüm teslimleri kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteHomework(hw)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </div>
-                                                </div>
-                                                <Table>
-                                                    <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Teslim Durumu</TableHead><TableHead>Not</TableHead></TableRow></TableHeader>
-                                                    <TableBody>
-                                                        {students.map(student => (
-                                                            <TableRow key={student.id}>
-                                                                <TableCell>{student.name}</TableCell>
-                                                                <TableCell>
-                                                                     <SubmissionStatus 
-                                                                        student={student} 
-                                                                        homework={hw}
-                                                                        submissions={submissions[hw.id] || []}
-                                                                        classId={classId}
-                                                                        onMarkAsSubmitted={handleMarkAsSubmitted}
-                                                                    />
-                                                                </TableCell>
-                                                                <TableCell>{(submissions[hw.id] || []).find(s => s.studentId === student.id)?.grade ?? 'N/A'}</TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
+                                            </div>
+                                            <div className="flex items-center ml-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-500"><Trash2 className="h-4 w-4"/></Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                                            <AlertDialogDescription>Bu ödevi ve tüm teslimleri kalıcı olarak silmek istediğinizden emin misiniz?</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteHomework(hw)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </div>
+                                        <Accordion type="single" collapsible className="w-full">
+                                            <AccordionItem value={`content-${hw.id}`} className="border-t">
+                                                <AccordionTrigger className="px-4 py-2 text-sm font-medium hover:no-underline text-muted-foreground">
+                                                    {submissions[hw.id]?.length || 0} / {students.length} Teslim (Görüntüle)
+                                                </AccordionTrigger>
+                                                <AccordionContent className="pt-0 p-4">
+                                                    <Table>
+                                                        <TableHeader><TableRow><TableHead>Öğrenci</TableHead><TableHead>Teslim Durumu</TableHead></TableRow></TableHeader>
+                                                        <TableBody>
+                                                            {students.map(student => (
+                                                                <TableRow key={student.id}>
+                                                                    <TableCell>{student.name}</TableCell>
+                                                                    <TableCell>
+                                                                        <SubmissionStatus 
+                                                                            student={student} 
+                                                                            homework={hw}
+                                                                            submissions={submissions[hw.id] || []}
+                                                                            classId={classId}
+                                                                            onMarkAsSubmitted={handleMarkAsSubmitted}
+                                                                        />
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                    </div>
                                 )) : <p className="text-center text-muted-foreground py-4">Henüz ödev eklenmemiş.</p>}
                             </div>
                         )}
@@ -551,5 +551,3 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
       </div>
     );
 };
-
-    
