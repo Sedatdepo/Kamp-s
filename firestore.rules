@@ -10,17 +10,12 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
     
     function isTeacher() {
       // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
-      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-
-    // --- NEW RULE FOR TEACHER DATA ---
-    match /teacherData/{teacherId} {
-        allow read, write: if isOwner(teacherId);
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
     // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
@@ -30,27 +25,52 @@ service cloud.firestore {
       return isTeacher() && classDoc.data.teacherId == request.auth.uid;
     }
     
+    // --- STUDENTS ---
+    match /students/{studentId} {
+      // Teachers can read/write students they own. Client queries MUST filter by teacherId for list to work.
+      allow read, write: if isTeacher() && 
+                          (request.method == 'create' 
+                              ? request.resource.data.teacherId == request.auth.uid 
+                              : resource.data.teacherId == request.auth.uid);
+      
+      // A student can get their own document.
+      allow get: if request.auth.uid == resource.data.authUid;
+      
+      // A student can update a limited set of fields on their own document.
+      allow update: if request.auth.uid == resource.data.authUid && 
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['risks', 'projectPreferences', 'clubPreferences', 'fcmTokens', 'needsPasswordChange', 'positiveSelections', 'negativeSelections', 'leadershipSelections']);
+    }
+
     // --- ÖĞRETMEN PROFİLİ ---
     match /teachers/{teacherId} {
       allow read: if isSignedIn();
       allow write: if isOwner(teacherId);
     }
     
+    // --- NEW RULE FOR TEACHER DATA ---
+    match /teacherData/{teacherId} {
+        allow read, write: if isOwner(teacherId);
+    }
+    
     // --- SINIFLAR ---
     match /classes/{classId} {
-      // ÖNEMLİ: 'list' kuralı, istemciden gelen sorgu ile tam olarak eşleşmelidir.
-      // Bu kural, öğretmenin YALNIZCA 'teacherId' alanı kendi UID'si olan sınıfları sorgulamasına izin verir.
-      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
+      // Öğretmen kendi sınıflarını okuyabilir.
+      allow read: if isClassOwner(classId);
+
+      // Öğrencinin kendi sınıfını okumasına izin ver. (Sosyogram, Nöbet Listesi vb. için gerekli)
+      // Bu genel bir kuraldır. Daha hassas veriler alt koleksiyonlarda korunmalıdır.
+      allow get: if isSignedIn();
       
-      // Öğretmen, kendi sınıfını tekil olarak okuyabilir, güncelleyebilir ve silebilir.
-      allow get, update, delete: if isClassOwner(classId);
+      // Öğretmen kendi sınıfını güncelleyebilir ve silebilir.
+      allow update, delete: if isClassOwner(classId);
       
       // Öğretmen, 'teacherId'si kendisine ait olan bir sınıf oluşturabilir.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
       // --- SINIF ALT KOLEKSİYONLARI ---
       match /{allChildren=**} {
-        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere (öğrenciler, ödevler vb.) tam erişime sahiptir.
+        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere tam erişime sahiptir.
         allow read, write: if isClassOwner(classId);
       }
     }
