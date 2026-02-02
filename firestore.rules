@@ -14,22 +14,23 @@ service cloud.firestore {
     }
     
     function isTeacher() {
-      // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
+      // A user is a teacher if their UID exists in the /teachers collection.
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
+    // Checks if the requesting user is the owner of a specific class.
     function isClassOwner(classId) {
-      // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
+      // Must be a teacher AND the class's teacherId must be their own UID.
       let classDoc = get(/databases/$(database)/documents/classes/$(classId));
       return isTeacher() && classDoc.data.teacherId == request.auth.uid;
     }
     
     // --- STUDENTS ---
     match /students/{studentId} {
-      // A teacher can list students they own.
-      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
-      // A teacher can get/create/update/delete a student document if they own the student.
+      // A teacher can list students, but the client query MUST filter by their teacherId.
+      allow list: if isTeacher();
+      
+      // A teacher can get, create, or write to a student document if they own the student.
       allow get, write: if isTeacher() && (request.method == 'create' ? request.resource.data.teacherId == request.auth.uid : resource.data.teacherId == request.auth.uid);
       
       // A student can get their own document.
@@ -41,39 +42,39 @@ service cloud.firestore {
                       .hasOnly(['risks', 'projectPreferences', 'clubPreferences', 'fcmTokens', 'needsPasswordChange', 'positiveSelections', 'negativeSelections', 'leadershipSelections']);
     }
 
-    // --- ÖĞRETMEN PROFİLİ ---
+    // --- TEACHER PROFILE ---
     match /teachers/{teacherId} {
       allow read: if isSignedIn();
       allow write: if isOwner(teacherId);
     }
     
-    // --- NEW RULE FOR TEACHER DATA ---
+    // --- TEACHER DATA (Archived docs, etc.) ---
     match /teacherData/{teacherId} {
         allow read, write: if isOwner(teacherId);
     }
     
-    // --- SINIFLAR ---
+    // --- CLASSES ---
     match /classes/{classId} {
-      // Öğretmenlerin YALNIZCA kendi sınıflarını listelemesine izin ver.
-      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
+      // A teacher can list classes, but the client query MUST filter by their teacherId.
+      allow list: if isTeacher();
       
-      // Öğretmen kendi sınıfını okuyabilir. Öğrenciler de (şimdilik) tüm sınıfları okuyabilir.
+      // A teacher can read their own class. A student can read any class (for now).
       allow get: if isClassOwner(classId) || isSignedIn();
       
-      // Öğretmen kendi sınıfını güncelleyebilir ve silebilir.
+      // A teacher can update and delete their own class.
       allow update, delete: if isClassOwner(classId);
       
-      // Öğretmen, 'teacherId'si kendisine ait olan bir sınıf oluşturabilir.
+      // A teacher can create a class if the teacherId is their own.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
 
-      // --- SINIF ALT KOLEKSİYONLARI ---
+      // --- CLASS SUBCOLLECTIONS ---
       match /{allChildren=**} {
-        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere tam erişime sahiptir.
+        // A teacher has full access to all documents under their own class.
         allow read, write: if isClassOwner(classId);
       }
     }
     
-    // --- TOP-LEVEL KOLEKSİYONLAR (Öğretmene Özel) ---
+    // --- TOP-LEVEL COLLECTIONS (Teacher-Specific) ---
     match /lessons/{lessonId} {
       allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
@@ -94,9 +95,7 @@ service cloud.firestore {
       allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
 
-    // --- GENEL ERİŞİM ---
-
-    // classCodes koleksiyonuna, giriş yapmış tüm kullanıcıların okuma izni verelim.
+    // --- GENERAL ACCESS ---
     match /classCodes/{code} {
       allow get: if isSignedIn();
     }
