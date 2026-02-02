@@ -27,11 +27,10 @@ service cloud.firestore {
     
     // --- STUDENTS ---
     match /students/{studentId} {
-      // Teachers can read/write students they own. Client queries MUST filter by teacherId for list to work.
-      allow read: if isTeacher() && 
-                          (request.method == 'create' 
-                              ? request.resource.data.teacherId == request.auth.uid 
-                              : resource.data.teacherId == request.auth.uid);
+      // A teacher can list students they own.
+      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
+      // A teacher can get/create/update/delete a student document if they own the student.
+      allow get, write: if isTeacher() && (request.method == 'create' ? request.resource.data.teacherId == request.auth.uid : resource.data.teacherId == request.auth.uid);
       
       // A student can get their own document.
       allow get: if request.auth.uid == resource.data.authUid;
@@ -90,6 +89,10 @@ service cloud.firestore {
     match /kazanims/{kazanimId} {
       allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
+    
+    match /clubs/{clubId} {
+      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
 
     // --- GENEL ERİŞİM ---
 
@@ -103,6 +106,12 @@ service cloud.firestore {
       // The student and their teacher can read/write the form.
       allow read, write: if (isSignedIn() && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid) ||
                          (isTeacher() && get(/databases/$(database)/documents/students/$(studentId)).data.teacherId == request.auth.uid);
+    }
+
+    // MESSAGES
+    match /messages/{messageId} {
+      // A user can read/write a message if they are a participant.
+      allow read, write: if request.auth.uid in resource.data.participants;
     }
   }
 }
