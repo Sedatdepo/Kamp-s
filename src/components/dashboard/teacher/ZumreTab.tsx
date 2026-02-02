@@ -4,11 +4,11 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X, Users2 } from 'lucide-react';
+import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Wand2, Users2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
@@ -18,7 +18,7 @@ import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@
 import { TeacherProfile, ZumreDocument } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 // --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
@@ -47,23 +47,6 @@ const VARSAYILAN_BRANSLAR = [
     "Zümre Başkanı", "Fizik Öğretmeni", "Kimya Öğretmeni", "Biyoloji Öğretmeni",
     "Matematik Öğretmeni", "Türk Dili ve Edebiyatı Öğretmeni", "Tarih Öğretmeni"
 ];
-  
-const SOK_GUNDEM_MADDELERI = [
-    "Açılış ve yoklama",
-    "Bir önceki toplantı tutanaklarının okunması",
-    "Öğrencilerin başarı durumlarının değerlendirilmesi",
-    "Öğrencilerin davranış durumlarının değerlendirilmesi",
-    "Sosyal etkinliklerin planlanması",
-    "Dilek ve temenniler",
-    "Kapanış"
-  ];
-  
-const SOK_VARSAYILAN_KARARLAR = [
-    "1. Toplantı Kurul Başkanı tarafından iyi dileklerle açıldı.",
-    "2. Bir önceki toplantıda alınan kararların uygulandığı görüldü.",
-    "3. Başarısı düşük öğrencilerin velileriyle görüşülmesi kararlaştırıldı.",
-    "4. Sınıf içi olumlu davranışların ödüllendirilmesine devam edileceği belirtildi."
-];
 
 const tr = (text: string) => {
     if (!text) return '';
@@ -84,19 +67,10 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     const { db: localDb, setDb: setLocalDb } = useDatabase();
     const { zumreDocuments: archives = [] } = localDb;
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-
-    const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
-    
-    const toast = ({ title, description, variant = "default" }: any) => {
-        const id = Date.now();
-        setUiToasts(prev => [...prev, { id, title, description, variant }]);
-        setTimeout(() => setUiToasts(prev => prev.filter(t => t.id !== id)), 3000);
-    };
+    const { toast } = useToast();
 
     const [isGenerating, setIsGenerating] = useState<number | null>(null);
     const [isGeneratingDecisions, setIsGeneratingDecisions] = useState(false);
-    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-    const [saveNameInput, setSaveNameInput] = useState("");
 
     const defaultValues = useMemo<FormData>(() => ({
         id: `zumre_${Date.now()}`,
@@ -152,6 +126,35 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         }
     }, [selectedRecordId, archives, form, handleNewRecord]);
     
+    const onSubmit = (values: FormData) => {
+        const docId = values.id || `zumre_${Date.now()}`;
+        if (!values.id) {
+            form.setValue('id', docId);
+            values.id = docId;
+        }
+
+        const newDoc: ZumreDocument = {
+            id: docId,
+            name: `${values.academicYear} - ${values.sinif} Zümresi`,
+            date: new Date().toLocaleDateString('tr-TR'),
+            data: values,
+        };
+
+        setLocalDb(prev => {
+            const existingIndex = (prev.zumreDocuments || []).findIndex(r => r.id === docId);
+            const newArchives = [...(prev.zumreDocuments || [])];
+            if (existingIndex > -1) {
+                newArchives[existingIndex] = newDoc;
+            } else {
+                newArchives.unshift(newDoc);
+            }
+            return { ...prev, zumreDocuments: newArchives };
+        });
+
+        setSelectedRecordId(docId);
+        toast({ title: "Kaydedildi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
+    };
+
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
         if (!agendaTitle) {
@@ -200,41 +203,6 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         } finally {
             setIsGeneratingDecisions(false);
         }
-    };
-    
-    const openSaveDialog = () => {
-        const vals = form.getValues();
-        setSaveNameInput(selectedRecordId ? archives.find(r => r.id === selectedRecordId)?.name || `${vals.academicYear} - ${vals.sinif} Zümresi` : `${vals.academicYear} - ${vals.sinif} Zümresi`);
-        setIsSaveDialogOpen(true);
-    };
-
-    const handleSaveToArchive = () => {
-        if (!saveNameInput.trim()) return;
-        const currentData = form.getValues();
-        const docId = currentData.id || `zumre_${Date.now()}`;
-        form.setValue('id', docId);
-
-        const newDoc: ZumreDocument = {
-            id: docId,
-            name: saveNameInput,
-            date: new Date().toLocaleDateString('tr-TR'),
-            data: form.getValues(),
-        };
-        
-        setLocalDb(prev => {
-            const existingIndex = (prev.zumreDocuments || []).findIndex(r => r.id === newDoc.id);
-            const newArchives = [...(prev.zumreDocuments || [])];
-            if (existingIndex > -1) {
-                newArchives[existingIndex] = newDoc;
-            } else {
-                newArchives.unshift(newDoc);
-            }
-            return { ...prev, zumreDocuments: newArchives };
-        });
-        
-        setIsSaveDialogOpen(false);
-        setSelectedRecordId(newDoc.id);
-        toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
     
     const draggedItem = useRef<number | null>(null);
@@ -301,7 +269,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
              <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                     <div className="bg-purple-100 p-2 rounded-lg text-purple-700"><Users2 className="h-6 w-6" /></div>
                     <div>
                         <h1 className="text-xl font-bold text-slate-900">Zümre Tutanak Modülü</h1>
@@ -309,14 +277,14 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button onClick={openSaveDialog} variant="outline"><Save className="mr-2 h-4 w-4"/> Arşive Kaydet</Button>
+                    <Button type="submit" form="zumre-form"><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
                     <Button onClick={handleExport} className="bg-purple-600 hover:bg-purple-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto p-6 grid md:grid-cols-4 gap-8">
                  <div className="md:col-span-1 space-y-4">
                     <RecordManager
-                        records={archives.map(r => ({ id: r.id, name: r.name }))}
+                        records={(archives || []).map(r => ({ id: r.id, name: r.name }))}
                         selectedRecordId={selectedRecordId}
                         onSelectRecord={setSelectedRecordId}
                         onNewRecord={handleNewRecord}
@@ -325,8 +293,8 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                     />
                 </div>
                 <div className="md:col-span-3">
-                    <Form {...form}>
-                        <form className="space-y-8">
+                     <Form {...form}>
+                         <form id="zumre-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                             <Card>
                                 <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">

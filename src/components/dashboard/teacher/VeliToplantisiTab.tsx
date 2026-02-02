@@ -4,11 +4,11 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Settings, Zap, Mic, MicOff, BookOpen, History, FolderOpen, FileText, FileSignature, Upload, FileSpreadsheet, Printer, Eye, Archive, BookmarkPlus, Library, CheckCircle, AlertCircle, Pencil, Check, Wand2, ListChecks, X } from 'lucide-react';
+import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
@@ -17,7 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { TeacherProfile, VeliToplantisiDocument } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
     id: z.string(),
@@ -76,19 +76,10 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
     const { db: localDb, setDb: setLocalDb } = useDatabase();
     const { veliToplantisiDocuments: archives = [] } = localDb;
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-
-    const [uiToasts, setUiToasts] = useState<{id: number, title: string, description: string, variant: string}[]>([]);
-    
-    const toast = ({ title, description, variant = "default" }: any) => {
-        const id = Date.now();
-        setUiToasts(prev => [...prev, { id, title, description, variant }]);
-        setTimeout(() => setUiToasts(prev => prev.filter(t => t.id !== id)), 3000);
-    };
+    const { toast } = useToast();
 
     const [isGenerating, setIsGenerating] = useState<number | null>(null);
     const [isGeneratingDecisions, setIsGeneratingDecisions] = useState(false);
-    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-    const [saveNameInput, setSaveNameInput] = useState("");
 
     const defaultValues = useMemo<FormData>(() => ({
         id: `veli_${Date.now()}`,
@@ -144,6 +135,35 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
         }
     }, [selectedRecordId, archives, form, handleNewRecord]);
     
+    const onSubmit = (values: FormData) => {
+        const docId = values.id || `veli_${Date.now()}`;
+        if (!values.id) {
+            form.setValue('id', docId);
+            values.id = docId;
+        }
+
+        const newDoc: VeliToplantisiDocument = {
+            id: docId,
+            name: `${values.academicYear} - ${values.sinif} Veli Toplantısı`,
+            date: new Date().toLocaleDateString('tr-TR'),
+            data: values,
+        };
+
+        setLocalDb(prev => {
+            const existingIndex = (prev.veliToplantisiDocuments || []).findIndex(r => r.id === docId);
+            const newArchives = [...(prev.veliToplantisiDocuments || [])];
+            if (existingIndex > -1) {
+                newArchives[existingIndex] = newDoc;
+            } else {
+                newArchives.unshift(newDoc);
+            }
+            return { ...prev, veliToplantisiDocuments: newArchives };
+        });
+
+        setSelectedRecordId(docId);
+        toast({ title: "Kaydedildi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
+    };
+
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
         if (!agendaTitle) {
@@ -192,41 +212,6 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
         } finally {
             setIsGeneratingDecisions(false);
         }
-    };
-
-    const openSaveDialog = () => {
-        const vals = form.getValues();
-        setSaveNameInput(selectedRecordId ? archives.find(r => r.id === selectedRecordId)?.name || `${vals.academicYear} - ${vals.sinif} Veli Toplantısı` : `${vals.academicYear} - ${vals.sinif} Veli Toplantısı`);
-        setIsSaveDialogOpen(true);
-    };
-
-    const handleSaveToArchive = () => {
-        if (!saveNameInput.trim()) return;
-        const currentData = form.getValues();
-        const docId = currentData.id || `veli_${Date.now()}`;
-        form.setValue('id', docId);
-
-        const newDoc: VeliToplantisiDocument = {
-            id: docId,
-            name: saveNameInput,
-            date: new Date().toLocaleDateString('tr-TR'),
-            data: form.getValues(),
-        };
-        
-        setLocalDb(prev => {
-            const existingIndex = (prev.veliToplantisiDocuments || []).findIndex(r => r.id === newDoc.id);
-            const newArchives = [...(prev.veliToplantisiDocuments || [])];
-            if (existingIndex > -1) {
-                newArchives[existingIndex] = newDoc;
-            } else {
-                newArchives.unshift(newDoc);
-            }
-            return { ...prev, veliToplantisiDocuments: newArchives };
-        });
-        
-        setIsSaveDialogOpen(false);
-        setSelectedRecordId(newDoc.id);
-        toast({ title: "Arşivlendi", description: "Tutanak başarıyla kaydedildi.", variant: "success" });
     };
     
     const draggedItem = useRef<number | null>(null);
@@ -301,7 +286,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button onClick={openSaveDialog} variant="outline"><Save className="mr-2 h-4 w-4"/> Arşive Kaydet</Button>
+                    <Button type="submit" form="veli-form"><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
                     <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                 </div>
             </header>
@@ -318,7 +303,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                 </div>
                 <div className="md:col-span-3">
                      <Form {...form}>
-                         <form className="space-y-8">
+                         <form id="veli-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                             <Card>
                                 <CardHeader><CardTitle>Toplantı Bilgileri</CardTitle></CardHeader>
                                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
