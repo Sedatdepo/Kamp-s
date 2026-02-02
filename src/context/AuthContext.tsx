@@ -82,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (auth) {
         await firebaseSignOut(auth);
     }
-    localStorage.removeItem('appUser');
+    // We don't remove appUser from localStorage for students
+    // to allow offline access to their last known state.
+    // It will be cleared on the next successful non-student login.
     setAppUser(null);
     router.push('/');
   }, [auth, router]);
@@ -90,17 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!auth || !db) {
         setLoading(false);
-        const storedUser = localStorage.getItem('appUser');
-        if (storedUser) {
-            try {
-                const parsedUser = JSON.parse(storedUser);
-                if (parsedUser.type === 'student') {
-                    setAppUser(parsedUser);
-                }
-            } catch (e) {
-                localStorage.removeItem('appUser');
-            }
-        }
         return;
     }
 
@@ -147,7 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
                         const userPayload = { type: 'student' as 'student', data: studentData };
                         setAppUser(userPayload);
-                        localStorage.setItem('appUser', JSON.stringify(userPayload));
                     } else {
                         signOut(); // Student doc deleted, sign out.
                     }
@@ -159,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setAppUser(null);
-        localStorage.removeItem('appUser');
       }
       setLoading(false);
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext } from 'react';
 import { 
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
@@ -8,7 +8,7 @@ import {
     InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument
 } from '@/lib/types';
 
-// localStorage anahtarı
+// localStorage anahtarı (artık kullanılmıyor ama referans olarak kalabilir)
 export const DB_KEY = 'ito_kampus_database';
 
 // Veritabanı yapısı

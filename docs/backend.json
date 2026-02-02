@@ -270,6 +270,19 @@
         "principalName"
       ]
     },
+    "TeacherData": {
+      "title": "Teacher Data",
+      "type": "object",
+      "description": "Stores user-specific application data like archived documents, plans, and settings for a teacher.",
+      "properties": {
+        "annualPlans": { "type": "array" },
+        "dilekceDocuments": { "type": "array" },
+        "disciplineRecords": { "type": "array" },
+        "sokDocuments": { "type": "array" },
+        "veliToplantisiDocuments": { "type": "array" },
+        "zumreDocuments": { "type": "array" }
+      }
+    },
     "ClassCode": {
       "title": "Class Code",
       "type": "object",
@@ -459,6 +472,22 @@
             {
               "name": "teacherId",
               "description": "The unique identifier for the teacher."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teacherData/{teacherId}",
+        "definition": {
+          "entityName": "TeacherData",
+          "schema": {
+            "$ref": "#/backend/entities/TeacherData"
+          },
+          "description": "A single document containing all archived data and user settings for a specific teacher, ensuring data portability.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The unique ID of the teacher, matching their auth UID."
             }
           ]
         }
