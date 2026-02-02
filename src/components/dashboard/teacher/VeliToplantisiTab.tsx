@@ -104,7 +104,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
     });
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
-    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
+    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
@@ -290,7 +290,7 @@ export default function VeliToplantisiTab({ teacherProfile }: { teacherProfile: 
                     <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                 </div>
             </header>
-            <main className="max-w-5xl mx-auto p-6 grid md:grid-cols-4 gap-8">
+            <main className="max-w-7xl mx-auto p-6 grid md:grid-cols-4 gap-8">
                  <div className="md:col-span-1 space-y-4">
                     <RecordManager
                         records={(archives || []).map(r => ({ id: r.id, name: r.name }))}

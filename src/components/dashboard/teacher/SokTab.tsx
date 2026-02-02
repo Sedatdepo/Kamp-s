@@ -8,7 +8,7 @@ import { Home, Save, FileDown, Users, PlusCircle, Trash2, GripVertical, Wand2, U
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
@@ -19,7 +19,7 @@ import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
 
-// --- ZOD SCHEMA ---
+// --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
     id: z.string(),
     okulAdi: z.string().optional(),
@@ -42,7 +42,6 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// --- VARSAYILAN DEĞERLER ---
 const SOK_GUNDEM_MADDELERI = [
     "Açılış ve yoklama.",
     "Bir önceki toplantı tutanaklarının okunması ve değerlendirilmesi.",
@@ -107,7 +106,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
     });
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
-    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
+    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
@@ -228,16 +227,61 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
         draggedItem.current = null; draggedOverItem.current = null;
     };
     
+    const generateDocumentHTML = (data: FormData) => {
+        const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
+        const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
+        const gorusmelerHtml = data.gundemMaddeleri.map((item, index) => `
+            <div style="margin-top: 15px;">
+                <p style="margin:0; font-weight: bold;">${index + 1}. ${item.madde}</p>
+                <div style="text-indent: 0; margin-top: 5px;">${(data.gorusmeler[index]?.detay || 'Görüşülmedi.').replace(/\n/g, '<br/>')}</div>
+            </div>
+        `).join('');
+        const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${karar}</p>`).join('');
+        
+        return `
+          <!DOCTYPE html><html><head><meta charset="UTF-8"><title>ŞÖK Tutanağı</title>
+          <style>body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; } .container { width: 90%; margin: auto; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 5px; }</style>
+          </head><body><div class="container">
+              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? tr(data.okulAdi.toLocaleUpperCase('tr-TR')) : '...................... MÜDÜRLÜĞÜ'}<br/>${tr(data.academicYear)} EĞİTİM-ÖĞRETİM YILI ${tr(data.sinif)} SINIFI<br/>${tr(data.donem.toLocaleUpperCase('tr-TR'))} ŞUBE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
+              <br/>
+              <p><strong>Toplantı Tarihi:</strong> ${formattedDate} &nbsp;&nbsp; <strong>Saat:</strong> ${data.saat} &nbsp;&nbsp; <strong>Yer:</strong> ${data.yer}</p>
+              <br/>
+              <h4 style="text-decoration: underline;">GÜNDEM MADDELERİ</h4>${gundemHtml}
+              <h4 style="text-decoration: underline; margin-top: 20px;">GÜNDEMİN GÖRÜŞÜLMESİ</h4>${gorusmelerHtml}
+              <h4 style="text-decoration: underline; margin-top: 20px;">ALINAN KARARLAR</h4>${kararlarHtml}
+              <br/><br/>
+              <table style="page-break-inside: avoid;">
+                <tr style="background-color: #f0f0f0;"><th colspan="3">TOPLANTIYA KATILANLAR</th></tr>
+                <tr><th>Sıra</th><th>Branş / Adı Soyadı</th><th>İmza</th></tr>
+                ${data.katilimcilar.filter(k => k.brans).map((k, i) => `<tr><td style="text-align:center; width:50px;">${i + 1}</td><td><b>${k.brans}</b><br/>${k.adSoyad}</td><td></td></tr>`).join('')}
+              </table>
+              <br/><br/>
+              <div style="text-align: center; margin-left: 50%;">
+                  <p>UYGUNDUR<br/>${formattedDate}<br/>Okul Müdürü</p>
+              </div>
+          </div></body></html>
+        `;
+    };
+
     const handleExport = () => {
-        // This function would generate the RTF content and download it
-        toast({ title: "Başlatılıyor...", description: "Word belgesi oluşturuluyor." });
+        const content = generateDocumentHTML(form.getValues());
+        const filename = `SOK_Tutanagi_${form.getValues('sinif')}.doc`;
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "İndiriliyor", description: "Word dosyası oluşturuldu.", variant: "success" });
     };
 
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
              <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-100 p-2 rounded-lg text-blue-700"><Users className="h-6 w-6" /></div>
+                    <div className="bg-red-100 p-2 rounded-lg text-red-700"><Users className="h-6 w-6" /></div>
                     <div>
                         <h1 className="text-xl font-bold text-slate-900">ŞÖK Tutanak Modülü</h1>
                         <p className="text-xs text-slate-500">Şube Öğretmenler Kurulu Tutanakları</p>
@@ -245,7 +289,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" form="sok-form"><Save className="mr-2 h-4 w-4"/> Kaydet</Button>
-                    <Button onClick={handleExport} className="bg-blue-600 hover:bg-blue-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
+                    <Button onClick={handleExport} className="bg-red-600 hover:bg-red-700 text-white"><FileDown className="mr-2 h-4 w-4"/> Word</Button>
                 </div>
             </header>
             <main className="max-w-7xl mx-auto p-6 grid md:grid-cols-4 gap-8">

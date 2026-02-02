@@ -95,7 +95,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     });
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
-    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
+    const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
