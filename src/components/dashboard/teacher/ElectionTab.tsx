@@ -13,6 +13,7 @@ import {
   FileText,
   Save,
   MoreVertical,
+  Share2
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -48,7 +49,7 @@ import { exportElectionResultsToRtf } from '@/lib/word-export';
 import { useAuth } from '@/hooks/useAuth';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteField } from 'firebase/firestore';
 
 
 interface ElectionTabProps {
@@ -121,6 +122,33 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
             title: 'Hata',
             description: 'Güncelleme sırasında bir sorun oluştu.',
         });
+    }
+  };
+
+  const handleTogglePublish = async (checked: boolean) => {
+    if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    const publicViewRef = doc(db, 'publicViews', currentClass.id);
+    
+    try {
+        await updateDoc(classRef, { isElectionPublished: checked });
+        if (checked) {
+            const publicData = {
+                className: currentClass.name,
+                election: {
+                    type: electionData.type,
+                    candidates: electionData.candidates.map(c => ({ id: c.id, name: c.name, votes: c.votes })),
+                },
+            };
+            await setDoc(publicViewRef, publicData, { merge: true });
+            toast({ title: 'Seçim sonuçları yayınlandı!' });
+        } else {
+            await updateDoc(publicViewRef, { election: deleteField() });
+            toast({ title: 'Seçim sonuçları yayından kaldırıldı.' });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Yayın durumu değiştirilemedi.' });
     }
   };
 
@@ -307,6 +335,24 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                         <CardDescription>{electionInfo.title}</CardDescription>
                     </div>
                      <div className='flex items-center gap-2'>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="publish-election"
+                                checked={currentClass?.isElectionPublished || false}
+                                onCheckedChange={handleTogglePublish}
+                                disabled={!currentClass || !winner}
+                            />
+                            <Label htmlFor="publish-election" className="text-sm font-medium">Yayınla</Label>
+                        </div>
+                        {currentClass?.isElectionPublished && (
+                            <Button variant="outline" size="sm" onClick={() => {
+                                const link = `${window.location.origin}/view/election/${currentClass.code}`;
+                                navigator.clipboard.writeText(link);
+                                toast({ title: 'Paylaşım linki kopyalandı!' });
+                            }}>
+                                <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                            </Button>
+                        )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm">
@@ -382,4 +428,4 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
         </div>
     </div>
   );
-};
+}

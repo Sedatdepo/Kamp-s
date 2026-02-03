@@ -197,6 +197,7 @@ export interface Class {
   isRiskFormActive?: boolean;
   isInfoFormActive?: boolean;
   isElectionActive?: boolean;
+  isElectionPublished?: boolean;
   isClubSelectionActive?: boolean;
   isSociogramActive?: boolean;
   isDutyRosterPublished?: boolean;
