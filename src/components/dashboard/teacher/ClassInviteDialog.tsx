@@ -21,8 +21,8 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
   const { toast } = useToast();
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  // The invite link now points to the student tab with the class code
-  const inviteLink = `${window.location.origin}/?tab=student&code=${classCode}&invite=true`;
+  // The invite link now points to the new student portal entry page
+  const inviteLink = `${window.location.origin}/giris/${classCode}`;
 
   useEffect(() => {
     if (isOpen && inviteLink) {
@@ -45,34 +45,22 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
 
   const copyLink = async () => {
     try {
-      // Try the modern Clipboard API first
       await navigator.clipboard.writeText(inviteLink);
       toast({ title: 'Davet Linki Kopyalandı!' });
     } catch (err) {
-      // If it fails, use the fallback method
-      console.warn('Clipboard API failed, falling back to execCommand.', err);
-      
+      console.error('Clipboard API failed, falling back to execCommand.', err);
       const textArea = document.createElement("textarea");
       textArea.value = inviteLink;
-      
-      // Make the textarea invisible and prevent scrolling
       textArea.style.position = 'fixed';
       textArea.style.top = '-9999px';
       textArea.style.left = '-9999px';
-      
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      
       try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          toast({ title: 'Davet Linki Kopyalandı!' });
-        } else {
-          throw new Error('Fallback copy was unsuccessful.');
-        }
+        document.execCommand('copy');
+        toast({ title: 'Davet Linki Kopyalandı!' });
       } catch (fallbackErr) {
-        console.error('Fallback copy failed:', fallbackErr);
         toast({
           title: 'Kopyalama Başarısız',
           description: 'Link otomatik olarak kopyalanamadı. Lütfen manuel olarak kopyalayın.',
@@ -99,10 +87,10 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode />
-            {className} Sınıfına Davet Et
+            {className} Sınıf Portalı
           </DialogTitle>
           <DialogDescription>
-            Bu linki veya QR kodu öğrencilerle paylaşarak onların sınıfa kaydolmasını sağlayın.
+            Bu linki veya QR kodu öğrencilerle paylaşarak onların sınıfa ait bilgilere erişmesini sağlayın.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
@@ -117,7 +105,7 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
           </Button>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="invite-link">Paylaşılabilir Link</Label>
+          <Label htmlFor="invite-link">Paylaşılabilir Portal Linki</Label>
           <div className="flex gap-2">
             <Input id="invite-link" value={inviteLink} readOnly />
             <Button onClick={copyLink} size="icon" variant="outline">
