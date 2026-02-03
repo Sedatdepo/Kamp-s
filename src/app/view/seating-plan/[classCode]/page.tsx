@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { Student } from '@/lib/types';
@@ -67,26 +67,21 @@ export default function PublicSeatingPlanPage({ params }: { params: { classCode:
     useEffect(() => {
         const fetchPlan = async () => {
             if (!firestore) {
-                // This can happen on initial render before firebase is initialized
                 return;
             }
             setLoading(true);
             try {
-                const classCodesCol = collection(firestore, 'classCodes');
-                const q = query(classCodesCol, where('code', '==', params.classCode));
-                const classCodeSnap = await getDocs(q);
+                const classCodeRef = doc(firestore, 'classCodes', params.classCode);
+                const classCodeSnap = await getDoc(classCodeRef);
 
-                if (classCodeSnap.empty) {
+                if (!classCodeSnap.exists()) {
                     setError("Geçersiz veya bulunamayan sınıf kodu.");
                     setLoading(false);
                     return;
                 }
 
-                const classId = classCodeSnap.docs[0].id; // The document ID is the class code
-                const classDoc = classCodeSnap.docs[0].data();
-                
-                // Now use the classId from the document data to get the public view
-                const publicViewRef = doc(firestore, 'publicViews', classDoc.classId);
+                const classDocData = classCodeSnap.data();
+                const publicViewRef = doc(firestore, 'publicViews', classDocData.classId);
                 const docSnap = await getDoc(publicViewRef);
 
                 if (docSnap.exists() && docSnap.data().seatingPlan) {

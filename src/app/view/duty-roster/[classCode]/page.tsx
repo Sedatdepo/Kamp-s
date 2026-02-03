@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { RosterItem } from '@/lib/types';
@@ -63,19 +63,18 @@ export default function PublicDutyRosterPage({ params }: { params: { classCode: 
             setLoading(true);
 
             try {
-                const classCodesRef = collection(firestore, 'classCodes');
-                const q = query(classCodesRef, where('code', '==', params.classCode));
-                const querySnapshot = await getDocs(q);
+                const classCodeRef = doc(firestore, 'classCodes', params.classCode);
+                const classCodeSnap = await getDoc(classCodeRef);
 
-                if (querySnapshot.empty) {
+                if (!classCodeSnap.exists()) {
                     setError("Geçersiz veya bulunamayan sınıf kodu.");
                     setLoading(false);
                     return;
                 }
                 
-                const classDoc = querySnapshot.docs[0].data();
+                const classDocData = classCodeSnap.data();
                 
-                const publicViewRef = doc(firestore, 'publicViews', classDoc.classId);
+                const publicViewRef = doc(firestore, 'publicViews', classDocData.classId);
                 const docSnap = await getDoc(publicViewRef);
 
                 if (docSnap.exists() && docSnap.data().dutyRoster) {

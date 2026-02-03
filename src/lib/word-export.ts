@@ -115,6 +115,291 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
     `;
 }
 
+// --- DUTY ROSTER EXPORT ---
+interface ExportDutyRosterArgs {
+    roster: RosterItem[];
+    currentClass: Class;
+    teacherProfile: TeacherProfile | null;
+}
+export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: ExportDutyRosterArgs) {
+    const title = `${currentClass.name} SINIFI NÖBETÇİ ÖĞRENCİ LİSTESİ`;
+    const header = `
+        <div class="center">
+            <p class="header-p bold">${teacherProfile?.schoolName || '...'}</p>
+            <p class="header-p bold">${title}</p>
+        </div>
+        <br>
+    `;
+    const footer = `
+         <br><br><br>
+        <table class="no-border" style="width:100%;">
+            <tr>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">${teacherProfile?.name || '...'}</span><br/>
+                    Sınıf Rehber Öğretmeni
+                </td>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">${teacherProfile?.principalName || '...'}</span><br/>
+                    Okul Müdürü
+                </td>
+            </tr>
+        </table>
+    `;
+
+    const tableHeader = `
+        <tr>
+            <th>Tarih</th>
+            <th>Gün</th>
+            <th>Nöbetçi Öğrenciler</th>
+        </tr>
+    `;
+    const dataRows = roster.map(item => `
+        <tr>
+            <td>${item.date}</td>
+            <td>${item.day}</td>
+            <td>${item.student}</td>
+        </tr>
+    `).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- ELECTION RESULTS EXPORT ---
+interface ExportElectionResultsArgs {
+  electionResult: {
+    winner: Candidate;
+    runnerUp: Candidate | null;
+    allCandidates: Candidate[];
+  };
+  electionType: ElectionType;
+  currentClass: Class;
+  students: Student[];
+  teacherProfile: TeacherProfile | null;
+}
+export function exportElectionResultsToRtf({ electionResult, electionType, currentClass, teacherProfile, students }: ExportElectionResultsArgs) {
+    const { winner, runnerUp, allCandidates } = electionResult;
+
+    const electionInfoMap = {
+        class_president: { title: `SINIF BAŞKANI VE BAŞKAN YARDIMCISI SEÇİM SONUÇ TUTANAĞI`, winnerLabel: 'Sınıf Başkanı', runnerUpLabel: 'Sınıf Başkan Yrd.' },
+        school_representative: { title: `SINIF TEMSİLCİSİ SEÇİM SONUÇ TUTANAĞI`, winnerLabel: 'Sınıf Temsilcisi', runnerUpLabel: null },
+        honor_board: { title: `ONUR KURULU TEMSİLCİSİ SEÇİM SONUÇ TUTANAĞI`, winnerLabel: 'Onur Kurulu Temsilcisi', runnerUpLabel: null }
+    };
+
+    const electionInfo = electionInfoMap[electionType];
+    const reportTitle = electionInfo.title;
+    const title = `${currentClass.name} - Seçim Sonuçları`;
+    
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+
+    const candidatesTable = `
+        <h3>ADAYLAR VE ALDIKLARI OYLAR</h3>
+        <table>
+            <tr><th>Aday Öğrenci</th><th>Aldığı Oy Sayısı</th></tr>
+            ${allCandidates.map(c => `<tr><td>${c.name} (${c.number})</td><td class="center">${c.votes}</td></tr>`).join('')}
+        </table>
+    `;
+    
+    const resultsSection = `
+        <h3>SEÇİM SONUCU</h3>
+        <p>Yapılan oylama sonucunda;</p>
+        <p><b>${electionInfo.winnerLabel}:</b> ${winner.name} (${winner.votes} oy ile)</p>
+        ${runnerUp ? `<p><b>${electionInfo.runnerUpLabel}:</b> ${runnerUp.name} (${runnerUp.votes} oy ile)</p>` : ''}
+        <p>olarak seçilmişlerdir.</p>
+    `;
+
+    const summarySection = `
+        <h3>ÖZET</h3>
+        <p>Sınıf mevcudu: ${students.length}</p>
+        <p>Oy kullanan öğrenci sayısı: ${electionResult.allCandidates.reduce((acc, c) => acc + c.votes, 0)}</p>
+        <p>Geçerli oy sayısı: ${electionResult.allCandidates.reduce((acc, c) => acc + c.votes, 0)}</p>
+        <p>Geçersiz oy sayısı: 0</p>
+    `;
+
+    const content = `${header}${summarySection}${candidatesTable}${resultsSection}${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- SEATING PLAN EXPORT ---
+interface ExportSeatingPlanArgs {
+    seatingPlan: { [key: string]: Student };
+    rowCount: number;
+    colCount: number;
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+}
+export function exportSeatingPlanToRtf({ seatingPlan, rowCount, colCount, currentClass, teacherProfile }: ExportSeatingPlanArgs) {
+    const reportTitle = "Sınıf Oturma Planı";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    let deskHtml = '';
+    for (let r = 0; r < rowCount; r++) {
+        deskHtml += '<tr>';
+        for (let c = 0; c < colCount; c++) {
+            const student1 = seatingPlan[`${r}-${c}-0`];
+            const student2 = seatingPlan[`${r}-${c}-1`];
+            deskHtml += `
+                <td class="word-export-desk-container">
+                    <table class="word-export-desk">
+                        <tr>
+                            <td class="word-export-seat">${student1 ? `${student1.name}<br/>(${student1.number})` : 'Boş'}</td>
+                            <td class="word-export-seat">${student2 ? `${student2.name}<br/>(${student2.number})` : 'Boş'}</td>
+                        </tr>
+                    </table>
+                </td>
+            `;
+        }
+        deskHtml += '</tr>';
+    }
+
+    const content = `
+        ${header}
+        <div style="text-align:center; padding: 10px; background-color: #333; color: white; font-weight: bold; margin-bottom: 20px;">TAHTA</div>
+        <table style="border-collapse: separate; border-spacing: 10px;">
+            <tbody>${deskHtml}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- SOCIOGRAM EXPORT ---
+interface ExportSociogramArgs {
+    students: Student[];
+    analysis: {
+        popular: any[];
+        isolated: Student[];
+        rejected: any[];
+    };
+    currentClass: Class;
+    teacherProfile?: TeacherProfile | null;
+    survey: SociogramSurvey;
+    aiAnalysis: SociogramAnalysisOutput | null;
+}
+export function exportSociogramToRtf({ students, analysis, currentClass, teacherProfile, survey, aiAnalysis }: ExportSociogramArgs) {
+    const reportTitle = "Sosyometri Değerlendirme Raporu";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const surveySection = `
+        <h3>UYGULANAN ANKET</h3>
+        <p><b>Anket Başlığı:</b> ${survey.title}</p>
+        <ul>${survey.questions.filter(q=>q.active).map(q => `<li>${q.text} (${q.type === 'positive' ? 'Olumlu' : q.type === 'negative' ? 'Olumsuz' : 'Liderlik'}, ${q.maxSelections} seçim)</li>`).join('')}</ul>
+    `;
+    
+    const summarySection = `
+        <h3>GENEL DEĞERLENDİRME</h3>
+        <p><b>Sınıf Mevcudu:</b> ${students.length}</p>
+        <h4>Popüler Öğrenciler (En Çok Olumlu Seçim Alanlar)</h4>
+        <ul>${analysis.popular.map(p => `<li>${p.student.name} (${p.pos + p.lead} seçim)</li>`).join('')}</ul>
+        <h4>Reddedilen Öğrenciler (En Çok Olumsuz Seçim Alanlar)</h4>
+        <ul>${analysis.rejected.map(r => `<li>${r.student.name} (${r.neg} seçim)</li>`).join('')}</ul>
+        <h4>İzole Öğrenciler (Hiç Seçim Almayanlar)</h4>
+        <ul>${analysis.isolated.map(i => `<li>${i.name}</li>`).join('')}</ul>
+    `;
+
+    const aiSection = aiAnalysis ? `
+        <h3>YAPAY ZEKA ANALİZİ</h3>
+        <p><b>Sınıf Özeti:</b> ${aiAnalysis.classAnalysis.summary}</p>
+        <h4>Sınıf Liderleri</h4>
+        <ul>${aiAnalysis.classAnalysis.leaders.map(l => `<li><b>${l.student}:</b> ${l.reason}</li>`).join('')}</ul>
+        <h4>Gruplar (Klikler)</h4>
+        <ul>${aiAnalysis.classAnalysis.cliques.map(c => `<li><b>Üyeler:</b> ${c.members.join(', ')}<br><i>Açıklama:</i> ${c.description}</li>`).join('')}</ul>
+        <h4>Risk Grubu</h4>
+        <ul>${aiAnalysis.classAnalysis.risks.map(r => `<li><b>${r.student} (${r.reason}):</b> ${r.recommendation}</li>`).join('')}</ul>
+        <h4>Gerilimler</h4>
+        <ul>${aiAnalysis.classAnalysis.tensions.map(t => `<li><b>${t.students.join(' - ')}:</b> ${t.description}</li>`).join('')}</ul>
+    ` : '';
+    
+    const content = `${header}${surveySection}${summarySection}${aiSection}${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- DETAILED GRADES EXPORT ---
+interface ExportDetailedGradesArgs {
+    students: Student[];
+    currentClass: Class;
+    teacherProfile: TeacherProfile;
+    studentAverages: any[];
+    perfCriteria: Criterion[];
+    projCriteria: Criterion[];
+}
+
+export function exportDetailedGradesToRtf({
+    students,
+    currentClass,
+    teacherProfile,
+    studentAverages,
+    perfCriteria,
+    projCriteria,
+}: ExportDetailedGradesArgs) {
+    const reportTitle = "Detaylı Not Çizelgesi";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const calculateAvg = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): string => {
+        if (!scores || !criteria.length || Object.keys(scores).length === 0) return '-';
+        const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
+        if (totalMax === 0) return '0.00';
+        const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+        return ((totalScore / totalMax) * 100).toFixed(2);
+    };
+
+    const tableHeader = `
+        <tr>
+            <th rowspan="2">Öğrenci</th>
+            <th colspan="6">1. Dönem</th>
+            <th colspan="6">2. Dönem</th>
+        </tr>
+        <tr>
+            <th>1. Sınav</th><th>2. Sınav</th><th>1. Perf.</th><th>2. Perf.</th><th>Proje</th><th>Ort.</th>
+            <th>1. Sınav</th><th>2. Sınav</th><th>1. Perf.</th><th>2. Perf.</th><th>Proje</th><th>Ort.</th>
+        </tr>
+    `;
+
+    const dataRows = students.map(student => {
+        const term1 = student.term1Grades || {};
+        const term2 = student.term2Grades || {};
+        const averages = studentAverages.find(a => a.studentId === student.id);
+        
+        return `
+            <tr>
+                <td>${student.name}</td>
+                <td class="center">${term1.exam1 ?? '-'}</td>
+                <td class="center">${term1.exam2 ?? '-'}</td>
+                <td class="center">${calculateAvg(term1.scores1, perfCriteria)}</td>
+                <td class="center">${calculateAvg(term1.scores2, perfCriteria)}</td>
+                <td class="center">${student.hasProject ? calculateAvg(term1.projectScores, projCriteria) : 'N/A'}</td>
+                <td class="center bold">${averages?.term1Avg.toFixed(2)}</td>
+                
+                <td class="center">${term2.exam1 ?? '-'}</td>
+                <td class="center">${term2.exam2 ?? '-'}</td>
+                <td class="center">${calculateAvg(term2.scores1, perfCriteria)}</td>
+                <td class="center">${calculateAvg(term2.scores2, perfCriteria)}</td>
+                <td class="center">${student.hasProject ? calculateAvg(term2.projectScores, projCriteria) : 'N/A'}</td>
+                <td class="center bold">${averages?.term2Avg.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+
 // --- MATERIAL CREATOR EXPORT ---
 interface ExportGeneratedMaterialArgs {
     content: GenerateMaterialOutput;
