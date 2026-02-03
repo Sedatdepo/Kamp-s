@@ -209,8 +209,9 @@ const EditableAssignment = ({
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-gray-100 border-t grid grid-cols-2 gap-3">
+            <div className="p-4 bg-gray-100 border-t grid grid-cols-3 gap-3">
                  <Button variant="outline" onClick={() => onShowRubric(assignment)}><ClipboardList size={14} className="mr-2"/>Kriterler</Button>
+                 <Button variant="outline" onClick={() => onPrint(assignment)}><FileDown size={14} className="mr-2" />İndir</Button>
                  <Button onClick={() => onAssign(assignment)} className={`${isPhysics ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-rose-600 hover:bg-rose-700'} text-white`}><Send size={14} className="mr-2"/>Sınıfa Ata</Button>
             </div>
         </div>

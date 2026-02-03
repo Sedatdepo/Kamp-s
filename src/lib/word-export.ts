@@ -380,9 +380,9 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
         // Family
         { label: 'Veli Telefonu', value: record.guardianPhone || '' },
         { label: 'Anne Hayatta mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
-        { label: 'Anne Eğitim/Meslek', value: `${record.motherEducation || 'N/A'} / ${record.motherJob || 'N/A'}` },
+        { label: 'Anne Eğitim / Meslek', value: `${record.motherEducation || 'N/A'} / ${record.motherJob || 'N/A'}` },
         { label: 'Baba Hayatta mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
-        { label: 'Baba Eğitim/Meslek', value: `${record.fatherEducation || 'N/A'} / ${record.fatherJob || 'N/A'}` },
+        { label: 'Baba Eğitim / Meslek', value: `${record.fatherEducation || 'N/A'} / ${record.fatherJob || 'N/A'}` },
         { label: 'Kiminle Yaşıyor?', value: record.familyLivesWith || '' },
         { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
         { label: 'Üvey Kardeşi Var Mı?', value: record.hasStepSibling === 'yes' ? 'Evet' : 'Hayır' },
@@ -536,7 +536,7 @@ export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfil
     const filename = `${title.replace(/ /g, '_')}.rtf`;
 
     const rubricHtml = `
-        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">4. Değerlendirme Kriterleri</h2>
+        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Değerlendirme Kriterleri</h2>
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
             <thead>
                 <tr style="background-color: #f2f2f2;">
@@ -561,6 +561,13 @@ export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfil
         </table>
     `;
 
+    const questionsHtml = assignment.questions && assignment.questions.length > 0 ? `
+        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Sorular</h2>
+        <ol>
+            ${assignment.questions.map((q: any) => `<li><p>${q.text}</p></li>`).join('')}
+        </ol>
+    ` : '';
+
     const content = `
       <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 2cm;">
         <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
@@ -582,8 +589,9 @@ export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfil
           <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">2. Yönerge</h2>
           <p>${assignment.instructions}</p>
         </div>
+        ${questionsHtml}
         <div>
-          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">3. Teslim Şartları</h2>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Teslim Şartları</h2>
           <ul>
             <li>Bu ödev <b>${assignment.formats}</b> formatında hazırlanmalıdır.</li>
             <li>Dijital dosya boyutu <b>${assignment.size}</b>'ı geçmemelidir.</li>
