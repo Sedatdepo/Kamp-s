@@ -3,96 +3,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
-    function isSignedIn() {
-      return request.auth != null;
+    // Kurallar tamamen kaldırıldı.
+    match /{document=**} {
+      allow read, write: if true;
     }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isTeacher() {
-      // Bir kullanıcının 'teachers' koleksiyonunda belgesi varsa öğretmendir.
-      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    // Sınıfın sahibi olan öğretmen mi? (Tekil okuma/yazma için)
-    function isClassOwner(classId) {
-      // Öğretmen olmalı VE ilgili sınıfın 'teacherId' alanı kendi ID'si olmalı.
-      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-      return isTeacher() && classDoc.data.teacherId == request.auth.uid;
-    }
-    
-    function isClassPublic(classId) {
-      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-      return classDoc.data.isSeatingPlanPublished == true || classDoc.data.isDutyRosterPublished == true;
-    }
-
-    // --- ÖĞRETMEN PROFİLİ ---
-    match /teachers/{teacherId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(teacherId);
-    }
-    
-    // --- SINIFLAR ---
-    match /classes/{classId} {
-      // DÜZELTİLDİ: 'request.query.where' geçerli bir komut değildir. 
-      // Güvenlik, istemciden gelen ve öğretmenin kendi ID'sini içeren 'where' sorgusuna dayanır.
-      allow list: if isTeacher();
-      
-      allow get: if isClassOwner(classId) || isClassPublic(classId);
-      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isClassOwner(classId);
-
-      // --- SINIF ALT KOLEKSİYONLARI ---
-      match /{allChildren=**} {
-        // Bir öğretmen, kendi sınıfının altındaki tüm belgelere (öğrenciler, ödevler vb.) tam erişime sahiptir.
-        allow read, write: if isClassOwner(classId);
-      }
-    }
-
-    // --- YENİ KURAL EKLENDİ ---
-    match /students/{studentId} {
-      // Öğretmen, sadece kendi `teacherId`'sine sahip öğrencileri okuyabilir.
-      allow get: if isTeacher() && resource.data.teacherId == request.auth.uid;
-      // Öğretmen, sadece `teacherId`'yi filtreleyen sorgularla listeleme yapabilir.
-      allow list: if isTeacher();
-      // Öğretmen, sadece kendi `teacherId`'sini içeren öğrenci belgeleri oluşturabilir/güncelleyebilir.
-      allow write: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-    }
-    
-    // --- TOP-LEVEL KOLEKSİYONLAR (Öğretmene Özel) ---
-    match /lessons/{lessonId} {
-      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
-    }
-    
-    match /riskFactors/{riskFactorId} {
-      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
-    }
-
-    match /questions/{questionId} {
-      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
-    }
-
-    match /kazanims/{kazanimId} {
-      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
-    }
-    
-    // --- GENEL ERİŞİM ---
-    match /classCodes/{code} {
-      allow get: if true;
-    }
-    
-    // This is a root collection for teacher-specific archived documents.
-    // It should only be writeable by the owner teacher.
-    match /teacherData/{teacherId} {
-        allow read, write: if isOwner(teacherId);
-    }
-    
-    // --- KULLANILMAYAN KURALLAR ---
-    match /infoForms/{formId} { allow read, write: if false; }
-    match /messages/{messageId} { allow read, write: if false; }
   }
 }

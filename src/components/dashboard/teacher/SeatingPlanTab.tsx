@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -13,8 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
-import { FileDown, Share, Copy } from 'lucide-react'; // Added Copy
-import { Switch } from '@/components/ui/switch';
+import { FileDown } from 'lucide-react';
 
 
 interface SeatingPlanTabProps {
@@ -30,14 +27,6 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     const [colCount, setColCount] = useState(currentClass?.seatingPlanCols || 3);
     const [seatingPlan, setSeatingPlan] = useState<{ [key: string]: string }>(currentClass?.seatingPlan || {});
     
-    const shareableLink = useMemo(() => {
-        if (typeof window !== 'undefined' && currentClass?.code) {
-            return `${window.location.origin}/view/seating-plan/${currentClass.code}`;
-        }
-        return '';
-    }, [currentClass?.code]);
-
-
     useEffect(() => {
         setRowCount(currentClass?.seatingPlanRows || 4);
         setColCount(currentClass?.seatingPlanCols || 3);
@@ -95,22 +84,6 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
         });
     };
     
-    const handleTogglePublish = async (checked: boolean) => {
-        if (!currentClass || !db) return;
-        const classRef = doc(db, 'classes', currentClass.id);
-        await updateDoc(classRef, { isSeatingPlanPublished: checked });
-        toast({ title: `Oturma planı öğrencilerle ${checked ? 'paylaşıldı' : 'paylaşımı durduruldu'}.` });
-    };
-
-    const copyShareLink = () => {
-        navigator.clipboard.writeText(shareableLink).then(() => {
-            toast({ title: 'Paylaşım linki kopyalandı!' });
-        }).catch(err => {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Link kopyalanamadı.' });
-        });
-    };
-
-
     if (!students) return <p>Öğrenci verisi yükleniyor...</p>;
     
     return (
@@ -135,28 +108,6 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                                 <FileDown className="mr-2 h-4 w-4"/> Word İndir
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Share /> Paylaşım</CardTitle>
-                    </CardHeader>
-                     <CardContent className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="publish-plan"
-                                checked={currentClass?.isSeatingPlanPublished || false}
-                                onCheckedChange={handleTogglePublish}
-                                disabled={!currentClass}
-                            />
-                            <Label htmlFor="publish-plan">Öğrencilerle Paylaş</Label>
-                        </div>
-                        {currentClass?.isSeatingPlanPublished && (
-                            <div className="flex items-center gap-2">
-                                <Input value={shareableLink} readOnly />
-                                <Button size="icon" onClick={copyShareLink}><Copy className="h-4 w-4" /></Button>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             </div>
