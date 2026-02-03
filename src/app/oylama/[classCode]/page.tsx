@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
 
 export default function OylamaPage() {
     const params = useParams();
@@ -192,3 +192,4 @@ export default function OylamaPage() {
         </div>
     );
 }
+    
