@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteField } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
-import { FileDown } from 'lucide-react';
+import { FileDown, Share2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 
 interface SeatingPlanTabProps {
@@ -44,13 +46,10 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     
     const handleSeatChange = (key: string, studentId: string) => {
         const newPlan = { ...seatingPlan };
-        // Check if the student is already seated and remove them from their old seat
         const oldKey = Object.keys(newPlan).find(k => newPlan[k] === studentId);
         if (oldKey) {
             delete newPlan[oldKey];
         }
-
-        // Assign to new seat
         if (studentId === "empty") { 
             delete newPlan[key]; 
         } else { 
@@ -59,6 +58,34 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
         setSeatingPlan(newPlan);
     };
 
+    const handlePublishToggle = async (isPublished: boolean) => {
+        if (!db || !currentClass) return;
+        const classRef = doc(db, 'classes', currentClass.id);
+        const publicViewRef = doc(db, 'publicViews', currentClass.id);
+
+        try {
+            await updateDoc(classRef, { isSeatingPlanPublished: isPublished });
+            if (isPublished) {
+                const publicData = {
+                    className: currentClass.name,
+                    seatingPlan: {
+                        rowCount: rowCount,
+                        colCount: colCount,
+                        plan: seatingPlan,
+                        students: students.map(s => ({ id: s.id, name: s.name, number: s.number })),
+                    }
+                };
+                await setDoc(publicViewRef, publicData, { merge: true });
+                toast({ title: 'Oturma planı yayınlandı!' });
+            } else {
+                await updateDoc(publicViewRef, { seatingPlan: deleteField() });
+                toast({ title: 'Oturma planı yayından kaldırıldı.' });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Yayın durumu değiştirilemedi.' });
+        }
+    };
 
     const handleExport = () => {
         if (!currentClass || !students) {
@@ -102,7 +129,26 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                             <Label>Sütun Sayısı (Yatay)</Label>
                             <Input type="number" value={colCount} onChange={e => setColCount(Number(e.target.value))} />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center space-x-2 pt-4 border-t">
+                            <Switch 
+                                id="publish-plan" 
+                                checked={currentClass?.isSeatingPlanPublished || false}
+                                onCheckedChange={handlePublishToggle}
+                            />
+                            <Label htmlFor="publish-plan">Öğrencilerle Paylaş</Label>
+                        </div>
+                        {currentClass?.isSeatingPlanPublished && (
+                            <div className="mt-2">
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    const link = `${window.location.origin}/view/seating-plan/${currentClass.code}`;
+                                    navigator.clipboard.writeText(link);
+                                    toast({ title: 'Paylaşım linki kopyalandı!' });
+                                }}>
+                                    <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                                </Button>
+                            </div>
+                        )}
+                        <div className="flex gap-2 pt-4 border-t">
                             <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
                             <Button onClick={handleExport} variant="outline" className="w-full">
                                 <FileDown className="mr-2 h-4 w-4"/> Word İndir

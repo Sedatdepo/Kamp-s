@@ -1,8 +1,9 @@
+
 'use client';
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Calendar, Download, Users, RotateCcw, School, Upload, FileText, Share } from 'lucide-react';
+import { Calendar, Download, Users, RotateCcw, School, Upload, FileText, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { exportDutyRosterToRtf } from '@/lib/word-export';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteField } from 'firebase/firestore';
 
 
 export function DutyRosterTab({ classes, students: allStudents, teacherProfile } : { classes: Class[], students: DutyStudent[], teacherProfile: TeacherProfile | null }) {
@@ -44,7 +45,6 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
 
   const daysMap = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
-  // --- LİSTE OLUŞTURMA MANTIĞI ---
   const generateRoster = async () => {
     if (students.length === 0) {
       toast({ title: "Hata", description: "Lütfen önce öğrenci listesi olan bir sınıf seçin.", variant: "destructive" });
@@ -126,8 +126,25 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
   const handleTogglePublish = async (checked: boolean) => {
     if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', currentClass.id);
-    await updateDoc(classRef, { isDutyRosterPublished: checked });
-    toast({ title: `Nöbet listesi öğrencilerle ${checked ? 'paylaşıldı' : 'paylaşımı durduruldu'}.` });
+    const publicViewRef = doc(db, 'publicViews', currentClass.id);
+    
+    try {
+        await updateDoc(classRef, { isDutyRosterPublished: checked });
+        if (checked) {
+            const publicData = {
+                className: currentClass.name,
+                dutyRoster: roster,
+            };
+            await setDoc(publicViewRef, publicData, { merge: true });
+            toast({ title: 'Nöbet listesi yayınlandı!' });
+        } else {
+            await updateDoc(publicViewRef, { dutyRoster: deleteField() });
+            toast({ title: 'Nöbet listesi yayından kaldırıldı.' });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Yayın durumu değiştirilemedi.' });
+    }
   };
 
     if (!teacherProfile || !classes) {
@@ -138,7 +155,6 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
     <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-800">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* --- SOL PANEL: AYARLAR --- */}
         <div className="md:col-span-1 space-y-6">
           
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -175,7 +191,6 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
                     {students.length} Öğrenci
                 </div>
             </div>
-
 
             <div className="mb-4 grid grid-cols-2 gap-3">
               <div>
@@ -222,7 +237,6 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
           </div>
         </div>
 
-        {/* --- SAĞ PANEL: ÖNİZLEME VE ÇIKTI --- */}
         <div className="md:col-span-2 space-y-4">
           
           {nextStartInfo && (
@@ -241,13 +255,22 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
 
           <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 min-h-[600px] relative overflow-x-auto">
             <div className="absolute top-4 right-4 flex items-center space-x-2">
-                <Label htmlFor="publish-roster" className="text-sm font-medium">Öğrencilerle Paylaş</Label>
                 <Switch
                     id="publish-roster"
                     checked={currentClass?.isDutyRosterPublished || false}
                     onCheckedChange={handleTogglePublish}
-                    disabled={!currentClass}
+                    disabled={!currentClass || roster.length === 0}
                 />
+                <Label htmlFor="publish-roster" className="text-sm font-medium">Öğrencilerle Paylaş</Label>
+                {currentClass?.isDutyRosterPublished && (
+                     <Button variant="outline" size="sm" onClick={() => {
+                        const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
+                        navigator.clipboard.writeText(link);
+                        toast({ title: 'Paylaşım linki kopyalandı!' });
+                    }}>
+                        <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                    </Button>
+                )}
             </div>
             {roster.length > 0 ? (
               <div className="w-full">

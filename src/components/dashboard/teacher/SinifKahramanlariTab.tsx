@@ -1,13 +1,13 @@
 
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Class } from '@/lib/types';
-import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, increment, arrayUnion, arrayRemove, setDoc, deleteField } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
-  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle, Plus
+  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle, Plus, Share2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,8 +69,32 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
   const handleToggleGamification = async (checked: boolean) => {
     if (!currentClass || !db) return;
     const classRef = doc(db, 'classes', currentClass.id);
-    await updateDoc(classRef, { isGamificationActive: checked });
-    toast({ title: `Oyunlaştırma modülü öğrenciler için ${checked ? 'aktif' : 'pasif'} edildi.` });
+    const publicViewRef = doc(db, 'publicViews', currentClass.id);
+
+    try {
+        await updateDoc(classRef, { isGamificationActive: checked });
+        if (checked) {
+             const publicData = {
+                className: currentClass.name,
+                gamification: {
+                    students: students.map(s => ({
+                        id: s.id,
+                        name: s.name,
+                        number: s.number,
+                        behaviorScore: s.behaviorScore,
+                        badges: s.badges || [],
+                    })),
+                }
+            };
+            await setDoc(publicViewRef, publicData, { merge: true });
+            toast({ title: 'Oyunlaştırma modülü yayınlandı!' });
+        } else {
+            await updateDoc(publicViewRef, { gamification: deleteField() });
+            toast({ title: 'Oyunlaştırma modülü yayından kaldırıldı.' });
+        }
+    } catch(error) {
+        toast({ title: `Oyunlaştırma modülü öğrenciler için ${checked ? 'aktif' : 'pasif'} edildi.` });
+    }
   };
 
   const updatePoints = async (student: Student, points: number, reason: string) => {
@@ -126,7 +150,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
           className: "bg-yellow-50 border-yellow-200 text-yellow-800"
         });
       }
-      setIsModalOpen(false); // Modalı kapat
+      setIsModalOpen(false);
     } catch (error) {
       console.error("Rozet işlemi hatası:", error);
       toast({
@@ -136,7 +160,6 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
       });
     }
   };
-
 
   const openStudentModal = (student: Student) => {
     setSelectedStudent(student);
@@ -157,13 +180,22 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                 <CardDescription>Öğrencilerinize puan ve rozetler vererek onları motive edin.</CardDescription>
               </div>
               <div className="flex items-center space-x-2">
-                <Label htmlFor="gamification-toggle">Öğrencilere Göster</Label>
                 <Switch
                   id="gamification-toggle"
                   checked={currentClass?.isGamificationActive ?? false}
                   onCheckedChange={handleToggleGamification}
                   disabled={!currentClass}
                 />
+                <Label htmlFor="gamification-toggle">Öğrencilerle Paylaş</Label>
+                 {currentClass?.isGamificationActive && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                        const link = `${window.location.origin}/view/gamification/${currentClass.code}`;
+                        navigator.clipboard.writeText(link);
+                        toast({ title: 'Paylaşım linki kopyalandı!' });
+                    }}>
+                        <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                    </Button>
+                )}
               </div>
             </div>
         </CardHeader>
