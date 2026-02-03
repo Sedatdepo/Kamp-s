@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,11 +7,9 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RegularHomeworkTab } from '@/components/dashboard/teacher/homework/RegularHomeworkTab';
 import { PerformanceHomeworkTab } from '@/components/dashboard/teacher/homework/PerformanceHomeworkTab';
 
-export default function StudentHomeworkPage() {
+export default function StudentPerformanceHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
@@ -50,7 +47,7 @@ export default function StudentHomeworkPage() {
                  <div className="flex items-center gap-4">
                     <Logo className="h-10 w-10 text-primary"/>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Ödevlerim</h1>
+                        <h1 className="text-xl font-bold text-gray-800">Performans Ödevlerim</h1>
                         <p className="text-sm text-muted-foreground">{student.name}</p>
                     </div>
                 </div>
@@ -62,18 +59,7 @@ export default function StudentHomeworkPage() {
                 </Button>
             </header>
             <main className="max-w-4xl mx-auto">
-                 <Tabs defaultValue="regular">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="regular">Günlük Ödevlerim</TabsTrigger>
-                        <TabsTrigger value="performance">Performans Ödevlerim</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="regular" className="mt-4">
-                        <RegularHomeworkTab student={student} classId={student.classId} />
-                    </TabsContent>
-                    <TabsContent value="performance" className="mt-4">
-                        <PerformanceHomeworkTab student={student} classId={student.classId} />
-                    </TabsContent>
-                 </Tabs>
+                 <PerformanceHomeworkTab student={student} classId={student.classId} />
             </main>
         </div>
     );

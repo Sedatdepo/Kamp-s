@@ -176,12 +176,12 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
     const { db } = useAuth();
     const { toast } = useToast();
 
-    const handleTogglePublish = async (checked: boolean) => {
+    const handleTogglePublish = async (field: 'isRegularHomeworkPublished' | 'isPerformanceHomeworkPublished' | 'isProjectHomeworkPublished', checked: boolean) => {
         if (!currentClass || !db) return;
         const classRef = doc(db, 'classes', classId);
         try {
-            await updateDoc(classRef, { isHomeworkPublished: checked });
-            toast({ title: 'Başarılı', description: `Ödevler modülü öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+            await updateDoc(classRef, { [field]: checked });
+            toast({ title: 'Başarılı', description: `Modül yayın durumu güncellendi.` });
         } catch {
             toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
         }
@@ -214,15 +214,22 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
                     </TabsList>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
-                <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                    <Switch
-                        id="publish-homeworks"
-                        checked={currentClass?.isHomeworkPublished || false}
-                        onCheckedChange={handleTogglePublish}
-                        disabled={!currentClass}
-                    />
-                    <Label htmlFor="publish-homeworks" className="text-sm font-medium">Yayınla</Label>
-                </div>
+                <Card className="ml-4 p-3 flex-shrink-0">
+                  <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
+                      <div className="flex items-center space-x-2">
+                          <Switch id="publish-regular" checked={currentClass?.isRegularHomeworkPublished || false} onCheckedChange={(c) => handleTogglePublish('isRegularHomeworkPublished', c)} disabled={!currentClass} />
+                          <Label htmlFor="publish-regular" className="text-xs font-medium">Günlük</Label>
+                      </div>
+                       <div className="flex items-center space-x-2">
+                          <Switch id="publish-performance" checked={currentClass?.isPerformanceHomeworkPublished || false} onCheckedChange={(c) => handleTogglePublish('isPerformanceHomeworkPublished', c)} disabled={!currentClass} />
+                          <Label htmlFor="publish-performance" className="text-xs font-medium">Performans</Label>
+                      </div>
+                       <div className="flex items-center space-x-2">
+                          <Switch id="publish-project" checked={currentClass?.isProjectHomeworkPublished || false} onCheckedChange={(c) => handleTogglePublish('isProjectHomeworkPublished', c)} disabled={!currentClass} />
+                          <Label htmlFor="publish-project" className="text-xs font-medium">Proje</Label>
+                      </div>
+                  </div>
+                </Card>
             </div>
             <TabsContent value="live" className="mt-4">
                 <LiveHomeworkManagement

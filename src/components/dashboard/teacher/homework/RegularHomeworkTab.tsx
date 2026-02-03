@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -289,57 +290,57 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
+export function RegularHomeworkTab({ student, classId, homeworks: passedHomeworks }: { student: Student; classId: string; homeworks?: Homework[] }) {
     const { db } = useFirebase();
     
     const regularHomeworksQuery = useMemoFirebase(() => {
-        if (!db || !classId) return null;
-        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
+        if (passedHomeworks || !db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', undefined));
-    }, [db, classId]);
+    }, [db, classId, passedHomeworks]);
     
-    const { data: regularHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
+    const { data: fetchedHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
     
+    const homeworks = passedHomeworks || fetchedHomeworks;
+
     const sortedHomeworks = useMemo(() => {
-        if (!regularHomeworks) return [];
-        return [...regularHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [regularHomeworks]);
+        if (!homeworks) return [];
+        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
 
-
-    if (homeworksLoading) {
+    if (homeworksLoading && !passedHomeworks) {
         return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
+            <Card>
+                <CardContent className="flex justify-center items-center p-6">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </CardContent>
+            </Card>
         );
     }
     
     return (
         <Card>
-        <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-                <BookText className="h-6 w-6"/>
-                Günlük Ödevlerim
-            </CardTitle>
-            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ScrollArea className="h-[60vh] pr-2">
-                <div className="space-y-4">
-                    {sortedHomeworks.length > 0 ? (
-                        sortedHomeworks.map((hw) => (
-                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                        ))
-                    ) : (
-                        <div className="text-center py-10 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
-                        </div>
-                    )}
-                </div>
-            </ScrollArea>
-        </CardContent>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <BookText className="h-6 w-6"/>
+                    Ödevlerim
+                </CardTitle>
+                <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-[60vh] pr-2">
+                    <div className="space-y-4">
+                        {sortedHomeworks.length > 0 ? (
+                            sortedHomeworks.map((hw) => (
+                                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
+                            ))
+                        ) : (
+                            <div className="text-center py-10 bg-muted/50 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </CardContent>
         </Card>
     );
 }
