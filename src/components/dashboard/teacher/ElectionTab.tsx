@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -280,12 +281,28 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                 <CardContent className="space-y-4">
                      <div className="flex items-center justify-between space-x-2 p-3 bg-muted rounded-lg">
                         <Label htmlFor="election-toggle" className="font-semibold">{currentClass?.isElectionActive ? 'Oylama Aktif' : 'Oylama Pasif'}</Label>
-                        <Switch 
-                            id="election-toggle" 
-                            checked={currentClass?.isElectionActive || false}
-                            onCheckedChange={handleToggleActive}
-                            disabled={!currentClass}
-                        />
+                        <div className="flex items-center gap-2">
+                           {currentClass?.isElectionActive && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        if(!currentClass?.code) return;
+                                        const link = `${window.location.origin}/oylama/${currentClass.code}`;
+                                        navigator.clipboard.writeText(link);
+                                        toast({ title: 'Oylama linki kopyalandı!' });
+                                    }}
+                                >
+                                    <Share2 className="mr-2 h-4 w-4" /> Oylama Linki
+                                </Button>
+                            )}
+                            <Switch 
+                                id="election-toggle" 
+                                checked={currentClass?.isElectionActive || false}
+                                onCheckedChange={handleToggleActive}
+                                disabled={!currentClass}
+                            />
+                        </div>
                     </div>
                     <div className="max-h-64 overflow-y-auto border rounded-md">
                         <Table>
