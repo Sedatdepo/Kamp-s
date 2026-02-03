@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import { doc, updateDoc, collection, addDoc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, Timestamp, query, where, writeBatch, setDoc, deleteField } from 'firebase/firestore';
 import { Class, Announcement, Message, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,9 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useCollection, useMemoFirebase } from '@/firebase';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+
 
 interface CommunicationTabProps {
   classId: string;
@@ -50,6 +53,30 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   const displayedAnnouncements = useMemo(() => {
     return currentClass?.announcements || [];
   }, [currentClass]);
+
+   const handleTogglePublish = async (checked: boolean) => {
+    if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    const publicViewRef = doc(db, 'publicViews', currentClass.id);
+    
+    try {
+        await updateDoc(classRef, { isAnnouncementsPublished: checked });
+        if (checked) {
+            const publicData = {
+                className: currentClass.name,
+                announcements: currentClass.announcements || [],
+            };
+            await setDoc(publicViewRef, { announcements: publicData.announcements, className: publicData.className }, { merge: true });
+            toast({ title: 'Duyurular yayınlandı!' });
+        } else {
+            await updateDoc(publicViewRef, { announcements: deleteField() });
+            toast({ title: 'Duyurular yayından kaldırıldı.' });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Yayın durumu değiştirilemedi.' });
+    }
+};
 
   const handleAddAnnouncement = async () => {
     if (!db || !announcementText.trim() || !currentClass) return;
@@ -119,10 +146,23 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   return (
     <Card>
         <CardHeader>
-          <CardTitle className="font-headline flex items-center gap-2">
-            <Megaphone className="h-6 w-6" /> Duyuru Paneli
-          </CardTitle>
-          <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="font-headline flex items-center gap-2">
+                <Megaphone className="h-6 w-6" /> Duyuru Paneli
+              </CardTitle>
+              <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.</CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Label htmlFor="publish-announcements">Yayınla</Label>
+                <Switch
+                    id="publish-announcements"
+                    checked={currentClass?.isAnnouncementsPublished || false}
+                    onCheckedChange={handleTogglePublish}
+                    disabled={!currentClass}
+                />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
             <Textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Duyuru metnini buraya yazın..." rows={4}/>

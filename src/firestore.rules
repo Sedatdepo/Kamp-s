@@ -20,11 +20,35 @@ service cloud.firestore {
                       exists(/databases/$(database)/documents/classes/$(viewId)) &&
                       get(/databases/$(database)/documents/classes/$(viewId)).data.teacherId == request.auth.uid;
     }
+
+    match /classCodes/{code} {
+        allow get: if true;
+        allow write: if request.auth != null && isTeacher(request.auth.uid);
+    }
+    
+    match /classes/{classId} {
+        allow get: if true; // Allow students to read class data
+        allow write: if request.auth != null && isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
+    }
+    
+    match /students/{studentId} {
+        allow get: if true;
+        allow write: if request.auth != null && isTeacher(request.auth.uid);
+    }
+
+    match /messages/{messageId} {
+        allow read, write: if request.auth != null && (request.resource.data.senderId == request.auth.uid || request.resource.data.receiverId == request.auth.uid);
+    }
     
     // Default open access for all other documents as per previous state
-    // We add a condition to NOT match our new secure collection.
+    // We add conditions to NOT match our new secure collections.
     match /{document=**} {
-      allow read, write: if request.path[0] != 'publicViews' && true;
+      allow read, write: if request.path[0] != 'publicViews' && 
+                           request.path[0] != 'classCodes' &&
+                           request.path[0] != 'classes' &&
+                           request.path[0] != 'students' &&
+                           request.path[0] != 'messages' &&
+                           true;
     }
   }
 }

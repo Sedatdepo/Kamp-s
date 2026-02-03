@@ -203,6 +203,7 @@ export interface Class {
   isDutyRosterPublished?: boolean;
   isSeatingPlanPublished?: boolean;
   isGamificationActive?: boolean;
+  isAnnouncementsPublished?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -390,7 +391,6 @@ export interface AnnualPlanEntry {
   degerlendirme: string;
   isDone: boolean;
   isSpecial: boolean; // For holidays etc.
-  dailyPlan: DailyPlan | null;
 }
 
 export interface AnnualPlan {
