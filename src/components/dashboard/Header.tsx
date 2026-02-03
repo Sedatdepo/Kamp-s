@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -33,13 +34,11 @@ export function Header() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Bu effect, bileşenin yalnızca istemci tarafında "hydrate" edildikten sonra çalışır.
-    // Bu, sunucu ve istemci arasındaki hydration uyuşmazlığı hatalarını önler.
     setIsClient(true);
   }, []);
 
 
-  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : appUser?.data.name;
+  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : '';
   const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
 
   return (
@@ -50,7 +49,7 @@ export function Header() {
             <span className="font-bold font-headline">KAMPÜS</span>
         </div>
         <div className="ml-auto">
-          {isClient ? (
+          {isClient && appUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
@@ -70,12 +69,6 @@ export function Header() {
                     <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                       <User className="mr-2 h-4 w-4" />
                       <span>Profil</span>
-                    </DropdownMenuItem>
-                  )}
-                  {appUser?.type === 'student' && (
-                    <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-student-settings'))}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Hesap Ayarları</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

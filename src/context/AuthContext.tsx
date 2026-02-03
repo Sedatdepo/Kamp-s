@@ -11,13 +11,11 @@ import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA
 import { useFirebase } from '@/firebase';
 
 export type AppUser = 
-  | { type: 'teacher'; data: User; profile: TeacherProfile }
-  | { type: 'student'; data: Student };
+  | { type: 'teacher'; data: User; profile: TeacherProfile };
 
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
-  signInStudent: (classCode: string, studentNumber: string, passwordFromForm: string) => Promise<void>;
   signInTeacher: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
@@ -65,16 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Keep track of student snapshot listener
-  const studentUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
   const teacherUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   const signOut = useCallback(async () => {
-    // Unsubscribe from any active listener
-    if (studentUnsubscribeRef.current) {
-        studentUnsubscribeRef.current();
-        studentUnsubscribeRef.current = null;
-    }
      if (teacherUnsubscribeRef.current) {
         teacherUnsubscribeRef.current();
         teacherUnsubscribeRef.current = null;
@@ -82,9 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (auth) {
         await firebaseSignOut(auth);
     }
-    // We don't remove appUser from localStorage for students
-    // to allow offline access to their last known state.
-    // It will be cleared on the next successful non-student login.
     setAppUser(null);
     router.push('/');
   }, [auth, router]);
@@ -98,54 +86,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       
-      // Clean up previous listeners
-      if (studentUnsubscribeRef.current) studentUnsubscribeRef.current();
       if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
-      studentUnsubscribeRef.current = null;
       teacherUnsubscribeRef.current = null;
 
       if (firebaseUser) {
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
-        
-        // Check if the user is a teacher first
         const teacherSnap = await getDoc(teacherRef);
         
         if (teacherSnap.exists()) {
-          // It's a teacher. Seed the database and set up a listener.
           await seedDatabase(db, firebaseUser.uid);
           
           teacherUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
             if (docSnap.exists()) {
                 const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
-                if (profile.name && profile.schoolName) { // Ensure profile is fully loaded
+                if (profile.name && profile.schoolName) {
                     setAppUser({ type: 'teacher', data: firebaseUser, profile });
                 }
             } else {
-                 signOut(); // Teacher doc deleted, sign out.
+                 signOut();
             }
           });
 
         } else {
-            // Not a teacher, check if it's a student with authUid
-            const studentQuery = query(collection(db, 'students'), where('authUid', '==', firebaseUser.uid));
-            const studentSnapshot = await getDocs(studentQuery);
-
-            if (!studentSnapshot.empty) {
-                const studentDoc = studentSnapshot.docs[0];
-                
-                studentUnsubscribeRef.current = onSnapshot(doc(db, 'students', studentDoc.id), (docSnap) => {
-                    if (docSnap.exists()) {
-                        const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
-                        const userPayload = { type: 'student' as 'student', data: studentData };
-                        setAppUser(userPayload);
-                    } else {
-                        signOut(); // Student doc deleted, sign out.
-                    }
-                });
-            } else {
-                // Not a recognized teacher or student, sign out.
-                await signOut();
-            }
+            await signOut();
         }
       } else {
         setAppUser(null);
@@ -155,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
         unsubscribeAuth();
-        if (studentUnsubscribeRef.current) studentUnsubscribeRef.current();
         if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
     };
   }, [auth, db, signOut]);
@@ -167,9 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isAuthRoute = pathname.startsWith('/dashboard');
 
         if (appUser) {
-            const targetDashboard = `/dashboard/${appUser.type}`;
+            const targetDashboard = `/dashboard/teacher`;
             if (appUser.type === 'teacher' && !appUser.profile?.id) {
-                // Teacher profile is still loading, don't redirect yet
                 return;
             }
             if (!pathname.startsWith(targetDashboard)) {
@@ -185,87 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInTeacher = async (email: string, password: string) => {
         if (!auth || !db) throw new Error("Kimlik doğrulama başlatılamadı.");
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle the rest
     };
 
-    const signInStudent = async (classCode: string, studentNumber: string, passwordFromForm: string) => {
-        if (!db || !auth) throw new Error("Veritabanı veya kimlik doğrulama başlatılamadı.");
-    
-        console.log(`Checking class code: ${classCode}`);
-        const classCodeRef = doc(db, 'classCodes', classCode);
-        const classCodeSnap = await getDoc(classCodeRef);
-    
-        if (!classCodeSnap.exists()) {
-            throw new Error("Sınıf kodu bulunamadı.");
-        }
-        
-        const classId = classCodeSnap.data().classId;
-        console.log(`Class ID found: ${classId}`);
-    
-        const q = query(collection(db, "students"), where("classId", "==", classId), where("number", "==", studentNumber));
-        const querySnapshot = await getDocs(q);
-    
-        if (querySnapshot.empty) {
-            console.log("No student found with that number in this class.");
-            throw new Error("Sınıf kodu veya öğrenci numarası hatalı.");
-        }
-    
-        const studentDoc = querySnapshot.docs[0];
-        const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
-        
-        const studentEmail = `s${studentData.number}@${studentData.classId.toLowerCase()}.ito-kampus.com`;
-    
-        try {
-            // First, try to sign in with the password as entered by the user
-            await signInWithEmailAndPassword(auth, studentEmail, passwordFromForm);
-        } catch (error: any) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                // If it's a first-time login attempt (user entered their student number)
-                if (passwordFromForm === studentNumber) {
-                    
-                    // This is the default password logic that ensures it's 6+ chars
-                    const defaultPassword = studentNumber.padEnd(6, '0');
-    
-                    try {
-                        // Try to create the user with the compliant default password
-                        const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, defaultPassword);
-                        await updateDoc(doc(db, 'students', studentData.id), { authUid: userCredential.user.uid });
-                        // User is created and logged in, will be forced to change password. This is the happy path for first login.
-                    } catch (creationError: any) {
-                        if (creationError.code === 'auth/email-already-in-use') {
-                            // This means the user account exists. This could happen if they tried to log in before,
-                            // the account was created with the default password, but they failed to change it and logged out.
-                            // Now we try to log them in with the *default* password.
-                            try {
-                                await signInWithEmailAndPassword(auth, studentEmail, defaultPassword);
-                                // If this works, they are logged in and will be forced to change password.
-                            } catch (defaultLoginError: any) {
-                                // If even the default password fails, it implies they must have already
-                                // successfully changed their password. So the password they entered originally
-                                // was simply incorrect.
-                                throw new Error("Girdiğiniz şifre hatalı.");
-                            }
-                        } else {
-                            // Another error during creation (not 'email-already-in-use')
-                            console.error("Student account creation failed:", creationError);
-                            throw new Error("Öğrenci hesabı oluşturulurken bir hata oluştu.");
-                        }
-                    }
-                } else {
-                    // The password entered was not the student number, so it's just a regular wrong password.
-                    throw new Error("Girdiğiniz şifre hatalı.");
-                }
-            } else {
-                // A different kind of auth error (e.g., network issue, too-many-requests)
-                throw error;
-            }
-        }
-    };
-  
   const contextValue = useMemo(() => ({ 
       appUser, 
       loading, 
-      signInStudent, 
       signInTeacher,
       signOut, 
       auth, 
