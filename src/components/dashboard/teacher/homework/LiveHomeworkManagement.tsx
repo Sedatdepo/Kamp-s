@@ -227,8 +227,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
                 questions: questions,
-                link: link.trim() || undefined,
-                linkText: linkText.trim() || undefined,
+                link: link.trim() || null,
+                linkText: linkText.trim() || null,
             };
 
             if (editingHomework) {
