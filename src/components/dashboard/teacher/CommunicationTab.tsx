@@ -98,6 +98,10 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
 
     try {
       await updateDoc(classRef, { announcements: updatedAnnouncements });
+      if (currentClass.isAnnouncementsPublished) {
+        const publicViewRef = doc(db, 'publicViews', classId);
+        await setDoc(publicViewRef, { announcements: updatedAnnouncements }, { merge: true });
+      }
       setAnnouncementText('');
       setLink('');
       setLinkText('');
@@ -113,6 +117,10 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     const updatedAnnouncements = (currentClass.announcements || []).filter((ann) => ann.id !== announcementId);
     try {
       await updateDoc(classRef, { announcements: updatedAnnouncements });
+       if (currentClass.isAnnouncementsPublished) {
+        const publicViewRef = doc(db, 'publicViews', classId);
+        await setDoc(publicViewRef, { announcements: updatedAnnouncements }, { merge: true });
+      }
       toast({ title: 'Duyuru silindi.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Duyuru silinemedi.' });
@@ -158,6 +166,10 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     });
     try {
         await updateDoc(classRef, { announcements: updatedAnnouncements });
+         if (currentClass.isAnnouncementsPublished) {
+            const publicViewRef = doc(db, 'publicViews', classId);
+            await setDoc(publicViewRef, { announcements: updatedAnnouncements }, { merge: true });
+        }
         toast({ title: 'Duyuru güncellendi.' });
         handleCancelEdit();
     } catch (error) {
@@ -403,5 +415,3 @@ export function CommunicationTab({ classId, currentClass }: { classId: string; c
     </Tabs>
   );
 }
-
-    
