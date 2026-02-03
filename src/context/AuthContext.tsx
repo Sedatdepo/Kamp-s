@@ -9,14 +9,17 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { Student, TeacherProfile } from '@/lib/types';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { useFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export type AppUser = 
-  | { type: 'teacher'; data: User; profile: TeacherProfile };
+  | { type: 'teacher'; data: User; profile: TeacherProfile }
+  | { type: 'student'; data: Student; user: User };
 
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signInTeacher: (email: string, password: string) => Promise<void>;
+  signInStudent: (classCode: string, schoolNumber: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -59,16 +62,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore: db, storage } = useFirebase();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
   const router = useRouter();
   const pathname = usePathname();
 
-  const teacherUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
+  const userUnsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   const signOut = useCallback(async () => {
-     if (teacherUnsubscribeRef.current) {
-        teacherUnsubscribeRef.current();
-        teacherUnsubscribeRef.current = null;
+     if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current();
+        userUnsubscribeRef.current = null;
     }
     if (auth) {
         await firebaseSignOut(auth);
@@ -86,8 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       
-      if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
-      teacherUnsubscribeRef.current = null;
+      if (userUnsubscribeRef.current) userUnsubscribeRef.current();
+      userUnsubscribeRef.current = null;
 
       if (firebaseUser) {
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
@@ -96,19 +100,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (teacherSnap.exists()) {
           await seedDatabase(db, firebaseUser.uid);
           
-          teacherUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
+          userUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
             if (docSnap.exists()) {
                 const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
-                if (profile.name && profile.schoolName) {
+                 if (profile.name && profile.schoolName) {
                     setAppUser({ type: 'teacher', data: firebaseUser, profile });
                 }
             } else {
                  signOut();
             }
           });
-
         } else {
+          // It might be a student
+          const studentsQuery = query(collection(db, "students"), where("authUid", "==", firebaseUser.uid));
+          const studentSnapshot = await getDocs(studentsQuery);
+
+          if (!studentSnapshot.empty) {
+            const studentDoc = studentSnapshot.docs[0];
+            userUnsubscribeRef.current = onSnapshot(studentDoc.ref, (docSnap) => {
+                if(docSnap.exists()){
+                     const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                     setAppUser({ type: 'student', data: studentData, user: firebaseUser });
+                } else {
+                     signOut();
+                }
+            });
+          } else {
             await signOut();
+          }
         }
       } else {
         setAppUser(null);
@@ -118,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
         unsubscribeAuth();
-        if (teacherUnsubscribeRef.current) teacherUnsubscribeRef.current();
+        if (userUnsubscribeRef.current) userUnsubscribeRef.current();
     };
   }, [auth, db, signOut]);
 
@@ -129,13 +148,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isAuthRoute = pathname.startsWith('/dashboard');
 
         if (appUser) {
-            const targetDashboard = `/dashboard/teacher`;
-            if (appUser.type === 'teacher' && !appUser.profile?.id) {
-                return;
+            const targetDashboard = `/dashboard/${appUser.type}`;
+            
+            if (appUser.type === 'teacher' && !appUser.profile?.id) return;
+            
+            if (appUser.type === 'student' && appUser.data.needsPasswordChange === true) {
+                 const settingsEvent = new CustomEvent('open-student-settings');
+                 window.dispatchEvent(settingsEvent);
             }
+
             if (!pathname.startsWith(targetDashboard)) {
                  router.push(targetDashboard);
             }
+
         } else {
             if (isAuthRoute) {
                 router.push('/');
@@ -148,10 +173,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signInWithEmailAndPassword(auth, email, password);
     };
 
+    const signInStudent = async (classCode: string, schoolNumber: string, password: string) => {
+        if (!auth || !db) throw new Error("Kimlik doğrulama başlatılamadı.");
+
+        const classCodeRef = doc(db, 'classCodes', classCode.toUpperCase());
+        const classCodeSnap = await getDoc(classCodeRef);
+        if(!classCodeSnap.exists()) {
+            throw { code: 'class-not-found' };
+        }
+        const { classId } = classCodeSnap.data();
+        
+        const q = query(collection(db, 'students'), where('classId', '==', classId), where('number', '==', schoolNumber));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            throw { code: 'student-not-found' };
+        }
+
+        const studentDoc = querySnapshot.docs[0];
+        const studentData = {id: studentDoc.id, ...studentDoc.data()} as Student;
+        const studentEmail = `${studentData.id}@kampus.app`;
+
+        try {
+            if (studentData.authUid) {
+                await signInWithEmailAndPassword(auth, studentEmail, password);
+            } else {
+                const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
+                const user = userCredential.user;
+                await updateDoc(studentDoc.ref, { authUid: user.uid, needsPasswordChange: true });
+                toast({ title: 'Hesabınız oluşturuldu!', description: 'Güvenliğiniz için lütfen şifrenizi güncelleyin.'});
+            }
+        } catch (error: any) {
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                throw { code: 'auth/wrong-password' };
+            }
+            throw error;
+        }
+    };
+
   const contextValue = useMemo(() => ({ 
       appUser, 
       loading, 
       signInTeacher,
+      signInStudent,
       signOut, 
       auth, 
       db, 

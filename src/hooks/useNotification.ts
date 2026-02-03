@@ -38,7 +38,6 @@ export const useNotification = () => {
   }, [db, classId]);
   const { data: currentClass } = useDoc<Class>(classQuery);
 
-  // Correctly query homeworks subcollection
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
     return query(collection(db, 'classes', classId, 'homeworks'));

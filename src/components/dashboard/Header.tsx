@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Settings } from 'lucide-react';
 import { ProfileDialog } from './teacher/ProfileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/icons/Logo';
@@ -36,10 +36,16 @@ export function Header() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  const handleOpenStudentSettings = () => {
+    window.dispatchEvent(new CustomEvent('open-student-settings'));
+  }
 
 
-  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : '';
-  const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
+  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : (appUser?.type === 'student' ? appUser.data.name : '');
+  const userEmail = appUser?.type === 'teacher' ? appUser.data.email : (appUser?.type === 'student' ? `${appUser.data.number}` : undefined);
+  const userRole = appUser?.type === 'teacher' ? 'Öğretmen' : (appUser?.type === 'student' ? 'Öğrenci' : '');
+
 
   return (
     <>
@@ -54,7 +60,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar>
-                      <AvatarImage src={appUser?.type === 'teacher' ? `https://api.dicebear.com/8.x/initials/svg?seed=${userName}` : undefined} />
+                      <AvatarImage src={`https://api.dicebear.com/8.x/initials/svg?seed=${userName}`} />
                       <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -62,13 +68,19 @@ export function Header() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel className="flex flex-col">
                     <span className="font-semibold">{userName}</span>
-                    {userEmail && <span className="text-xs text-muted-foreground">{userEmail}</span>}
+                    {userEmail && <span className="text-xs text-muted-foreground">{userEmail} ({userRole})</span>}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {appUser?.type === 'teacher' && (
                     <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                       <User className="mr-2 h-4 w-4" />
                       <span>Profil</span>
+                    </DropdownMenuItem>
+                  )}
+                   {appUser?.type === 'student' && (
+                    <DropdownMenuItem onClick={handleOpenStudentSettings}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Hesap Ayarları</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
