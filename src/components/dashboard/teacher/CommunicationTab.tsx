@@ -86,9 +86,13 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
       text: announcementText, 
       date: new Date().toISOString(), 
       seenBy: [],
-      link: link.trim() || undefined,
-      linkText: linkText.trim() || undefined
     };
+    
+    const trimmedLink = link.trim();
+    const trimmedLinkText = linkText.trim();
+    if (trimmedLink) newAnnouncement.link = trimmedLink;
+    if (trimmedLinkText) newAnnouncement.linkText = trimmedLinkText;
+
     const classRef = doc(db, 'classes', classId);
     const updatedAnnouncements = [newAnnouncement, ...(currentClass.announcements || [])];
 
@@ -131,9 +135,27 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
   const handleSaveEdit = async () => {
     if (!db || !currentClass || editingAnnouncementId === null || !editingAnnouncementText.trim()) return;
     const classRef = doc(db, 'classes', classId);
-    const updatedAnnouncements = (currentClass.announcements || []).map(ann => 
-        ann.id === editingAnnouncementId ? { ...ann, text: editingAnnouncementText, link: link.trim() || undefined, linkText: linkText.trim() || undefined } : ann
-    );
+    const updatedAnnouncements = (currentClass.announcements || []).map(ann => {
+        if (ann.id === editingAnnouncementId) {
+            const updatedAnn: any = { ...ann, text: editingAnnouncementText };
+            const trimmedLink = link.trim();
+            const trimmedLinkText = linkText.trim();
+
+            if (trimmedLink) {
+                updatedAnn.link = trimmedLink;
+            } else {
+                delete updatedAnn.link;
+            }
+
+            if (trimmedLinkText) {
+                updatedAnn.linkText = trimmedLinkText;
+            } else {
+                delete updatedAnn.linkText;
+            }
+            return updatedAnn as Announcement;
+        }
+        return ann;
+    });
     try {
         await updateDoc(classRef, { announcements: updatedAnnouncements });
         toast({ title: 'Duyuru güncellendi.' });

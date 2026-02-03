@@ -4,9 +4,11 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { Student } from '@/lib/types';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface PublicPlanData {
     className: string;
@@ -110,9 +112,19 @@ export default function PublicSeatingPlanPage() {
     if (error) {
         return <div className="flex h-screen items-center justify-center text-red-500 font-semibold p-8 text-center">{error}</div>;
     }
+    
+    const portalLink = `/portal/${classCode}`;
 
     return (
         <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
+            <div className="max-w-5xl mx-auto mb-4">
+                 <Button asChild variant="outline">
+                    <Link href={portalLink}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Portala Geri Dön
+                    </Link>
+                </Button>
+            </div>
             {planData ? <PublicSeatingPlan planData={planData} /> : <div className="text-center">Plan verisi bulunamadı.</div>}
         </div>
     );

@@ -4,11 +4,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
-import { Loader2, Trophy, Star } from 'lucide-react';
+import { Loader2, Trophy, Star, ArrowLeft } from 'lucide-react';
 import { Student } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface PublicGamificationData {
     className: string;
@@ -155,9 +157,19 @@ export default function PublicGamificationPage() {
     if (error) {
         return <div className="flex h-screen items-center justify-center text-red-500 font-semibold p-8 text-center">{error}</div>;
     }
+    
+    const portalLink = `/portal/${classCode}`;
 
     return (
         <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
+            <div className="max-w-4xl mx-auto mb-4">
+                 <Button asChild variant="outline">
+                    <Link href={portalLink}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Portala Geri Dön
+                    </Link>
+                </Button>
+            </div>
             {data ? <PublicGamificationView data={data} /> : <div className="text-center">Veri bulunamadı.</div>}
         </div>
     );
