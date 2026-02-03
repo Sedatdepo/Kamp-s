@@ -115,6 +115,82 @@ const generateReportFooter = (teacherProfile?: TeacherProfile | null) => {
     `;
 }
 
+// --- TIMETABLE EXPORT ---
+interface ExportTimetableArgs {
+  schedule: { [key: string]: TimetableCell };
+  periods: { id: number; start: string; end: string }[];
+  days: string[];
+  teacherName: string;
+  schoolName: string;
+  dutyDay?: string;
+  dutyPlace?: string;
+}
+export function exportTimetableToRtf({ schedule, periods, days, teacherName, schoolName, dutyDay, dutyPlace }: ExportTimetableArgs) {
+    const title = "Haftalık Ders Programı";
+    const filename = `ders_programi_${teacherName.replace(/ /g, '_')}.rtf`;
+    let tableHtml = `
+      <table style="width:100%; border-collapse: collapse;" border="1">
+        <thead>
+          <tr>
+            <th style="padding: 5px; width: 12%;">Saatler</th>
+            ${days.map(day => `<th style="padding: 5px;">${day}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${periods.map((period, pIndex) => `
+            <tr>
+              <td style="padding: 5px; text-align: center; font-weight: bold;">
+                ${period.start}<br>-<br>${period.end}
+              </td>
+              ${days.map((_, dIndex) => {
+                const cellData = schedule[`${dIndex}-${pIndex}`];
+                return `<td style="padding: 5px; text-align: center; height: 50px;">
+                  ${cellData ? `<b>${cellData.ders}</b><br/><small>${cellData.sinif}</small>` : ''}
+                </td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    const footer = `
+        <br/><br/>
+        <table class="no-border" style="width:100%;">
+            <tr>
+                <td class="no-border"><b>Nöbet Günü/Yeri:</b> ${dutyDay || ''} / ${dutyPlace || ''}</td>
+            </tr>
+        </table>
+        <br/><br/>
+        <table class="no-border" style="width:100%;">
+            <tr>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">${teacherName}</span><br/>
+                    Öğretmen
+                </td>
+                <td class="no-border center" style="width:50%;">
+                    <br/><br/>
+                    <span class="bold">${teacherProfile?.principalName || '...'}</span><br/>
+                    Okul Müdürü
+                </td>
+            </tr>
+        </table>
+    `;
+    
+    const content = `
+      <div class="center bold">${schoolName.toLocaleUpperCase('tr-TR')}</div>
+      <div class="center bold">${title}</div>
+      <br/>
+      ${tableHtml}
+      ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
+}
+
+
 // --- DUTY ROSTER EXPORT ---
 interface ExportDutyRosterArgs {
     roster: RosterItem[];
@@ -353,7 +429,7 @@ export function exportDetailedGradesToRtf({
         if (!scores || !criteria.length || Object.keys(scores).length === 0) return '-';
         const totalMax = criteria.reduce((sum, c) => sum + (c.max || 0), 0);
         if (totalMax === 0) return '0.00';
-        const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+        const totalScore = Object.values(scores).reduce((sum, score) => sum + (Number(score) || 0), 0);
         return ((totalScore / totalMax) * 100).toFixed(2);
     };
 
@@ -374,21 +450,29 @@ export function exportDetailedGradesToRtf({
         const term2 = student.term2Grades || {};
         const averages = studentAverages.find(a => a.studentId === student.id);
         
+        const perf1_1 = calculateAvg(term1.scores1, perfCriteria);
+        const perf1_2 = calculateAvg(term1.scores2, perfCriteria);
+        const proj1 = calculateAvg(term1.projectScores, projCriteria);
+        
+        const perf2_1 = calculateAvg(term2.scores1, perfCriteria);
+        const perf2_2 = calculateAvg(term2.scores2, perfCriteria);
+        const proj2 = calculateAvg(term2.projectScores, projCriteria);
+
         return `
             <tr>
                 <td>${student.name}</td>
                 <td class="center">${term1.exam1 ?? '-'}</td>
                 <td class="center">${term1.exam2 ?? '-'}</td>
-                <td class="center">${calculateAvg(term1.scores1, perfCriteria)}</td>
-                <td class="center">${calculateAvg(term1.scores2, perfCriteria)}</td>
-                <td class="center">${student.hasProject ? calculateAvg(term1.projectScores, projCriteria) : 'N/A'}</td>
+                <td class="center">${perf1_1}</td>
+                <td class="center">${perf1_2}</td>
+                <td class="center">${student.hasProject ? proj1 : 'N/A'}</td>
                 <td class="center bold">${averages?.term1Avg.toFixed(2)}</td>
                 
                 <td class="center">${term2.exam1 ?? '-'}</td>
                 <td class="center">${term2.exam2 ?? '-'}</td>
-                <td class="center">${calculateAvg(term2.scores1, perfCriteria)}</td>
-                <td class="center">${calculateAvg(term2.scores2, perfCriteria)}</td>
-                <td class="center">${student.hasProject ? calculateAvg(term2.projectScores, projCriteria) : 'N/A'}</td>
+                <td class="center">${perf2_1}</td>
+                <td class="center">${perf2_2}</td>
+                <td class="center">${student.hasProject ? proj2 : 'N/A'}</td>
                 <td class="center bold">${averages?.term2Avg.toFixed(2)}</td>
             </tr>
         `;
@@ -577,6 +661,7 @@ export function exportGuidanceReferralToRtf({ record, teacherProfile }: ExportGu
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, filename);
 }
+
 
 // --- OBSERVATION FORM EXPORT ---
 interface ExportObservationFormArgs {

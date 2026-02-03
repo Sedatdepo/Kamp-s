@@ -289,12 +289,13 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-export function RegularHomeworkTab({ student, classId }: { student: Student, classId: string }) {
+export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
     const { db } = useFirebase();
     
     const regularHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
+        // Only get homeworks that DO NOT have a rubric (i.e., regular/live homeworks)
+        return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', undefined));
     }, [db, classId]);
     
     const { data: regularHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
@@ -320,7 +321,7 @@ export function RegularHomeworkTab({ student, classId }: { student: Student, cla
         <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <BookText className="h-6 w-6"/>
-                Ödevlerim
+                Günlük Ödevlerim
             </CardTitle>
             <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
         </CardHeader>
@@ -333,7 +334,7 @@ export function RegularHomeworkTab({ student, classId }: { student: Student, cla
                         ))
                     ) : (
                         <div className="text-center py-10 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
                         </div>
                     )}
                 </div>
