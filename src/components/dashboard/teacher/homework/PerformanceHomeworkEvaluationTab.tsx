@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Submission, Homework, TeacherProfile } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Student, Submission, Homework, TeacherProfile, Class } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Trash2, Paperclip } from 'lucide-react';
+import { Loader2, Save, Trash2, Paperclip, FileDown } from 'lucide-react';
 import { collection, doc, getDocs, query, updateDoc, where, writeBatch, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,9 +15,10 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { exportHomeworkEvaluationToRtf } from '@/lib/word-export';
 
 
-const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onScoresUpdated, onDelete }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, onScoresUpdated: () => void, onDelete: (homeworkId: string) => void }) => {
+const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onScoresUpdated, onDelete, teacherProfile, currentClass }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, onScoresUpdated: () => void, onDelete: (homeworkId: string) => void, teacherProfile: TeacherProfile | null, currentClass: Class | null }) => {
     const { db } = useAuth();
     const { toast } = useToast();
     const [scores, setScores] = useState<{ [studentId: string]: { [criteriaLabel: string]: number } }>({});
@@ -85,6 +85,24 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
         toast({ title: 'Değerlendirmeler kaydedildi.' });
         onScoresUpdated();
     };
+
+    const handleExport = () => {
+        if (currentClass && teacherProfile) {
+            exportHomeworkEvaluationToRtf({
+                students,
+                selectedHomework: homework,
+                scores,
+                currentClass,
+                teacherProfile,
+            });
+        } else {
+            toast({
+                title: 'Hata',
+                description: 'Rapor oluşturmak için gerekli bilgiler yüklenemedi.',
+                variant: 'destructive',
+            });
+        }
+    };
     
     return (
         <Accordion type="single" collapsible className="w-full">
@@ -123,6 +141,7 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
                 <AccordionContent className="border border-t-0 rounded-b-lg p-0">
                     <div className="space-y-4 p-4">
                         <div className="flex justify-end gap-2">
+                             <Button size="sm" variant="outline" onClick={handleExport}><FileDown className="mr-2 h-4 w-4"/> Raporu İndir</Button>
                              <Button size="sm" onClick={handleSaveAll}><Save className="mr-2 h-4 w-4" /> Tümünü Kaydet</Button>
                         </div>
                         <Table>
@@ -195,9 +214,10 @@ interface PerformanceHomeworkEvaluationTabProps {
   classId: string;
   students: Student[];
   teacherProfile: TeacherProfile | null;
+  currentClass: Class | null;
 }
 
-export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherProfile }: PerformanceHomeworkEvaluationTabProps) => {
+export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherProfile, currentClass }: PerformanceHomeworkEvaluationTabProps) => {
     const { db } = useAuth();
     const { toast } = useToast();
     
@@ -274,6 +294,8 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
                         classId={classId}
                         onScoresUpdated={fetchSubmissions}
                         onDelete={handleDeleteHomework}
+                        teacherProfile={teacherProfile}
+                        currentClass={currentClass}
                     />
                 ))
             ) : (
