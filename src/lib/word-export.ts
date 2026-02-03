@@ -1,6 +1,7 @@
 import { saveAs } from 'file-saver';
 import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, GenerateMaterialOutput } from './types';
 import { format, parseISO } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
 
 
@@ -2155,4 +2156,72 @@ export function exportElectionResultsToRtf({ electionResult, electionType, curre
 
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
+// --- HOMEWORK DETAIL EXPORT ---
+interface ExportHomeworkDetailArgs {
+    homework: Homework;
+    teacherProfile: TeacherProfile | null;
+    currentClass: Class | null;
+}
+
+export function exportHomeworkDetailToRtf({ homework, teacherProfile, currentClass }: ExportHomeworkDetailArgs) {
+    const title = homework.text;
+    const filename = `${title.replace(/ /g, '_').substring(0, 20)}.rtf`;
+
+    const header = generateReportHeader(`ÖDEV YÖNERGESİ`, currentClass!, teacherProfile);
+
+    const rubricHtml = homework.rubric ? `
+        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">DEĞERLENDİRME KRİTERLERİ</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 8px; font-weight: bold;">Kriter</th>
+                    <th style="padding: 8px; font-weight: bold;">Açıklama</th>
+                    <th style="padding: 8px; font-weight: bold; width: 15%;">Puan</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${homework.rubric.map((item: any) => `
+                    <tr>
+                        <td style="padding: 8px;">${item.label}</td>
+                        <td style="padding: 8px;">${item.desc || ''}</td>
+                        <td style="padding: 8px; text-align: center;">${item.score}</td>
+                    </tr>
+                `).join('')}
+                <tr>
+                    <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">TOPLAM</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold;">${homework.rubric.reduce((sum: number, item: any) => sum + parseInt(item.score || '0', 10), 0)}</td>
+                </tr>
+            </tbody>
+        </table>
+    ` : '';
+    
+    const questionsHtml = homework.questions && homework.questions.length > 0 ? `
+        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">ÖDEV SORULARI</h3>
+        <ol>
+            ${homework.questions.map(q => `<li><p>${q.text}</p></li>`).join('')}
+        </ol>
+    ` : '';
+
+    const content = `
+      ${header}
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1cm;">
+        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
+          <h1 style="margin: 0; font-size: 18pt;">${homework.text}</h1>
+          <p style="margin: 0; font-size: 11pt;">${teacherProfile?.reportConfig?.academicYear || '...'} Eğitim Öğretim Yılı ${homework.lessonName || 'Dersi'} Ödevi</p>
+          ${homework.dueDate ? `<p style="margin-top: 5px; font-size: 12pt; font-weight: bold;">Son Teslim Tarihi: ${format(parseISO(homework.dueDate), 'dd MMMM yyyy', { locale: tr })}</p>` : ''}
+        </div>
+        
+        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">YÖNERGE</h3>
+        <p>${(homework.instructions || '').replace(/\n/g, '<br/>')}</p>
+        
+        ${questionsHtml}
+        ${rubricHtml}
+
+      </div>
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, filename);
 }

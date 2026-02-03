@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft, X, ImageIcon, ExternalLink } from 'lucide-react';
+import { Edit, Trash2, Save, Users, Clock, Loader2, FileText, Calendar as CalendarIcon, Check, Paperclip, XCircle, Plus, CheckSquare, AlignLeft, X, ImageIcon, ExternalLink, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
-import { exportHomeworkStatusToRtf } from '@/lib/word-export';
+import { exportHomeworkStatusToRtf, exportHomeworkDetailToRtf } from '@/lib/word-export';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -345,10 +345,14 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         }
     };
 
-    const handleFileDownload = (file: {dataUrl: string, name: string}) => {
+    const handleDownload = (file: {dataUrl: string, name: string}) => {
         saveAs(file.dataUrl, file.name);
     }
     
+    const handleExportHomework = (homework: Homework) => {
+        exportHomeworkDetailToRtf({ homework, teacherProfile, currentClass });
+    }
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
@@ -489,11 +493,12 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                                                     Son Teslim: {hw.dueDate ? format(new Date(hw.dueDate), 'dd MMMM yyyy', { locale: tr }) : 'Belirtilmemiş'}
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                    {hw.file && <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleFileDownload(hw.file!)}><Paperclip className="h-3 w-3 mr-1"/>{hw.file.name}</Button>}
+                                                    {hw.file && <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleDownload(hw.file!)}><Paperclip className="h-3 w-3 mr-1"/>{hw.file.name}</Button>}
                                                     {hw.link && <a href={hw.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3"/>{hw.linkText || 'İlgili Bağlantı'}</a>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center ml-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleExportHomework(hw)}><FileDown className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditing(hw)}><Edit className="h-4 w-4"/></Button>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
