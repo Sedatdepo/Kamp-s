@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { exportSeatingPlanToRtf } from '@/lib/word-export';
-import { FileDown, Share } from 'lucide-react';
+import { FileDown, Share, Copy } from 'lucide-react'; // Added Copy
 import { Switch } from '@/components/ui/switch';
 
 
@@ -29,6 +29,14 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     const [rowCount, setRowCount] = useState(currentClass?.seatingPlanRows || 4);
     const [colCount, setColCount] = useState(currentClass?.seatingPlanCols || 3);
     const [seatingPlan, setSeatingPlan] = useState<{ [key: string]: string }>(currentClass?.seatingPlan || {});
+    
+    const shareableLink = useMemo(() => {
+        if (typeof window !== 'undefined' && currentClass?.code) {
+            return `${window.location.origin}/view/seating-plan/${currentClass.code}`;
+        }
+        return '';
+    }, [currentClass?.code]);
+
 
     useEffect(() => {
         setRowCount(currentClass?.seatingPlanRows || 4);
@@ -47,11 +55,21 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     
     const handleSeatChange = (key: string, studentId: string) => {
         const newPlan = { ...seatingPlan };
-        // Oturan öğrenciyi başka bir yerden kaldır
-        Object.keys(newPlan).forEach(k => { if (newPlan[k] === studentId) { delete newPlan[k]; } });
-        if (studentId === "empty") { delete newPlan[key]; } else { newPlan[key] = studentId; }
+        // Check if the student is already seated and remove them from their old seat
+        const oldKey = Object.keys(newPlan).find(k => newPlan[k] === studentId);
+        if (oldKey) {
+            delete newPlan[oldKey];
+        }
+
+        // Assign to new seat
+        if (studentId === "empty") { 
+            delete newPlan[key]; 
+        } else { 
+            newPlan[key] = studentId; 
+        }
         setSeatingPlan(newPlan);
     };
+
 
     const handleExport = () => {
         if (!currentClass || !students) {
@@ -84,6 +102,15 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
         toast({ title: `Oturma planı öğrencilerle ${checked ? 'paylaşıldı' : 'paylaşımı durduruldu'}.` });
     };
 
+    const copyShareLink = () => {
+        navigator.clipboard.writeText(shareableLink).then(() => {
+            toast({ title: 'Paylaşım linki kopyalandı!' });
+        }).catch(err => {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Link kopyalanamadı.' });
+        });
+    };
+
+
     if (!students) return <p>Öğrenci verisi yükleniyor...</p>;
     
     return (
@@ -102,6 +129,19 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                             <Label>Sütun Sayısı (Yatay)</Label>
                             <Input type="number" value={colCount} onChange={e => setColCount(Number(e.target.value))} />
                         </div>
+                        <div className="flex gap-2">
+                            <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
+                            <Button onClick={handleExport} variant="outline" className="w-full">
+                                <FileDown className="mr-2 h-4 w-4"/> Word İndir
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Share /> Paylaşım</CardTitle>
+                    </CardHeader>
+                     <CardContent className="space-y-4">
                         <div className="flex items-center space-x-2">
                             <Switch
                                 id="publish-plan"
@@ -111,12 +151,12 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                             />
                             <Label htmlFor="publish-plan">Öğrencilerle Paylaş</Label>
                         </div>
-                        <div className="flex gap-2">
-                            <Button onClick={handleSavePlan} className="w-full">Değişiklikleri Kaydet</Button>
-                            <Button onClick={handleExport} variant="outline" className="w-full">
-                                <FileDown className="mr-2 h-4 w-4"/> Word İndir
-                            </Button>
-                        </div>
+                        {currentClass?.isSeatingPlanPublished && (
+                            <div className="flex items-center gap-2">
+                                <Input value={shareableLink} readOnly />
+                                <Button size="icon" onClick={copyShareLink}><Copy className="h-4 w-4" /></Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

@@ -3,8 +3,78 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    function isClassOwner(classId) {
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+    }
+    
+    // Yeni Fonksiyon: Sınıfın herkese açık bir bölümünün paylaşılıp paylaşılmadığını kontrol eder.
+    function isClassPublic(classId) {
+      // Bu fonksiyon, bir sınıf dokümanının okunmadan önce içindeki bir alanı kontrol eder.
+      // Bu, Firestore'da güvenli bir desendir çünkü 'get' isteği, 'list' isteğinden farklı çalışır.
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return classDoc.data.isSeatingPlanPublished == true || classDoc.data.isDutyRosterPublished == true;
+    }
+
+    // --- ÖĞRETMEN PROFİLİ ---
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId);
+    }
+    
+    // --- SINIFLAR ---
+    match /classes/{classId} {
+      allow list: if isTeacher() && request.query.where.teacherId == request.auth.uid;
+      // GÜNCELLENDİ: Sadece öğretmen veya "herkese açık" olarak işaretlenmişse okunabilir.
+      allow get: if isClassOwner(classId) || isClassPublic(classId);
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      // Güncelleme ve silme sadece sahibi tarafından yapılabilir.
+      allow update, delete: if isClassOwner(classId);
+
+      // --- SINIF ALT KOLEKSİYONLARI ---
+      match /students/{studentId} {
+        // GÜNCELLENDİ: Sınıf herkese açıksa, öğrenci listesi de okunabilir.
+        allow list: if isClassOwner(classId) || isClassPublic(classId);
+        allow get, write: if isClassOwner(classId);
+      }
+      
+      // Diğer alt koleksiyonlar (ödevler vb.) sadece öğretmene özel kalır.
+      match /homeworks/{homeworkId} {
+        allow read, write: if isClassOwner(classId);
+        match /{allChildren=**} {
+            allow read, write: if isClassOwner(classId);
+        }
+      }
+    }
+    
+    // --- TOP-LEVEL KOLEKSİYONLAR (Öğretmene Özel) ---
+    match /lessons/{lessonId} { allow read, write: if false; } // Güvenlik sıkılaştırması
+    match /riskFactors/{riskFactorId} { allow read, write: if false; }
+    match /questions/{questionId} { allow read, write: if false; }
+    match /kazanims/{kazanimId} { allow read, write: if false; }
+    
+    // --- GENEL ERİŞİM ---
+    match /classCodes/{code} {
+      // Herkes bir sınıf kodundan sınıf ID'sine ulaşabilir. Asıl güvenlik class belgesindedir.
+      allow get: if true;
+    }
+    
+    // Öğrenci paneli kaldırıldığı için bu kurallar artık gerekli değil ve güvenlik açığı oluşturabilir.
+    match /infoForms/{formId} { allow read, write: if false; }
+    match /messages/{messageId} { allow read, write: if false; }
   }
 }
