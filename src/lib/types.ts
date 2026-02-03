@@ -204,6 +204,7 @@ export interface Class {
   isSeatingPlanPublished?: boolean;
   isGamificationActive?: boolean;
   isAnnouncementsPublished?: boolean;
+  isHomeworkPublished?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;

@@ -1,8 +1,8 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Question } from '@/lib/types';
+import { Homework, Submission, Question, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
@@ -14,14 +14,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
 
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
-    const { db } = useAuth();
+    const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
@@ -38,8 +38,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     const existingSubmission = useMemo(() => {
         return submissions?.[0];
     }, [submissions]);
-
-    // **ÇÖZÜM**: Soruların her zaman güncel homework prop'undan gelmesini garantilemek için useMemo kullanıldı.
+    
     const questions = useMemo(() => homework.questions || [], [homework.questions]);
 
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
@@ -290,10 +289,9 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-function RegularHomeworkTabContent({ student, classId }: { student: any, classId: string }) {
-    const { db } = useAuth();
+export function RegularHomeworkTab({ student, classId }: { student: Student, classId: string }) {
+    const { db } = useFirebase();
     
-    // Fetch only homeworks that are "regular" (rubric is null or undefined)
     const regularHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
@@ -343,33 +341,4 @@ function RegularHomeworkTabContent({ student, classId }: { student: any, classId
         </CardContent>
         </Card>
     );
-}
-
-export function RegularHomeworkTab() {
-  const { appUser, loading } = useAuth();
-  
-  if (loading) {
-    return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
-    );
-  }
-
-  if (appUser?.type !== 'student') {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Yetki Hatası</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>Bu sayfayı görüntülemek için öğrenci olarak giriş yapmalısınız.</p>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  return <RegularHomeworkTabContent student={appUser.data} classId={appUser.data.classId} />;
 }

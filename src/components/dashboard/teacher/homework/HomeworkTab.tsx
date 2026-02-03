@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -19,6 +20,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { LessonManager } from '../LessonManager';
+import { Label } from '@/components/ui/label';
 
 
 export function ProjectAssignmentView({
@@ -171,8 +173,19 @@ interface HomeworkTabProps {
 }
 
 export function HomeworkTab({ classId, currentClass, teacherProfile, students, classes, lessons }: HomeworkTabProps) {
-    
     const { db } = useAuth();
+    const { toast } = useToast();
+
+    const handleTogglePublish = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', classId);
+        try {
+            await updateDoc(classRef, { isHomeworkPublished: checked });
+            toast({ title: 'Başarılı', description: `Ödevler modülü öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+        } catch {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
+        }
+    };
     
     const allStudentsForTeacherQuery = useMemoFirebase(() => {
         if (!teacherProfile?.id || !db) return null;
@@ -190,16 +203,27 @@ export function HomeworkTab({ classId, currentClass, teacherProfile, students, c
 
     return (
         <Tabs defaultValue="live">
-            <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-                <TabsList className="w-full justify-start">
-                    <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
-                    <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
-                    <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
-                    <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
-                    <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
-                </TabsList>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+             <div className="flex justify-between items-center mb-4">
+                <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+                    <TabsList className="w-full justify-start">
+                        <TabsTrigger value="live">Canlı Ödev Yönetimi</TabsTrigger>
+                        <TabsTrigger value="evaluation">Ödev Değerlendirme</TabsTrigger>
+                        <TabsTrigger value="library">Performans Ödevleri</TabsTrigger>
+                        <TabsTrigger value="project-assignment">Proje Tercihleri</TabsTrigger>
+                        <TabsTrigger value="petitions">Proje Dilekçeleri</TabsTrigger>
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                    <Switch
+                        id="publish-homeworks"
+                        checked={currentClass?.isHomeworkPublished || false}
+                        onCheckedChange={handleTogglePublish}
+                        disabled={!currentClass}
+                    />
+                    <Label htmlFor="publish-homeworks" className="text-sm font-medium">Yayınla</Label>
+                </div>
+            </div>
             <TabsContent value="live" className="mt-4">
                 <LiveHomeworkManagement
                     classId={classId}

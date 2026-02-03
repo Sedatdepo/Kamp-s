@@ -1,10 +1,10 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Homework, Submission, Student } from '@/lib/types';
+import { Homework, Submission, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip } from 'lucide-react';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip, Download } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -12,15 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
 
-
 const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework, student: Student, onBack: () => void }) => {
-    const { db } = useAuth();
+    const { db } = useFirebase();
 
     const submissionQuery = useMemoFirebase(() => {
         if (!db || !student.classId) return null;
@@ -142,7 +141,7 @@ const HomeworkDetailView = ({ homework, student, onBack }: { homework: Homework,
 
 
 const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: any, classId: string, onSelect: () => void }) => {
-    const { db } = useAuth();
+    const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionText, setSubmissionText] = useState('');
@@ -158,7 +157,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     const existingSubmission = useMemo(() => {
         return submissions?.[0];
     }, [submissions]);
-    
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -193,15 +192,13 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
           studentNumber: student.number,
           homeworkId: homework.id,
           submittedAt: new Date().toISOString(),
+          text: submissionText,
+          file: submissionFile,
         };
-
-        if (submissionText) submissionData.text = submissionText;
-        if (submissionFile) submissionData.file = submissionFile;
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
-            const cleanData = JSON.parse(JSON.stringify(submissionData));
-            await addDoc(submissionsColRef, cleanData);
+            await addDoc(submissionsColRef, submissionData);
 
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
@@ -237,34 +234,33 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     }
     
     return (
-        <div className={`border p-4 rounded-lg shadow-sm space-y-3 transition-all ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
-            <div onClick={onSelect} className="cursor-pointer hover:opacity-70">
+        <div className={`cursor-pointer border p-4 rounded-lg shadow-sm space-y-3 transition-all hover:border-primary/50 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
+            <div onClick={onSelect}>
                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2 pb-2 border-b">
                     <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     {homework.dueDate && (
                         <div className="flex items-center gap-1.5 text-red-600 font-semibold"><CalendarIcon className="h-3 w-3" /><span>Son Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>
                     )}
                  </div>
-                 <h2 className="text-xl font-bold">{homework.text}</h2>
-                 <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
+
+                 {homework.questions && homework.questions.length > 0 ? (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-bold">{homework.text}</h2>
+                        <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
+                    </div>
+                ) : (
+                    <p className="text-sm font-semibold">{homework.text}</p>
+                )}
             </div>
 
             {existingSubmission ? (
-                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border space-y-3'>
-                    <div className="flex items-center gap-2 text-green-600 font-semibold">
+                <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
                         <CheckCircle className="h-5 w-5"/>
                         <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     </div>
-                    
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
-                    {existingSubmission.file && (
-                         <Button variant="outline" size="sm" onClick={() => handleDownload(existingSubmission.file!)} className="flex items-center gap-2">
-                            <Paperclip className="h-4 w-4" />
-                            <span className="truncate">{existingSubmission.file.name}</span>
-                        </Button>
-                    )}
-                    
-                    {existingSubmission.feedback && (
+                     {existingSubmission.feedback && (
                          <div className='bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 mt-2'>
                              <p className='text-xs font-bold text-blue-700 mb-1'>Öğretmen Geri Bildirimi</p>
                              <p className="text-sm">{existingSubmission.feedback}</p>
@@ -272,14 +268,14 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                     )}
                      {existingSubmission.grade !== undefined && (
                          <div className='flex justify-end mt-2'>
-                            <Badge>Toplam Not: {existingSubmission.grade}</Badge>
+                            <Badge>Not: {existingSubmission.grade}</Badge>
                          </div>
                     )}
                 </div>
             ) : (
-                <div className="space-y-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                 <div className="space-y-3 pt-3 border-t">
                     <Textarea 
-                        placeholder="Metin cevabınızı buraya yazın..."
+                        placeholder="Cevabınızı buraya yazın..."
                         value={submissionText}
                         onChange={(e) => setSubmissionText(e.target.value)}
                         rows={2}
@@ -288,7 +284,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                         type="file"
                         onChange={handleFileChange}
                     />
-                    <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)} className="w-full">
+                    <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Gönder
                     </Button>
@@ -298,13 +294,9 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     )
 }
 
-export function PerformanceHomeworkTab() {
-  const { appUser, db } = useAuth();
+export function PerformanceHomeworkTab({ student, classId }: { student: Student, classId: string }) {
+  const { db } = useFirebase();
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
-
-  if (appUser?.type !== 'student') return null;
-
-  const classId = appUser.data.classId;
 
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
@@ -319,7 +311,7 @@ export function PerformanceHomeworkTab() {
   }, [homeworks]);
 
   if (selectedHomework) {
-    return <HomeworkDetailView homework={selectedHomework} student={appUser.data} onBack={() => setSelectedHomework(null)} />;
+    return <HomeworkDetailView homework={selectedHomework} student={student} onBack={() => setSelectedHomework(null)} />;
   }
   
   if (homeworksLoading) {
@@ -346,7 +338,7 @@ export function PerformanceHomeworkTab() {
             <div className="space-y-4">
             {sortedHomeworks.length > 0 ? (
                 sortedHomeworks.map((hw) => (
-                <HomeworkItem key={hw.id} homework={hw} student={appUser.data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
+                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} onSelect={() => setSelectedHomework(hw)} />
                 ))
             ) : (
                 <div className="text-center py-10 bg-muted/50 rounded-lg">
