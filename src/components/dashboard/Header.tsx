@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
-import { LogOut, User, Settings } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { ProfileDialog } from './teacher/ProfileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/icons/Logo';
@@ -37,14 +37,9 @@ export function Header() {
     setIsClient(true);
   }, []);
   
-  const handleOpenStudentSettings = () => {
-    window.dispatchEvent(new CustomEvent('open-student-settings'));
-  }
-
-
-  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : (appUser?.type === 'student' ? appUser.data.name : '');
-  const userEmail = appUser?.type === 'teacher' ? appUser.data.email : (appUser?.type === 'student' ? `${appUser.data.number}` : undefined);
-  const userRole = appUser?.type === 'teacher' ? 'Öğretmen' : (appUser?.type === 'student' ? 'Öğrenci' : '');
+  const userName = appUser?.type === 'teacher' ? appUser.profile?.name : '';
+  const userEmail = appUser?.type === 'teacher' ? appUser.data.email : undefined;
+  const userRole = 'Öğretmen';
 
 
   return (
@@ -71,18 +66,10 @@ export function Header() {
                     {userEmail && <span className="text-xs text-muted-foreground">{userEmail} ({userRole})</span>}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {appUser?.type === 'teacher' && (
-                    <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profil</span>
-                    </DropdownMenuItem>
-                  )}
-                   {appUser?.type === 'student' && (
-                    <DropdownMenuItem onClick={handleOpenStudentSettings}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Hesap Ayarları</span>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profil</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 h-4 w-4" />

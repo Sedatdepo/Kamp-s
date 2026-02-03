@@ -28,7 +28,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDialog } from './ProfileDialog';
-import { SinifKahramanlariTab } from '@/components/dashboard/teacher/SinifKahramanlariTab';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -56,6 +55,7 @@ const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab')
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
 const ContentStudioTab = dynamic(() => import('@/components/dashboard/teacher/ContentStudioTab').then(mod => mod.ContentStudioTab), { loading: LoadingSpinner });
+const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
 
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "content-studio" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable" | "material-creator";
@@ -395,19 +395,19 @@ const TABS_CONFIG = {
   "homework": { label: "Ödevler & Projeler", icon: BookText },
   "risks": { label: "Sınıf Risk Haritası", icon: List },
   "forms": { label: "Bilgi Formları", icon: FileSignature },
-  "communication": { label: "İletişim Paneli", icon: MessageCircle },
+  "communication": { label: "İletişim Paneli", icon: MessagesSquare },
   "dilekce": { label: "Dilekçe Sihirbazı", icon: FileSignature },
   "discipline": { label: "Disiplin Süreci", icon: Scale },
   "bep": { label: "BEP Modülü", icon: FileHeart },
   "zumre": { label: "Zümre Tutanağı", icon: Users2 },
-  "veli-toplantisi": { label: "Veli Toplantısı Tutanağı", icon: BookText },
+  "veli-toplantisi": { label: "Veli Toplantısı", icon: Users },
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
   "kazanimlar": { label: "Kazanımlar", icon: Target },
   "content-studio": { label: "İçerik Stüdyosu", icon: Sparkles },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
   "meb-club": { label: "Kulüp Evrak", icon: Trophy },
-  "social-club": { label: "Sosyal Etkinlik Yönetimi", icon: Drama },
-  "gamification": { label: "Rozetler", icon: Trophy },
+  "social-club": { label: "Sosyal Kulüpler", icon: Drama },
+  "gamification": { label: "Sınıf Kahramanları", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
   "timetable": { label: "Ders Programı", icon: Clock },
 } as const;
@@ -575,9 +575,9 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
                 <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim planları." onClick={() => setActiveTab('bep')} />
-                <MenuCard icon={<Trophy />} title="Oyunlaştırma" description="Puan ve rozetlerle sınıfı motive edin." onClick={() => setActiveTab('gamification')} />
+                <MenuCard icon={<Trophy />} title="Sınıf Kahramanları" description="Puan ve rozetlerle sınıfı motive edin." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
-                <MenuCard icon={<MessageCircle />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
+                <MenuCard icon={<MessagesSquare />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımlarını analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />

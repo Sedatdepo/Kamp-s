@@ -1,25 +1,20 @@
-
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, setDoc, Firestore, updateDoc, Unsubscribe } from 'firebase/firestore';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, Auth, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, onSnapshot, setDoc, Firestore, Unsubscribe } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
-import type { Student, TeacherProfile } from '@/lib/types';
+import type { TeacherProfile } from '@/lib/types';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { useFirebase } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
 
-export type AppUser = 
-  | { type: 'teacher'; data: User; profile: TeacherProfile }
-  | { type: 'student'; data: Student; user: User };
+export type AppUser = { type: 'teacher'; data: User; profile: TeacherProfile };
 
 interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signInTeacher: (email: string, password: string) => Promise<void>;
-  signInStudent: (classCode: string, schoolNumber: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   auth: Auth | null;
   db: Firestore | null;
@@ -62,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore: db, storage } = useFirebase();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   
   const router = useRouter();
   const pathname = usePathname();
@@ -111,23 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           });
         } else {
-          // It might be a student
-          const studentsQuery = query(collection(db, "students"), where("authUid", "==", firebaseUser.uid));
-          const studentSnapshot = await getDocs(studentsQuery);
-
-          if (!studentSnapshot.empty) {
-            const studentDoc = studentSnapshot.docs[0];
-            userUnsubscribeRef.current = onSnapshot(studentDoc.ref, (docSnap) => {
-                if(docSnap.exists()){
-                     const studentData = { id: docSnap.id, ...docSnap.data() } as Student;
-                     setAppUser({ type: 'student', data: studentData, user: firebaseUser });
-                } else {
-                     signOut();
-                }
-            });
-          } else {
-            await signOut();
-          }
+          // If not a teacher, sign out. No student panel.
+          await signOut();
         }
       } else {
         setAppUser(null);
@@ -148,19 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isAuthRoute = pathname.startsWith('/dashboard');
 
         if (appUser) {
-            const targetDashboard = `/dashboard/${appUser.type}`;
-            
+            const targetDashboard = `/dashboard/teacher`;
             if (appUser.type === 'teacher' && !appUser.profile?.id) return;
-            
-            if (appUser.type === 'student' && appUser.data.needsPasswordChange === true) {
-                 const settingsEvent = new CustomEvent('open-student-settings');
-                 window.dispatchEvent(settingsEvent);
-            }
-
             if (!pathname.startsWith(targetDashboard)) {
                  router.push(targetDashboard);
             }
-
         } else {
             if (isAuthRoute) {
                 router.push('/');
@@ -173,49 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signInWithEmailAndPassword(auth, email, password);
     };
 
-    const signInStudent = async (classCode: string, schoolNumber: string, password: string) => {
-        if (!auth || !db) throw new Error("Kimlik doğrulama başlatılamadı.");
-
-        const classCodeRef = doc(db, 'classCodes', classCode.toUpperCase());
-        const classCodeSnap = await getDoc(classCodeRef);
-        if(!classCodeSnap.exists()) {
-            throw { code: 'class-not-found' };
-        }
-        const { classId } = classCodeSnap.data();
-        
-        const q = query(collection(db, 'students'), where('classId', '==', classId), where('number', '==', schoolNumber));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            throw { code: 'student-not-found' };
-        }
-
-        const studentDoc = querySnapshot.docs[0];
-        const studentData = {id: studentDoc.id, ...studentDoc.data()} as Student;
-        const studentEmail = `${studentData.id}@kampus.app`;
-
-        try {
-            if (studentData.authUid) {
-                await signInWithEmailAndPassword(auth, studentEmail, password);
-            } else {
-                const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, password);
-                const user = userCredential.user;
-                await updateDoc(studentDoc.ref, { authUid: user.uid, needsPasswordChange: true });
-                toast({ title: 'Hesabınız oluşturuldu!', description: 'Güvenliğiniz için lütfen şifrenizi güncelleyin.'});
-            }
-        } catch (error: any) {
-            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                throw { code: 'auth/wrong-password' };
-            }
-            throw error;
-        }
-    };
-
   const contextValue = useMemo(() => ({ 
       appUser, 
       loading, 
       signInTeacher,
-      signInStudent,
       signOut, 
       auth, 
       db, 
