@@ -379,9 +379,9 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
         // Family
         { label: 'Veli Telefonu', value: record.guardianPhone || '' },
         { label: 'Anne Hayatta mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
-        { label: 'Anne Eğitim/Meslek', value: `${record.motherEducation || ''} / ${record.motherJob || ''}` },
+        { label: 'Anne Eğitim/Meslek', value: `${record.motherEducation || 'N/A'} / ${record.motherJob || 'N/A'}` },
         { label: 'Baba Hayatta mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
-        { label: 'Baba Eğitim/Meslek', value: `${record.fatherEducation || ''} / ${record.fatherJob || ''}` },
+        { label: 'Baba Eğitim/Meslek', value: `${record.fatherEducation || 'N/A'} / ${record.fatherJob || 'N/A'}` },
         { label: 'Kiminle Yaşıyor?', value: record.familyLivesWith || '' },
         { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
         { label: 'Üvey Kardeşi Var Mı?', value: record.hasStepSibling === 'yes' ? 'Evet' : 'Hayır' },
@@ -2029,6 +2029,49 @@ export function exportSeatingPlanToRtf({ seatingPlan, rowCount, colCount, curren
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
+
+// --- DUTY ROSTER EXPORT ---
+interface ExportDutyRosterArgs {
+    roster: RosterItem[];
+    currentClass: Class;
+    teacherProfile: TeacherProfile | null;
+}
+
+export function exportDutyRosterToRtf({ roster, currentClass, teacherProfile }: ExportDutyRosterArgs) {
+    const reportTitle = "NÖBETÇİ ÖĞRENCİ LİSTESİ";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:25%;">Tarih</th>
+            <th class="horizontal" style="width:25%;">Gün</th>
+            <th class="horizontal" style="width:50%;">Nöbetçi Öğrenciler</th>
+        </tr>
+    `;
+
+    const dataRows = roster.map(item => `
+        <tr>
+            <td class="center">${item.date}</td>
+            <td class="center">${item.day}</td>
+            <td>${item.student}</td>
+        </tr>
+    `).join('');
+
+    const content = `
+        ${header}
+        <table>
+            <thead>${tableHeader}</thead>
+            <tbody>${dataRows}</tbody>
+        </table>
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
+
 
 // --- ELECTION RESULTS EXPORT ---
 interface ExportElectionResultsArgs {
