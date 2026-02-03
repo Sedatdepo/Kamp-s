@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student } from '@/lib/types';
+import { Student, Class } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
@@ -35,6 +35,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 
 const BEHAVIORS = [
@@ -56,7 +58,7 @@ const AVAILABLE_BADGES = [
   { id: '8', name: 'Temizlik Elçisi', icon: '♻️', description: 'Çevresini temiz tutar.', cost: 20 },
 ];
 
-export function SinifKahramanlariTab({ students }: { students: Student[] }) {
+export function SinifKahramanlariTab({ students, currentClass }: { students: Student[], currentClass: Class | null }) {
   const { db } = useAuth();
   const { toast } = useToast();
   
@@ -64,6 +66,13 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("points");
   
+  const handleToggleGamification = async (checked: boolean) => {
+    if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    await updateDoc(classRef, { isGamificationActive: checked });
+    toast({ title: `Oyunlaştırma modülü öğrenciler için ${checked ? 'aktif' : 'pasif'} edildi.` });
+  };
+
   const updatePoints = async (student: Student, points: number, reason: string) => {
     if (!db) return;
 
@@ -142,8 +151,21 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
     <div className="p-2">
       <Card>
         <CardHeader>
-          <CardTitle>Sınıf Listesi ve Puan Durumu</CardTitle>
-          <CardDescription>Öğrencilerinize puan ve rozetler vererek onları motive edin.</CardDescription>
+          <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Sınıf Listesi ve Puan Durumu</CardTitle>
+                <CardDescription>Öğrencilerinize puan ve rozetler vererek onları motive edin.</CardDescription>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="gamification-toggle">Öğrencilere Göster</Label>
+                <Switch
+                  id="gamification-toggle"
+                  checked={currentClass?.isGamificationActive ?? false}
+                  onCheckedChange={handleToggleGamification}
+                  disabled={!currentClass}
+                />
+              </div>
+            </div>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg">

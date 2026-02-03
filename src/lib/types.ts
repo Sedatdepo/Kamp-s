@@ -201,6 +201,7 @@ export interface Class {
   isSociogramActive?: boolean;
   isDutyRosterPublished?: boolean;
   isSeatingPlanPublished?: boolean;
+  isGamificationActive?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
@@ -774,5 +775,4 @@ fatherName: string;
 
 export interface EdebiyatAsistanDocument extends Archivable {}
     
-
     

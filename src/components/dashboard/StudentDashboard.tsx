@@ -151,7 +151,14 @@ export function StudentDashboard() {
             </Card>
              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 
-                <MenuCard icon={<Award />} title="Rozetlerim" description="Kazandığın rozetleri ve puanını gör." onClick={() => setActiveTab('badges')} />
+                <MenuCard 
+                    isLoading={classLoading}
+                    show={currentClass?.isGamificationActive}
+                    icon={<Award />} 
+                    title="Rozetlerim" 
+                    description="Kazandığın rozetleri ve puanını gör." 
+                    onClick={() => setActiveTab('badges')} 
+                />
                 <MenuCard icon={<GraduationCap />} title="Notlarım" description="Ders notlarını ve ortalamanı gör." onClick={() => setActiveTab('grades')} />
                 <MenuCard icon={<BookText />} title="Ödevlerim" description="Performans, proje ve diğer ödevler." onClick={() => setActiveTab('all-homeworks')} hasNotification={notifications.homeworks} />
                 <MenuCard icon={<Bell />} title="Duyurular" description="Öğretmeninin duyurularını takip et." onClick={() => setActiveTab('announcements')} hasNotification={notifications.announcements} />
