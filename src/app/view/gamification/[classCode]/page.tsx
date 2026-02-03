@@ -8,6 +8,7 @@ import { Loader2, Trophy, Star } from 'lucide-react';
 import { Student } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useParams } from 'next/navigation';
 
 interface PublicGamificationData {
     className: string;
@@ -103,7 +104,9 @@ const PublicGamificationView = ({ data }: { data: PublicGamificationData }) => {
     );
 }
 
-export default function PublicGamificationPage({ params }: { params: { classCode: string } }) {
+export default function PublicGamificationPage() {
+    const params = useParams();
+    const classCode = params.classCode as string;
     const { firestore } = useFirebase();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -111,11 +114,11 @@ export default function PublicGamificationPage({ params }: { params: { classCode
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!firestore) return;
+            if (!firestore || !classCode) return;
             setLoading(true);
 
             try {
-                const classCodeRef = doc(firestore, 'classCodes', params.classCode);
+                const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
                 if (!classCodeSnap.exists()) {
@@ -143,7 +146,7 @@ export default function PublicGamificationPage({ params }: { params: { classCode
         };
 
         fetchData();
-    }, [firestore, params.classCode]);
+    }, [firestore, classCode]);
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;

@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { Student } from '@/lib/types';
+import { useParams } from 'next/navigation';
 
 interface PublicPlanData {
     className: string;
@@ -58,7 +59,9 @@ const PublicSeatingPlan = ({ planData }: { planData: PublicPlanData }) => {
 };
 
 
-export default function PublicSeatingPlanPage({ params }: { params: { classCode: string } }) {
+export default function PublicSeatingPlanPage() {
+    const params = useParams();
+    const classCode = params.classCode as string;
     const { firestore } = useFirebase();
     const [planData, setPlanData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -66,12 +69,12 @@ export default function PublicSeatingPlanPage({ params }: { params: { classCode:
 
     useEffect(() => {
         const fetchPlan = async () => {
-            if (!firestore) {
+            if (!firestore || !classCode) {
                 return;
             }
             setLoading(true);
             try {
-                const classCodeRef = doc(firestore, 'classCodes', params.classCode);
+                const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
                 if (!classCodeSnap.exists()) {
@@ -98,7 +101,7 @@ export default function PublicSeatingPlanPage({ params }: { params: { classCode:
         };
 
         fetchPlan();
-    }, [firestore, params.classCode]);
+    }, [firestore, classCode]);
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
