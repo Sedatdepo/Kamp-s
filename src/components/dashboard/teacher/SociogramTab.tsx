@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -409,8 +410,20 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
                 <div className="flex justify-between items-center pt-2">
                     <div className="flex items-center space-x-2">
                         <Switch id="sociogram-toggle" checked={currentClass?.isSociogramActive || false} onCheckedChange={handleToggleActive} disabled={!currentClass} />
-                        <Label htmlFor="sociogram-toggle">Anket Aktif</Label>
+                        <Label htmlFor="sociogram-toggle">Öğrencilerle Paylaş</Label>
                     </div>
+                     {currentClass?.isSociogramActive && (
+                         <Button variant="outline" size="sm" onClick={() => {
+                            if(!currentClass.code) return;
+                            const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
+                            navigator.clipboard.writeText(link);
+                            toast({ title: 'Paylaşım linki kopyalandı!' });
+                        }}>
+                            <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                        </Button>
+                    )}
+                </div>
+                 <div className="pt-2">
                     <Button size="sm" onClick={() => handleOpenModal(null)}>
                         <Plus className="mr-2 h-4 w-4" /> Yeni Soru
                     </Button>
