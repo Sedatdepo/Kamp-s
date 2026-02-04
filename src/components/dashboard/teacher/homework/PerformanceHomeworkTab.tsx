@@ -1,26 +1,20 @@
-'use client';
 
-import React, { useMemo, useState } from 'react';
-import { Homework, Submission, Student, Badge as BadgeType } from '@/lib/types';
+"use client";
+
+import { useMemo, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { Homework, Submission, Question, Badge as BadgeType, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip, Download } from 'lucide-react';
-import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
+import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; // Added import
+import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { saveAs } from 'file-saver';
 
-
-// Detail View for a single performance homework
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
     return (
         <Card>
@@ -75,20 +69,20 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
     );
 };
 
-// List item for a single performance homework
-const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: Student, classId: string, onSelect: () => void }) => {
+
+const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: any, classId: string, onSelect: () => void }) => {
     const { db } = useFirebase();
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
-      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
-    }, [db, classId, homework.id, student.id]);
+      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
+    }, [db, classId, homework.id]);
 
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
-        return submissions?.[0];
-    }, [submissions]);
+        return submissions?.find(s => s.studentId === student.id);
+    }, [submissions, student.id]);
     
     return (
         <div onClick={onSelect} className={`cursor-pointer border p-4 rounded-lg shadow-sm space-y-3 transition-all hover:border-primary/50 ${existingSubmission ? 'bg-green-50 dark:bg-green-900/20' : 'bg-background'}`}>
@@ -100,12 +94,17 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                     )}
                  </div>
 
-                 <h2 className="text-xl font-bold">{homework.text}</h2>
-                 <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
-
+                 {homework.questions && homework.questions.length > 0 ? (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-bold">{homework.text}</h2>
+                        <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
+                    </div>
+                ) : (
+                    <p className="text-sm font-semibold">{homework.text}</p>
+                )}
             </div>
 
-            {existingSubmission && (
+            {existingSubmission ? (
                 <div className='bg-white dark:bg-muted/50 p-3 rounded-md border'>
                     <div className="flex items-center gap-2 text-green-600 font-semibold mb-2">
                         <CheckCircle className="h-5 w-5"/>
@@ -124,7 +123,7 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
                          </div>
                     )}
                 </div>
-            )}
+            ) : null}
         </div>
     )
 }

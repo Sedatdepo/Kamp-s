@@ -1,7 +1,6 @@
+'use client';
 
-"use client";
-
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
@@ -20,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
 
-const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
+export const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -285,75 +284,4 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             )}
         </div>
     )
-}
-
-function RegularHomeworkTabContent({ student, classId }: { student: Student; classId: string; }) {
-  const { db } = useFirebase();
-    
-    const homeworksQuery = useMemoFirebase(() => {
-        if (!db || !classId || !student?.id) return null;
-        return query(
-            collection(db, 'classes', classId, 'homeworks'), 
-            where('rubric', '==', null),
-            where('assignedStudents', 'array-contains', student.id)
-        );
-    }, [db, classId, student?.id]);
-    
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
-
-    const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
-
-    if (homeworksLoading) {
-        return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
-        );
-    }
-    
-    return (
-        <Card>
-        <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-                <BookText className="h-6 w-6"/>
-                Ödevlerim
-            </CardTitle>
-            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ScrollArea className="h-[60vh] pr-2">
-                <div className="space-y-4">
-                {sortedHomeworks.length > 0 ? (
-                    sortedHomeworks.map((hw) => (
-                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                    ))
-                ) : (
-                    <div className="text-center py-10 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
-                    </div>
-                )}
-                </div>
-            </ScrollArea>
-        </CardContent>
-        </Card>
-    );
-}
-
-export function RegularHomeworkTab({ student, classId }: { student: Student | null; classId: string | null; }) {
-  if (!student || !classId) {
-    return (
-        <Card>
-            <CardContent className="flex justify-center items-center p-6">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </CardContent>
-        </Card>
-    );
-  }
-
-  return <RegularHomeworkTabContent student={student} classId={classId} />;
 }

@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Student } from '@/lib/types';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Student, Homework } from '@/lib/types';
+import { Loader2, ArrowLeft, BookText } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { RegularHomeworkTab } from '@/components/dashboard/teacher/homework/RegularHomeworkTab';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { HomeworkItem } from '@/components/dashboard/teacher/homework/RegularHomeworkTab';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 export default function StudentRegularHomeworkPage() {
     const params = useParams();
@@ -16,7 +21,9 @@ export default function StudentRegularHomeworkPage() {
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
-
+    
+    const { db } = useFirebase();
+    
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
@@ -36,8 +43,26 @@ export default function StudentRegularHomeworkPage() {
             setLoading(false);
         }
     }, [classCode, router]);
+    
+    const homeworksQuery = useMemoFirebase(() => {
+        if (!db || !student?.classId || !student?.id) return null;
+        return query(
+            collection(db, 'classes', student.classId, 'homeworks'), 
+            where('rubric', '==', null),
+            where('assignedStudents', 'array-contains', student.id)
+        );
+    }, [db, student?.classId, student?.id]);
+    
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+    
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
 
-    if (loading || !student) {
+    const initialLoading = loading || !student;
+
+    if (initialLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -59,7 +84,34 @@ export default function StudentRegularHomeworkPage() {
                 </Button>
             </header>
             <main className="max-w-4xl mx-auto">
-                 <RegularHomeworkTab student={student} classId={student.classId} />
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2">
+                            <BookText className="h-6 w-6"/>
+                            Ödevlerim
+                        </CardTitle>
+                        <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         {homeworksLoading ? (
+                            <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                         ) : (
+                            <ScrollArea className="h-[60vh] pr-2">
+                                <div className="space-y-4">
+                                {sortedHomeworks.length > 0 ? (
+                                    sortedHomeworks.map((hw) => (
+                                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={student.classId} />
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 bg-muted/50 rounded-lg">
+                                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                                    </div>
+                                )}
+                                </div>
+                            </ScrollArea>
+                         )}
+                    </CardContent>
+                </Card>
             </main>
         </div>
     );
