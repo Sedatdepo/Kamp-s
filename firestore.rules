@@ -1,232 +1,113 @@
-/**
- * Core Philosophy:
- * This ruleset enforces a security model based on two primary roles: Admins and standard authenticated Users.
- * Admins, identified by the existence of a document in the `/roles_admin` collection, have broad permissions
- * to manage shared educational data like classes, students, and lessons. Standard users (teachers or students)
- * are generally restricted to reading shared data and managing their own user-specific documents.
- *
- * Data Structure:
- * The data is organized into several top-level collections for shared data (`classes`, `lessons`, `riskFactors`)
- * and user-centric data (`users`, `messages`). User-specific information, like a teacher's profile, is nested
- * under the user's document (`/users/{userId}/teacherProfile`) to leverage path-based ownership rules.
- * Similarly, sensitive student data is nested under a student-specific path (`/students/{studentId}/...`).
- *
- * Key Security Decisions:
- * - Admin Role: A user is considered an admin if a document with their UID exists in the `/roles_admin`
- *   collection. This collection is client-side read/write protected to prevent privilege escalation.
- * - Default Read Access: Most shared data (classes, lessons, students) is readable by any signed-in user,
- *   including those using anonymous authentication, to support the application's user flows.
- * - Default Write Access: Writes to shared data collections are restricted to Admins to maintain data integrity.
- * - User Data Ownership: Users have full control over their own user document and nested profile information
- *   (e.g., `/users/{userId}` and its subcollections).
- * - Student Data Privacy: Direct writes to student records (`/students/{studentId}/...` and
- *   `/classes/{classId}/students/{studentId}`) are restricted to Admins. This assumes that students do not
- *   directly modify their own records and that such actions are performed by authorized school personnel.
- * - Message Security: Access to messages is restricted to the sender and receiver of the message.
- *
- * Denormalization for Authorization:
- * The ruleset avoids costly `get()` calls. For example, a `message` document contains both `senderId` and
- * `receiverId` fields, allowing rules to authorize access by directly inspecting the document's data
- * without fetching other documents.
- *
- * Structural Segregation:
- * Administrative roles are managed in a separate `/roles_admin` collection. This cleanly separates
- * authorization logic from user data, making the rules simpler and more performant.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --------------------------------------------------------------------
-    // Helper Functions
-    // --------------------------------------------------------------------
-
-    /**
-     * Returns true if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
+    
+    function isTeacher(userId) {
+      // A user is a teacher if they have a document in the /teachers collection
+      return exists(/databases/$(database)/documents/teachers/$(userId));
     }
-
-    /**
-     * Returns true if the user's UID matches the provided userId.
-     * Used for ownership-based access control.
-     */
+    
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * Returns true if the user is an administrator.
-     * Admin status is determined by the existence of a document in the /roles_admin collection.
-     */
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    // Publicly readable views of data, only writable by the class teacher
+    match /publicViews/{viewId} {
+        allow get: if true;
+        allow write: if isTeacher(request.auth.uid) &&
+                      exists(/databases/$(database)/documents/classes/$(viewId)) &&
+                      get(/databases/$(database)/documents/classes/$(viewId)).data.teacherId == request.auth.uid;
     }
 
-    /**
-     * Validates that the user is the owner of an existing document.
-     * Used for safe update and delete operations.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    // Class codes for student portal entry
+    match /classCodes/{code} {
+        allow get: if true;
+        // Only teachers can create/update class codes
+        allow write: if isTeacher(request.auth.uid);
     }
-
-    // --------------------------------------------------------------------
-    // Collection Rules
-    // --------------------------------------------------------------------
-
-    /**
-     * @description Manages class information. Readable by any signed-in user, but only manageable by admins.
-     * @path /classes/{classId}
-     * @allow (get) Any authenticated user can read a class document.
-     * @deny (create) A non-admin user cannot create a new class.
-     * @principle Public read access for shared data with centralized admin control for modifications.
-     */
+    
+    // Teachers can manage their own classes
     match /classes/{classId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-
-      /**
-       * @description Manages student data within a class. Readable by any signed-in user, but writable only by admins.
-       * @path /classes/{classId}/students/{studentId}
-       * @allow (list) Any authenticated user (e.g., a teacher) can list students in a class.
-       * @deny (update) A regular user cannot update a student's record.
-       * @principle Protects sensitive student information by restricting modifications to authorized admins.
-       */
-      match /students/{studentId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
-      }
+        allow read: if request.auth != null;
+        allow write: if isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
     }
-
-    /**
-     * @description Manages core user documents. Users can create and manage their own document.
-     * @path /users/{userId}
-     * @allow (create) A new user can create their own user document. auth.uid must match {userId}.
-     * @deny (get) A user cannot read another user's document.
-     * @principle Enforces strict user ownership. Validates relational integrity by ensuring the document's `id` field matches its path.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-
-      /**
-       * @description Manages a teacher's profile. Only the owner can manage their profile.
-       * @path /users/{userId}/teacherProfile
-       * @allow (create, get, update, delete) A teacher can manage their own profile document.
-       * @deny (list) Listing is disallowed as this is a single document path.
-       * @principle Restricts access to a user's own data tree. Validates that the profile's `userId` field is correctly set and immutable.
-       */
-      match /teacherProfile {
-        allow get: if isOwner(userId);
-        allow list: if false;
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
-      }
-    }
-
-    /**
-     * @description Manages lessons. Readable by any signed-in user, but only manageable by admins.
-     * @path /lessons/{lessonId}
-     * @allow (get) Any authenticated user can read lesson details.
-     * @deny (create) A non-admin user cannot create a new lesson.
-     * @principle Public read access for shared data with centralized admin control for modifications.
-     */
-    match /lessons/{lessonId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Manages risk factors. Readable by any signed-in user, but only manageable by admins.
-     * @path /riskFactors/{riskFactorId}
-     * @allow (list) Any authenticated user can list available risk factors.
-     * @deny (update) A non-admin user cannot modify a risk factor.
-     * @principle Public read access for shared data with centralized admin control for modifications.
-     */
-    match /riskFactors/{riskFactorId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Manages student-specific subcollections. Writable only by admins.
-     * @path /students/{studentId}
-     * @allow (get) An admin can read student sub-collection documents.
-     * @deny (get) A regular user cannot read these documents unless a more specific rule allows it.
-     * @principle Protects sensitive student data by defaulting to admin-only access.
-     */
+    
+    // Students collection
     match /students/{studentId} {
-      /**
-       * @description A student's detailed info form.
-       * @path /students/{studentId}/infoForm
-       */
-      match /infoForm {
-        allow get: if isSignedIn();
-        allow list: if false;
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
-      }
-
-      /**
-       * @description A student's grades.
-       * @path /students/{studentId}/grades
-       */
-      match /grades {
-        allow get: if isSignedIn();
-        allow list: if false;
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
-      }
+        allow get: if true;
+        allow create: if isTeacher(request.auth.uid);
+        allow delete: if isTeacher(request.auth.uid);
+        allow update: if request.auth != null && (
+          // Teachers can update any student data
+          isTeacher(request.auth.uid) ||
+          // A student can claim their document with an authUid if not already claimed
+          (
+            request.resource.data.authUid == request.auth.uid &&
+            resource.data.authUid == null &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid'])
+          ) ||
+          // An authenticated student can update their own preferences/selections
+          (
+            isOwner(resource.data.authUid) &&
+            (
+                request.resource.data.diff(resource.data).affectedKeys().hasAny(['projectPreferences', 'clubPreferences', 'risks', 'positiveSelections', 'negativeSelections', 'leadershipSelections'])
+            )
+          )
+        );
     }
 
-    /**
-     * @description Manages messages. Access is restricted to the message sender or receiver.
-     * @path /messages/{messageId}
-     * @allow (get) The sender or receiver of a message can read it.
-     * @deny (get) A user who is not part of the conversation cannot read the message.
-     * @principle Implements shared access by inspecting denormalized `senderId` and `receiverId` fields.
-     */
+    // Messages between users
     match /messages/{messageId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
-      allow list: if false; // Queries must be used to securely list messages.
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if false; // Messages are immutable.
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.senderId && resource != null;
+      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow update: if request.auth != null && (isOwner(resource.data.receiverId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])); // Only receiver can mark as read
+      allow delete: if false;
+    }
+    
+    // Teacher profiles
+    match /teachers/{teacherId} {
+        allow read, write: if isOwner(teacherId);
     }
 
-    /**
-     * @description Defines user admin roles. This collection is locked down from all client access.
-     * @path /roles_admin/{userId}
-     * @allow (get, list, create, update, delete) No client access is permitted.
-     * @deny (any) All operations are denied.
-     * @principle Prevents any client from listing admins or escalating their own privileges. Must be managed via the Admin SDK.
-     */
-    match /roles_admin/{userId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    // Lessons, Clubs, RiskFactors are managed by teachers
+    match /lessons/{lessonId} {
+        allow read: if request.auth != null;
+        allow write: if isTeacher(request.auth.uid);
+    }
+    match /clubs/{clubId} {
+        allow read: if request.auth != null;
+        allow write: if isTeacher(request.auth.uid);
+    }
+    match /riskFactors/{riskFactorId} {
+        allow read: if request.auth != null;
+        allow write: if isTeacher(request.auth.uid);
+    }
+
+    // Student info forms
+    match /infoForms/{formId} {
+        allow read: if request.auth != null; // Teachers can read, students can read their own
+        allow write: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+    }
+
+    // Homeworks and submissions
+    match /classes/{classId}/homeworks/{homeworkId} {
+        allow read: if request.auth != null;
+        allow write: if isTeacher(request.auth.uid);
+        
+        match /submissions/{submissionId} {
+            allow read: if request.auth != null;
+            allow create: if request.auth != null; // Students submit
+            allow update: if isTeacher(request.auth.uid); // Teacher grades/gives feedback
+            allow delete: if isTeacher(request.auth.uid);
+        }
+    }
+
+     // Teacher specific data store
+    match /teacherData/{teacherId} {
+      allow read, write: if isOwner(teacherId);
     }
   }
 }
