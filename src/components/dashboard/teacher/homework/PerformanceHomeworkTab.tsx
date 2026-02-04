@@ -1,16 +1,24 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Homework, Submission, Student } from '@/lib/types';
+import { Homework, Submission, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
-import { collection, query, where } from 'firebase/firestore';
+import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList, Send, Paperclip, Download } from 'lucide-react';
+import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { saveAs } from 'file-saver';
+
 
 // Detail View for a single performance homework
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
@@ -68,7 +76,7 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
 };
 
 // List item for a single performance homework
-const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: any, classId: string, onSelect: () => void }) => {
+const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: Student, classId: string, onSelect: () => void }) => {
     const { db } = useFirebase();
 
     const submissionsQuery = useMemoFirebase(() => {

@@ -22,7 +22,7 @@ import { saveAs } from 'file-saver';
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting } = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
@@ -288,8 +288,9 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-function RegularHomeworkTabContent({ student, classId }: { student: Student; classId: string; }) {
+export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
     const { db } = useFirebase();
+    
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId || !student?.id) return null;
         return query(
@@ -318,45 +319,28 @@ function RegularHomeworkTabContent({ student, classId }: { student: Student; cla
     
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <BookText className="h-6 w-6"/>
-                    Ödevlerim
-                </CardTitle>
-                <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-[60vh] pr-2">
-                    <div className="space-y-4">
-                    {sortedHomeworks && sortedHomeworks.length > 0 ? (
-                        sortedHomeworks.map((hw) => (
-                            <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                        ))
-                    ) : (
-                        <div className="text-center py-10 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
-                        </div>
-                    )}
+        <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+                <BookText className="h-6 w-6"/>
+                Ödevlerim
+            </CardTitle>
+            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ScrollArea className="h-[60vh] pr-2">
+                <div className="space-y-4">
+                {sortedHomeworks.length > 0 ? (
+                    sortedHomeworks.map((hw) => (
+                        <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
+                    ))
+                ) : (
+                    <div className="text-center py-10 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
                     </div>
-                </ScrollArea>
-            </CardContent>
+                )}
+                </div>
+            </ScrollArea>
+        </CardContent>
         </Card>
     );
-}
-
-export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
-    if (!student) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Hata</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>Öğrenci bilgisi bulunamadı. Lütfen tekrar giriş yapın.</p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    return <RegularHomeworkTabContent student={student} classId={classId} />;
 }
