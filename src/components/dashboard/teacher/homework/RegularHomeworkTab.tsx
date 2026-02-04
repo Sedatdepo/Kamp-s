@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -33,7 +32,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
       return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
     }, [db, classId, homework.id, student.id]);
 
-    const { data: submissions, forceRefresh } = useCollection<Submission>(submissionsQuery);
+    const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.[0];
@@ -156,8 +155,6 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
             setSubmissionText('');
             setSubmissionFile(null);
             setAnswers({});
-            forceRefresh();
-
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });

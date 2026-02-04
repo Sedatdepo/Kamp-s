@@ -72,7 +72,7 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
                 
                 if (Object.keys(updates).length > 0) batch.update(subRef, updates);
 
-            } else if (hasDataToSave) {
+            } else if(hasDataToSave) {
                 const newSubRef = doc(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'));
                 batch.set(newSubRef, {
                     studentId: student.id, studentName: student.name, studentNumber: student.number,
@@ -210,6 +210,7 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
     );
 };
 
+
 interface PerformanceHomeworkEvaluationTabProps {
   classId: string;
   students: Student[];
@@ -226,7 +227,7 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
         return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'performance'));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading, forceRefresh } = useCollection<Homework>(performanceHomeworksQuery);
+    const { data: homeworks, isLoading } = useCollection<Homework>(performanceHomeworksQuery);
     
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -272,7 +273,6 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
                 title: "Ödev ve tüm teslimler silindi.",
                 description: "Ödevleri düzenlemek için 'Canlı Ödev Yönetimi' sekmesini kullanabilirsiniz."
             });
-            forceRefresh(); // Refresh the list
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }

@@ -81,7 +81,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
-    const { data: liveHomeworks, isLoading: homeworksLoading, forceRefresh } = useCollection<Homework>(liveHomeworksQuery);
+    const { data: liveHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(liveHomeworksQuery);
     
     const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     
@@ -250,7 +250,6 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             }
             
             cancelEditing();
-            forceRefresh();
 
         } catch (error) {
             console.error("Homework error:", error);
@@ -280,7 +279,6 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             await batch.commit();
     
             toast({ title: "Ödev ve tüm teslimler silindi." });
-            forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }
