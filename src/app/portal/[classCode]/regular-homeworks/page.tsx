@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Student, Homework, Submission } from '@/lib/types';
+import { Student, Homework, Submission, Question, Badge } from '@/lib/types';
 import { Loader2, ArrowLeft, BookText, Send, Paperclip, Download, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,6 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
-    const [submissionText, setSubmissionText] = useState('');
-    const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -37,45 +35,29 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
 
     const existingSubmission = useMemo(() => submissions?.[0], [submissions]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > 750 * 1024) { // ~750KB
-                toast({
-                    variant: "destructive",
-                    title: "Dosya Boyutu Çok Büyük",
-                    description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
-                });
-                return;
-            }
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                setSubmissionFile({
-                    dataUrl: reader.result as string,
-                    name: file.name,
-                    type: file.type,
-                });
-            };
-        }
-    };
-    
-    const handleAnswerChange = (questionId: string | number, answer: string) => {
-      setAnswers(prev => ({ ...prev, [questionId as string]: answer }));
+    const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
+      setAnswers(prev => {
+          const currentAnswer = prev[questionId as string];
+          if (isMulti) {
+              const currentArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+              if (currentArr.includes(answer)) {
+                  return { ...prev, [questionId as string]: currentArr.filter(a => a !== answer) };
+              } else {
+                  return { ...prev, [questionId as string]: [...currentArr, answer] };
+              }
+          }
+          return { ...prev, [questionId as string]: answer };
+      });
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (isCheckboxMark: boolean = false) => {
         const hasQuestions = (homework.questions || []).length > 0;
+        
         if (hasQuestions && homework.questions!.some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
 
-        if (!hasQuestions && !submissionText.trim() && !submissionFile) {
-             toast({ variant: 'destructive', title: 'Teslimat boş olamaz.' });
-            return;
-        }
-        
         if (!db || !classId) return;
 
         setIsSubmitting(true);
@@ -89,23 +71,45 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
         };
 
         if (hasQuestions) {
-            submissionData.answers = answers;
+            const sanitizedAnswers: { [key: string]: string | string[] } = {};
+            for (const key in answers) {
+                if (Object.prototype.hasOwnProperty.call(answers, key) && answers[key] !== undefined) {
+                    sanitizedAnswers[key] = answers[key];
+                }
+            }
+             if (Object.keys(sanitizedAnswers).length > 0) {
+               submissionData.answers = sanitizedAnswers;
+            }
         }
-        if (submissionText.trim()) {
-            submissionData.text = submissionText;
-        }
-        if (submissionFile) {
-            submissionData.file = submissionFile;
+
+        if (isCheckboxMark) {
+            submissionData.text = "Öğrenci tarafından tamamlandı olarak işaretlendi.";
         }
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
-            await addDoc(submissionsColRef, JSON.parse(JSON.stringify(submissionData)));
+            const cleanData = JSON.parse(JSON.stringify(submissionData));
+            await addDoc(submissionsColRef, cleanData);
 
-            toast({ title: "Ödev başarıyla teslim edildi!" });
+            const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
+            if (!isLate) {
+                const studentRef = doc(db, 'students', student.id);
+                const currentBadges: string[] = student.badges || [];
+                
+                const updates: any = { behaviorScore: increment(10) };
+                
+                let toastDescription = "+10 Davranış Puanı kazanıldı!";
+                if (!currentBadges.includes('2')) { // Badge ID for 'Ödev Canavarı'
+                    updates.badges = arrayUnion('2');
+                    toastDescription = "+10 Davranış Puanı ve 'Ödev Canavarı' rozeti kazanıldı!"
+                }
 
-            setSubmissionText('');
-            setSubmissionFile(null);
+                await updateDoc(studentRef, updates);
+                toast({ title: "Ödev başarıyla teslim edildi!", description: toastDescription });
+            } else {
+                 toast({ title: "Ödev başarıyla teslim edildi!" });
+            }
+
             setAnswers({});
         } catch (error: any) {
             console.error("Submission error:", error);
@@ -146,17 +150,10 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
                         <p>Teslim Edildi ({format(new Date(existingSubmission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
-                    {existingSubmission.file && (
-                         <Button variant="outline" size="sm" onClick={() => handleDownload(existingSubmission.file!)} className="flex items-center gap-2">
-                            <Paperclip className="h-4 w-4" />
-                            <span className="truncate">{existingSubmission.file.name}</span>
-                        </Button>
-                    )}
                  </div>
             ) : (
                 (homework.questions && homework.questions.length > 0) ? (
-                    // Question form here
-                     <div className="space-y-3 pt-3 border-t">
+                    <div className="space-y-3 pt-3 border-t">
                         {homework.questions.map((q, i) => (
                              <div key={q.id || i} className="p-3 bg-slate-50 rounded-md">
                                 <Label className="font-semibold block mb-2">{i+1}. {q.text} {q.required && <span className="text-red-500">*</span>}</Label>
@@ -173,19 +170,16 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
                                 )}
                              </div>
                         ))}
-                         <Button onClick={handleSubmit} disabled={isSubmitting}>
+                         <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             Gönder
                         </Button>
                     </div>
                 ) : (
-                    // Standard text/file submission
-                    <div className="space-y-3 pt-3 border-t">
-                        <Textarea placeholder="Cevabınızı buraya yazın..." value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} rows={3} />
-                        <Input type="file" onChange={handleFileChange} />
-                        <Button onClick={handleSubmit} disabled={isSubmitting || (!submissionText.trim() && !submissionFile)}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                            Gönder
+                    <div className="pt-3 border-t">
+                        <Button onClick={() => handleSubmit(true)} disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Tamamlandı Olarak İşaretle
                         </Button>
                     </div>
                 )
