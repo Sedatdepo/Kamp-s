@@ -3,9 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      // Allow read and write access for any authenticated user.
-      // This simplified rule is for single-teacher use as requested.
-      allow read, write: if request.auth != null;
+      // DİKKAT: Bu kural geliştirme için basitleştirilmiştir.
+      // Herhangi bir kullanıcının tüm verilere okuma ve yazma erişimi vardır.
+      // Prodüksiyon ortamında kullanılmamalıdır.
+      allow read, write: if true;
     }
   }
 }
