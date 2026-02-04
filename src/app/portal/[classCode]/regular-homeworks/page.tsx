@@ -20,11 +20,13 @@ import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
+export const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
+    const [submissionText, setSubmissionText] = useState('');
+    const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
       if (!db || !classId) return null;
@@ -33,7 +35,9 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
 
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
-    const existingSubmission = useMemo(() => submissions?.[0], [submissions]);
+    const existingSubmission = useMemo(() => {
+        return submissions?.[0];
+    }, [submissions]);
 
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
       setAnswers(prev => {
@@ -50,10 +54,37 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
       });
     };
 
-    const handleSubmit = async (isCheckboxMark: boolean = false) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 750 * 1024) { // ~750KB
+                toast({
+                    variant: "destructive",
+                    title: "Dosya Boyutu Çok Büyük",
+                    description: "Lütfen 750 KB'tan küçük bir dosya yükleyin.",
+                });
+                return;
+            }
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                setSubmissionFile({
+                    dataUrl: reader.result as string,
+                    name: file.name,
+                    type: file.type,
+                });
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                toast({ variant: "destructive", title: "Dosya Okuma Hatası" });
+            };
+        }
+    };
+
+    const handleSubmit = async () => {
         const hasQuestions = (homework.questions || []).length > 0;
         
-        if (hasQuestions && homework.questions!.some(q => q.required && !answers[q.id])) {
+        if (hasQuestions && (homework.questions || []).some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
@@ -81,16 +112,24 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
                submissionData.answers = sanitizedAnswers;
             }
         }
+        
+        if (submissionText.trim()) {
+            submissionData.text = submissionText;
+        }
+        
+        if(submissionFile) {
+            submissionData.file = submissionFile;
+        }
 
-        if (isCheckboxMark) {
-            submissionData.text = "Öğrenci tarafından tamamlandı olarak işaretlendi.";
+        if (!hasQuestions && !submissionText.trim() && !submissionFile) {
+             submissionData.text = "Öğrenci ödevi tamamladı olarak işaretledi.";
         }
 
         try {
             const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homework.id}/submissions`);
             const cleanData = JSON.parse(JSON.stringify(submissionData));
             await addDoc(submissionsColRef, cleanData);
-
+            
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
@@ -111,6 +150,8 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
             }
 
             setAnswers({});
+            setSubmissionFile(null);
+            setSubmissionText('');
         } catch (error: any) {
             console.error("Submission error:", error);
             toast({ variant: "destructive", title: "Teslimat sırasında hata oluştu.", description: error.message });
@@ -121,7 +162,9 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
 
     const handleDownload = (file: {dataUrl: string, name: string}) => {
         saveAs(file.dataUrl, file.name);
-    };
+    }
+    
+    const questions = useMemo(() => homework.questions || [], [homework.questions]);
 
     return (
         <div className={`border p-4 rounded-lg shadow-sm space-y-3 ${existingSubmission ? 'bg-green-50' : 'bg-background'}`}>
@@ -151,38 +194,46 @@ const StudentHomeworkItem = ({ homework, student, classId }: { homework: Homewor
                     </div>
                     {existingSubmission.text && <p className="text-sm whitespace-pre-wrap font-mono p-2 rounded-md bg-muted/50">{existingSubmission.text}</p>}
                  </div>
+            ) : questions.length > 0 ? (
+                <div className="space-y-3 pt-3 border-t">
+                    {questions.map((q, i) => (
+                         <div key={q.id || i} className="p-3 bg-slate-50 rounded-md">
+                            <Label className="font-semibold block mb-2">{i+1}. {q.text} {q.required && <span className="text-red-500">*</span>}</Label>
+                            {q.type === 'open-ended' && <Textarea onChange={e => handleAnswerChange(q.id, e.target.value)} />}
+                            {q.type === 'multiple-choice' && (
+                                 <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)}>
+                                    {(q.options || []).map((opt, idx) => (
+                                        <div key={idx} className="flex items-center space-x-2">
+                                            <RadioGroupItem value={opt} id={`${q.id}-${idx}`} />
+                                            <Label htmlFor={`${q.id}-${idx}`}>{opt}</Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            )}
+                         </div>
+                    ))}
+                     <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Gönder
+                    </Button>
+                </div>
             ) : (
-                (homework.questions && homework.questions.length > 0) ? (
-                    <div className="space-y-3 pt-3 border-t">
-                        {homework.questions.map((q, i) => (
-                             <div key={q.id || i} className="p-3 bg-slate-50 rounded-md">
-                                <Label className="font-semibold block mb-2">{i+1}. {q.text} {q.required && <span className="text-red-500">*</span>}</Label>
-                                {q.type === 'open-ended' && <Textarea onChange={e => handleAnswerChange(q.id, e.target.value)} />}
-                                {q.type === 'multiple-choice' && (
-                                     <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)}>
-                                        {(q.options || []).map((opt, idx) => (
-                                            <div key={idx} className="flex items-center space-x-2">
-                                                <RadioGroupItem value={opt} id={`${q.id}-${idx}`} />
-                                                <Label htmlFor={`${q.id}-${idx}`}>{opt}</Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
-                                )}
-                             </div>
-                        ))}
-                         <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                            Gönder
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="pt-3 border-t">
-                        <Button onClick={() => handleSubmit(true)} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                            Tamamlandı Olarak İşaretle
-                        </Button>
-                    </div>
-                )
+                <div className="space-y-3 pt-3 border-t">
+                    <Textarea 
+                        placeholder="Öğretmeninize bir not bırakın (isteğe bağlı)..."
+                        value={submissionText}
+                        onChange={(e) => setSubmissionText(e.target.value)}
+                        rows={2}
+                    />
+                    <Input
+                        type="file"
+                        onChange={handleFileChange}
+                    />
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Ödevi Tamamladım / Gönder
+                    </Button>
+                </div>
             )}
         </div>
     );
@@ -263,7 +314,7 @@ export default function StudentRegularHomeworkPage() {
                                 <div className="space-y-4">
                                 {regularHomeworks.length > 0 ? (
                                     regularHomeworks.map((hw) => (
-                                        <StudentHomeworkItem key={hw.id} homework={hw} student={student!} classId={student!.classId} />
+                                        <HomeworkItem key={hw.id} homework={hw} student={student!} classId={student!.classId} />
                                     ))
                                 ) : (
                                     <div className="text-center py-10 bg-muted/50 rounded-lg">
