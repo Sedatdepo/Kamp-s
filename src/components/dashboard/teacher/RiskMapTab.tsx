@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -30,6 +29,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useCollection, useMemoFirebase } from '@/firebase';
@@ -216,6 +224,45 @@ function RiskFactorManager({ teacherId }: { teacherId: string }) {
   );
 }
 
+const RiskEditDialog = ({ student, allFactors, onSave, onClose }: { student: Student | null, allFactors: RiskFactor[], onSave: (studentId: string, risks: string[]) => void, onClose: () => void }) => {
+    const [selectedRisks, setSelectedRisks] = useState<string[]>(student?.risks || []);
+
+    if (!student) return null;
+
+    const handleToggleRisk = (factorId: string) => {
+        setSelectedRisks(prev => 
+            prev.includes(factorId) 
+                ? prev.filter(id => id !== factorId) 
+                : [...prev, factorId]
+        );
+    };
+    
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{student.name} - Risk Faktörlerini Düzenle</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-80">
+            <div className="space-y-2 p-1">
+              {allFactors.map((factor: RiskFactor) => (
+                <div key={factor.id} onClick={() => handleToggleRisk(factor.id)} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted cursor-pointer">
+                  <Checkbox checked={selectedRisks.includes(factor.id)} onCheckedChange={() => handleToggleRisk(factor.id)} />
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                    {factor.label} <span className="text-muted-foreground">({factor.weight}P)</span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="ghost" onClick={onClose}>İptal</Button>
+            <Button onClick={() => onSave(student.id, selectedRisks)}>Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+}
 
 export function RiskMapTab({ classId, teacherProfile, currentClass, students, riskFactors }: RiskMapTabProps) {
   const { appUser, db } = useAuth();
@@ -224,24 +271,25 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
   const { riskMapDocuments = [] } = localDb;
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
-    const displayedStudents = useMemo(() => {
-        if (!students) return [];
-        let studentList = students;
-        if (selectedRecordId) {
-            const record = riskMapDocuments.find(d => d.id === selectedRecordId);
-            if (record) {
-                studentList = students.map(student => {
-                    const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
-                    return {
-                        ...student,
-                        risks: archivedData ? archivedData.risks : [],
-                    };
-                });
-            }
-        }
-        return [...studentList].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
-    }, [selectedRecordId, riskMapDocuments, students]);
+  const displayedStudents = useMemo(() => {
+      if (!students) return [];
+      let studentList = students;
+      if (selectedRecordId) {
+          const record = riskMapDocuments.find(d => d.id === selectedRecordId);
+          if (record) {
+              studentList = students.map(student => {
+                  const archivedData = record.data.studentRisks.find(sr => sr.studentId === student.id);
+                  return {
+                      ...student,
+                      risks: archivedData ? archivedData.risks : [],
+                  };
+              });
+          }
+      }
+      return [...studentList].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
+  }, [selectedRecordId, riskMapDocuments, students]);
   
   const handleToggleChange = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -326,6 +374,19 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
 
   const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
+  const handleSaveStudentRisks = async (studentId: string, newRisks: string[]) => {
+    if (!db) return;
+    const studentRef = doc(db, 'students', studentId);
+    try {
+      await updateDoc(studentRef, { risks: newRisks });
+      toast({ title: 'Başarılı', description: "Öğrencinin riskleri güncellendi." });
+      setEditingStudent(null);
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Hata', description: "Güncelleme başarısız." });
+    }
+  };
+
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
@@ -360,7 +421,8 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
                   <TableRow>
                     <TableHead>Öğrenci</TableHead>
                     <TableHead>Risk Faktörleri</TableHead>
-                    <TableHead className="text-right">Risk Puanı</TableHead>
+                    <TableHead className="text-center">Puan</TableHead>
+                    <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -386,19 +448,24 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
                             }) : <span className="text-xs text-muted-foreground">Risk yok</span>}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-bold">
+                        <TableCell className="text-center font-bold">
                             {riskScore > 0 ? (
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-center gap-2">
                                     <AlertTriangle className="h-4 w-4 text-destructive" />
                                     <span>{riskScore}</span>
                                 </div>
                             ): <span>{riskScore}</span>}
                         </TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingStudent(student)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   }) : (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
                         Bu sınıfta öğrenci bulunmuyor.
                       </TableCell>
                     </TableRow>
@@ -430,10 +497,14 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
             </div>
             { teacherId && <div className="mt-4"><RiskFactorManager teacherId={teacherId} /></div> }
         </div>
+        {editingStudent && riskFactors && (
+            <RiskEditDialog
+                student={editingStudent}
+                allFactors={riskFactors}
+                onSave={handleSaveStudentRisks}
+                onClose={() => setEditingStudent(null)}
+            />
+        )}
     </div>
   );
 }
-
-    
-
-    
