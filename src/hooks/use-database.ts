@@ -5,7 +5,7 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument, ExamDocument
 } from '@/lib/types';
 
 // localStorage anahtarı (artık kullanılmıyor ama referans olarak kalabilir)
@@ -41,6 +41,7 @@ export interface Database {
   projectFavorites: number[];
   edebiyatAsistanArsivi: EdebiyatAsistanDocument[];
   edebiyatKazanımlar: any | null;
+  examDocuments: ExamDocument[];
 }
 
 // Varsayılan boş veritabanı
@@ -95,6 +96,7 @@ export const initialDb: Database = {
   projectFavorites: [],
   edebiyatAsistanArsivi: [],
   edebiyatKazanımlar: null,
+  examDocuments: [],
 };
 
 // Create the context
