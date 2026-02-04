@@ -2,10 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // DİKKAT: Bu kural geliştirme için tüm erişime izin verir.
+    // Prototip aşamasındaki izin hatalarını gidermek için kullanılmıştır.
+    // Canlıya almadan önce bu kuralların sıkılaştırılması gerekir.
     match /{document=**} {
-      // DİKKAT: Bu kural geliştirme için basitleştirilmiştir.
-      // Herhangi bir kullanıcının tüm verilere okuma ve yazma erişimi vardır.
-      // Prodüksiyon ortamında kullanılmamalıdır.
       allow read, write: if true;
     }
   }
