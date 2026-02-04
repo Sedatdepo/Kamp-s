@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -22,7 +23,7 @@ import { saveAs } from 'file-saver';
 const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
-    const [isSubmitting, setIsSubmitting } = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
@@ -289,7 +290,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
 }
 
 export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
-    const { db } = useFirebase();
+  const { db } = useFirebase();
     
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !classId || !student?.id) return null;
