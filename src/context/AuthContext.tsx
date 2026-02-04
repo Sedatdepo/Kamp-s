@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
@@ -105,8 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           });
         } else {
-          // If not a teacher, sign out. No student panel.
-          await signOut();
+          // It's not a teacher. If it's an anonymous user, let them proceed.
+          // Otherwise (e.g., deleted teacher), sign them out.
+          if (!firebaseUser.isAnonymous) {
+            await signOut();
+          } else {
+            // This is an anonymous user for the student portal.
+            // Clear any existing teacher state but don't sign out.
+            setAppUser(null);
+          }
         }
       } else {
         setAppUser(null);
@@ -123,19 +131,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (loading) return;
 
-        const isPublic = publicRoutes.includes(pathname);
+        const studentRoutes = ['/giris', '/portal', '/oylama', '/sosyogram', '/view'];
+        const isStudentRoute = studentRoutes.some(route => pathname.startsWith(route));
         const isAuthRoute = pathname.startsWith('/dashboard');
 
-        if (appUser) {
+        if (appUser && appUser.type === 'teacher') {
             const targetDashboard = `/dashboard/teacher`;
-            if (appUser.type === 'teacher' && !appUser.profile?.id) return;
-            if (!pathname.startsWith(targetDashboard)) {
+            if (appUser.profile?.id && !isStudentRoute && !pathname.startsWith(targetDashboard)) {
                  router.push(targetDashboard);
             }
-        } else {
-            if (isAuthRoute) {
-                router.push('/');
-            }
+        } else if (!appUser && isAuthRoute) {
+             router.push('/');
         }
     }, [loading, appUser, pathname, router]);
 
