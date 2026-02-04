@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useAuth, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useAuth, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { doc, collection, addDoc, query, where, Timestamp, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { Student, TeacherProfile, Message, Class } from '@/lib/types';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
@@ -46,7 +46,6 @@ export default function StudentMessagingPage() {
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -62,22 +61,28 @@ export default function StudentMessagingPage() {
             router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
+    
+    const teacherDocRef = useMemoFirebase(
+        () => (db && student?.teacherId ? doc(db, 'teachers', student.teacherId) : null),
+        [db, student?.teacherId]
+    );
+    const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
 
     const messagesQuery = useMemoFirebase(() => {
-        if (!db || !authUser) return null;
+        if (!db || !student?.authUid) return null;
         return query(
             collection(db, 'messages'),
-            where('participants', 'array-contains', authUser.uid),
+            where('participants', 'array-contains', student.authUid),
             orderBy('timestamp', 'asc')
         );
-    }, [db, authUser]);
+    }, [db, student?.authUid]);
 
     const { data: messages } = useCollection<Message>(messagesQuery);
     
     // Mark messages as read
     useEffect(() => {
-        if (db && messages && messages.length > 0 && authUser) {
-            const unread = messages.filter(msg => msg.receiverId === authUser.uid && !msg.isRead);
+        if (db && messages && messages.length > 0 && student?.authUid) {
+            const unread = messages.filter(msg => msg.receiverId === student.authUid && !msg.isRead);
             if (unread.length > 0) {
                 const batch = writeBatch(db);
                 unread.forEach(msg => {
@@ -86,7 +91,7 @@ export default function StudentMessagingPage() {
                 batch.commit().catch(console.error);
             }
         }
-    }, [db, messages, authUser]);
+    }, [db, messages, student?.authUid]);
     
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -143,17 +148,17 @@ export default function StudentMessagingPage() {
             <main className="max-w-2xl mx-auto">
                 <Card className="flex flex-col h-[70vh]">
                     <CardHeader className="flex-row items-center gap-3">
-                        <Avatar><AvatarFallback>{teacher ? getInitials(teacher.name) : 'Ö'}</AvatarFallback></Avatar>
+                        <Avatar><AvatarFallback>{teacherProfile ? getInitials(teacherProfile.name) : 'Ö'}</AvatarFallback></Avatar>
                         <div>
-                             <CardTitle>{teacher?.name || 'Öğretmen'}</CardTitle>
-                             <CardDescription>{teacher?.branch}</CardDescription>
+                             <CardTitle>{teacherProfile?.name || 'Öğretmen'}</CardTitle>
+                             <CardDescription>{teacherProfile?.branch}</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-2 sm:p-4">
                         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                             {messages?.map((msg) => (
-                                <div key={msg.id} className={`flex my-2 ${msg.senderId === authUser?.uid ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === authUser?.uid ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
+                                <div key={msg.id} className={`flex my-2 ${msg.senderId === student?.authUid ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === student?.authUid ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
                                         <p className="whitespace-pre-wrap"><Linkify text={msg.text} /></p>
                                         <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p', { locale: tr }) : ''}</p>
                                     </div>
