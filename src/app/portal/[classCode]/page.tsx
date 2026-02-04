@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList } from 'lucide-react';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -98,6 +98,7 @@ export default function StudentPortalPage() {
                     <ModuleCard title="Proje Ödevim" icon={<ClipboardList className="text-purple-500" />} href={`/portal/${classCode}/project-homework`} isPublished={currentClass.isProjectHomeworkPublished} />
                     <ModuleCard title="Proje Tercihi" icon={<ListChecks className="text-indigo-500" />} href={`/portal/${classCode}/project-selection`} isPublished={currentClass.isProjectSelectionActive} />
                     <ModuleCard title="Sosyogram Anketi" icon={<Users className="text-teal-500" />} href={`/sosyogram/${classCode}`} isPublished={currentClass.isSociogramActive} />
+                    <ModuleCard title="Kulüp Tercihi" icon={<Drama className="text-pink-500" />} href={`/portal/${classCode}/club-selection`} isPublished={currentClass.isClubSelectionActive} />
                     <ModuleCard title="Sınıf Kahramanları" icon={<Trophy className="text-yellow-500" />} href={`/view/gamification/${classCode}`} isPublished={currentClass.isGamificationActive} />
                     <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                     <ModuleCard title="Sınıf Seçimi Oylaması" icon={<Vote className="text-red-500" />} href={`/oylama/${classCode}`} isPublished={currentClass.isElectionActive} />
