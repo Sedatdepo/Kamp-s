@@ -360,7 +360,9 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                         isOwned ? (
                             <AlertDialog key={badge.id}>
                                 <AlertDialogTrigger asChild>
-                                     <div className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100">
+                                     <div 
+                                      className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100"
+                                    >
                                       <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm">
                                         <Check size={14} strokeWidth={3} />
                                       </div>
@@ -386,7 +388,11 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                                 </AlertDialogContent>
                             </AlertDialog>
                         ) : (
-                             <div onClick={() => handleBadgeClick(selectedStudent, badge)} className="p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md">
+                             <div 
+                              key={badge.id}
+                              onClick={() => handleBadgeClick(selectedStudent, badge)}
+                              className="p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md"
+                            >
                               <div className="text-3xl mb-2">{badge.icon}</div>
                               <div className="font-bold text-sm text-slate-800">{badge.name}</div>
                               <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
