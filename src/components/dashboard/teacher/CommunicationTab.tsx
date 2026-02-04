@@ -306,8 +306,8 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
     }, [allMessages, teacherId]);
 
     useEffect(() => {
-        if (db && allMessages && allMessages.length > 0 && selectedStudent) {
-            const unread = allMessages.filter(msg => msg.senderId === selectedStudent.id && msg.receiverId === teacherId && !msg.isRead);
+        if (db && allMessages && allMessages.length > 0 && selectedStudent?.authUid) {
+            const unread = allMessages.filter(msg => msg.senderId === selectedStudent.authUid && msg.receiverId === teacherId && !msg.isRead);
             if (unread.length > 0) {
                 const batch = writeBatch(db);
                 unread.forEach(msg => {
@@ -319,11 +319,11 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
     }, [allMessages, selectedStudent, teacherId, db]);
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() || !selectedStudent || !db || !teacherId) return;
+        if (!newMessage.trim() || !selectedStudent?.authUid || !db || !teacherId) return;
         await addDoc(collection(db, 'messages'), {
             senderId: teacherId,
-            receiverId: selectedStudent.id,
-            participants: [selectedStudent.id, teacherId],
+            receiverId: selectedStudent.authUid,
+            participants: [selectedStudent.authUid, teacherId],
             text: newMessage,
             timestamp: Timestamp.now(),
             isRead: false,
@@ -333,8 +333,8 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
     };
 
     const chatMessages = useMemo(() => {
-        if (!selectedStudent || !allMessages) return [];
-        return allMessages.filter(m => m.participants.includes(selectedStudent.id)).sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+        if (!selectedStudent?.authUid || !allMessages) return [];
+        return allMessages.filter(m => m.participants.includes(selectedStudent.authUid!)).sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
     }, [allMessages, selectedStudent]);
 
     return (
@@ -351,8 +351,8 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
                                 <Avatar><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
                                 <span className="font-medium">{student.name}</span>
                             </div>
-                            {unreadMessagesCount.has(student.id) && (
-                                <span className="bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">{unreadMessagesCount.get(student.id)}</span>
+                            {student.authUid && unreadMessagesCount.has(student.authUid) && (
+                                <span className="bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">{unreadMessagesCount.get(student.authUid)}</span>
                             )}
                         </div>
                     ))}
@@ -379,7 +379,7 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
                             </ScrollArea>
                             <div className="flex gap-2">
                                 <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Bir mesaj yazın..." onKeyDown={e => e.key === 'Enter' && handleSendMessage()} />
-                                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}><Send className="h-4 w-4" /></Button>
+                                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || !selectedStudent.authUid}><Send className="h-4 w-4" /></Button>
                             </div>
                         </CardContent>
                     </>
@@ -397,15 +397,39 @@ function MessagesPanel({ classId, students }: { classId: string, students: Stude
 
 export function CommunicationTab({ classId, currentClass }: { classId: string; currentClass: Class | null; }) {
     const { db } = useAuth();
+    const { toast } = useToast();
+
+    const handleToggleMessagesPublish = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', currentClass.id);
+        try {
+            await updateDoc(classRef, { isMessagesPublished: checked });
+            toast({ title: 'Başarılı', description: `Mesajlaşma özelliği öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+        } catch {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
+        }
+    };
+
     const studentsQuery = useMemoFirebase(() => db ? query(collection(db, 'students'), where('classId', '==', classId)) : null, [db, classId]);
     const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
 
   return (
     <Tabs defaultValue="announcements">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="announcements">Duyurular</TabsTrigger>
-        <TabsTrigger value="messages">Öğrenci Mesajları</TabsTrigger>
-      </TabsList>
+      <div className="flex justify-between items-center mb-4">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="announcements">Duyurular</TabsTrigger>
+            <TabsTrigger value="messages">Öğrenci Mesajları</TabsTrigger>
+        </TabsList>
+        <div className="flex items-center space-x-2">
+            <Label htmlFor="publish-messages">Mesajlaşmayı Yayınla</Label>
+            <Switch
+                id="publish-messages"
+                checked={currentClass?.isMessagesPublished || false}
+                onCheckedChange={handleToggleMessagesPublish}
+                disabled={!currentClass}
+            />
+        </div>
+      </div>
       <TabsContent value="announcements" className="mt-4">
         <AnnouncementsPanel classId={classId} currentClass={currentClass} />
       </TabsContent>

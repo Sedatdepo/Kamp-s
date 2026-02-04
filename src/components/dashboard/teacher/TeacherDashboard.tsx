@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -37,7 +38,7 @@ const LoadingSpinner = () => (
 const StudentManagementTab = dynamic(() => import('@/components/dashboard/teacher/StudentManagementTab').then(mod => mod.StudentManagementTab), { loading: LoadingSpinner });
 const KazanımlarTab = dynamic(() => import('@/components/dashboard/teacher/KazanımlarTab').then(mod => mod.default), { loading: LoadingSpinner });
 const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
-const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.InfoFormsTab), { loading: LoadingSpinner });
+const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.StudentInfoFormTab), { loading: LoadingSpinner });
 const GradingToolTab = dynamic(() => import('@/components/dashboard/teacher/GradingToolTab').then(mod => mod.GradingToolTab), { loading: LoadingSpinner });
 const CommunicationTab = dynamic(() => import('@/components/dashboard/teacher/CommunicationTab').then(mod => mod.CommunicationTab), { loading: LoadingSpinner });
 const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/homework/HomeworkTab').then(mod => mod.HomeworkTab), { loading: LoadingSpinner });

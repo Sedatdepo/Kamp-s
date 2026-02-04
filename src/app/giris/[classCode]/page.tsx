@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where } from 'firebase/firestore';
+import { useFirebase, useCollection, useMemoFirebase, useAuth } from '@/firebase';
+import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,12 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
+import { signInAnonymously } from 'firebase/auth';
 
 export default function StudentLoginPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore, auth } = useFirebase();
     const { toast } = useToast();
     
     const [classId, setClassId] = useState<string | null>(null);
@@ -65,18 +66,37 @@ export default function StudentLoginPage() {
         }
     }, [studentsLoading, classId]);
 
-    const handleLogin = () => {
-        if (!selectedStudentId || !enteredSchoolNumber) {
+    const handleLogin = async () => {
+        if (!selectedStudentId || !enteredSchoolNumber || !auth) {
             toast({ variant: 'destructive', title: 'Lütfen adınızı seçip okul numaranızı girin.' });
             return;
         }
+        
+        setIsProcessing(true);
+
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
-            sessionStorage.setItem('student_portal_auth', JSON.stringify({ student, classCode }));
-            router.push(`/portal/${classCode}`);
+            try {
+                const userCredential = await signInAnonymously(auth);
+                const authUid = userCredential.user.uid;
+
+                const studentRef = doc(firestore, 'students', student.id);
+                await updateDoc(studentRef, { authUid });
+
+                const studentWithAuth = { ...student, authUid };
+                
+                sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentWithAuth, classCode }));
+                router.push(`/portal/${classCode}`);
+
+            } catch (error) {
+                 console.error("Anonymous sign-in error:", error);
+                 toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Güvenli oturum oluşturulamadı.' });
+            }
         } else {
             toast({ variant: 'destructive', title: 'Okul numarası yanlış.' });
         }
+        
+        setIsProcessing(false);
     };
     
     if (loading) {
@@ -119,8 +139,8 @@ export default function StudentLoginPage() {
                                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                             />
                         </div>
-                        <Button onClick={handleLogin} className="w-full gap-2">
-                            <LogIn size={16}/> Giriş Yap
+                        <Button onClick={handleLogin} disabled={isProcessing} className="w-full gap-2">
+                             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogIn size={16}/>} Giriş Yap
                         </Button>
                     </CardContent>
                 </Card>
@@ -128,4 +148,3 @@ export default function StudentLoginPage() {
         </div>
     );
 }
-

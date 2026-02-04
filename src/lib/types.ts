@@ -207,6 +207,7 @@ export interface Class {
   isRegularHomeworkPublished?: boolean;
   isPerformanceHomeworkPublished?: boolean;
   isProjectHomeworkPublished?: boolean;
+  isMessagesPublished?: boolean;
   announcements?: Announcement[];
   homeworks?: Homework[];
   election?: Election;
