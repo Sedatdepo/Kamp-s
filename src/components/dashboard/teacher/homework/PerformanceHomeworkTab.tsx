@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Homework, Submission, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 // Detail View for a single performance homework
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
@@ -121,19 +122,36 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     )
 }
 
-export function PerformanceHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
+export function PerformanceHomeworkTab() {
+  const { appUser } = useAuth();
   const { db } = useFirebase();
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
-  // Query for performance homeworks specifically and where the student is assigned
+  const student = useMemo(() => {
+    if (appUser?.type === 'student') return appUser.data as Student;
+    
+    // Attempt to get from sessionStorage as a fallback for portal pages
+    try {
+      const authData = sessionStorage.getItem('student_portal_auth');
+      if (authData) {
+        return JSON.parse(authData).student as Student;
+      }
+    } catch (e) {
+      return null;
+    }
+    return null;
+  }, [appUser]);
+
+  const classId = student?.classId;
+
   const homeworksQuery = useMemoFirebase(() => {
-    if (!db || !classId) return null;
+    if (!db || !classId || !student?.id) return null;
     return query(
         collection(db, 'classes', classId, 'homeworks'), 
         where('assignmentType', '==', 'performance'),
         where('assignedStudents', 'array-contains', student.id)
     );
-  }, [db, classId, student.id]);
+  }, [db, classId, student?.id]);
 
   const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
@@ -146,7 +164,7 @@ export function PerformanceHomeworkTab({ student, classId }: { student: Student;
     return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
   }
   
-  if (homeworksLoading) {
+  if (homeworksLoading || !student) {
     return (
       <Card>
         <CardContent className="flex justify-center items-center p-6">

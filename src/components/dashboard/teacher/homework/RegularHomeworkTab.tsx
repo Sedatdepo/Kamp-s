@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -290,15 +288,19 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-export function RegularHomeworkTab({ student, classId, homeworks: passedHomeworks }: { student: Student; classId: string; homeworks?: Homework[] }) {
+function RegularHomeworkTabContent({ student, classId, homeworks: passedHomeworks }: { student: Student; classId: string; homeworks?: Homework[] }) {
     const { db } = useFirebase();
     
-    const regularHomeworksQuery = useMemoFirebase(() => {
-        if (passedHomeworks || !db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', undefined));
-    }, [db, classId, passedHomeworks]);
+    const homeworksQuery = useMemoFirebase(() => {
+        if (passedHomeworks || !db || !classId || !student?.id) return null;
+        return query(
+            collection(db, 'classes', classId, 'homeworks'), 
+            where('rubric', '==', null),
+            where('assignedStudents', 'array-contains', student.id)
+        );
+    }, [db, classId, student?.id, passedHomeworks]);
     
-    const { data: fetchedHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(regularHomeworksQuery);
+    const { data: fetchedHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
     
     const homeworks = passedHomeworks || fetchedHomeworks;
 
@@ -309,38 +311,55 @@ export function RegularHomeworkTab({ student, classId, homeworks: passedHomework
 
     if (homeworksLoading && !passedHomeworks) {
         return (
-            <Card>
-                <CardContent className="flex justify-center items-center p-6">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </CardContent>
-            </Card>
+        <Card>
+            <CardContent className="flex justify-center items-center p-6">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
         );
     }
     
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <BookText className="h-6 w-6"/>
-                    Ödevlerim
-                </CardTitle>
-                <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-[60vh] pr-2">
-                    <div className="space-y-4">
-                        {sortedHomeworks.length > 0 ? (
-                            sortedHomeworks.map((hw) => (
-                                <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
-                            ))
-                        ) : (
-                            <div className="text-center py-10 bg-muted/50 rounded-lg">
-                                <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
-                            </div>
-                        )}
+        <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+                <BookText className="h-6 w-6"/>
+                Ödevlerim
+            </CardTitle>
+            <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ScrollArea className="h-[60vh] pr-2">
+                <div className="space-y-4">
+                {sortedHomeworks && sortedHomeworks.length > 0 ? (
+                    sortedHomeworks.map((hw) => (
+                    <HomeworkItem key={hw.id} homework={hw} student={student} classId={classId} />
+                    ))
+                ) : (
+                    <div className="text-center py-10 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
                     </div>
-                </ScrollArea>
-            </CardContent>
+                )}
+                </div>
+            </ScrollArea>
+        </CardContent>
         </Card>
     );
+}
+
+export function RegularHomeworkTab({ student, classId, homeworks: passedHomeworks }: { student: Student; classId: string; homeworks?: Homework[] }) {
+    if (!student) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Hata</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Öğrenci bilgisi bulunamadı. Lütfen tekrar giriş yapın.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return <RegularHomeworkTabContent student={student} classId={classId} homeworks={passedHomeworks} />;
 }
