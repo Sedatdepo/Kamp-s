@@ -1,40 +1,42 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isTeacher(userId) {
-      return exists(/databases/$(database)/documents/teachers/$(userId));
+    function isTeacher() {
+      // Use request.auth.uid directly, it's more secure and efficient
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
     match /publicViews/{viewId} {
         allow get: if true;
-        allow write: if request.auth != null &&
-                      isTeacher(request.auth.uid) &&
-                      exists(/databases/$(database)/documents/classes/$(viewId)) &&
-                      get(/databases/$(database)/documents/classes/$(viewId)).data.teacherId == request.auth.uid;
+        allow write: if request.auth != null && isTeacher();
     }
 
     match /classCodes/{code} {
         allow get: if true;
-        allow write: if request.auth != null && isTeacher(request.auth.uid);
+        allow write: if request.auth != null && isTeacher();
     }
     
     match /classes/{classId} {
         allow get: if true;
-        allow create, delete: if request.auth != null && isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
-        // Allow teachers to update, AND allow unauthenticated updates ONLY to the 'election' field.
-        allow update: if (request.auth != null && isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid) ||
-                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['election']));
+        allow create, delete: if request.auth != null && isTeacher() && request.resource.data.teacherId == request.auth.uid;
+        // Teacher can update, or unauthenticated users can update ONLY the election field for voting.
+        allow update: if (request.auth != null && isTeacher() && resource.data.teacherId == request.auth.uid) ||
+                        (request.auth == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['election']));
     }
     
     match /students/{studentId} {
         allow get: if true;
-        allow create, delete: if request.auth != null && isTeacher(request.auth.uid);
-        // Allow teachers to update, AND allow unauthenticated student updates to specific fields.
-        allow update: if (request.auth != null && isTeacher(request.auth.uid)) ||
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['positiveSelections', 'negativeSelections', 'leadershipSelections', 'clubPreferences']);
+        allow create, delete: if request.auth != null && isTeacher();
+        // Allow teacher to update.
+        // Allow unauthenticated users to update sociogram/club preferences (this is a controlled risk, as they need to know student number).
+        // Allow anonymous user to set their authUid for the first time.
+        // Allow logged-in student to update their own specific fields.
+        allow update: if (request.auth != null && isTeacher()) || 
+                         (request.auth == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['positiveSelections', 'negativeSelections', 'leadershipSelections', 'clubPreferences'])) ||
+                         (request.auth != null && resource.data.authUid == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid']) && request.resource.data.authUid == request.auth.uid) ||
+                         (request.auth != null && resource.data.authUid == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasAny(['risks', 'projectPreferences', 'clubPreferences']));
     }
 
     match /messages/{messageId} {
@@ -45,13 +47,47 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    match /{document=**} {
-      allow read, write: if request.path[0] != 'publicViews' && 
-                           request.path[0] != 'classCodes' &&
-                           request.path[0] != 'classes' &&
-                           request.path[0] != 'students' &&
-                           request.path[0] != 'messages' &&
-                           true;
+    match /teachers/{teacherId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+    }
+
+    match /teacherData/{teacherId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+    }
+
+    match /riskFactors/{riskFactorId} {
+        allow read, write: if request.auth != null && isTeacher();
+    }
+    
+    match /infoForms/{studentId} {
+        allow read, write: if request.auth != null && (isTeacher() || (get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid));
+    }
+
+    match /classes/{classId}/lessons/{lessonId} {
+        allow read, write: if request.auth != null && isTeacher();
+    }
+    
+    match /kazanims/{kazanimId} {
+        allow read, write: if request.auth != null && isTeacher();
+    }
+
+    match /questions/{questionId} {
+        allow read, write: if request.auth != null && isTeacher();
+    }
+    
+    match /clubs/{clubId} {
+        allow read, write: if request.auth != null && isTeacher();
+    }
+    
+    match /classes/{classId}/homeworks/{homeworkId} {
+        allow read: if true; // Publicly readable for students
+        allow write: if request.auth != null && isTeacher();
+    }
+    
+    match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
+        allow read: if request.auth != null && (isTeacher() || (get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.authUid == request.auth.uid));
+        allow create: if request.auth != null; 
+        allow update: if request.auth != null && isTeacher();
     }
   }
 }
