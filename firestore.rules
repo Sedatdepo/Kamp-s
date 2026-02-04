@@ -29,14 +29,14 @@ service cloud.firestore {
     // Teachers can manage their own classes
     match /classes/{classId} {
         allow get: if request.auth != null && isTeacher(request.auth.uid);
-        allow list: if request.auth != null && isTeacher(request.auth.uid) && request.query.where.teacherId == request.auth.uid;
+        allow list: if request.auth != null && isTeacher(request.auth.uid);
         allow create, update, delete: if request.auth != null && isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
     }
     
     // Students collection
     match /students/{studentId} {
         allow get: if request.auth != null && ( (isTeacher(request.auth.uid) && resource.data.teacherId == request.auth.uid) || (resource.data.authUid != null && isOwner(resource.data.authUid)) );
-        allow list: if request.auth != null && isTeacher(request.auth.uid) && request.query.where.teacherId == request.auth.uid;
+        allow list: if request.auth != null && isTeacher(request.auth.uid);
         allow create: if request.auth != null && isTeacher(request.auth.uid);
         allow delete: if request.auth != null && isTeacher(request.auth.uid) && resource.data.teacherId == request.auth.uid;
         allow update: if request.auth != null && (
