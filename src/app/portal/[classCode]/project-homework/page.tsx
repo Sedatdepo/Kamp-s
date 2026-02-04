@@ -1,44 +1,131 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Student } from '@/lib/types';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Student, Homework, Submission } from '@/lib/types';
+import { Loader2, ArrowLeft, BookText, Clock, CalendarIcon, ClipboardList } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { PerformanceHomeworkTab } from '@/components/dashboard/teacher/homework/PerformanceHomeworkTab';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+
+const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle className="font-headline text-2xl">{homework.text}</CardTitle>
+                        <CardDescription>Projenizin detayları ve değerlendirme kriterleri aşağıdadır.</CardDescription>
+                    </div>
+                    <Button variant="ghost" onClick={onBack}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Geri Dön
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {homework.instructions && (
+                    <div>
+                        <h3 className="font-bold mb-2 text-lg">Proje Yönergesi</h3>
+                        <div className="p-4 bg-muted/50 rounded-lg text-sm prose">
+                            <p>{homework.instructions}</p>
+                        </div>
+                    </div>
+                )}
+                {homework.rubric && (
+                    <div>
+                        <h3 className="font-bold mb-2 text-lg flex items-center gap-2"><ClipboardList/> Değerlendirme Kriterleri</h3>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Kriter</TableHead>
+                                        <TableHead className="text-right">Puan</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {homework.rubric.map((item: any, index: number) => (
+                                        <TableRow key={index}>
+                                            <TableCell>
+                                                <p className="font-medium">{item.label}</p>
+                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-lg">{item.score}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+const HomeworkItem = ({ homework, onSelect }: { homework: Homework, onSelect: () => void }) => {
+    return (
+        <div onClick={onSelect} className={`cursor-pointer border p-4 rounded-lg shadow-sm space-y-3 transition-all hover:border-primary/50 bg-background`}>
+             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2 pb-2 border-b">
+                <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /><span>Veriliş: {format(new Date(homework.assignedDate), 'd MMMM yyyy', { locale: tr })}</span></div>
+                {homework.dueDate && (
+                    <div className="flex items-center gap-1.5 text-red-600 font-semibold"><CalendarIcon className="h-3 w-3" /><span>Son Teslim: {format(new Date(homework.dueDate), 'd MMMM yyyy', { locale: tr })}</span></div>
+                )}
+             </div>
+             <p className="text-sm font-semibold">{homework.text}</p>
+             <p className="text-xs text-muted-foreground">(Detayları ve değerlendirme kriterlerini görmek için tıklayın)</p>
+        </div>
+    )
+}
 
 export default function StudentProjectHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
+    const { firestore: db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) {
-                router.replace(`/giris/${classCode}`);
-                return;
-            }
-            const { student: storedStudent, classCode: storedClassCode } = JSON.parse(authData);
-            if (storedClassCode !== classCode || !storedStudent) {
-                router.replace(`/giris/${classCode}`);
-                return;
-            }
+            if (!authData) throw new Error("Auth data not found");
+            const { student: storedStudent } = JSON.parse(authData);
+            if (!storedStudent) throw new Error("Student data not found in auth");
             setStudent(storedStudent);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
-        } finally {
-            setLoading(false);
         }
     }, [classCode, router]);
 
-    if (loading || !student) {
+    const homeworksQuery = useMemoFirebase(() => {
+        if (!db || !student?.classId || !student?.id) return null;
+        return query(
+            collection(db, 'classes', student.classId, 'homeworks'), 
+            where('assignmentType', '==', 'project'),
+            where('assignedStudents', 'array-contains', student.id)
+        );
+    }, [db, student?.classId, student?.id]);
+
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
+
+    if (!student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+    
+    if (selectedHomework) {
+        return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
     }
 
     return (
@@ -59,13 +146,28 @@ export default function StudentProjectHomeworkPage() {
                 </Button>
             </header>
             <main className="max-w-4xl mx-auto">
-                 <PerformanceHomeworkTab
-                    student={student}
-                    classId={student.classId}
-                    assignmentType="project"
-                    title="Proje Ödevim"
-                    description="Size atanmış olan proje ödevini buradan görebilirsiniz."
-                 />
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2">
+                            <BookText className="h-6 w-6"/>
+                            Proje Ödevim
+                        </CardTitle>
+                        <CardDescription>Size atanmış olan proje ödevini buradan görebilirsiniz.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                            {sortedHomeworks.length > 0 ? (
+                                sortedHomeworks.map((hw) => (
+                                    <HomeworkItem key={hw.id} homework={hw} onSelect={() => setSelectedHomework(hw)} />
+                                ))
+                            ) : (
+                                <div className="text-center py-10 bg-muted/50 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Henüz verilmiş bir proje ödevi yok.</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </main>
         </div>
     );

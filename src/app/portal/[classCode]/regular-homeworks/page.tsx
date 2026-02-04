@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Student, Homework, Submission, Question } from '@/lib/types';
+import { Student, Homework, Submission } from '@/lib/types';
 import { Loader2, ArrowLeft, BookText, Send, Paperclip, Download, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
@@ -198,11 +198,10 @@ export default function StudentRegularHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { db } = useFirebase();
+    const { firestore: db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [loading, setLoading] = useState(true);
-
+    
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
@@ -215,29 +214,24 @@ export default function StudentRegularHomeworkPage() {
         }
     }, [classCode, router]);
 
-    const homeworksQuery = useMemoFirebase(() => {
+    const allHomeworksQuery = useMemoFirebase(() => {
         if (!db || !student?.classId || !student?.id) return null;
         return query(
             collection(db, 'classes', student.classId, 'homeworks'), 
-            where('assignmentType', '==', null), // Fetch only regular homeworks
             where('assignedStudents', 'array-contains', student.id)
         );
     }, [db, student?.classId, student?.id]);
     
-    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+    const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
     
-    const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
-
-    useEffect(() => {
-        if (student && !homeworksLoading) {
-            setLoading(false);
-        }
-    }, [student, homeworksLoading]);
+    const regularHomeworks = useMemo(() => {
+        if (!allHomeworks) return [];
+        return allHomeworks
+            .filter(hw => !hw.assignmentType)
+            .sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [allHomeworks]);
     
-    if (loading) {
+    if (!student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -273,13 +267,13 @@ export default function StudentRegularHomeworkPage() {
                          ) : (
                             <ScrollArea className="h-[60vh] pr-2">
                                 <div className="space-y-4">
-                                {sortedHomeworks.length > 0 ? (
-                                    sortedHomeworks.map((hw) => (
+                                {regularHomeworks.length > 0 ? (
+                                    regularHomeworks.map((hw) => (
                                         <StudentHomeworkItem key={hw.id} homework={hw} student={student!} classId={student!.classId} />
                                     ))
                                 ) : (
                                     <div className="text-center py-10 bg-muted/50 rounded-lg">
-                                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir ödev yok.</p>
+                                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
                                     </div>
                                 )}
                                 </div>
