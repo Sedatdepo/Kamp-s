@@ -4,6 +4,13 @@ import { z } from 'zod';
 export type ActiveGradingTab = 1 | 2 | 3 | 4; // 1:perf1, 2:perf2, 3:project, 4:behavior
 export type ActiveTerm = 1 | 2;
 
+export interface BehaviorLog {
+  id: string;
+  date: string; // ISO string
+  behaviorId: string;
+  label: string;
+  points: number;
+}
 
 export interface TimetableCell {
   ders: string;
@@ -265,6 +272,7 @@ export interface Student {
   term2Grades: GradingScores;
   
   behaviorScore: number;
+  behaviorLogs?: BehaviorLog[];
   xp?: number; // Gamification experience points
   badges?: string[]; // Gamification badge IDs
 

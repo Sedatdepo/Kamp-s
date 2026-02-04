@@ -3,11 +3,11 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class } from '@/lib/types';
+import { Student, Class, BehaviorLog } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove, setDoc, deleteField } from 'firebase/firestore';
 import { 
   Trophy, Star, Zap, BookOpen, Heart, Smile, 
-  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle, Plus, Share2
+  Crown, Award, Trash2, UserPlus, X, Check, MinusCircle, Plus, Share2, History
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,10 @@ const BEHAVIORS = [
   { id: 'beh_3', label: 'Arkadaşına Yardım', points: 8, icon: <Heart className="text-red-500" /> },
   { id: 'beh_4', label: 'Örnek Davranış', points: 15, icon: <Star className="text-purple-500" /> },
   { id: 'beh_5', label: 'Düzenli Defter', points: 5, icon: <Smile className="text-green-500" /> },
+  // Negative behaviors
+  { id: 'beh_neg_1', label: 'Derse Geç Kalma', points: -3, icon: <Zap className="text-orange-500" /> },
+  { id: 'beh_neg_2', label: 'Ödev Eksikliği', points: -5, icon: <BookOpen className="text-orange-500" /> },
+  { id: 'beh_neg_3', label: 'Dersin Akışını Bozma', points: -10, icon: <Heart className="text-orange-500" /> },
 ];
 
 const AVAILABLE_BADGES = [
@@ -64,7 +68,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
   
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("points");
+  const [activeTab, setActiveTab] = useState("add-behavior");
   
   const handleToggleGamification = async (checked: boolean) => {
     if (!currentClass || !db) return;
@@ -97,30 +101,58 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
     }
   };
 
-  const updatePoints = async (student: Student, points: number, reason: string) => {
-    if (!db) return;
+  const addBehaviorLog = async (student: Student, behavior: {id: string; label: string; points: number}) => {
+    if (!db || !student?.id) return;
+    
+    const newLog: BehaviorLog = {
+      id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      date: new Date().toISOString(),
+      behaviorId: behavior.id,
+      label: behavior.label,
+      points: behavior.points,
+    };
 
     try {
       const studentRef = doc(db, 'students', student.id);
       await updateDoc(studentRef, {
-        behaviorScore: increment(points)
+        behaviorScore: increment(behavior.points),
+        behaviorLogs: arrayUnion(newLog)
       });
-
       toast({
-        title: `${points > 0 ? '+' : ''}${points} Puan ${points > 0 ? 'Verildi' : 'Geri Alındı'}!`,
-        description: `${student.name}: ${reason}`,
-        className: points > 0 ? "bg-green-50 border-green-200 text-green-800" : "bg-orange-50 border-orange-200 text-orange-800"
+        title: `Davranış Kaydedildi: ${behavior.points > 0 ? '+' : ''}${behavior.points} Puan`,
+        description: `${student.name}: ${behavior.label}`,
+        className: behavior.points > 0 ? "bg-green-50 border-green-200 text-green-800" : "bg-orange-50 border-orange-200 text-orange-800",
       });
-      
-      // Close modal after action for better user experience
-      setIsModalOpen(false);
     } catch (error) {
-      console.error("Puan verme/alma hatası:", error);
+      console.error("Davranış kaydetme hatası:", error);
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "Puan işlemi gerçekleştirilemedi."
+        description: "Davranış kaydı gerçekleştirilemedi."
       });
+    }
+  };
+
+  const deleteBehaviorLog = async (student: Student, log: BehaviorLog) => {
+    if (!db || !student?.id) return;
+    try {
+        const studentRef = doc(db, 'students', student.id);
+        await updateDoc(studentRef, {
+            behaviorScore: increment(-log.points),
+            behaviorLogs: arrayRemove(log)
+        });
+        toast({
+            title: "Kayıt Silindi",
+            description: `${student.name}: '${log.label}' kaydı silindi. (${-log.points} Puan)`,
+            variant: "destructive"
+        });
+    } catch (error) {
+        console.error("Kayıt silme hatası:", error);
+        toast({
+            variant: "destructive",
+            title: "Hata",
+            description: "Kayıt silinemedi."
+        });
     }
   };
 
@@ -164,7 +196,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
   const openStudentModal = (student: Student) => {
     setSelectedStudent(student);
     setIsModalOpen(true);
-    setActiveTab("points");
+    setActiveTab("add-behavior");
   };
 
   const safeStudents = students || [];
@@ -177,7 +209,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
           <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Sınıf Listesi ve Puan Durumu</CardTitle>
-                <CardDescription>Öğrencilerinize puan ve rozetler vererek onları motive edin.</CardDescription>
+                <CardDescription>Öğrencilerinizin davranışlarını kaydedin ve rozetlerle motive edin.</CardDescription>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
@@ -228,7 +260,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
-                        Puan/Rozet Ver
+                        İşlem Yap
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -246,54 +278,81 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
 
       {/* İŞLEM MODALI */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <span className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
-                {selectedStudent?.name.charAt(0)}
-              </span>
-              {selectedStudent?.name}
+              Davranış ve Rozet İşlemleri: {selectedStudent?.name}
             </DialogTitle>
-            <DialogDescription>
-              Bu öğrenciye puan veya rozet verin/geri alın.
-            </DialogDescription>
           </DialogHeader>
 
           {selectedStudent && (
-            <Tabs defaultValue="points" value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="points">Puan İşlemleri</TabsTrigger>
-                <TabsTrigger value="badges">Rozet İşlemleri</TabsTrigger>
+            <Tabs defaultValue="add-behavior" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="add-behavior">Davranış Ekle</TabsTrigger>
+                <TabsTrigger value="history">Geçmiş</TabsTrigger>
+                <TabsTrigger value="badges">Rozetler</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="points" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 gap-2">
-                  {BEHAVIORS.map((behavior) => (
-                    <div
-                      key={behavior.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-full shadow-sm">
-                          {behavior.icon}
+              <TabsContent value="add-behavior" className="mt-4">
+                <ScrollArea className="h-[350px] pr-4">
+                  <div className="grid grid-cols-1 gap-2">
+                    {BEHAVIORS.map((behavior) => (
+                      <div key={behavior.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 group">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-white rounded-full shadow-sm">{behavior.icon}</div>
+                          <div>
+                            <span className="font-medium text-slate-700">{behavior.label}</span>
+                            <span className={`text-sm font-bold ml-2 ${behavior.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ({behavior.points > 0 ? '+' : ''}{behavior.points} P)
+                            </span>
+                          </div>
                         </div>
-                        <span className="font-medium text-slate-700">{behavior.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => addBehaviorLog(selectedStudent, behavior)}>
+                          Ekle
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <Button size="sm" variant="destructive" onClick={() => updatePoints(selectedStudent, -behavior.points, `${behavior.label} (Geri Alındı)`)}>
-                           <MinusCircle className="mr-2 h-4 w-4" /> -{behavior.points}
-                         </Button>
-                         <Button size="sm" variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200 border-none" onClick={() => updatePoints(selectedStudent, behavior.points, behavior.label)}>
-                           <Plus className="mr-2 h-4 w-4" /> +{behavior.points}
-                         </Button>
-                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-4">
+                <ScrollArea className="h-[350px] pr-4">
+                    <div className="space-y-2">
+                    {(selectedStudent?.behaviorLogs || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(log => (
+                        <div key={log.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50">
+                            <div>
+                                <p className="text-sm font-medium">{log.label} ({log.points > 0 ? '+' : ''}{log.points}P)</p>
+                                <p className="text-xs text-muted-foreground">{new Date(log.date).toLocaleString('tr-TR')}</p>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400">
+                                        <Trash2 size={16}/>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                        <AlertDialogDescription>Bu davranış kaydını silmek istediğinizden emin misiniz? Bu işlem öğrencinin puanını etkileyecektir.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteBehaviorLog(selectedStudent, log)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    ))}
+                    {(selectedStudent?.behaviorLogs || []).length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground p-4">Henüz davranış kaydı yok.</p>
+                    )}
                     </div>
-                  ))}
-                </div>
+                </ScrollArea>
               </TabsContent>
               
               <TabsContent value="badges" className="mt-4">
-                <ScrollArea className="h-[300px] pr-4">
+                <ScrollArea className="h-[350px] pr-4">
                   <div className="grid grid-cols-2 gap-3">
                     {AVAILABLE_BADGES.map((badge) => {
                       const isOwned = selectedStudent.badges?.includes(badge.id);
@@ -301,9 +360,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                         isOwned ? (
                             <AlertDialog key={badge.id}>
                                 <AlertDialogTrigger asChild>
-                                     <div 
-                                      className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100"
-                                    >
+                                     <div className="relative p-3 rounded-xl border-2 border-dashed border-red-300 flex flex-col items-center text-center transition-all cursor-pointer bg-red-50/50 hover:bg-red-100">
                                       <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm">
                                         <Check size={14} strokeWidth={3} />
                                       </div>
@@ -329,11 +386,7 @@ export function SinifKahramanlariTab({ students, currentClass }: { students: Stu
                                 </AlertDialogContent>
                             </AlertDialog>
                         ) : (
-                             <div 
-                              key={badge.id}
-                              onClick={() => handleBadgeClick(selectedStudent, badge)}
-                              className="p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md"
-                            >
+                             <div onClick={() => handleBadgeClick(selectedStudent, badge)} className="p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md">
                               <div className="text-3xl mb-2">{badge.icon}</div>
                               <div className="font-bold text-sm text-slate-800">{badge.name}</div>
                               <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
