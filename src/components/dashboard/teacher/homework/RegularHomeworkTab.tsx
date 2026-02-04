@@ -1,6 +1,7 @@
-'use client';
 
-import React, { useMemo, useState } from 'react';
+"use client";
+
+import { useMemo, useState } from 'react';
 import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
@@ -286,7 +287,7 @@ const HomeworkItem = ({ homework, student, classId }: { homework: Homework, stud
     )
 }
 
-export function RegularHomeworkTab({ student, classId }: { student: Student; classId: string; }) {
+function RegularHomeworkTabContent({ student, classId }: { student: Student; classId: string; }) {
   const { db } = useFirebase();
     
     const homeworksQuery = useMemoFirebase(() => {
@@ -307,11 +308,11 @@ export function RegularHomeworkTab({ student, classId }: { student: Student; cla
 
     if (homeworksLoading) {
         return (
-            <Card>
-                <CardContent className="flex justify-center items-center p-6">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </CardContent>
-            </Card>
+        <Card>
+            <CardContent className="flex justify-center items-center p-6">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
         );
     }
     
@@ -341,4 +342,18 @@ export function RegularHomeworkTab({ student, classId }: { student: Student; cla
         </CardContent>
         </Card>
     );
+}
+
+export function RegularHomeworkTab({ student, classId }: { student: Student | null; classId: string | null; }) {
+  if (!student || !classId) {
+    return (
+        <Card>
+            <CardContent className="flex justify-center items-center p-6">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </CardContent>
+        </Card>
+    );
+  }
+
+  return <RegularHomeworkTabContent student={student} classId={classId} />;
 }
