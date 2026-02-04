@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Homework, Submission, Student } from '@/lib/types';
+import { Homework, Submission, Question, Badge as BadgeType, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
 import { collection, query, where } from 'firebase/firestore';
@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
-import { useAuth } from '@/hooks/useAuth';
 
 // Detail View for a single performance homework
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
@@ -122,36 +121,18 @@ const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Home
     )
 }
 
-export function PerformanceHomeworkTab() {
-  const { appUser } = useAuth();
+export function PerformanceHomeworkTab({ student, classId, assignmentType, title, description }: { student: Student; classId: string; assignmentType: 'performance' | 'project'; title: string; description: string; }) {
   const { db } = useFirebase();
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
-
-  const student = useMemo(() => {
-    if (appUser?.type === 'student') return appUser.data as Student;
-    
-    // Attempt to get from sessionStorage as a fallback for portal pages
-    try {
-      const authData = sessionStorage.getItem('student_portal_auth');
-      if (authData) {
-        return JSON.parse(authData).student as Student;
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  }, [appUser]);
-
-  const classId = student?.classId;
 
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId || !student?.id) return null;
     return query(
         collection(db, 'classes', classId, 'homeworks'), 
-        where('assignmentType', '==', 'performance'),
+        where('assignmentType', '==', assignmentType),
         where('assignedStudents', 'array-contains', student.id)
     );
-  }, [db, classId, student?.id]);
+  }, [db, classId, student?.id, assignmentType]);
 
   const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
@@ -164,7 +145,7 @@ export function PerformanceHomeworkTab() {
     return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
   }
   
-  if (homeworksLoading || !student) {
+  if (homeworksLoading) {
     return (
       <Card>
         <CardContent className="flex justify-center items-center p-6">
@@ -179,9 +160,9 @@ export function PerformanceHomeworkTab() {
       <CardHeader>
         <CardTitle className="font-headline flex items-center gap-2">
             <BookText className="h-6 w-6"/>
-            Performans Ödevlerim
+            {title}
         </CardTitle>
-        <CardDescription>Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz.</CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -191,7 +172,7 @@ export function PerformanceHomeworkTab() {
             ))
           ) : (
             <div className="text-center py-10 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Henüz verilmiş bir performans ödevi yok.</p>
+              <p className="text-sm text-muted-foreground">Henüz verilmiş bir {title.toLowerCase()} yok.</p>
             </div>
           )}
         </div>

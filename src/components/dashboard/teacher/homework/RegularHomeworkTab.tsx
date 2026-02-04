@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Homework, Submission, Question, Student } from '@/lib/types';
+import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
@@ -18,8 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
+import { useAuth } from '@/hooks/useAuth';
 
-const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: any, classId: string }) => {
+const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);

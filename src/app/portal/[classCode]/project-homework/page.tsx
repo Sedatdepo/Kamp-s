@@ -1,21 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Student, Homework, Submission } from '@/lib/types';
-import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
+import { Student } from '@/lib/types';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, where } from 'firebase/firestore';
-import { RegularHomeworkTab } from '@/components/dashboard/teacher/homework/RegularHomeworkTab'; // Re-using this component structure
+import { PerformanceHomeworkTab } from '@/components/dashboard/teacher/homework/PerformanceHomeworkTab';
 
 export default function StudentProjectHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
@@ -40,18 +37,7 @@ export default function StudentProjectHomeworkPage() {
         }
     }, [classCode, router]);
 
-    const projectHomeworkQuery = useMemoFirebase(() => {
-        if (!db || !student) return null;
-        return query(
-            collection(db, 'classes', student.classId, 'homeworks'),
-            where('assignmentType', '==', 'project'),
-            where('assignedStudents', 'array-contains', student.id)
-        );
-    }, [db, student]);
-
-    const { data: projectHomeworks, isLoading } = useCollection<Homework>(projectHomeworkQuery);
-    
-    if (loading || isLoading || !student) {
+    if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -73,17 +59,14 @@ export default function StudentProjectHomeworkPage() {
                 </Button>
             </header>
             <main className="max-w-4xl mx-auto">
-                {projectHomeworks && projectHomeworks.length > 0 ? (
-                    <RegularHomeworkTab student={student} classId={student.classId} homeworks={projectHomeworks} />
-                ) : (
-                    <div className="text-center py-20 bg-muted/20 rounded-lg">
-                        <p className="text-muted-foreground">Size atanmış bir proje ödevi bulunmamaktadır.</p>
-                    </div>
-                )}
+                 <PerformanceHomeworkTab
+                    student={student}
+                    classId={student.classId}
+                    assignmentType="project"
+                    title="Proje Ödevim"
+                    description="Size atanmış olan proje ödevini buradan görebilirsiniz."
+                 />
             </main>
         </div>
     );
 }
-
-// NOTE: We need to adapt RegularHomeworkTab to accept homeworks as a prop or create a new component.
-// For now, I will modify RegularHomeworkTab to accept an optional homeworks prop.

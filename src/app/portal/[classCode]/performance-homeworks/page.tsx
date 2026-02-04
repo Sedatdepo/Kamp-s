@@ -59,7 +59,13 @@ export default function StudentPerformanceHomeworkPage() {
                 </Button>
             </header>
             <main className="max-w-4xl mx-auto">
-                 <PerformanceHomeworkTab student={student} classId={student.classId} />
+                 <PerformanceHomeworkTab 
+                    student={student} 
+                    classId={student.classId} 
+                    assignmentType="performance"
+                    title="Performans Ödevlerim"
+                    description="Kütüphaneden atanan performans ödevlerinizi buradan görebilirsiniz."
+                 />
             </main>
         </div>
     );
