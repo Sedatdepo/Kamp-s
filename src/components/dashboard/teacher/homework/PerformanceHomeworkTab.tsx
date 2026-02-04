@@ -1,19 +1,18 @@
+'use client';
 
-"use client";
-
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Homework, Submission, Student } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, ArrowLeft, ClipboardList } from 'lucide-react';
-import { collection, doc, addDoc, query, where, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
-import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 
+// Detail View for a single performance homework
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
     return (
         <Card>
@@ -68,6 +67,7 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
     );
 };
 
+// List item for a single performance homework
 const HomeworkItem = ({ homework, student, classId, onSelect }: { homework: Homework, student: any, classId: string, onSelect: () => void }) => {
     const { db } = useFirebase();
 
@@ -125,10 +125,15 @@ export function PerformanceHomeworkTab({ student, classId }: { student: Student;
   const { db } = useFirebase();
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
+  // Query for performance homeworks specifically and where the student is assigned
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
-    return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'performance'));
-  }, [db, classId]);
+    return query(
+        collection(db, 'classes', classId, 'homeworks'), 
+        where('assignmentType', '==', 'performance'),
+        where('assignedStudents', 'array-contains', student.id)
+    );
+  }, [db, classId, student.id]);
 
   const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
@@ -138,7 +143,7 @@ export function PerformanceHomeworkTab({ student, classId }: { student: Student;
   }, [homeworks]);
 
   if (selectedHomework) {
-    return <HomeworkDetailView homework={selectedHomework} student={student} onBack={() => setSelectedHomework(null)} />;
+    return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
   }
   
   if (homeworksLoading) {
