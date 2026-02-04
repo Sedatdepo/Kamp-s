@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion } from '@/lib/types';
-import { Loader2, User, Key, Send, CheckCircle, Frown } from 'lucide-react';
+import { Loader2, User, Key, Send, CheckCircle, Frown, Users, UserX, Star, BookOpen, Coffee } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,6 +120,7 @@ export default function SociogramPage() {
         setIsProcessing(true);
         
         const updates: Partial<Student> = {};
+        const survey = currentClass?.sociogramSurvey;
         survey?.questions.forEach(q => {
             if(selections[q.id]) {
                 if(q.type === 'positive') updates.positiveSelections = selections[q.id];
