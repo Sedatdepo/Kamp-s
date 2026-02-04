@@ -14,13 +14,11 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     return initializeFirebase();
   }, []); // Empty dependency array ensures this runs only once on mount
 
-  // Pass the initialized services to the core FirebaseProvider
   return (
     <FirebaseProvider
       firebaseApp={firebaseServices.firebaseApp}
       auth={firebaseServices.auth}
       firestore={firebaseServices.firestore}
-      storage={firebaseServices.storage}
     >
       {children}
     </FirebaseProvider>
