@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 
 const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
 
