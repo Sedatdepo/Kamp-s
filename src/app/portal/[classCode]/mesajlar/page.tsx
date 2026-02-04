@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useAuth, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { doc, collection, addDoc, query, where, Timestamp, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { Student, TeacherProfile, Message, Class } from '@/lib/types';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
@@ -42,7 +42,7 @@ export default function StudentMessagingPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { db, user: authUser, isUserLoading: authLoading } = useAuth();
+    const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
