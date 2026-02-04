@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Submission, Homework, TeacherProfile, Class } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save, Trash2, Paperclip, FileDown } from 'lucide-react';
 import { collection, doc, getDocs, query, updateDoc, where, writeBatch, addDoc, deleteDoc } from 'firebase/firestore';
@@ -227,7 +226,7 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
         return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'project'));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading, forceRefresh } = useCollection<Homework>(projectHomeworksQuery);
+    const { data: homeworks, isLoading } = useCollection<Homework>(projectHomeworksQuery);
     
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -240,7 +239,7 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
         setSubmissionsLoading(true);
         const subsByHomework: { [homeworkId: string]: Submission[] } = {};
         for (const hw of homeworks) {
-            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+            const subsQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
             const querySnapshot = await getDocs(subsQuery);
             const subs: Submission[] = [];
             querySnapshot.forEach(doc => subs.push({ id: doc.id, ...doc.data() } as Submission));
@@ -268,12 +267,11 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
             
             batch.delete(homeworkRef);
             await batch.commit();
-
+            
             toast({ 
                 title: "Proje ödevi ve tüm teslimler silindi.",
                 description: "Ödevleri düzenlemek için 'Canlı Ödev Yönetimi' sekmesini kullanabilirsiniz."
             });
-            forceRefresh();
         } catch (error) {
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }

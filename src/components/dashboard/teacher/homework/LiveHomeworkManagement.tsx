@@ -90,7 +90,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
         const newSubmissions: { [homeworkId: string]: Submission[] } = {};
         for (const hw of liveHomeworks) {
-            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+            const subsQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
             const querySnapshot = await getDocs(subsQuery);
             const subs: Submission[] = [];
             querySnapshot.forEach(doc => {
@@ -299,7 +299,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             text: "Öğretmen tarafından teslim edildi olarak işaretlendi.",
         };
         try {
-            const submissionsColRef = collection(db, `classes/${classId}/homeworks/${homeworkId}/submissions`);
+            const submissionsColRef = collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions');
             await addDoc(submissionsColRef, submissionData);
             toast({ title: "Teslim Edildi", description: `${student.name} adlı öğrencinin ödevi teslim edildi olarak işaretlendi.` });
             fetchSubmissions(); 

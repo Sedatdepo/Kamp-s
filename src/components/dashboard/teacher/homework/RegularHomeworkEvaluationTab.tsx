@@ -145,7 +145,7 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
         return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
     }, [db, classId]);
 
-    const { data: homeworks, isLoading, forceRefresh } = useCollection<Homework>(regularHomeworksQuery);
+    const { data: homeworks, isLoading } = useCollection<Homework>(regularHomeworksQuery);
     
     const [submissions, setSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -158,7 +158,7 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
         setSubmissionsLoading(true);
         const subsByHomework: { [homeworkId: string]: Submission[] } = {};
         for (const hw of homeworks) {
-            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
+            const subsQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
             const querySnapshot = await getDocs(subsQuery);
             const subs: Submission[] = [];
             querySnapshot.forEach(doc => subs.push({ id: doc.id, ...doc.data() } as Submission));
