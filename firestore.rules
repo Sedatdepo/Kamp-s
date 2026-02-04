@@ -31,7 +31,7 @@ service cloud.firestore {
     // Teachers can manage their own classes
     match /classes/{classId} {
         allow get: if request.auth != null; // Allow reads for portal pages
-        allow list: if request.auth != null && request.query.where.teacherId == request.auth.uid;
+        allow list: if isTeacher(request.auth.uid) && request.query.where.teacherId == request.auth.uid;
         allow create: if isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
         allow update: if isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
         allow delete: if isTeacher(request.auth.uid) && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
@@ -39,8 +39,8 @@ service cloud.firestore {
     
     // Students collection
     match /students/{studentId} {
-        allow get: if request.auth != null && (isTeacher(request.auth.uid) || (resource.data.authUid != null && isOwner(resource.data.authUid)));
-        allow list: if request.auth != null && request.query.where.teacherId == request.auth.uid;
+        allow get: if request.auth != null && ((isTeacher(request.auth.uid) && resource.data.teacherId == request.auth.uid) || (resource.data.authUid != null && isOwner(resource.data.authUid)));
+        allow list: if isTeacher(request.auth.uid);
         allow create: if isTeacher(request.auth.uid);
         allow delete: if isTeacher(request.auth.uid);
         allow update: if request.auth != null && (
