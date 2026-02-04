@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Query,
   onSnapshot,
@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { FirebaseContext } from '@/firebase/provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -58,13 +59,24 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const firebaseContext = useContext(FirebaseContext);
+  const authIsLoading = firebaseContext ? firebaseContext.isUserLoading : true;
+
+
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
+    if (authIsLoading) {
+      setIsLoading(true);
       setData(null);
+      setError(null);
+      return;
+    }
+
+    if (!memoizedTargetRefOrQuery) {
       setIsLoading(false);
+      setData(null);
       setError(null);
       return;
     }
@@ -106,7 +118,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery, authIsLoading]); // Re-run if the target query/reference changes.
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }

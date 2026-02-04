@@ -1,6 +1,6 @@
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   DocumentReference,
   onSnapshot,
@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { FirebaseContext } from '@/firebase/provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -44,10 +45,21 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const firebaseContext = useContext(FirebaseContext);
+  const authIsLoading = firebaseContext ? firebaseContext.isUserLoading : true;
+
+
   useEffect(() => {
+    if (authIsLoading) {
+      setIsLoading(true);
+      setData(null);
+      setError(null);
+      return;
+    }
+    
     if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
@@ -87,7 +99,11 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef, authIsLoading]); // Re-run if the memoizedDocRef changes.
+
+  if(memoizedDocRef && !(memoizedDocRef as any).__memo) {
+    throw new Error(memoizedDocRef + ' was not properly memoized using useMemoFirebase');
+  }
 
   return { data, isLoading, error };
 }
