@@ -14,10 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Criterion, ReportConfig, TeacherProfile } from '@/lib/types';
+import { Criterion, ReportConfig, TeacherProfile, Badge } from '@/lib/types';
 import { Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BADGES } from '@/lib/grading-defaults';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, updateDoc } from 'firebase/firestore';
 
@@ -29,6 +29,7 @@ interface GradingSettingsDialogProps {
 }
 
 type CriteriaKey = 'perfCriteria' | 'projCriteria' | 'behaviorCriteria';
+type BadgeCriteriaKey = 'badgeCriteria';
 
 const CriteriaEditor = ({ title, criteria, onUpdate, onAdd, onRemove, onReset }: { title: string, criteria: Criterion[], onUpdate: (id: string, field: keyof Criterion, value: any) => void, onAdd: () => void, onRemove: (id: string) => void, onReset: () => void }) => {
     
@@ -54,6 +55,32 @@ const CriteriaEditor = ({ title, criteria, onUpdate, onAdd, onRemove, onReset }:
         <Plus size={16} className="mr-2" /> Yeni Kriter Ekle
       </Button>
       <div className="text-right text-sm font-bold text-slate-600">Toplam: {total} Puan</div>
+    </div>
+  );
+};
+
+const BadgeEditor = ({ title, badges, onUpdate, onAdd, onRemove, onReset }: { title: string, badges: Badge[], onUpdate: (id: string, field: keyof Badge, value: any) => void, onAdd: () => void, onRemove: (id: string) => void, onReset: () => void }) => {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-slate-700">{title}</h4>
+        <Button variant="link" size="sm" onClick={onReset} className="text-xs text-muted-foreground">Varsayılana Sıfırla</Button>
+      </div>
+      {badges.map((badge, i) => (
+        <div key={badge.id} className="flex gap-2 items-center p-3 border rounded-lg bg-slate-50">
+          <Input value={badge.icon} onChange={(e) => onUpdate(badge.id, 'icon', e.target.value)} className="w-12 h-9 text-center text-xl" />
+          <div className="flex-grow space-y-1">
+            <Input value={badge.name} onChange={(e) => onUpdate(badge.id, 'name', e.target.value)} className="h-9 font-medium" placeholder="Rozet Adı" />
+            <Input value={badge.description} onChange={(e) => onUpdate(badge.id, 'description', e.target.value)} className="h-8 text-xs text-muted-foreground" placeholder="Açıklama"/>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => onRemove(badge.id)} className="text-red-400 hover:text-red-600 h-8 w-8">
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      ))}
+       <Button onClick={onAdd} variant="outline" className="w-full border-dashed">
+        <Plus size={16} className="mr-2" /> Yeni Rozet Ekle
+      </Button>
     </div>
   );
 };
@@ -96,28 +123,52 @@ export function GradingSettingsDialog({
     const handleUpdateCriteria = (key: CriteriaKey, updatedCriteria: Criterion[]) => {
         setLocalProfile(prev => ({ ...prev, [key]: updatedCriteria }));
     };
+    
+    const handleUpdateBadges = (updatedBadges: Badge[]) => {
+        setLocalProfile(prev => ({ ...prev, badgeCriteria: updatedBadges }));
+    };
 
     const handleAddCriterion = (key: CriteriaKey) => {
-        const criteria = localProfile[key] || [];
+        const criteria = (localProfile as any)[key] || [];
         const newId = (key.substring(0, 1)) + Date.now();
         const newItem = { id: newId, name: 'Yeni Kriter', max: 10 };
         handleUpdateCriteria(key, [...criteria, newItem]);
     };
+    
+    const handleAddBadge = () => {
+        const badges = localProfile.badgeCriteria || [];
+        const newId = `badge_${Date.now()}`;
+        const newItem: Badge = { id: newId, name: 'Yeni Rozet', description: 'Açıklama', icon: '🏆' };
+        handleUpdateBadges([...badges, newItem]);
+    };
+
 
     const handleRemoveCriterion = (key: CriteriaKey, id: string) => {
-        const criteria = localProfile[key] || [];
+        const criteria = (localProfile as any)[key] || [];
         if (criteria.length <= 1) {
             toast({ variant: 'destructive', title: "En az bir kriter kalmalıdır." });
             return;
         }
-        handleUpdateCriteria(key, criteria.filter(c => c.id !== id));
+        handleUpdateCriteria(key, criteria.filter((c: Criterion) => c.id !== id));
+    };
+
+    const handleRemoveBadge = (id: string) => {
+        const badges = localProfile.badgeCriteria || [];
+        handleUpdateBadges(badges.filter(b => b.id !== id));
     };
 
     const handleUpdateCriterionField = (key: CriteriaKey, id: string, field: keyof Criterion, value: any) => {
-        const criteria = localProfile[key] || [];
-        const updated = criteria.map(c => c.id === id ? { ...c, [field]: value } : c);
+        const criteria = (localProfile as any)[key] || [];
+        const updated = criteria.map((c: Criterion) => c.id === id ? { ...c, [field]: value } : c);
         handleUpdateCriteria(key, updated);
     };
+
+    const handleUpdateBadgeField = (id: string, field: keyof Badge, value: any) => {
+        const badges = localProfile.badgeCriteria || [];
+        const updated = badges.map(b => b.id === id ? { ...b, [field]: value } : b);
+        handleUpdateBadges(updated);
+    };
+
 
     const handleResetCriteria = (key: CriteriaKey) => {
         let defaultCriteria;
@@ -126,6 +177,11 @@ export function GradingSettingsDialog({
         else defaultCriteria = INITIAL_BEHAVIOR_CRITERIA;
         handleUpdateCriteria(key, defaultCriteria);
         toast({ title: "Kriterler sıfırlandı." });
+    };
+    
+    const handleResetBadges = () => {
+        handleUpdateBadges(INITIAL_BADGES);
+        toast({ title: "Rozetler sıfırlandı." });
     };
 
   return (
@@ -136,11 +192,12 @@ export function GradingSettingsDialog({
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2">
             <Tabs defaultValue="general">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="general">Genel</TabsTrigger>
                 <TabsTrigger value="perf_criteria">Performans</TabsTrigger>
                 <TabsTrigger value="proj_criteria">Proje</TabsTrigger>
                 <TabsTrigger value="behavior_criteria">Davranış</TabsTrigger>
+                <TabsTrigger value="badge_criteria">Rozetler</TabsTrigger>
             </TabsList>
             <TabsContent value="general" className="mt-4 space-y-4">
                 <div>
@@ -202,6 +259,16 @@ export function GradingSettingsDialog({
                     onAdd={() => handleAddCriterion('behaviorCriteria')}
                     onRemove={(id) => handleRemoveCriterion('behaviorCriteria', id)}
                     onReset={() => handleResetCriteria('behaviorCriteria')}
+                />
+            </TabsContent>
+             <TabsContent value="badge_criteria" className="mt-4">
+                <BadgeEditor 
+                    title="Rozet Kriterleri"
+                    badges={localProfile.badgeCriteria || INITIAL_BADGES}
+                    onUpdate={(id, field, value) => handleUpdateBadgeField(id, field, value)}
+                    onAdd={handleAddBadge}
+                    onRemove={handleRemoveBadge}
+                    onReset={handleResetBadges}
                 />
             </TabsContent>
             </Tabs>

@@ -114,6 +114,7 @@ export interface TeacherProfile {
   perfCriteria?: Criterion[];
   projCriteria?: Criterion[];
   behaviorCriteria?: Criterion[];
+  badgeCriteria?: Badge[];
 }
 
 export type ElectionType = 'class_president' | 'school_representative' | 'honor_board';

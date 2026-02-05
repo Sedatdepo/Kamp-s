@@ -7,7 +7,7 @@ import { doc, getDoc, onSnapshot, setDoc, Firestore, Unsubscribe } from 'firebas
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useRouter, usePathname } from 'next/navigation';
 import type { TeacherProfile } from '@/lib/types';
-import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BADGES } from '@/lib/grading-defaults';
 import { useFirebase } from '@/firebase';
 
 export type AppUser = { type: 'teacher'; data: User; profile: TeacherProfile };
@@ -37,6 +37,7 @@ async function seedDatabase(db: Firestore, teacherId: string) {
     if (!teacherData.perfCriteria) updates.perfCriteria = INITIAL_PERF_CRITERIA;
     if (!teacherData.projCriteria) updates.projCriteria = INITIAL_PROJ_CRITERIA;
     if (!teacherData.behaviorCriteria) updates.behaviorCriteria = INITIAL_BEHAVIOR_CRITERIA;
+    if (!teacherData.badgeCriteria) updates.badgeCriteria = INITIAL_BADGES;
     if (!teacherData.reportConfig) {
         updates.reportConfig = {
             schoolName: teacherData.schoolName || "",
