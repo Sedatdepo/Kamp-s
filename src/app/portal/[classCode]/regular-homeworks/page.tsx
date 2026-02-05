@@ -19,8 +19,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { User } from 'firebase/auth';
 
-export const HomeworkItem = ({ homework, student, classId, submission, onMarkAsSubmitted }: { homework: Homework, student: Student, classId: string, submission?: Submission, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
+export const HomeworkItem = ({ homework, student, authUser, classId, submission, onMarkAsSubmitted }: { homework: Homework, student: Student, authUser: User | null, classId: string, submission?: Submission, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,17 +84,16 @@ export const HomeworkItem = ({ homework, student, classId, submission, onMarkAsS
 
         // Soru yoksa, metin veya dosya da yoksa, yine de gönderime izin ver.
         if (!hasQuestions && !submissionText.trim() && !submissionFile) {
-            // Buton her zaman aktif olduğu için bu kontrolü buraya taşıyoruz.
             // Boş gönderim, "tamamlandı" olarak işaretlemek anlamına gelir.
         }
 
-        if (!db || !classId) return;
+        if (!db || !classId || !authUser) return;
 
         setIsSubmitting(true);
         
         const submissionData: Partial<Submission> = {
           studentId: student.id,
-          studentAuthUid: student.authUid,
+          studentAuthUid: authUser.uid,
           studentName: student.name,
           studentNumber: student.number,
           homeworkId: homework.id,
@@ -240,7 +240,7 @@ export default function StudentRegularHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     
@@ -267,9 +267,9 @@ export default function StudentRegularHomeworkPage() {
     const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
 
     const allStudentSubmissionsQuery = useMemoFirebase(() => {
-        if (!db || !student?.authUid) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
-    }, [db, student?.authUid]);
+        if (!db || !authUser?.uid) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
+    }, [db, authUser?.uid]);
     
     const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(allStudentSubmissionsQuery);
     
@@ -280,7 +280,7 @@ export default function StudentRegularHomeworkPage() {
             .sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [allHomeworks]);
     
-    if (!student || homeworksLoading || submissionsLoading) {
+    if (authLoading || !student || homeworksLoading || submissionsLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -324,6 +324,7 @@ export default function StudentRegularHomeworkPage() {
                                                 key={hw.id} 
                                                 homework={hw} 
                                                 student={student!} 
+                                                authUser={authUser}
                                                 classId={student!.classId} 
                                                 submission={submissionForHw}
                                                 onMarkAsSubmitted={() => {}} // This is handled by teacher view, student submits via button
