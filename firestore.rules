@@ -24,7 +24,7 @@ service cloud.firestore {
     match /lessons/{doc=**} { allow read, write: if isTeacher(); }
     match /clubs/{doc=**} { allow read, write: if isTeacher(); }
     match /riskFactors/{doc=**} { allow read, write: if isTeacher(); }
-    match /infoForms/{doc=**} { allow read, write: if isTeacher(); }
+    // REMOVED to prevent conflict: match /infoForms/{doc=**} { allow read, write: if isTeacher(); }
     match /classCodes/{doc=**} { allow read, write: if isTeacher(); }
     match /publicViews/{doc=**} { allow read, write: if isTeacher(); }
     match /messages/{doc=**} { allow read, write: if isTeacher(); }
@@ -55,9 +55,9 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == resource.data.authUid;
     }
 
-    // Students can manage their own info form.
+    // UPDATED: Students AND Teachers can manage info forms.
     match /infoForms/{formId} {
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
+        allow read, write: if isTeacher() || (request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid);
     }
     
     // Homework submissions by students.
