@@ -13,7 +13,7 @@
     },
     {
       "collectionGroup": "students",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         {
           "fieldPath": "teacherId",
@@ -22,14 +22,45 @@
       ]
     },
     {
-      "collectionGroup": "submissions",
+        "collectionGroup": "lessons",
+        "queryScope": "COLLECTION",
+        "fields": [ { "fieldPath": "teacherId", "order": "ASCENDING" } ]
+    },
+    {
+        "collectionGroup": "riskFactors",
+        "queryScope": "COLLECTION",
+        "fields": [ { "fieldPath": "teacherId", "order": "ASCENDING" } ]
+    },
+    {
+        "collectionGroup": "clubs",
+        "queryScope": "COLLECTION",
+        "fields": [ { "fieldPath": "teacherId", "order": "ASCENDING" } ]
+    },
+    {
+        "collectionGroup": "submissions",
+        "queryScope": "COLLECTION_GROUP",
+        "fields": [ { "fieldPath": "studentAuthUid", "order": "ASCENDING" } ]
+    },
+    {
+      "collectionGroup": "homeworks",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
-          "fieldPath": "studentAuthUid",
+          "fieldPath": "assignmentType",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "homeworks",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "rubric",
           "order": "ASCENDING"
         }
       ]
     }
-  ]
+  ],
+  "fieldOverrides": []
 }
