@@ -3,82 +3,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isTeacher() {
-      // It's safe to check existence because of the specific rule on /teachers/{teacherId}
-      return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    // --- CORE TEACHER RULE ---
-    // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
-    match /teachers/{teacherId} {
-      allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
-      allow write: if isTeacher() && request.auth.uid == teacherId; // Only the teacher can write to their own profile.
-    }
-
-    // --- TEACHER'S FULL ACCESS TO COLLECTIONS ---
-    match /classes/{doc=**} { allow read, write: if isTeacher(); }
-    match /students/{doc=**} { allow read, write: if isTeacher(); }
-    match /lessons/{doc=**} { allow read, write: if isTeacher(); }
-    match /clubs/{doc=**} { allow read, write: if isTeacher(); }
-    match /riskFactors/{doc=**} { allow read, write: if isTeacher(); }
-    match /classCodes/{doc=**} { allow read, write: if isTeacher(); }
-    match /publicViews/{doc=**} { allow read, write: if isTeacher(); }
-    match /messages/{doc=**} { allow read, write: if isTeacher(); }
-    match /teacherData/{doc=**} { allow read, write: if isTeacher(); }
-    
-    
-    // ---- STUDENT & PUBLIC RULES ----
-    // These rules are evaluated if the teacher rules do not grant access.
-    
-    match /publicViews/{viewId} { allow get: if true; }
-    match /classCodes/{code} { allow get: if true; }
-    
-    // Students can read lists of these collections for selection purposes.
-    match /lessons/{lessonId} { allow read: if request.auth != null; }
-    match /clubs/{clubId} { allow read: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
-    
-    // Students can get their specific class document.
-    match /classes/{classId} { 
-      allow get: if request.auth != null; 
-    }
-    
-    // Student login process and preference updates.
-    match /students/{studentId} {
-      // Allow anyone to read for the login screen.
-      allow read: if true; 
-      // Allow an authenticated user to claim an "unclaimed" student document (for initial login),
-      // OR allow an already-linked student to update their own document.
-      allow update: if request.auth != null && (
-        (resource.data.authUid == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid'])) ||
-        request.auth.uid == resource.data.authUid
-      );
-    }
-
-    // Corrected rule for infoForms
-    match /infoForms/{formId} {
-        allow read: if isTeacher() || (request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid);
-        allow write: if isTeacher() || (request.auth != null && request.resource.data.authUid == request.auth.uid);
-    }
-    
-    // Homework submissions by students.
-    match /classes/{classId}/homeworks/{homeworkId} {
-        // Students can get homework details.
-        allow read: if request.auth != null;
-    }
-    match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
-      // Students can create a submission for themselves.
-      allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
-      // Students can read their own submissions.
-      allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
-    }
-    
-    // Messaging rules for participants (only if not a teacher).
-    match /messages/{messageId} {
-      allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-      allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && resource.data.isRead == true;
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
