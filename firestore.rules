@@ -24,7 +24,6 @@ service cloud.firestore {
     match /lessons/{doc=**} { allow read, write: if isTeacher(); }
     match /clubs/{doc=**} { allow read, write: if isTeacher(); }
     match /riskFactors/{doc=**} { allow read, write: if isTeacher(); }
-    // REMOVED to prevent conflict: match /infoForms/{doc=**} { allow read, write: if isTeacher(); }
     match /classCodes/{doc=**} { allow read, write: if isTeacher(); }
     match /publicViews/{doc=**} { allow read, write: if isTeacher(); }
     match /messages/{doc=**} { allow read, write: if isTeacher(); }
@@ -51,8 +50,12 @@ service cloud.firestore {
     match /students/{studentId} {
       // Allow anyone to read for the login screen.
       allow read: if true; 
-      // Allow a student to update their OWN document (e.g., set authUid, choose preferences).
-      allow update: if request.auth != null && request.auth.uid == resource.data.authUid;
+      // Allow an authenticated user to claim an "unclaimed" student document (for initial login),
+      // OR allow an already-linked student to update their own document.
+      allow update: if request.auth != null && (
+        (resource.data.authUid == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid'])) ||
+        request.auth.uid == resource.data.authUid
+      );
     }
 
     // UPDATED: Students AND Teachers can manage info forms.
