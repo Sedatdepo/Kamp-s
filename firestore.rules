@@ -15,11 +15,6 @@ service cloud.firestore {
       return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
     }
 
-    function isStudentOfClass(classId) {
-        // This is a placeholder for potential future use where students might have direct auth UIDs
-        return request.auth != null && get(/databases/$(database)/documents/students/$(request.auth.uid)).data.classId == classId;
-    }
-
     function isOwnStudentData(studentId) {
       // Check if the request is for the user's own student document
       return request.auth != null && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
@@ -50,10 +45,10 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      // A teacher can list only their own classes
-      allow list: if isTeacher() && request.query.where['teacherId'] == request.auth.uid;
-      // A teacher can get their own class, students of that class can also get it
-      allow get: if isClassOwner(classId); // Students get class info via publicViews or embedded data
+      // A teacher can list only their own classes (client must filter)
+      allow list: if isTeacher();
+      // A teacher can read their own class.
+      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
       // A teacher must own the class they create
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
       // Only the owner can update or delete
@@ -61,29 +56,34 @@ service cloud.firestore {
     }
     
     match /students/{studentId} {
-      // A teacher can list students belonging to them
-      allow list: if isTeacher() && request.query.where['teacherId'] == request.auth.uid;
-      // Teacher can read/write their students, students can read/write their own data
-      allow read, write: if isTeacherOfStudent(studentId) || isOwnStudentData(studentId);
+      // A teacher can list students belonging to them (client must filter)
+      allow list: if isTeacher();
+      // Teacher can read their students, students can read their own data
+      allow read: if (isTeacher() && resource.data.teacherId == request.auth.uid) || isOwnStudentData(studentId);
+      // Teacher can write their students, students can write their own data
+      allow write: if isTeacherOfStudent(studentId) || isOwnStudentData(studentId);
     }
 
     // Teacher-owned root collections
     match /lessons/{lessonId} {
-       allow list: if isTeacher() && request.query.where['teacherId'] == request.auth.uid;
-       allow read, write, delete: if isTeacher() && get(/databases/$(database)/documents/lessons/$(lessonId)).data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
        allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/lessons/$(lessonId)).data.teacherId == request.auth.uid;
     }
     
     match /riskFactors/{riskFactorId} {
-       allow list: if isTeacher() && request.query.where['teacherId'] == request.auth.uid;
-       allow read, write, delete: if isTeacher() && get(/databases/$(database)/documents/riskFactors/$(riskFactorId)).data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
        allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/riskFactors/$(riskFactorId)).data.teacherId == request.auth.uid;
     }
     
     match /clubs/{clubId} {
-       allow list: if isTeacher() && request.query.where['teacherId'] == request.auth.uid;
-       allow read, write, delete: if isTeacher() && get(/databases/$(database)/documents/clubs/$(clubId)).data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
        allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/clubs/$(clubId)).data.teacherId == request.auth.uid;
     }
 
     // --- Subcollections ---
