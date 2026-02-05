@@ -4,10 +4,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Check if the user ID exists in the /teachers collection.
-    // This is the single source of truth for "is a teacher".
     function isTeacher() {
-      // This is safe because of the more-specific rule for /teachers/{teacherId} below.
+      // It's safe to check existence because of the specific rule on /teachers/{teacherId}
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
