@@ -4,54 +4,89 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isTeacher(userId) {
-      return exists(/databases/$(database)/documents/teachers/$(userId));
+    // --- Helper Functions ---
+    function isTeacher() {
+      return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    match /publicViews/{viewId} {
-        allow get: if true;
-        allow write: if request.auth != null &&
-                      isTeacher(request.auth.uid) &&
-                      exists(/databases/$(database)/documents/classes/$(viewId)) &&
-                      get(/databases/$(database)/documents/classes/$(viewId)).data.teacherId == request.auth.uid;
+    function isClassOwner(classId) {
+      return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
     }
 
-    match /classCodes/{code} {
-        allow get: if true;
-        allow write: if request.auth != null && isTeacher(request.auth.uid);
+    function isStudent() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function isOwnStudent(studentId) {
+        let studentDoc = get(/databases/$(database)/documents/students/$(studentId));
+        return request.auth != null && studentDoc.data.authUid == request.auth.uid;
     }
     
+    function isTeacherOfStudent(studentId) {
+        let studentDoc = get(/databases/$(database)/documents/students/$(studentId));
+        return isTeacher() && studentDoc.data.teacherId == request.auth.uid;
+    }
+    
+    // --- Collection Rules ---
+
+    // Teachers collection is private to each teacher
+    match /teachers/{teacherId}/{documents=**} {
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+    }
+    
+    // Publicly readable collections
+    match /publicViews/{viewId} {
+      allow get: if true;
+      allow write: if isClassOwner(viewId);
+    }
+    match /classCodes/{code} {
+      allow get: if true;
+      allow write: if isTeacher();
+    }
+
+    // Teacher-owned collections
     match /classes/{classId} {
-        allow get: if true;
-        allow write: if request.auth != null && isTeacher(request.auth.uid) && request.resource.data.teacherId == request.auth.uid;
+      allow read, write: if isClassOwner(classId);
+      allow list: if isTeacher(); 
     }
     
     match /students/{studentId} {
-        allow get: if true;
-        allow write: if request.auth != null;
-    }
-
-    match /messages/{messageId} {
-      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.receiverId == request.auth.uid;
-      allow delete: if false;
-    }
-
-    match /{path=**}/submissions/{submissionId} {
-      allow list: if request.auth != null && request.auth.uid == request.query.where[0][2];
-      allow read: if request.auth != null && request.auth.uid == resource.data.studentAuthUid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentAuthUid;
+      allow read, write: if isTeacherOfStudent(studentId) || isOwnStudent(studentId);
+      allow list: if isTeacher();
     }
     
-    match /{document=**} {
-      allow read, write: if request.path[0] != 'publicViews' && 
-                           request.path[0] != 'classCodes' &&
-                           request.path[0] != 'classes' &&
-                           request.path[0] != 'students' &&
-                           request.path[0] != 'messages' &&
-                           true;
+    match /lessons/{lessonId} {
+       allow read, write, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+    }
+    
+    match /riskFactors/{riskFactorId} {
+       allow read, write, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+    }
+    
+    match /clubs/{clubId} {
+       allow read, write, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+       allow list: if isTeacher();
+    }
+
+    // Student-owned, Teacher-readable collections
+    match /infoForms/{formId} {
+      allow read: if isTeacherOfStudent(formId) || isOwnStudent(formId);
+      allow write: if isOwnStudent(formId);
+    }
+    
+    // Subcollections of classes (Homeworks, Submissions)
+    match /classes/{classId}/{path=**} {
+      allow read, write, delete: if isClassOwner(classId);
+    }
+    
+    // Messages
+    match /messages/{messageId} {
+      allow read: if request.auth.uid in resource.data.participants;
+      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.senderId;
+      allow update: if request.auth.uid == resource.data.receiverId; // For marking as read
     }
   }
 }
