@@ -5,26 +5,25 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- Helper Function ---
-    // Checks if the user is a registered teacher. This requires a read on the /teachers collection.
     function isTeacher() {
+      // This function relies on a rule that allows reading from the /teachers collection.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
+    // Rule to allow the isTeacher() check to work without recursion.
+    // This is evaluated before the wildcard rule because it's more specific.
+    match /teachers/{teacherId} {
+      allow get: if request.auth != null;
+    }
+
     // RULE 1: Teachers have god-mode.
     // This single rule grants full access to any teacher. 'read' includes 'get' and 'list'.
-    match /{path=**} {
+    // For non-teachers, this rule denies access, and they must rely on the more specific rules below.
+    match /{document=**} {
       allow read, write: if isTeacher();
     }
     
-    // RULE 2: Allow teacher existence check.
-    // This is CRITICAL for the isTeacher() function to work for all users, including itself.
-    // It allows any authenticated user to check if a document exists in /teachers.
-    match /teachers/{teacherId} {
-        allow get: if request.auth != null;
-    }
-    
-    // --- Non-Teacher (Student & Public) Access Rules ---
-    // The rules below are for users who fail the isTeacher() check.
+    // --- NON-TEACHER (Student & Public) ACCESS RULES ---
     
     // Publicly viewable pages.
     match /publicViews/{viewId} { allow get: if true; }
@@ -59,8 +58,7 @@ service cloud.firestore {
     
     // Students can send and receive messages.
     match /messages/{messageId} {
-      allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
-      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
     }
   }
 }
