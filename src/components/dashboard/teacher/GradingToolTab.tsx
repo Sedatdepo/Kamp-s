@@ -37,7 +37,7 @@ interface GradingToolTabProps {
 type TermKey = 'term1Grades' | 'term2Grades';
 export type GradeField = 'exam1' | 'exam2' | 'perf1' | 'perf2' | 'projectGrade';
 type CriteriaKey = 'perfCriteria' | 'projCriteria' | 'behaviorCriteria';
-type ScoreKey = 'scores1' | 'scores2' | 'projectScores' | 'behaviorScores';
+type ScoreKey = 'scores1' | 'scores2' | 'projectScores';
 
 
 // --- KRİTER BAZLI DEĞERLENDİRME TABLOSU ---
