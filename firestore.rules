@@ -11,13 +11,14 @@ service cloud.firestore {
     
     // --- CORE TEACHER RULE ---
     // This rule is CRITICAL. It allows the isTeacher() function to work.
+    // The write rule DOES NOT use isTeacher() to prevent recursion.
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
-      allow write: if isTeacher() && request.auth.uid == teacherId;
+      allow write: if request.auth.uid == teacherId;
     }
 
     // --- TEACHER'S FULL ACCESS TO COLLECTIONS ---
-    // Explicitly grant teacher full read/write access to collections. This is more robust than a single wildcard.
+    // Explicitly grant teacher full read/write access to collections.
     match /classes/{doc=**} { allow read, write: if isTeacher(); }
     match /students/{doc=**} { allow read, write: if isTeacher(); }
     match /lessons/{doc=**} { allow read, write: if isTeacher(); }
@@ -36,9 +37,9 @@ service cloud.firestore {
     match /classCodes/{code} { allow get: if true; }
     
     // Students can read lists of these collections for selection purposes.
-    match /lessons/{lessonId} { allow get: if request.auth != null; }
-    match /clubs/{clubId} { allow get: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    match /lessons/{lessonId} { allow read: if request.auth != null; }
+    match /clubs/{clubId} { allow read: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
     // Students can get their specific class document.
     match /classes/{classId} { 
@@ -61,7 +62,7 @@ service cloud.firestore {
     // Homework submissions by students.
     match /classes/{classId}/homeworks/{homeworkId} {
         // Students can get homework details.
-        allow get: if request.auth != null;
+        allow read: if request.auth != null;
     }
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       // Students can create a submission for themselves.
