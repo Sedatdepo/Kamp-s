@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -120,7 +120,6 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
     const { db } = useAuth();
-    const [submissionsState, setSubmissionsState] = useState<{ [key: string]: Partial<Submission> }>({});
     const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
@@ -131,41 +130,39 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
-    useEffect(() => {
-        const fetchSubmissions = async () => {
-            if (!db || !currentClass || homeworksLoading || !homeworks) return;
-            setSubmissionsLoading(true);
-            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
-            const querySnapshot = await getDocs(submissionsQuery);
-            const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-            setAllSubmissions(fetchedSubmissions);
+    const fetchSubmissions = useCallback(async () => {
+        if (!db || !currentClass || !student?.id || homeworksLoading || !homeworks) {
             setSubmissionsLoading(false);
-        };
+            return;
+        }
+        setSubmissionsLoading(true);
+        try {
+            const submissionPromises = (homeworks || []).map(hw => 
+                getDocs(query(
+                    collection(db, `classes/${currentClass!.id}/homeworks/${hw.id}/submissions`),
+                    where('studentId', '==', student.id)
+                ))
+            );
+            const querySnapshots = await Promise.all(submissionPromises);
+            const submissionsData = querySnapshots.flatMap(snap => 
+                snap.docs.map(d => ({ id: d.id, ...d.data() } as Submission))
+            );
+            setAllSubmissions(submissionsData);
+        } catch (error) {
+            console.error("Error fetching submissions:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Ödev teslim durumu alınamadı.' });
+        } finally {
+            setSubmissionsLoading(false);
+        }
+    }, [db, currentClass, student?.id, homeworks, homeworksLoading, toast]);
+
+    useEffect(() => {
         fetchSubmissions();
-    }, [db, currentClass, homeworks, student.id, homeworksLoading]);
-    
+    }, [fetchSubmissions]);
 
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
     }
-
-    const handleFieldChange = (subId: string, field: 'grade' | 'feedback', value: string | number) => {
-        setSubmissionsState(prev => ({ ...prev, [subId]: { ...prev[subId], [field]: value } }));
-    };
-
-    const handleSaveFeedback = async (hwId: string, subId: string) => {
-        if (!currentClass || !db) return;
-        const subRef = doc(db, 'classes', currentClass.id, 'homeworks', hwId, 'submissions', subId);
-        const localChanges = submissionsState[subId];
-        if (!localChanges) return;
-
-        try {
-            await updateDoc(subRef, localChanges);
-            toast({ title: 'Değerlendirme kaydedildi.' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
-        }
-    };
 
     if (homeworksLoading || submissionsLoading) return <div>Yükleniyor...</div>;
 
