@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Student, InfoForm, RiskFactor } from '@/lib/types';
+import { Student, InfoForm, RiskFactor, Class } from '@/lib/types';
 import { Loader2, ArrowLeft, Save, FileText, User, Heart, Home, School } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,10 @@ export default function StudentInfoFormPage() {
     const { data: existingForm, isLoading: formLoading } = useDoc<InfoForm>(useMemoFirebase(() => student ? doc(db, 'infoForms', student.id) : null, [db, student]));
     const riskFactorsQuery = useMemoFirebase(() => (student ? query(collection(db, 'riskFactors'), where('teacherId', '==', student.teacherId)) : null), [db, student]);
     const { data: riskFactors, isLoading: risksLoading } = useCollection<RiskFactor>(riskFactorsQuery);
+    
+    const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student]);
+    const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
+
 
     // Populate form with existing data
     useEffect(() => {
@@ -132,7 +136,7 @@ export default function StudentInfoFormPage() {
         }
     };
     
-    const loading = !student || formLoading || risksLoading;
+    const loading = !student || formLoading || risksLoading || classLoading;
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -157,7 +161,7 @@ export default function StudentInfoFormPage() {
             <main className="max-w-4xl mx-auto">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full space-y-4">
+                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full space-y-4">
                             
                             {/* Kişisel Bilgiler */}
                             <AccordionItem value="item-1" className="border rounded-xl bg-white shadow-sm">
@@ -203,42 +207,44 @@ export default function StudentInfoFormPage() {
                             </AccordionItem>
 
                             {/* Risk Faktörleri */}
-                             <AccordionItem value="item-4" className="border rounded-xl bg-white shadow-sm">
-                                <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><Heart/>Özel Durum ve Risk Faktörleri</div></AccordionTrigger>
-                                <AccordionContent className="p-6 pt-0">
-                                    <p className="text-sm text-muted-foreground mb-4">Aşağıdaki durumlardan size uygun olanları işaretleyiniz. Bu bilgiler sadece rehber öğretmeniniz tarafından görülecektir.</p>
-                                    <FormField
-                                        control={form.control}
-                                        name="selectedRisks"
-                                        render={() => (
-                                            <FormItem className="space-y-3">
-                                                {riskFactors?.map((factor) => (
-                                                    <FormField
-                                                        key={factor.id}
-                                                        control={form.control}
-                                                        name="selectedRisks"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <Checkbox
-                                                                        checked={field.value?.includes(factor.id)}
-                                                                        onCheckedChange={(checked) => {
-                                                                            return checked
-                                                                                ? field.onChange([...(field.value || []), factor.id])
-                                                                                : field.onChange(field.value?.filter((value) => value !== factor.id));
-                                                                        }}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormLabel className="font-normal">{factor.label}</FormLabel>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                ))}
-                                            </FormItem>
-                                        )}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
+                            {currentClass?.isRiskFormActive && (
+                                <AccordionItem value="item-4" className="border rounded-xl bg-white shadow-sm">
+                                    <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><Heart/>Özel Durum ve Risk Faktörleri</div></AccordionTrigger>
+                                    <AccordionContent className="p-6 pt-0">
+                                        <p className="text-sm text-muted-foreground mb-4">Aşağıdaki durumlardan size uygun olanları işaretleyiniz. Bu bilgiler sadece rehber öğretmeniniz tarafından görülecektir.</p>
+                                        <FormField
+                                            control={form.control}
+                                            name="selectedRisks"
+                                            render={() => (
+                                                <FormItem className="space-y-3">
+                                                    {riskFactors?.map((factor) => (
+                                                        <FormField
+                                                            key={factor.id}
+                                                            control={form.control}
+                                                            name="selectedRisks"
+                                                            render={({ field }) => (
+                                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                                    <FormControl>
+                                                                        <Checkbox
+                                                                            checked={field.value?.includes(factor.id)}
+                                                                            onCheckedChange={(checked) => {
+                                                                                return checked
+                                                                                    ? field.onChange([...(field.value || []), factor.id])
+                                                                                    : field.onChange(field.value?.filter((value) => value !== factor.id));
+                                                                            }}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormLabel className="font-normal">{factor.label}</FormLabel>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )}
 
                         </Accordion>
                         <Button type="submit" disabled={isSaving} className="w-full mt-6">
