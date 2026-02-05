@@ -28,6 +28,7 @@ service cloud.firestore {
     match /classCodes/{doc=**} { allow read, write: if isTeacher(); }
     match /publicViews/{doc=**} { allow read, write: if isTeacher(); }
     match /messages/{doc=**} { allow read, write: if isTeacher(); }
+    match /teacherData/{doc=**} { allow read, write: if isTeacher(); }
     
     
     // ---- STUDENT & PUBLIC RULES ----
