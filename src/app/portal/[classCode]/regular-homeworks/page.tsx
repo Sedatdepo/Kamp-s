@@ -260,7 +260,10 @@ export default function StudentRegularHomeworkPage() {
     }, [classCode, router]);
 
     const fetchData = useCallback(async () => {
-        if (!db || !student || !authUser) return;
+        if (!db || !student?.classId || !authUser?.uid) {
+            setDataLoading(false);
+            return;
+        }
         setDataLoading(true);
 
         try {
@@ -270,18 +273,30 @@ export default function StudentRegularHomeworkPage() {
             const homeworksData = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
             setAllHomeworks(homeworksData);
 
-            // 2. Fetch all submissions for this student across all homeworks in one go
-            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
-            const submissionsSnapshot = await getDocs(submissionsQuery);
-            const submissionsData = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-            setAllSubmissions(submissionsData);
+            // 2. For each homework, fetch this student's submission
+            if (homeworksData.length > 0) {
+                const submissionPromises = homeworksData.map(hw => 
+                    getDocs(query(
+                        collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`),
+                        where('studentAuthUid', '==', authUser.uid)
+                    ))
+                );
+                const submissionSnapshots = await Promise.all(submissionPromises);
+                const submissionsData = submissionSnapshots.flatMap(snapshot => 
+                    snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Submission))
+                );
+                setAllSubmissions(submissionsData);
+            } else {
+                setAllSubmissions([]);
+            }
 
         } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("Error fetching homework data:", error);
         } finally {
             setDataLoading(false);
         }
     }, [db, student, authUser]);
+
 
     useEffect(() => {
         if (student && authUser) {
