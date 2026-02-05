@@ -4,58 +4,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Helper function to check if the user is a teacher
     function isTeacher() {
+      // This is safe because /teachers/{uid} has its own rule that doesn't use this function.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // Allow the isTeacher() helper to work without being blocked by the wildcard rule below.
-    // This is more specific, so it's checked first.
+    // This allows the isTeacher() check to function without infinite recursion.
+    // It's more specific than any wildcard rule.
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
     }
 
-    // RULE 1: Teachers can read and write anything within any collection.
-    // This allows listing collections and reading/writing all documents.
-    match /{collection}/{document=**} {
+    // RULE 1: Teachers can read and write anything.
+    // This is a broad permission for the single-teacher use case.
+    match /{path=**} {
       allow read, write: if isTeacher();
     }
     
-    // --- NON-TEACHER (Student & Public) ACCESS RULES ---
-    // These are only evaluated if the user is NOT a teacher.
+    // --- NON-TEACHER & PUBLIC ACCESS RULES ---
+    // These rules provide access even if the user is not a teacher.
     
-    // Publicly viewable pages that don't require login.
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
 
-    // Allow students to read documents needed for login and portal functionality.
-    match /students/{studentId} { allow read: if true; }
+    // Students need to read the list to find their name for login
+    // and read their own doc for portal data.
+    match /students/{studentId} { 
+      allow read: if true; 
+      allow update: if request.auth != null;
+    }
+
+    // Students need to get details for their class and other related data.
     match /classes/{classId} { allow get: if request.auth != null; }
     match /lessons/{lessonId} { allow read: if request.auth != null; }
     match /clubs/{clubId} { allow read: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
+    
+    // Students can see homework descriptions
     match /classes/{classId}/homeworks/{homeworkId} {
       allow get: if request.auth != null;
     }
     
-    // Allow students to update their own documents for specific actions.
-    match /students/{studentId} {
-      // Allow an anonymous user to claim their student doc by writing their authUid to it.
-      // Also allows logged-in students to update their own preferences.
-      allow update: if request.auth != null;
-    }
-    
+    // Students can submit homework and view their own submissions.
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
       allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
     }
     
+    // Students can fill out their info form
     match /infoForms/{studentId} {
-      // Allow a student to read and write their own information form.
       allow read, write: if request.auth != null;
     }
     
+    // Students can message the teacher
     match /messages/{messageId} {
-      // Students can only read, create, or update messages they are a part of.
       allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
     }
   }
