@@ -54,6 +54,17 @@ service cloud.firestore {
         allow update: if request.auth != null; 
     }
     
+    // Students can read lessons, clubs, and risk factors for selection forms.
+    match /lessons/{lessonId} {
+        allow read: if request.auth != null;
+    }
+    match /clubs/{clubId} {
+        allow read: if request.auth != null;
+    }
+    match /riskFactors/{riskFactorId} {
+        allow read: if request.auth != null;
+    }
+    
     // Students can read homework assignments for their class.
     match /classes/{classId}/homeworks/{homeworkId} {
       allow get: if request.auth != null;
