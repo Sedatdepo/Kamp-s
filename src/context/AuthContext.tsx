@@ -79,53 +79,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!auth || !db) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      
-      if (userUnsubscribeRef.current) userUnsubscribeRef.current();
-      userUnsubscribeRef.current = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current();
+        userUnsubscribeRef.current = null;
+      }
 
       if (firebaseUser) {
+        setLoading(true); // Start loading when user is found
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
-        const teacherSnap = await getDoc(teacherRef);
-        
-        if (teacherSnap.exists()) {
-          await seedDatabase(db, firebaseUser.uid);
-          
-          userUnsubscribeRef.current = onSnapshot(teacherRef, (docSnap) => {
+
+        userUnsubscribeRef.current = onSnapshot(
+          teacherRef,
+          async (docSnap) => {
             if (docSnap.exists()) {
-                const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
-                 if (profile.name && profile.schoolName) {
-                    setAppUser({ type: 'teacher', data: firebaseUser, profile });
-                }
+              await seedDatabase(db, firebaseUser.uid);
+              const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
+              setAppUser({ type: 'teacher', data: firebaseUser, profile });
             } else {
-                 signOut();
+              // Not a teacher (or doc deleted), or could be anonymous user
+              if (!firebaseUser.isAnonymous) {
+                await signOut();
+              } else {
+                  setAppUser(null);
+              }
             }
-          });
-        } else {
-          // It's not a teacher. If it's an anonymous user, let them proceed.
-          // Otherwise (e.g., deleted teacher), sign them out.
-          if (!firebaseUser.isAnonymous) {
-            await signOut();
-          } else {
-            // This is an anonymous user for the student portal.
-            // Clear any existing teacher state but don't sign out.
+            setLoading(false); // Stop loading after profile fetch/check is complete
+          },
+          (error) => {
+            console.error("Error fetching teacher profile:", error);
             setAppUser(null);
+            setLoading(false); // Stop loading on error
           }
-        }
+        );
       } else {
+        // No firebaseUser
         setAppUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {
-        unsubscribeAuth();
-        if (userUnsubscribeRef.current) userUnsubscribeRef.current();
+      unsubscribeAuth();
+      if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current();
+      }
     };
   }, [auth, db, signOut]);
 
