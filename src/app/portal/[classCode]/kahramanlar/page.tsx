@@ -126,9 +126,3 @@ export default function StudentGamificationPage() {
         </div>
     );
 }
-
-```
-- src/components/dashboard/teacher/SinifKahramanlariTab.tsx
-- src/app/portal/[classCode]/regular-homeworks/page.tsx
-- src/app/portal/[classCode]/performance-homeworks/page.tsx
-- src/app/portal/[classCode]/project-homework/page.tsx
