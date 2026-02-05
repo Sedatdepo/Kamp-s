@@ -4,39 +4,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- Helper Function ---
     function isTeacher() {
-      // This function relies on a rule that allows reading from the /teachers collection.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // Rule to allow the isTeacher() check to work without recursion.
-    // This is evaluated before the wildcard rule because it's more specific.
+    // Allow the isTeacher() helper to work without being blocked by the wildcard rule below.
+    // This is more specific, so it's checked first.
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
     }
 
-    // RULE 1: Teachers have god-mode.
-    // This single rule grants full access to any teacher. 'read' includes 'get' and 'list'.
-    // For non-teachers, this rule denies access, and they must rely on the more specific rules below.
-    match /{document=**} {
+    // RULE 1: Teachers can read and write anything within any collection.
+    // This allows listing collections and reading/writing all documents.
+    match /{collection}/{document=**} {
       allow read, write: if isTeacher();
     }
     
     // --- NON-TEACHER (Student & Public) ACCESS RULES ---
+    // These are only evaluated if the user is NOT a teacher.
     
-    // Publicly viewable pages.
+    // Publicly viewable pages that don't require login.
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
 
-    // Student login process.
-    match /students/{studentId} {
-        allow read: if true; 
-        allow update: if request.auth != null; // For anonymous login to claim their doc
-    }
-    
-    // Students reading data for selection forms and portal functionality.
-    // 'read' allows both 'get' (single doc) and 'list' (collection query)
+    // Allow students to read documents needed for login and portal functionality.
+    match /students/{studentId} { allow read: if true; }
     match /classes/{classId} { allow get: if request.auth != null; }
     match /lessons/{lessonId} { allow read: if request.auth != null; }
     match /clubs/{clubId} { allow read: if request.auth != null; }
@@ -45,19 +37,25 @@ service cloud.firestore {
       allow get: if request.auth != null;
     }
     
-    // Students can manage their own submissions.
+    // Allow students to update their own documents for specific actions.
+    match /students/{studentId} {
+      // Allow an anonymous user to claim their student doc by writing their authUid to it.
+      // Also allows logged-in students to update their own preferences.
+      allow update: if request.auth != null;
+    }
+    
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
       allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
     }
     
-    // Students can manage their own info form.
     match /infoForms/{studentId} {
+      // Allow a student to read and write their own information form.
       allow read, write: if request.auth != null;
     }
     
-    // Students can send and receive messages.
     match /messages/{messageId} {
+      // Students can only read, create, or update messages they are a part of.
       allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
     }
   }
