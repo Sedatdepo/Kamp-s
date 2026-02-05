@@ -24,6 +24,12 @@ service cloud.firestore {
         allow get: if request.auth != null;
     }
 
+    // Allow authenticated students to read the details of their class
+    // to see which modules (homeworks, announcements etc.) are active.
+    match /classes/{classId} {
+      allow get: if request.auth != null;
+    }
+
     // Anyone can read public data needed for viewing pages without login.
     match /publicViews/{viewId} {
       allow get: if true;
