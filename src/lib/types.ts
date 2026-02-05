@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
@@ -340,6 +341,7 @@ export interface InfoForm {
   hobbies?: string;
   isWorking?: 'yes' | 'no';
   commutesToSchoolBy?: 'walking' | 'service' | 'public' | 'private' | 'other';
+  economicStatus?: 'iyi' | 'orta' | 'kotu';
   isHomeRented?: 'yes' | 'no';
   hasOwnRoom?: 'yes' | 'no';
 

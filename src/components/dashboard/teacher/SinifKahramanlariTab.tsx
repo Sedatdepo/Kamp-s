@@ -1,15 +1,15 @@
+
 'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, BehaviorLog, TeacherProfile } from '@/lib/types';
+import { Student, Class, BehaviorLog, TeacherProfile, Badge } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, UserPlus, X, Check, Share2, Settings
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -54,7 +54,14 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
   const availableBadges = teacherProfile?.badgeCriteria || INITIAL_BADGES;
   
   const handleToggleGamification = async (checked: boolean) => {
-    // This function implementation remains the same
+     if (!currentClass || !db) return;
+    const classRef = doc(db, 'classes', currentClass.id);
+    try {
+        await updateDoc(classRef, { isGamificationActive: checked });
+        toast({ title: 'Başarılı', description: `Oyunlaştırma modülü öğrenciler için ${checked ? 'aktif edildi' : 'kapatıldı'}.` });
+    } catch {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
+    }
   };
 
   const addBehaviorLog = async (student: Student, behavior: {id: string; name: string; max: number}) => {
@@ -152,7 +159,7 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
                     <Settings className="mr-2 h-4 w-4" /> Kriter Ayarları
                 </Button>
                 <div className="flex items-center space-x-2">
-                    <Switch id="gamification-toggle" checked={currentClass?.isGamificationActive ?? false} onCheckedChange={()=>{}} />
+                    <Switch id="gamification-toggle" checked={currentClass?.isGamificationActive ?? false} onCheckedChange={handleToggleGamification} />
                     <Label htmlFor="gamification-toggle">Paylaş</Label>
                 </div>
               </div>
@@ -179,11 +186,10 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
                       <Badge variant="secondary">{student.behaviorScore || 100}</Badge>
                     </TableCell>
                     <TableCell className="flex gap-1 flex-wrap">
-                      {student.badges?.map(badgeId => (
-                        <span key={badgeId} className="text-lg" title={availableBadges.find(b => b.id === badgeId)?.name}>
-                          {availableBadges.find(b => b.id === badgeId)?.icon || '🏅'}
-                        </span>
-                      ))}
+                      {student.badges?.map(badgeId => {
+                        const badge = availableBadges.find(b => b.id === badgeId);
+                        return badge ? <span key={badgeId} className="text-lg" title={badge.name}>{badge.icon}</span> : null;
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>

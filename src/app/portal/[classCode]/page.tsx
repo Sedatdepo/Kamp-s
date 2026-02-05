@@ -5,12 +5,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Student, Class } from '@/lib/types';
+import { Student, Class, TeacherProfile, Badge } from '@/lib/types';
 import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
 import Link from 'next/link';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { INITIAL_BADGES } from '@/lib/grading-defaults';
+
 
 const ModuleCard = ({ title, icon, href, isPublished }: { title: string, icon: React.ReactNode, href: string, isPublished?: boolean }) => {
     if (!isPublished) return null;
@@ -38,6 +41,7 @@ export default function StudentPortalPage() {
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Initial load from sessionStorage
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
@@ -59,11 +63,34 @@ export default function StudentPortalPage() {
     const classDocRef = useMemoFirebase(() => (student ? doc(firestore, 'classes', student.classId) : null), [firestore, student]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
     
+    // Real-time listener for student data
+    const studentDocRef = useMemoFirebase(() => (student ? doc(firestore, 'students', student.id) : null), [firestore, student]);
+    const { data: liveStudentData, isLoading: studentLoading } = useDoc<Student>(studentDocRef);
+
+    // Update state and sessionStorage when live data for student changes
     useEffect(() => {
-        if (student && !classLoading) {
+        if (liveStudentData) {
+            setStudent(liveStudentData);
+            try {
+                const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                authData.student = liveStudentData;
+                sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+            } catch (e) {
+                console.error("Could not update session storage", e);
+            }
+        }
+    }, [liveStudentData]);
+    
+    const teacherDocRef = useMemoFirebase(() => (student ? doc(firestore, 'teachers', student.teacherId) : null), [firestore, student]);
+    const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
+    const availableBadges = teacherProfile?.badgeCriteria || INITIAL_BADGES;
+
+    useEffect(() => {
+        if (student && !classLoading && !studentLoading) {
             setLoading(false);
         }
-    }, [student, classLoading]);
+    }, [student, classLoading, studentLoading]);
+
 
     const handleLogout = () => {
         sessionStorage.removeItem('student_portal_auth');
@@ -90,6 +117,45 @@ export default function StudentPortalPage() {
             </header>
             
             <main className="max-w-4xl mx-auto">
+                 {currentClass.isGamificationActive && (
+                    <Card className="mb-8">
+                        <CardHeader>
+                            <CardTitle>Sınıf Kahramanları</CardTitle>
+                            <CardDescription>Davranış puanın ve kazandığın rozetler.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex items-center gap-6">
+                            <div>
+                                <p className="text-muted-foreground text-sm">Davranış Puanı</p>
+                                <p className="text-5xl font-bold text-primary">{student.behaviorScore || 100}</p>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-muted-foreground text-sm mb-2">Kazandığın Rozetler</p>
+                                <div className="flex flex-wrap gap-4">
+                                    {(student.badges && student.badges.length > 0) ? (
+                                        <TooltipProvider>
+                                            {student.badges.map(badgeId => {
+                                                const badge = availableBadges.find(b => b.id === badgeId);
+                                                return badge ? (
+                                                    <Tooltip key={badge.id}>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="text-4xl cursor-pointer">{badge.icon}</div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p className="font-bold">{badge.name}</p>
+                                                            <p>{badge.description}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : null;
+                                            })}
+                                        </TooltipProvider>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground italic">Henüz rozet kazanmadın.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <ModuleCard title="Öğretmene Mesaj" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
                     <ModuleCard title="Oturma Planı" icon={<Grid className="text-blue-500" />} href={`/view/seating-plan/${classCode}`} isPublished={currentClass.isSeatingPlanPublished} />
