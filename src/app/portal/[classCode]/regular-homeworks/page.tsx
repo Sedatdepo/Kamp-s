@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, getDocs } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, collectionGroup } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +21,7 @@ import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-export const HomeworkItem = ({ homework, student, classId, submissions }: { homework: Homework, student: Student, classId: string, submissions: Submission[] }) => {
+export const HomeworkItem = ({ homework, student, classId, submission }: { homework: Homework, student: Student, classId: string, submission?: Submission }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,9 +29,7 @@ export const HomeworkItem = ({ homework, student, classId, submissions }: { home
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
-    const existingSubmission = useMemo(() => {
-        return submissions?.[0];
-    }, [submissions]);
+    const existingSubmission = submission;
 
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
       setAnswers(prev => {
@@ -192,7 +191,6 @@ export const HomeworkItem = ({ homework, student, classId, submissions }: { home
                     {questions.map((q, i) => (
                          <div key={q.id || i} className="p-3 bg-slate-50 rounded-md">
                             <Label className="font-semibold block mb-2">{i+1}. {q.text} {q.required && <span className="text-red-500">*</span>}</Label>
-                            {q.type === 'open-ended' && <Textarea onChange={e => handleAnswerChange(q.id, e.target.value)} />}
                             {q.type === 'multiple-choice' && (
                                  <RadioGroup onValueChange={(value) => handleAnswerChange(q.id, value)}>
                                     {(q.options || []).map((opt, idx) => (
@@ -203,6 +201,7 @@ export const HomeworkItem = ({ homework, student, classId, submissions }: { home
                                     ))}
                                 </RadioGroup>
                             )}
+                            {q.type === 'open-ended' && <Textarea onChange={e => handleAnswerChange(q.id, e.target.value)} />}
                          </div>
                     ))}
                      <Button onClick={() => handleSubmit()} disabled={isSubmitting}>
@@ -239,8 +238,6 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
-    const [submissionsLoading, setSubmissionsLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -263,6 +260,14 @@ export default function StudentRegularHomeworkPage() {
     }, [db, student?.classId, student?.id]);
     
     const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
+
+    const allStudentSubmissionsQuery = useMemoFirebase(() => {
+        if (!db || !student?.id) return null;
+        // This is a collection group query and requires an index.
+        return query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
+    }, [db, student?.id]);
+    
+    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(allStudentSubmissionsQuery);
     
     const regularHomeworks = useMemo(() => {
         if (!allHomeworks) return [];
@@ -270,36 +275,6 @@ export default function StudentRegularHomeworkPage() {
             .filter(hw => !hw.assignmentType)
             .sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [allHomeworks]);
-
-    useEffect(() => {
-        const fetchSubmissions = async () => {
-            if (!db || !student || !regularHomeworks || homeworksLoading) return;
-            setSubmissionsLoading(true);
-            try {
-                const subsByHomework: { [homeworkId: string]: Submission[] } = {};
-                for (const hw of regularHomeworks) {
-                    const subQuery = query(collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`), where('studentId', '==', student.id));
-                    const querySnapshot = await getDocs(subQuery);
-                    const subs: Submission[] = [];
-                    querySnapshot.forEach(doc => {
-                        subs.push({ id: doc.id, ...doc.data() } as Submission);
-                    });
-                    subsByHomework[hw.id] = subs;
-                }
-                setAllSubmissions(subsByHomework);
-            } catch (error) {
-                console.error("Error fetching submissions:", error);
-            } finally {
-                setSubmissionsLoading(false);
-            }
-        };
-
-        if (regularHomeworks.length > 0) {
-            fetchSubmissions();
-        } else {
-            setSubmissionsLoading(false);
-        }
-    }, [db, student, regularHomeworks, homeworksLoading]);
     
     if (!student || homeworksLoading || submissionsLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -338,15 +313,18 @@ export default function StudentRegularHomeworkPage() {
                             <ScrollArea className="h-[60vh] pr-2">
                                 <div className="space-y-4">
                                 {regularHomeworks.length > 0 ? (
-                                    regularHomeworks.map((hw) => (
-                                        <HomeworkItem 
-                                            key={hw.id} 
-                                            homework={hw} 
-                                            student={student!} 
-                                            classId={student!.classId} 
-                                            submissions={allSubmissions[hw.id] || []}
-                                        />
-                                    ))
+                                    regularHomeworks.map((hw) => {
+                                        const submissionForHw = allSubmissions?.find(s => s.homeworkId === hw.id);
+                                        return (
+                                            <HomeworkItem 
+                                                key={hw.id} 
+                                                homework={hw} 
+                                                student={student!} 
+                                                classId={student!.classId} 
+                                                submission={submissionForHw}
+                                            />
+                                        )
+                                    })
                                 ) : (
                                     <div className="text-center py-10 bg-muted/50 rounded-lg">
                                         <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
