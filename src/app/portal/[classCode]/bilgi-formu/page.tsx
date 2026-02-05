@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -119,6 +120,7 @@ export default function StudentInfoFormPage() {
                 ...data,
                 studentId: student.id,
                 submitted: true,
+                authUid: student.authUid,
             };
 
             const studentUpdateData = { risks: data.selectedRisks || [] };

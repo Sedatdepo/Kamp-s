@@ -320,6 +320,7 @@ export interface InfoForm {
   id: string; // Should be the same as studentId
   studentId: string;
   submitted: boolean;
+  authUid?: string;
   
   // Öğrenci Bilgileri
   birthDate?: string;

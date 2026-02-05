@@ -13,7 +13,7 @@ service cloud.firestore {
     // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
     match /teachers/{teacherId} {
       allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
-      allow write: if request.auth.uid == teacherId; // Only the teacher can write to their own profile.
+      allow write: if isTeacher() && request.auth.uid == teacherId; // Only the teacher can write to their own profile.
     }
 
     // --- TEACHER'S FULL ACCESS TO COLLECTIONS ---
@@ -58,7 +58,8 @@ service cloud.firestore {
 
     // UPDATED: Students AND Teachers can manage info forms.
     match /infoForms/{formId} {
-        allow read, write: if isTeacher() || (request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid);
+        allow read: if isTeacher() || (request.auth != null && resource.data.authUid == request.auth.uid);
+        allow write: if isTeacher() || (request.auth != null && request.resource.data.authUid == request.auth.uid);
     }
     
     // Homework submissions by students.
