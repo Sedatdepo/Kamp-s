@@ -1,15 +1,14 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, InfoForm, RiskFactor, DisciplineRecord, Lesson, PerformanceGradeOutput, StudentReportOutput } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2, Shield, AlertTriangle } from 'lucide-react';
+import { BookOpen, UserCheck, GraduationCap, Edit } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc, collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -17,12 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
-import { useDatabase } from '@/hooks/use-database';
-import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { generateStudentReport, StudentReportInput } from '@/ai/flows/generate-student-report-flow';
-import { generatePerformanceGrade, PerformanceGradeInput } from '@/ai/flows/generate-performance-grade-flow';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useCollection, useMemoFirebase } from '@/firebase';
+
 
 interface StudentDetailModalProps {
   student: Student;
@@ -138,20 +133,17 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
     useEffect(() => {
         const fetchSubmissions = async () => {
-            if (!db || !currentClass || homeworksLoading || !homeworks || !student.authUid) {
-                setSubmissionsLoading(false);
-                return;
-            };
+            if (!db || !currentClass || homeworksLoading || !homeworks) return;
             setSubmissionsLoading(true);
-            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
+            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
             const querySnapshot = await getDocs(submissionsQuery);
             const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-
             setAllSubmissions(fetchedSubmissions);
             setSubmissionsLoading(false);
         };
         fetchSubmissions();
-    }, [db, currentClass, homeworks, student.authUid, homeworksLoading]);
+    }, [db, currentClass, homeworks, student.id, homeworksLoading]);
+    
 
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
@@ -175,7 +167,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
         }
     };
 
-    if (homeworksLoading || submissionsLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    if (homeworksLoading || submissionsLoading) return <div>Yükleniyor...</div>;
 
     return (
         <Card>
@@ -211,276 +203,67 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
     );
 };
 
-const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentReportOutput | null, onRegenerate: () => void, isLoading: boolean }) => {
-    if (isLoading) {
-        return (
-            <Card className="flex flex-col items-center justify-center p-10 text-center bg-blue-50/50 border-blue-200 border-dashed">
-                <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
-                <p className="text-blue-700 font-semibold">Yapay zeka öğrenciyi analiz ediyor...</p>
-                <p className="text-blue-600 text-sm">Bu işlem 15-20 saniye sürebilir.</p>
-            </Card>
-        );
-    }
-    if (!report) return null;
-
-    return (
-        <Card className="border-blue-200 bg-blue-50/20">
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="font-headline text-blue-800 flex items-center gap-2"><Wand2 /> Yapay Zeka Gelişim Raporu</CardTitle>
-                    <Button onClick={onRegenerate} variant="ghost" size="sm"><Loader2 className="mr-2 h-4 w-4" /> Yeniden Oluştur</Button>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Akademik Durum</h4>
-                    <p className="text-sm text-slate-600 leading-relaxed">{report.academicStatus}</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Sosyal ve Davranışsal Durum</h4>
-                    <p className="text-sm text-slate-600 leading-relaxed">{report.socialAndBehavioralStatus}</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Risk Analizi</h4>
-                    <p className="text-sm text-slate-600 leading-relaxed bg-amber-50 p-3 rounded-md border border-amber-200">{report.riskAnalysis}</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Öne Çıkan Güçlü Yönler</h4>
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                        {report.strengths.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
-                    </ul>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 mb-2">Öğretmene Tavsiyeler</h4>
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                        {report.recommendations.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
-                    </ul>
-                </div>
-            </CardContent>
-        </Card>
-    );
-};
-
-const InfoFormDisplay = ({ form }: { form: InfoForm | null }) => {
-    if (!form) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Öğrenci Bilgi Formu</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">Bu öğrenci için doldurulmuş bir bilgi formu bulunmuyor.</p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    const renderFieldValue = (value: any) => {
-        if (value === undefined || value === null || value === '') return <span className="text-muted-foreground italic">Belirtilmemiş</span>;
-        if (value === 'yes') return 'Evet';
-        if (value === 'no') return 'Hayır';
-        if (value === 'alive') return 'Hayatta';
-        if (value === 'deceased') return 'Vefat Etti';
-        return String(value);
-    };
-
-    const sections = [
-        { title: "Kişisel ve İletişim", fields: [
-            { label: "Doğum Tarihi/Yeri", value: `${renderFieldValue(form.birthDate)} / ${renderFieldValue(form.birthPlace)}` },
-            { label: "Telefon", value: renderFieldValue(form.studentPhone) },
-            { label: "E-posta", value: renderFieldValue(form.studentEmail) },
-            { label: "Adres", value: renderFieldValue(form.address) },
-        ]},
-        { title: "Sağlık", fields: [
-            { label: "Kan Grubu", value: renderFieldValue(form.bloodType) },
-            { label: "Sürekli Hastalık/Alerji", value: renderFieldValue(form.healthIssues) },
-        ]},
-        { title: "Ailevi Durum", fields: [
-            { label: "Anne Durumu", value: `${renderFieldValue(form.motherStatus)} - Eğitimi: ${renderFieldValue(form.motherEducation)} - Mesleği: ${renderFieldValue(form.motherJob)}` },
-            { label: "Baba Durumu", value: `${renderFieldValue(form.fatherStatus)} - Eğitimi: ${renderFieldValue(form.fatherEducation)} - Mesleği: ${renderFieldValue(form.fatherJob)}` },
-        ]},
-        { title: "Sosyo-Ekonomik Durum", fields: [
-            { label: "Okula Ulaşım", value: renderFieldValue(form.commutesToSchoolBy) },
-            { label: "Ailenin Gelir Düzeyi", value: renderFieldValue(form.economicStatus) },
-        ]}
-    ];
-
-    return (
-        <Card>
-            <CardHeader><CardTitle>Öğrenci Bilgi Formu Detayları</CardTitle></CardHeader>
-            <CardContent>
-                <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
-                    {sections.map((section, index) => (
-                        <AccordionItem value={`item-${index}`} key={index}>
-                            <AccordionTrigger>{section.title}</AccordionTrigger>
-                            <AccordionContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                                    {section.fields.map(field => (
-                                        <div key={field.label}>
-                                            <p className="font-semibold text-muted-foreground">{field.label}</p>
-                                            <p>{field.value}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-            </CardContent>
-        </Card>
-    );
-};
-
-
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
-    const { db } = useAuth();
-    const { toast } = useToast();
-    const { db: localDb } = useDatabase();
-    const { disciplineRecords = [] } = localDb;
+  const [activeTab, setActiveTab] = useState('grades');
+
+  const calculateTermAverage = (termGrades?: GradingScores) => {
+    if (!termGrades || !teacherProfile) return 0;
+    const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
+    const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
     
-    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-    const [aiReport, setAiReport] = useState<StudentReportOutput | null>(null);
-
-    const { data: infoForm } = useDoc<InfoForm | null>(useMemoFirebase(() => db ? doc(db, 'infoForms', student.id) : null, [db, student.id]));
-    const { data: riskFactors } = useCollection<RiskFactor>(useMemoFirebase(() => db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
-    const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db && currentClass ? query(collection(db, 'classes', currentClass.id, 'homeworks')) : null, [db, currentClass]));
-    
-    const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => {
-        if (!db || !currentClass || !student.authUid) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
-    }, [db, student.authUid, currentClass]));
-
-    const { data: lessons } = useCollection<Lesson>(useMemoFirebase(() => db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
-
-    const handleExportReport = () => {
-        if (!currentClass || !riskFactors || !homeworks || !submissions || !lessons) {
-            toast({
-                title: "Veri Eksik",
-                description: "Raporu oluşturmak için gerekli tüm veriler henüz yüklenmedi.",
-                variant: "destructive"
-            });
-            return;
+    const isLiteratureTeacher = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
+     const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
+        if(isLiteratureTeacher) {
+            if (written === undefined && speaking === undefined && listening === undefined) return null;
+            const w = written !== undefined && written >= 0 ? written : 0;
+            const s = speaking !== undefined && speaking >= 0 ? speaking : 0;
+            const l = listening !== undefined && listening >= 0 ? listening : 0;
+            return (w * 0.7) + (s * 0.15) + (l * 0.15);
         }
-        exportStudentDevelopmentReportToRtf({
-            student,
-            infoForm,
-            riskFactors,
-            teacherProfile,
-            currentClass,
-            homeworks,
-            submissions,
-            disciplineRecords,
-            lessons,
-            aiReport,
-        });
-    };
+        return standard;
+    }
     
-    const calculateTermAverage = (termGrades?: GradingScores) => {
-        if (!termGrades || !teacherProfile) return 0;
-        const isLiterature = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
-        const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
-            if(isLiterature) {
-                if (written === undefined && speaking === undefined && listening === undefined) return null;
-                const w = written !== undefined && written >= 0 ? written : 0;
-                const s = speaking !== undefined && speaking >= 0 ? speaking : 0;
-                const l = listening !== undefined && listening >= 0 ? listening : 0;
-                return (w * 0.7) + (s * 0.15) + (l * 0.15);
-            }
-            return standard;
-        }
-        
-        const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
-        const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
-        
-        const exam1 = getExamAvg(termGrades.writtenExam1, termGrades.speakingExam1, termGrades.listeningExam1, termGrades.exam1);
-        const exam2 = getExamAvg(termGrades.writtenExam2, termGrades.speakingExam2, termGrades.listeningExam2, termGrades.exam2);
+    const exam1 = getExamAvg(termGrades.writtenExam1, termGrades.speakingExam1, termGrades.listeningExam1, termGrades.exam1);
+    const exam2 = getExamAvg(termGrades.writtenExam2, termGrades.speakingExam2, termGrades.listeningExam2, termGrades.exam2);
 
-        const perf1 = termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria);
-        const perf2 = termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria);
-        const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
+    const perf1 = termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria);
+    const perf2 = termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria);
+    const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
 
-        const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
-            (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
-        );
-        
-        if (allScores.length === 0) return 0;
-        
-        const sum = allScores.reduce((acc, score) => acc + score, 0);
-        return sum / allScores.length;
-    };
+    const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
+      (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
+    );
     
-    const term1Avg = calculateTermAverage(student.term1Grades);
-    const term2Avg = calculateTermAverage(student.term2Grades);
-    const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
+    if (allScores.length === 0) return 0;
     
-    const handleGenerateAIReport = async () => {
-        if (!riskFactors || !currentClass) return;
-
-        setIsGeneratingReport(true);
-        setAiReport(null);
-
-        const input: StudentReportInput = {
-            studentName: student.name,
-            classInfo: currentClass.name,
-            finalAverage: finalAverage,
-            term1Average: term1Avg,
-            term2Average: term2Avg,
-            attendanceCount: student.attendance?.filter(a => a.status === 'absent').length || 0,
-            behaviorScore: student.behaviorScore,
-            riskFactors: student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label || 'Bilinmeyen Risk'),
-            infoFormData: infoForm ? `Anne: ${infoForm.motherStatus}, Baba: ${infoForm.fatherStatus}, Kardeşler: ${infoForm.siblingsInfo}, Ekonomik Durum: ${infoForm.economicStatus}` : "Doldurulmamış",
-            teacherNotes: 'Öğretmen notu alanı eklenecek.',
-        };
-        try {
-            const report = await generateStudentReport(input);
-            setAiReport(report);
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Rapor oluşturulamadı', description: 'Yapay zeka ile iletişim kurulamadı.'});
-        } finally {
-            setIsGeneratingReport(false);
-        }
-    };
-
+    const sum = allScores.reduce((acc, score) => acc + score, 0);
+    return sum / allScores.length;
+  };
+  
+  const term1Avg = calculateTermAverage(student.term1Grades);
+  const term2Avg = calculateTermAverage(student.term2Grades);
+  const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl p-0">
         <DialogHeader className="p-6 pb-4">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                <AvatarFallback className="text-2xl">{getInitials(student.name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                <DialogTitle className="text-2xl font-headline">{student.name}</DialogTitle>
-                <DialogDescription>Okul No: {student.number}</DialogDescription>
-                </div>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button onClick={handleGenerateAIReport} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                    <Wand2 className="mr-2 h-4 w-4" /> Yapay Zeka ile Gelişim Raporu Oluştur
-                </Button>
-                <Button onClick={handleExportReport} variant="outline">
-                    <Download className="mr-2 h-4 w-4" /> Gelişim Raporu İndir
-                </Button>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="text-2xl">{getInitials(student.name)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <DialogTitle className="text-2xl font-headline">{student.name}</DialogTitle>
+              <DialogDescription>Okul No: {student.number}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
-        <div className="p-6 pt-0 bg-muted/50 max-h-[80vh] overflow-y-auto">
-            <Tabs defaultValue="report">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="report">Gelişim Raporu</TabsTrigger>
-                    <TabsTrigger value="grades">Notlar</TabsTrigger>
+        <div className="p-6 pt-0 bg-muted/50">
+            <Tabs defaultValue="grades" onValueChange={(val) => setActiveTab(val)}>
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="grades">Not Durumu</TabsTrigger>
                     <TabsTrigger value="homeworks">Ödevler</TabsTrigger>
-                    <TabsTrigger value="risk">Risk & Davranış</TabsTrigger>
                 </TabsList>
-                <TabsContent value="report" className="mt-4">
-                    <div className="space-y-4">
-                        <AIReportDisplay report={aiReport} onRegenerate={handleGenerateAIReport} isLoading={isGeneratingReport} />
-                        <InfoFormDisplay form={infoForm} />
-                    </div>
-                </TabsContent>
                 <TabsContent value="grades" className="mt-4">
                      <Tabs defaultValue="term1">
                         <div className="flex justify-between items-center mb-4">
@@ -503,42 +286,6 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                 </TabsContent>
                 <TabsContent value="homeworks" className="mt-4">
                    <HomeworkStatusTab student={student} currentClass={currentClass} />
-                </TabsContent>
-                <TabsContent value="risk" className="mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card>
-                             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="text-red-500" /> Risk Faktörleri</CardTitle></CardHeader>
-                             <CardContent>
-                                {student.risks && student.risks.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {student.risks.map(riskId => {
-                                            const factor = riskFactors?.find(rf => rf.id === riskId);
-                                            return factor ? <li key={riskId} className="text-sm p-2 bg-red-50 rounded-md">{factor.label}</li> : null;
-                                        })}
-                                    </ul>
-                                ) : <p className="text-sm text-muted-foreground">Öğrenci tarafından belirtilmiş risk faktörü yok.</p>}
-                             </CardContent>
-                        </Card>
-                         <Card>
-                             <CardHeader><CardTitle className="flex items-center gap-2"><Shield /> Davranış & Disiplin</CardTitle></CardHeader>
-                             <CardContent className="space-y-4">
-                                <div>
-                                    <h4 className="font-semibold">Davranış Puanı</h4>
-                                    <p className="text-3xl font-bold text-primary">{student.behaviorScore}</p>
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold">Disiplin Kayıtları</h4>
-                                    {disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).length > 0 ? (
-                                         <ul className="space-y-1 mt-2">
-                                            {disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).map(dr => (
-                                                <li key={dr.id} className="text-xs p-1 bg-muted rounded-md">{dr.name} - {dr.date}</li>
-                                            ))}
-                                        </ul>
-                                    ) : <p className="text-sm text-muted-foreground">Disiplin kaydı bulunmuyor.</p>}
-                                </div>
-                             </CardContent>
-                        </Card>
-                    </div>
                 </TabsContent>
             </Tabs>
         </div>
