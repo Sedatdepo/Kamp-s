@@ -55,6 +55,7 @@ const formSchema = z.object({
   hasDisability: z.enum(['yes', 'no']).optional(),
   isMartyrVeteranChild: z.enum(['yes', 'no']).optional(),
   selectedRisks: z.array(z.string()).optional(),
+  economicStatus: z.enum(['iyi', 'orta', 'kotu']).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -163,11 +164,11 @@ export default function StudentInfoFormPage() {
                                 <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><User />Kişisel Bilgiler</div></AccordionTrigger>
                                 <AccordionContent className="p-6 pt-0">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField name="birthDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Doğum Tarihi</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="birthPlace" control={form.control} render={({ field }) => (<FormItem><FormLabel>Doğum Yeri</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="studentPhone" control={form.control} render={({ field }) => (<FormItem><FormLabel>Telefon</FormLabel><FormControl><Input type="tel" {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="studentEmail" control={form.control} render={({ field }) => (<FormItem><FormLabel>E-posta</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage/></FormItem>)} />
-                                        <FormField name="address" control={form.control} render={({ field }) => (<FormItem className="col-span-full"><FormLabel>Adres</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)} />
+                                        <FormField name="birthDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Doğum Tarihi</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="birthPlace" control={form.control} render={({ field }) => (<FormItem><FormLabel>Doğum Yeri</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="studentPhone" control={form.control} render={({ field }) => (<FormItem><FormLabel>Telefon</FormLabel><FormControl><Input type="tel" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="studentEmail" control={form.control} render={({ field }) => (<FormItem><FormLabel>E-posta</FormLabel><FormControl><Input type="email" {...field} value={field.value ?? ''} /></FormControl><FormMessage/></FormItem>)} />
+                                        <FormField name="address" control={form.control} render={({ field }) => (<FormItem className="col-span-full"><FormLabel>Adres</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
@@ -177,10 +178,10 @@ export default function StudentInfoFormPage() {
                                 <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><Heart/>Sağlık Bilgileri</div></AccordionTrigger>
                                 <AccordionContent className="p-6 pt-0">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField name="bloodType" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kan Grubu</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                         <FormField name="healthIssues" control={form.control} render={({ field }) => (<FormItem><FormLabel>Sürekli Hastalık/Alerji</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="pastIllnesses" control={form.control} render={({ field }) => (<FormItem><FormLabel>Geçirilmiş Önemli Hastalık/Ameliyat</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="healthDevice" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kullandığı Cihaz/Protez</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                        <FormField name="bloodType" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kan Grubu</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                         <FormField name="healthIssues" control={form.control} render={({ field }) => (<FormItem><FormLabel>Sürekli Hastalık/Alerji</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="pastIllnesses" control={form.control} render={({ field }) => (<FormItem><FormLabel>Geçirilmiş Önemli Hastalık/Ameliyat</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="healthDevice" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kullandığı Cihaz/Protez</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
@@ -190,13 +191,13 @@ export default function StudentInfoFormPage() {
                                 <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><Home/>Aile ve Sosyal Durum</div></AccordionTrigger>
                                 <AccordionContent className="p-6 pt-0">
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <FormField name="motherStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Anne Hayatta mı?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem></SelectContent></Select></FormItem>)} />
-                                        <FormField name="fatherStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Baba Hayatta mı?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem></SelectContent></Select></FormItem>)} />
-                                        <FormField name="motherJob" control={form.control} render={({ field }) => (<FormItem><FormLabel>Annenin Mesleği</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="fatherJob" control={form.control} render={({ field }) => (<FormItem><FormLabel>Babanın Mesleği</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="siblingsInfo" control={form.control} render={({ field }) => (<FormItem className="col-span-full"><FormLabel>Kardeş Bilgileri (Yaş, cinsiyet, okuyor/çalışıyor)</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="familyLivesWith" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kiminle yaşıyor?</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                        <FormField name="economicStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Ailenin Gelir Düzeyi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="iyi">İyi</SelectItem><SelectItem value="orta">Orta</SelectItem><SelectItem value="kotu">Kötü</SelectItem></SelectContent></Select></FormItem>)} />
+                                        <FormField name="motherStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Anne Hayatta mı?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem></SelectContent></Select></FormItem>)} />
+                                        <FormField name="fatherStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Baba Hayatta mı?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="alive">Hayatta</SelectItem><SelectItem value="deceased">Vefat Etti</SelectItem></SelectContent></Select></FormItem>)} />
+                                        <FormField name="motherJob" control={form.control} render={({ field }) => (<FormItem><FormLabel>Annenin Mesleği</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="fatherJob" control={form.control} render={({ field }) => (<FormItem><FormLabel>Babanın Mesleği</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="siblingsInfo" control={form.control} render={({ field }) => (<FormItem className="col-span-full"><FormLabel>Kardeş Bilgileri (Yaş, cinsiyet, okuyor/çalışıyor)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="familyLivesWith" control={form.control} render={({ field }) => (<FormItem><FormLabel>Kiminle yaşıyor?</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField name="economicStatus" control={form.control} render={({ field }) => (<FormItem><FormLabel>Ailenin Gelir Düzeyi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seçiniz..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="iyi">İyi</SelectItem><SelectItem value="orta">Orta</SelectItem><SelectItem value="kotu">Kötü</SelectItem></SelectContent></Select></FormItem>)} />
                                      </div>
                                 </AccordionContent>
                             </AccordionItem>
@@ -250,4 +251,3 @@ export default function StudentInfoFormPage() {
         </div>
     );
 }
-
