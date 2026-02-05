@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge } from '@/lib/types';
 import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -59,37 +58,41 @@ export default function StudentPortalPage() {
             router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
+    
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !firestore) return;
+
+        const studentRef = doc(firestore, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, firestore]);
 
     const classDocRef = useMemoFirebase(() => (student ? doc(firestore, 'classes', student.classId) : null), [firestore, student]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
-    
-    // Real-time listener for student data
-    const studentDocRef = useMemoFirebase(() => (student ? doc(firestore, 'students', student.id) : null), [firestore, student]);
-    const { data: liveStudentData, isLoading: studentLoading } = useDoc<Student>(studentDocRef);
-
-    // Update state and sessionStorage when live data for student changes
-    useEffect(() => {
-        if (liveStudentData) {
-            setStudent(liveStudentData);
-            try {
-                const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
-                authData.student = liveStudentData;
-                sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
-            } catch (e) {
-                console.error("Could not update session storage", e);
-            }
-        }
-    }, [liveStudentData]);
     
     const teacherDocRef = useMemoFirebase(() => (student ? doc(firestore, 'teachers', student.teacherId) : null), [firestore, student]);
     const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
     const availableBadges = teacherProfile?.badgeCriteria || INITIAL_BADGES;
 
     useEffect(() => {
-        if (student && !classLoading && !studentLoading) {
+        if (student && !classLoading) {
             setLoading(false);
         }
-    }, [student, classLoading, studentLoading]);
+    }, [student, classLoading]);
 
 
     const handleLogout = () => {
@@ -167,7 +170,7 @@ export default function StudentPortalPage() {
                     <ModuleCard title="Sosyogram Anketi" icon={<Users className="text-teal-500" />} href={`/sosyogram/${classCode}`} isPublished={currentClass.isSociogramActive} />
                     <ModuleCard title="Kulüp Tercihi" icon={<Drama className="text-pink-500" />} href={`/portal/${classCode}/club-selection`} isPublished={currentClass.isClubSelectionActive} />
                     <ModuleCard title="Bilgi Formu" icon={<FileSignature className="text-rose-500" />} href={`/portal/${classCode}/bilgi-formu`} isPublished={currentClass.isInfoFormActive} />
-                    <ModuleCard title="Sınıf Kahramanları" icon={<Trophy className="text-yellow-500" />} href={`/view/gamification/${classCode}`} isPublished={currentClass.isGamificationActive} />
+                    <ModuleCard title="Sınıf Kahramanları" icon={<Trophy className="text-yellow-500" />} href={`/portal/${classCode}/kahramanlar`} isPublished={currentClass.isGamificationActive} />
                     <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                     <ModuleCard title="Sınıf Seçimi Oylaması" icon={<Vote className="text-red-500" />} href={`/oylama/${classCode}`} isPublished={currentClass.isElectionActive} />
                     <ModuleCard title="Duyurular" icon={<MessageCircle className="text-cyan-500" />} href={`/view/announcements/${classCode}`} isPublished={currentClass.isAnnouncementsPublished} />

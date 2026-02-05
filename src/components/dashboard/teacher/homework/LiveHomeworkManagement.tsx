@@ -223,10 +223,10 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
             }
 
             const homeworkData = {
-                text,
+                text: text || '',
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
-                questions: questions,
+                questions: questions || [],
                 link: link.trim() || null,
                 linkText: linkText.trim() || null,
             };

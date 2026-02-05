@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -21,7 +20,7 @@ import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-export const HomeworkItem = ({ homework, student, classId, submission }: { homework: Homework, student: Student, classId: string, submission?: Submission }) => {
+export const HomeworkItem = ({ homework, student, classId, submission, onMarkAsSubmitted }: { homework: Homework, student: Student, classId: string, submission?: Submission, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,13 +75,16 @@ export const HomeworkItem = ({ homework, student, classId, submission }: { homew
     const handleSubmit = async () => {
         const hasQuestions = (homework.questions || []).length > 0;
         
+        // Soru varsa ve zorunlu olan cevaplanmamışsa hata ver.
         if (hasQuestions && (homework.questions || []).some(q => q.required && !answers[q.id])) {
             toast({ variant: 'destructive', title: 'Lütfen tüm zorunlu soruları cevaplayın.' });
             return;
         }
 
+        // Soru yoksa, metin veya dosya da yoksa, yine de gönderime izin ver.
         if (!hasQuestions && !submissionText.trim() && !submissionFile) {
-             submissionData.text = "Öğrenci ödevi tamamladı olarak işaretledi.";
+            // Buton her zaman aktif olduğu için bu kontrolü buraya taşıyoruz.
+            // Boş gönderim, "tamamlandı" olarak işaretlemek anlamına gelir.
         }
 
         if (!db || !classId) return;
@@ -111,6 +113,8 @@ export const HomeworkItem = ({ homework, student, classId, submission }: { homew
         
         if (submissionText.trim()) {
             submissionData.text = submissionText;
+        } else if (!hasQuestions && !submissionFile) {
+            submissionData.text = "Öğrenci ödevi tamamladı olarak işaretledi.";
         }
         
         if(submissionFile) {
@@ -263,7 +267,6 @@ export default function StudentRegularHomeworkPage() {
 
     const allStudentSubmissionsQuery = useMemoFirebase(() => {
         if (!db || !student?.id) return null;
-        // This is a collection group query and requires an index.
         return query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
     }, [db, student?.id]);
     
@@ -322,6 +325,7 @@ export default function StudentRegularHomeworkPage() {
                                                 student={student!} 
                                                 classId={student!.classId} 
                                                 submission={submissionForHw}
+                                                onMarkAsSubmitted={() => {}} // This is handled by teacher view, student submits via button
                                             />
                                         )
                                     })
