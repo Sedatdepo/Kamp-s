@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -20,20 +20,13 @@ import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-export const HomeworkItem = ({ homework, student, classId }: { homework: Homework, student: Student, classId: string }) => {
+export const HomeworkItem = ({ homework, student, classId, submissions }: { homework: Homework, student: Student, classId: string, submissions: Submission[] }) => {
     const { db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
-
-    const submissionsQuery = useMemoFirebase(() => {
-      if (!db || !classId) return null;
-      return query(collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'), where('studentId', '==', student.id));
-    }, [db, classId, homework.id, student.id]);
-
-    const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const existingSubmission = useMemo(() => {
         return submissions?.[0];
@@ -89,6 +82,10 @@ export const HomeworkItem = ({ homework, student, classId }: { homework: Homewor
             return;
         }
 
+        if (!hasQuestions && !submissionText.trim() && !submissionFile) {
+             submissionData.text = "Öğrenci ödevi tamamladı olarak işaretledi.";
+        }
+
         if (!db || !classId) return;
 
         setIsSubmitting(true);
@@ -119,10 +116,6 @@ export const HomeworkItem = ({ homework, student, classId }: { homework: Homewor
         
         if(submissionFile) {
             submissionData.file = submissionFile;
-        }
-
-        if (!hasQuestions && !submissionText.trim() && !submissionFile) {
-             submissionData.text = "Öğrenci ödevi tamamladı olarak işaretledi.";
         }
 
         try {
@@ -212,7 +205,7 @@ export const HomeworkItem = ({ homework, student, classId }: { homework: Homewor
                             )}
                          </div>
                     ))}
-                     <Button onClick={handleSubmit} disabled={isSubmitting}>
+                     <Button onClick={() => handleSubmit()} disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Gönder
                     </Button>
@@ -229,9 +222,9 @@ export const HomeworkItem = ({ homework, student, classId }: { homework: Homewor
                         type="file"
                         onChange={handleFileChange}
                     />
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    <Button onClick={() => handleSubmit()} disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                        Ödevi Tamamladım / Gönder
+                        Gönder
                     </Button>
                 </div>
             )}
@@ -246,6 +239,8 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
+    const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -275,8 +270,38 @@ export default function StudentRegularHomeworkPage() {
             .filter(hw => !hw.assignmentType)
             .sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [allHomeworks]);
+
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            if (!db || !student || !regularHomeworks || homeworksLoading) return;
+            setSubmissionsLoading(true);
+            try {
+                const subsByHomework: { [homeworkId: string]: Submission[] } = {};
+                for (const hw of regularHomeworks) {
+                    const subQuery = query(collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`), where('studentId', '==', student.id));
+                    const querySnapshot = await getDocs(subQuery);
+                    const subs: Submission[] = [];
+                    querySnapshot.forEach(doc => {
+                        subs.push({ id: doc.id, ...doc.data() } as Submission);
+                    });
+                    subsByHomework[hw.id] = subs;
+                }
+                setAllSubmissions(subsByHomework);
+            } catch (error) {
+                console.error("Error fetching submissions:", error);
+            } finally {
+                setSubmissionsLoading(false);
+            }
+        };
+
+        if (regularHomeworks.length > 0) {
+            fetchSubmissions();
+        } else {
+            setSubmissionsLoading(false);
+        }
+    }, [db, student, regularHomeworks, homeworksLoading]);
     
-    if (!student || homeworksLoading) {
+    if (!student || homeworksLoading || submissionsLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -307,14 +332,20 @@ export default function StudentRegularHomeworkPage() {
                         <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         {homeworksLoading ? (
+                         {(homeworksLoading || submissionsLoading) ? (
                             <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>
                          ) : (
                             <ScrollArea className="h-[60vh] pr-2">
                                 <div className="space-y-4">
                                 {regularHomeworks.length > 0 ? (
                                     regularHomeworks.map((hw) => (
-                                        <HomeworkItem key={hw.id} homework={hw} student={student!} classId={student!.classId} />
+                                        <HomeworkItem 
+                                            key={hw.id} 
+                                            homework={hw} 
+                                            student={student!} 
+                                            classId={student!.classId} 
+                                            submissions={allSubmissions[hw.id] || []}
+                                        />
                                     ))
                                 ) : (
                                     <div className="text-center py-10 bg-muted/50 rounded-lg">
