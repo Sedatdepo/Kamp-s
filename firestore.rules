@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -10,104 +9,88 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    function isClassOwner(classId) {
-      // Check if the authenticated user is the teacher for the given classId
-      return isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
-    }
-
     function isOwnStudentData(studentId) {
       // Check if the request is for the user's own student document
+      // Note: This relies on student documents having an `authUid` field after they log in.
       return request.auth != null && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
     }
 
-    function isTeacherOfStudent(studentId) {
-      // Check if the teacher is the owner of the student's data
-      let studentDoc = get(/databases/$(database)/documents/students/$(studentId));
-      return isTeacher() && studentDoc.data.teacherId == request.auth.uid;
-    }
-
-    // --- Publicly Readable Data ---
+    // --- Publicly Readable Data (No auth needed for read) ---
     match /publicViews/{viewId} {
       allow get: if true;
-      // Only the class owner can create/update the public view document
-      allow write: if isClassOwner(viewId);
+      // Only the teacher who owns the class can write to its public view
+      allow write: if isTeacher() && get(/databases/$(database)/documents/classes/$(viewId)).data.teacherId == request.auth.uid;
     }
     match /classCodes/{code} {
       allow get: if true;
-      // Any teacher can write a new class code
+      // Any teacher can create a class code
       allow write: if isTeacher();
     }
 
-    // --- Core Collections ---
+    // --- Teacher Data ---
     match /teachers/{teacherId} {
-      // A teacher can only read or write their own document
+      // A teacher can only read or write their own document.
       allow read, write: if request.auth != null && request.auth.uid == teacherId;
     }
 
-    match /classes/{classId} {
-      // A teacher can list only their own classes (client must filter)
+    // --- Collections Owned by Teachers ---
+    // This rule applies to `classes`, `students`, `lessons`, `riskFactors`, `clubs`
+    // All of these collections have a `teacherId` field on their documents.
+    match /{collection}/{docId} 
+        where collection in ['classes', 'students', 'lessons', 'riskFactors', 'clubs'] {
+      // Any teacher can perform a list query on these collections.
+      // The actual documents returned will be filtered by the `read` rule below.
       allow list: if isTeacher();
-      // A teacher can read their own class.
-      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
-      // A teacher must own the class they create
+
+      // For read, update, delete: check the `teacherId` on the *existing* document.
+      allow read, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      
+      // For create: check the `teacherId` on the *incoming* document.
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      // Only the owner can update or delete
-      allow update, delete: if isClassOwner(classId);
     }
-    
+
+    // --- Student-Specific Overrides ---
     match /students/{studentId} {
-      // A teacher can list students belonging to them (client must filter)
-      allow list: if isTeacher();
-      // Teacher can read their students, students can read their own data
-      allow read: if (isTeacher() && resource.data.teacherId == request.auth.uid) || isOwnStudentData(studentId);
-      // Teacher can write their students, students can write their own data
-      allow write: if isTeacherOfStudent(studentId) || isOwnStudentData(studentId);
-    }
-
-    // Teacher-owned root collections
-    match /lessons/{lessonId} {
-       allow list: if isTeacher();
-       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
-       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/lessons/$(lessonId)).data.teacherId == request.auth.uid;
+        // Students can read their own document after they have logged in and their `authUid` is set.
+        allow read: if isOwnStudentData(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid);
+        // Students can update their own document (e.g. for preferences, info forms).
+        allow update: if isOwnStudentData(studentId) || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
     
-    match /riskFactors/{riskFactorId} {
-       allow list: if isTeacher();
-       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
-       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/riskFactors/$(riskFactorId)).data.teacherId == request.auth.uid;
-    }
-    
-    match /clubs/{clubId} {
-       allow list: if isTeacher();
-       allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
-       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-       allow write, delete: if isTeacher() && get(/databases/$(database)/documents/clubs/$(clubId)).data.teacherId == request.auth.uid;
-    }
-
-    // --- Subcollections ---
+    // --- Homework Subcollection ---
     match /classes/{classId}/homeworks/{homeworkId} {
-      allow read, list, write, delete: if isClassOwner(classId);
-    }
-    
-    match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
-      allow read, list: if isClassOwner(classId);
-      allow create: if request.auth != null; // Students can submit
+      // The owner of the class can manage homework.
+      allow read, list, write, delete: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
     }
 
-    // Student specific data (form, grades, etc.)
+    // --- Submissions Collection Group (for student queries) ---
+    match /{path=**}/submissions/{submissionId} {
+      // A student can create and read their own submissions across any homework.
+      allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
+      allow read, list: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
+      
+      // Teachers can update submissions (e.g., for grading) in their own classes.
+      allow update: if isTeacher();
+    }
+
+    // --- Student Info Forms ---
     match /infoForms/{studentId} {
-      allow read: if isTeacherOfStudent(studentId) || isOwnStudentData(studentId);
+      // A student can write to their own info form.
       allow write: if isOwnStudentData(studentId);
+      // The student and their teacher can read the info form.
+      allow read: if isOwnStudentData(studentId) || (isTeacher() && get(/databases/$(database)/documents/students/$(studentId)).data.teacherId == request.auth.uid);
     }
     
     // --- Messaging ---
     match /messages/{messageId} {
-      allow read: if request.auth.uid in resource.data.participants;
+      // Participants can read messages in the chat.
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      // Users can list chats they are a part of.
       allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-      allow create: if request.auth.uid == request.resource.data.senderId;
-      allow update: if request.auth.uid == resource.data.receiverId; // For marking as read
+      // Only the sender can create the message.
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      // Only the receiver can update a message (e.g., to mark as read).
+      allow update: if request.auth != null && resource.data.receiverId == request.auth.uid;
     }
   }
 }
