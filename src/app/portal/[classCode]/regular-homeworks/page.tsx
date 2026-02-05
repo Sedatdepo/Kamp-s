@@ -93,6 +93,7 @@ export const HomeworkItem = ({ homework, student, classId, submission, onMarkAsS
         
         const submissionData: Partial<Submission> = {
           studentId: student.id,
+          studentAuthUid: student.authUid,
           studentName: student.name,
           studentNumber: student.number,
           homeworkId: homework.id,
@@ -266,9 +267,9 @@ export default function StudentRegularHomeworkPage() {
     const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
 
     const allStudentSubmissionsQuery = useMemoFirebase(() => {
-        if (!db || !student?.id) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
-    }, [db, student?.id]);
+        if (!db || !student?.authUid) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
+    }, [db, student?.authUid]);
     
     const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(allStudentSubmissionsQuery);
     

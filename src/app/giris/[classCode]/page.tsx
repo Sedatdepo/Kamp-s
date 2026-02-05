@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,12 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
+import { signInAnonymously } from 'firebase/auth';
+
 
 export default function StudentLoginPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore, auth } = useFirebase();
     const { toast } = useToast();
     
     const [classId, setClassId] = useState<string | null>(null);
@@ -65,6 +67,10 @@ export default function StudentLoginPage() {
     }, [studentsLoading, classId]);
 
     const handleLogin = async () => {
+        if (!auth || !firestore) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
+            return;
+        }
         if (!selectedStudentId || !enteredSchoolNumber) {
             toast({ variant: 'destructive', title: 'Lütfen adınızı seçip okul numaranızı girin.' });
             return;
@@ -74,8 +80,25 @@ export default function StudentLoginPage() {
 
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
-            sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: student, classCode }));
-            router.push(`/portal/${classCode}`);
+             try {
+                const userCredential = await signInAnonymously(auth);
+                const user = userCredential.user;
+                
+                if (user) {
+                    const studentRef = doc(firestore, 'students', student.id);
+                    await updateDoc(studentRef, {
+                        authUid: user.uid
+                    });
+                    
+                    const updatedStudent = { ...student, authUid: user.uid };
+
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: updatedStudent, classCode }));
+                    router.push(`/portal/${classCode}`);
+                }
+            } catch (e) {
+                console.error("Anonymous sign-in or student update failed:", e);
+                toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
+            }
         } else {
             toast({ variant: 'destructive', title: 'Okul numarası yanlış.' });
         }
