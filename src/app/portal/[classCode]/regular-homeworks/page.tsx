@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Homework, Submission, Question, Badge } from '@/lib/types';
 import { Loader2, ArrowLeft, BookText, Send, Paperclip, Download, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, collectionGroup, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,7 @@ import { tr } from 'date-fns/locale';
 import { User } from 'firebase/auth';
 
 export const HomeworkItem = ({ homework, student, authUser, classId, submission, onMarkAsSubmitted }: { homework: Homework, student: Student, authUser: User | null, classId: string, submission?: Submission, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
-    const { db } = useFirebase();
+    const { firestore: db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({});
@@ -243,6 +243,9 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
+    const [allHomeworks, setAllHomeworks] = useState<Homework[]>([]);
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -256,31 +259,42 @@ export default function StudentRegularHomeworkPage() {
         }
     }, [classCode, router]);
 
-    const allHomeworksQuery = useMemoFirebase(() => {
-        if (!db || !student?.classId || !student?.id) return null;
-        return query(
-            collection(db, 'classes', student.classId, 'homeworks'), 
-            where('assignedStudents', 'array-contains', student.id)
-        );
-    }, [db, student?.classId, student?.id]);
-    
-    const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(allHomeworksQuery);
+    const fetchData = useCallback(async () => {
+        if (!db || !student || !authUser) return;
+        setDataLoading(true);
 
-    const allStudentSubmissionsQuery = useMemoFirebase(() => {
-        if (!db || !authUser?.uid) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
-    }, [db, authUser?.uid]);
-    
-    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(allStudentSubmissionsQuery);
+        try {
+            // 1. Fetch homeworks for the class
+            const homeworksQuery = query(collection(db, 'classes', student.classId, 'homeworks'), where('assignmentType', '==', null));
+            const homeworksSnapshot = await getDocs(homeworksQuery);
+            const homeworksData = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
+            setAllHomeworks(homeworksData);
+
+            // 2. Fetch all submissions for this student across all homeworks in one go
+            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            const submissionsData = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+            setAllSubmissions(submissionsData);
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setDataLoading(false);
+        }
+    }, [db, student, authUser]);
+
+    useEffect(() => {
+        if (student && authUser) {
+            fetchData();
+        }
+    }, [student, authUser, fetchData]);
     
     const regularHomeworks = useMemo(() => {
         if (!allHomeworks) return [];
-        return allHomeworks
-            .filter(hw => !hw.assignmentType)
-            .sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+        return [...allHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [allHomeworks]);
     
-    if (authLoading || !student || homeworksLoading || submissionsLoading) {
+    if (authLoading || !student || dataLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -311,34 +325,30 @@ export default function StudentRegularHomeworkPage() {
                         <CardDescription>Öğretmeninizin verdiği ödevleri buradan teslim edebilirsiniz.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         {(homeworksLoading || submissionsLoading) ? (
-                            <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                         ) : (
-                            <ScrollArea className="h-[60vh] pr-2">
-                                <div className="space-y-4">
-                                {regularHomeworks.length > 0 ? (
-                                    regularHomeworks.map((hw) => {
-                                        const submissionForHw = allSubmissions?.find(s => s.homeworkId === hw.id);
-                                        return (
-                                            <HomeworkItem 
-                                                key={hw.id} 
-                                                homework={hw} 
-                                                student={student!} 
-                                                authUser={authUser}
-                                                classId={student!.classId} 
-                                                submission={submissionForHw}
-                                                onMarkAsSubmitted={() => {}} // This is handled by teacher view, student submits via button
-                                            />
-                                        )
-                                    })
-                                ) : (
-                                    <div className="text-center py-10 bg-muted/50 rounded-lg">
-                                        <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
-                                    </div>
-                                )}
+                        <ScrollArea className="h-[60vh] pr-2">
+                            <div className="space-y-4">
+                            {regularHomeworks.length > 0 ? (
+                                regularHomeworks.map((hw) => {
+                                    const submissionForHw = allSubmissions?.find(s => s.homeworkId === hw.id);
+                                    return (
+                                        <HomeworkItem 
+                                            key={hw.id} 
+                                            homework={hw} 
+                                            student={student!} 
+                                            authUser={authUser}
+                                            classId={student!.classId} 
+                                            submission={submissionForHw}
+                                            onMarkAsSubmitted={() => {}} // This is handled by teacher view, student submits via button
+                                        />
+                                    )
+                                })
+                            ) : (
+                                <div className="text-center py-10 bg-muted/50 rounded-lg">
+                                    <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
                                 </div>
-                            </ScrollArea>
-                         )}
+                            )}
+                            </div>
+                        </ScrollArea>
                     </CardContent>
                 </Card>
             </main>

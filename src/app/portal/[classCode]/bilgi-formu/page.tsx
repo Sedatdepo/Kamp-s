@@ -62,7 +62,7 @@ export default function StudentInfoFormPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { db } = useFirebase();
+    const { firestore: db } = useFirebase();
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
