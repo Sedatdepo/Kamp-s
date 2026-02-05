@@ -7,9 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2, Book, Mic, Headphones } from 'lucide-react';
+import { BookOpen, UserCheck, GraduationCap, Edit, ClipboardCheck, Download, Paperclip, Loader2, Wand2, Shield, AlertTriangle } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -22,7 +22,7 @@ import { useDatabase } from '@/hooks/use-database';
 import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { generateStudentReport, StudentReportInput } from '@/ai/flows/generate-student-report-flow';
 import { generatePerformanceGrade, PerformanceGradeInput } from '@/ai/flows/generate-performance-grade-flow';
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface StudentDetailModalProps {
   student: Student;
@@ -125,13 +125,13 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
 const HomeworkStatusTab = ({ student, currentClass }: { student: Student, currentClass: Class | null }) => {
     const { toast } = useToast();
     const { db } = useAuth();
-    const [submissionsState, setSubmissionsState] = useState<{[key: string]: Partial<Submission>}>({});
+    const [submissionsState, setSubmissionsState] = useState<{ [key: string]: Partial<Submission> }>({});
     const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
     const homeworksQuery = useMemoFirebase(() => {
-      if (!db || !currentClass) return null;
-      return query(collection(db, 'classes', currentClass.id, 'homeworks'));
+        if (!db || !currentClass) return null;
+        return query(collection(db, 'classes', currentClass.id, 'homeworks'));
     }, [db, currentClass]);
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
@@ -143,44 +143,27 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                 return;
             };
             setSubmissionsLoading(true);
-            const submissionsPromises = homeworks.map(hw => {
-                const subQuery = query(collection(db, 'classes', currentClass.id, 'homeworks', hw.id, 'submissions'), where('studentId', '==', student.id));
-                return getDocs(subQuery);
-            });
+            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
+            const querySnapshot = await getDocs(submissionsQuery);
+            const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
 
-            const snapshots = await Promise.all(submissionsPromises);
-            const fetchedSubmissions: Submission[] = [];
-            snapshots.forEach(snapshot => {
-                snapshot.forEach(doc => {
-                    fetchedSubmissions.push({ id: doc.id, ...doc.data() } as Submission);
-                });
-            });
             setAllSubmissions(fetchedSubmissions);
             setSubmissionsLoading(false);
         };
         fetchSubmissions();
     }, [db, currentClass, homeworks, student.id, homeworksLoading]);
 
-
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
     }
 
     const handleFieldChange = (subId: string, field: 'grade' | 'feedback', value: string | number) => {
-        setSubmissionsState(prev => ({
-            ...prev,
-            [subId]: {
-                ...prev[subId],
-                [field]: value
-            }
-        }));
+        setSubmissionsState(prev => ({ ...prev, [subId]: { ...prev[subId], [field]: value } }));
     };
-    
+
     const handleSaveFeedback = async (hwId: string, subId: string) => {
         if (!currentClass || !db) return;
-
         const subRef = doc(db, 'classes', currentClass.id, 'homeworks', hwId, 'submissions', subId);
-        
         const localChanges = submissionsState[subId];
         if (!localChanges) return;
 
@@ -191,68 +174,32 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
             toast({ variant: 'destructive', title: 'Hata', description: 'Değerlendirme kaydedilemedi.' });
         }
     };
-    
+
     if (homeworksLoading || submissionsLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Ödev Değerlendirme</CardTitle>
-                <CardDescription>Öğrencinin teslim ettiği ödevleri inceleyip not ve geri bildirim girin.</CardDescription>
+                <CardTitle>Ödev Teslim Durumu</CardTitle>
+                <CardDescription>Öğrencinin teslim ettiği ve etmediği tüm ödevler.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
                 {homeworks && homeworks.length > 0 ? (
                     homeworks.map(hw => {
                         const submission = allSubmissions.find(s => s.homeworkId === hw.id);
-
-                        if (!submission) {
-                            return (
-                                <div key={hw.id} className="p-4 border rounded-lg bg-muted/50">
-                                    <p className="text-sm font-medium">{hw.text}</p>
-                                    <p className="text-xs text-center text-muted-foreground mt-2">Öğrenci bu ödevi henüz teslim etmedi.</p>
-                                </div>
-                            );
-                        }
-
-                        const localGrade = submissionsState[submission.id]?.grade;
-                        const localFeedback = submissionsState[submission.id]?.feedback;
-
                         return (
-                            <div key={hw.id} className="p-4 border rounded-lg space-y-3">
+                            <div key={hw.id} className="p-4 border rounded-lg space-y-3 bg-background">
                                 <p className="text-sm font-semibold">{hw.text}</p>
-                                <div className='bg-muted p-3 rounded-md'>
-                                    <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi ({format(new Date(submission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
-                                    {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
-                                    {submission.file && (
-                                        <a href={submission.file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-white p-2 rounded-md hover:bg-blue-50 text-blue-600">
-                                            <Paperclip className="h-4 w-4" />
-                                            <span className="truncate underline">{submission.file.name}</span>
-                                            <Download className="h-4 w-4 ml-auto" />
-                                        </a>
-                                    )}
-                                    {!submission.text && !submission.file && <p className="text-sm text-muted-foreground italic">Öğrenci metin veya dosya göndermedi.</p>}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
-                                    <div className='md:col-span-3 space-y-1'>
-                                        <Textarea 
-                                            placeholder="Geri bildirim yazın..." 
-                                            defaultValue={submission.feedback}
-                                            onChange={(e) => handleFieldChange(submission.id, 'feedback', e.target.value)}
-                                            className='text-xs'
-                                            rows={2}
-                                        />
+                                {submission ? (
+                                    <div className='bg-muted p-3 rounded-md'>
+                                        <p className='text-xs font-bold text-muted-foreground mb-1'>Öğrenci Teslimi ({format(new Date(submission.submittedAt), 'd MMMM yyyy, HH:mm', { locale: tr })})</p>
+                                        {submission.text && <p className="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded-md">{submission.text}</p>}
+                                        {submission.grade !== undefined && (<p className="text-sm mt-2"><b>Not:</b> {submission.grade}</p>)}
+                                        {submission.feedback && (<p className="text-sm mt-2"><b>Geri Bildirim:</b> {submission.feedback}</p>)}
                                     </div>
-                                    <div className='space-y-1'>
-                                         <Input 
-                                            type="number" 
-                                            placeholder="Not" 
-                                            defaultValue={submission.grade}
-                                            onChange={(e) => handleFieldChange(submission.id, 'grade', Number(e.target.value))}
-                                            className='h-9 text-center font-bold text-lg'
-                                        />
-                                         <Button onClick={() => handleSaveFeedback(hw.id, submission.id)} size="sm" className="w-full" disabled={localGrade === undefined && localFeedback === undefined}>Kaydet</Button>
-                                    </div>
-                                </div>
+                                ) : (
+                                    <p className="text-xs text-center text-red-500 mt-2">Bu ödev teslim edilmedi.</p>
+                                )}
                             </div>
                         );
                     })
@@ -278,10 +225,10 @@ const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentR
 
     return (
         <Card className="border-blue-200 bg-blue-50/20">
-             <CardHeader>
+            <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="font-headline text-blue-800 flex items-center gap-2"><Wand2 /> Yapay Zeka Gelişim Raporu</CardTitle>
-                     <Button onClick={onRegenerate} variant="ghost" size="sm"><Loader2 className="mr-2 h-4 w-4" /> Yeniden Oluştur</Button>
+                    <Button onClick={onRegenerate} variant="ghost" size="sm"><Loader2 className="mr-2 h-4 w-4" /> Yeniden Oluştur</Button>
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -297,16 +244,16 @@ const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentR
                     <h4 className="font-semibold text-lg text-slate-800 mb-2">Risk Analizi</h4>
                     <p className="text-sm text-slate-600 leading-relaxed bg-amber-50 p-3 rounded-md border border-amber-200">{report.riskAnalysis}</p>
                 </div>
-                 <div>
+                <div>
                     <h4 className="font-semibold text-lg text-slate-800 mb-2">Öne Çıkan Güçlü Yönler</h4>
                     <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                       {report.strengths.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
+                        {report.strengths.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
                     </ul>
                 </div>
                 <div>
                     <h4 className="font-semibold text-lg text-slate-800 mb-2">Öğretmene Tavsiyeler</h4>
                     <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                       {report.recommendations.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
+                        {report.recommendations.split('\n').map((item, index) => item.trim() && <li key={index}>{item.replace('-', '').trim()}</li>)}
                     </ul>
                 </div>
             </CardContent>
@@ -314,90 +261,74 @@ const AIReportDisplay = ({ report, onRegenerate, isLoading }: { report: StudentR
     );
 };
 
+const InfoFormDisplay = ({ form }: { form: InfoForm | null }) => {
+    if (!form) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Öğrenci Bilgi Formu</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Bu öğrenci için doldurulmuş bir bilgi formu bulunmuyor.</p>
+                </CardContent>
+            </Card>
+        );
+    }
 
-const PerformanceAssistantTab = ({ student, teacherProfile, currentClass }: { student: Student; teacherProfile: TeacherProfile; currentClass: Class | null }) => {
-    const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
-    const [report, setReport] = useState<PerformanceGradeOutput | null>(null);
-
-    const calculateTermAverage = (termGrades?: GradingScores) => {
-        if (!termGrades) return null;
-        const examScores = [termGrades.exam1, termGrades.exam2].filter((s): s is number => s !== null && s !== undefined && s >= 0);
-        if (examScores.length === 0) return null;
-        return examScores.reduce((a, b) => a + b, 0) / examScores.length;
+    const renderFieldValue = (value: any) => {
+        if (value === undefined || value === null || value === '') return <span className="text-muted-foreground italic">Belirtilmemiş</span>;
+        if (value === 'yes') return 'Evet';
+        if (value === 'no') return 'Hayır';
+        if (value === 'alive') return 'Hayatta';
+        if (value === 'deceased') return 'Vefat Etti';
+        return String(value);
     };
 
-    const handleAnalyze = async () => {
-        if (!currentClass) return;
-        setIsLoading(true);
-        setReport(null);
+    const sections = [
+        { title: "Kişisel ve İletişim", fields: [
+            { label: "Doğum Tarihi/Yeri", value: `${renderFieldValue(form.birthDate)} / ${renderFieldValue(form.birthPlace)}` },
+            { label: "Telefon", value: renderFieldValue(form.studentPhone) },
+            { label: "E-posta", value: renderFieldValue(form.studentEmail) },
+            { label: "Adres", value: renderFieldValue(form.address) },
+        ]},
+        { title: "Sağlık", fields: [
+            { label: "Kan Grubu", value: renderFieldValue(form.bloodType) },
+            { label: "Sürekli Hastalık/Alerji", value: renderFieldValue(form.healthIssues) },
+        ]},
+        { title: "Ailevi Durum", fields: [
+            { label: "Anne Durumu", value: `${renderFieldValue(form.motherStatus)} - Eğitimi: ${renderFieldValue(form.motherEducation)} - Mesleği: ${renderFieldValue(form.motherJob)}` },
+            { label: "Baba Durumu", value: `${renderFieldValue(form.fatherStatus)} - Eğitimi: ${renderFieldValue(form.fatherEducation)} - Mesleği: ${renderFieldValue(form.fatherJob)}` },
+        ]},
+        { title: "Sosyo-Ekonomik Durum", fields: [
+            { label: "Okula Ulaşım", value: renderFieldValue(form.commutesToSchoolBy) },
+            { label: "Ailenin Gelir Düzeyi", value: renderFieldValue(form.economicStatus) },
+        ]}
+    ];
 
-        const input: PerformanceGradeInput = {
-            studentName: student.name,
-            exam1Average: calculateTermAverage(student.term1Grades) ?? undefined,
-            exam2Average: calculateTermAverage(student.term2Grades) ?? undefined,
-            homeworkSubmissionRate: "N/A", // This needs to be calculated
-            attendanceCount: student.attendance?.filter(a => a.status === 'absent').length || 0,
-            behaviorScore: student.behaviorScore,
-            riskFactors: [], // This needs to be fetched
-        };
-
-        try {
-            const result = await generatePerformanceGrade(input);
-            setReport(result);
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Analiz başarısız oldu', description: 'Yapay zeka ile iletişim kurulamadı.' });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    const PerfGradeCard = ({ title, grade, reason }: { title: string, grade: number, reason: string }) => (
+    return (
         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{title}</CardTitle>
-                <CardDescription className="text-3xl font-bold text-primary">{grade}</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>Öğrenci Bilgi Formu Detayları</CardTitle></CardHeader>
             <CardContent>
-                <p className="text-xs text-muted-foreground">{reason}</p>
+                <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
+                    {sections.map((section, index) => (
+                        <AccordionItem value={`item-${index}`} key={index}>
+                            <AccordionTrigger>{section.title}</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                    {section.fields.map(field => (
+                                        <div key={field.label}>
+                                            <p className="font-semibold text-muted-foreground">{field.label}</p>
+                                            <p>{field.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
             </CardContent>
         </Card>
     );
-
-
-    return (
-        <div className="space-y-4">
-            {!report && !isLoading && (
-                <div className="text-center p-10 border-2 border-dashed rounded-lg">
-                    <Button onClick={handleAnalyze} disabled={isLoading}>
-                         <Wand2 className="mr-2 h-4 w-4" /> Performans Notlarını Analiz Et ve Öner
-                    </Button>
-                </div>
-            )}
-             {isLoading && (
-                <div className="flex justify-center p-10"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
-            )}
-            {report && (
-                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <PerfGradeCard title="1. Dönem 1. Performans" grade={report.term1_perf1_grade} reason={report.term1_perf1_reason} />
-                        <PerfGradeCard title="1. Dönem 2. Performans" grade={report.term1_perf2_grade} reason={report.term1_perf2_reason} />
-                        <PerfGradeCard title="2. Dönem 1. Performans" grade={report.term2_perf1_grade} reason={report.term2_perf1_reason} />
-                        <PerfGradeCard title="2. Dönem 2. Performans" grade={report.term2_perf2_grade} reason={report.term2_perf2_reason} />
-                    </div>
-                     <Card className="bg-green-50 border-green-200">
-                        <CardHeader>
-                            <CardTitle className="text-green-800">Nihai Tavsiye</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-green-700">{report.finalRecommendation}</p>
-                        </CardContent>
-                    </Card>
-                 </div>
-            )}
-        </div>
-    )
 };
 
 
@@ -410,11 +341,13 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
     const [aiReport, setAiReport] = useState<StudentReportOutput | null>(null);
 
-    // Data fetching for the report
     const { data: infoForm } = useDoc<InfoForm | null>(useMemoFirebase(() => db ? doc(db, 'infoForms', student.id) : null, [db, student.id]));
-    const { data: riskFactors } = useCollection<RiskFactor>(useMemoFirebase(() => db ? query(collection(db, 'riskFactors')) : null, [db]));
-    const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db ? query(collection(db, 'classes', student.classId, 'homeworks')) : null, [db, student.classId]));
-    const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => db ? query(collection(db, `classes/${student.classId}/homeworks`), where('studentId', '==', student.id)) : null, [db, student.classId, student.id]));
+    const { data: riskFactors } = useCollection<RiskFactor>(useMemoFirebase(() => db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
+    const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db && currentClass ? query(collection(db, 'classes', currentClass.id, 'homeworks')) : null, [db, currentClass]));
+    const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => {
+        if (!db || !currentClass) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
+    }, [db, student.id, currentClass]));
     const { data: lessons } = useCollection<Lesson>(useMemoFirebase(() => db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
 
     const handleExportReport = () => {
@@ -443,7 +376,6 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const calculateTermAverage = (termGrades?: GradingScores) => {
         if (!termGrades || !teacherProfile) return 0;
         const isLiterature = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
-
         const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
             if(isLiterature) {
                 if (written === undefined && speaking === undefined && listening === undefined) return null;
@@ -495,6 +427,7 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
             behaviorScore: student.behaviorScore,
             riskFactors: student.risks.map(rId => riskFactors.find(rf => rf.id === rId)?.label || 'Bilinmeyen Risk'),
             infoFormData: infoForm ? `Anne: ${infoForm.motherStatus}, Baba: ${infoForm.fatherStatus}, Kardeşler: ${infoForm.siblingsInfo}, Ekonomik Durum: ${infoForm.economicStatus}` : "Doldurulmamış",
+            teacherNotes: 'Öğretmen notu alanı eklenecek.',
         };
         try {
             const report = await generateStudentReport(input);
@@ -523,7 +456,7 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                 <Button onClick={handleGenerateAIReport} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                <Button onClick={handleGenerateAIReport} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                     <Wand2 className="mr-2 h-4 w-4" /> Yapay Zeka ile Gelişim Raporu Oluştur
                 </Button>
                 <Button onClick={handleExportReport} variant="outline">
@@ -533,17 +466,21 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
           </div>
         </DialogHeader>
         <div className="p-6 pt-0 bg-muted/50 max-h-[80vh] overflow-y-auto">
-             <div className="my-4">
-                 <AIReportDisplay report={aiReport} onRegenerate={handleGenerateAIReport} isLoading={isGeneratingReport} />
-             </div>
-             <Tabs defaultValue="overview">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-                    <TabsTrigger value="performance">Performans Asistanı</TabsTrigger>
+            <Tabs defaultValue="report">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="report">Gelişim Raporu</TabsTrigger>
+                    <TabsTrigger value="grades">Notlar</TabsTrigger>
                     <TabsTrigger value="homeworks">Ödevler</TabsTrigger>
+                    <TabsTrigger value="risk">Risk & Davranış</TabsTrigger>
                 </TabsList>
-                <TabsContent value="overview" className="mt-4">
-                    <Tabs defaultValue="term1">
+                <TabsContent value="report" className="mt-4">
+                    <div className="space-y-4">
+                        <AIReportDisplay report={aiReport} onRegenerate={handleGenerateAIReport} isLoading={isGeneratingReport} />
+                        <InfoFormDisplay form={infoForm} />
+                    </div>
+                </TabsContent>
+                <TabsContent value="grades" className="mt-4">
+                     <Tabs defaultValue="term1">
                         <div className="flex justify-between items-center mb-4">
                             <TabsList>
                                 <TabsTrigger value="term1">1. Dönem</TabsTrigger>
@@ -562,11 +499,44 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                         </TabsContent>
                     </Tabs>
                 </TabsContent>
-                <TabsContent value="performance" className="mt-4">
-                    <PerformanceAssistantTab student={student} teacherProfile={teacherProfile} currentClass={currentClass} />
-                </TabsContent>
                 <TabsContent value="homeworks" className="mt-4">
                    <HomeworkStatusTab student={student} currentClass={currentClass} />
+                </TabsContent>
+                <TabsContent value="risk" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card>
+                             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="text-red-500" /> Risk Faktörleri</CardTitle></CardHeader>
+                             <CardContent>
+                                {student.risks && student.risks.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {student.risks.map(riskId => {
+                                            const factor = riskFactors?.find(rf => rf.id === riskId);
+                                            return factor ? <li key={riskId} className="text-sm p-2 bg-red-50 rounded-md">{factor.label}</li> : null;
+                                        })}
+                                    </ul>
+                                ) : <p className="text-sm text-muted-foreground">Öğrenci tarafından belirtilmiş risk faktörü yok.</p>}
+                             </CardContent>
+                        </Card>
+                         <Card>
+                             <CardHeader><CardTitle className="flex items-center gap-2"><Shield /> Davranış & Disiplin</CardTitle></CardHeader>
+                             <CardContent className="space-y-4">
+                                <div>
+                                    <h4 className="font-semibold">Davranış Puanı</h4>
+                                    <p className="text-3xl font-bold text-primary">{student.behaviorScore}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold">Disiplin Kayıtları</h4>
+                                    {disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).length > 0 ? (
+                                         <ul className="space-y-1 mt-2">
+                                            {disciplineRecords.filter(dr => dr.formData?.studentInfo?.studentId === student.id).map(dr => (
+                                                <li key={dr.id} className="text-xs p-1 bg-muted rounded-md">{dr.name} - {dr.date}</li>
+                                            ))}
+                                        </ul>
+                                    ) : <p className="text-sm text-muted-foreground">Disiplin kaydı bulunmuyor.</p>}
+                                </div>
+                             </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
@@ -574,5 +544,3 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     </Dialog>
   );
 }
-
-    
