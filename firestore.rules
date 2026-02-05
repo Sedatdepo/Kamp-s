@@ -9,23 +9,32 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // --- Blanket Teacher Access ---
-    // If the user is a teacher, grant full access to everything.
-    // This single rule resolves all teacher-side permission errors.
+    // --- Blanket Teacher Access for single documents and all writes ---
+    // This allows a teacher to get, update, create, or delete any single document.
     match /{path=**} {
-      allow read, write: if isTeacher();
+      allow get, write: if isTeacher();
     }
+    
+    // --- Explicit LIST permissions for Teacher ---
+    // Firestore requires explicit list permissions for collection queries.
+    // The blanket rule above does not reliably cover list operations.
+    match /classes/{docId} { allow list: if isTeacher(); }
+    match /students/{docId} { allow list: if isTeacher(); }
+    match /lessons/{docId} { allow list: if isTeacher(); }
+    match /riskFactors/{docId} { allow list: if isTeacher(); }
+    match /clubs/{docId} { allow list: if isTeacher(); }
+    match /teacherData/{docId} { allow list: if isTeacher(); }
+     match /classes/{classId}/homeworks/{homeworkId} { allow list: if isTeacher(); }
     
     // --- Student & Public Access Rules ---
     // These rules apply to non-teachers (e.g., anonymous students).
 
-    // Allow students to read teacher profiles, needed for various portal pages
+    // Allow any authenticated user to read teacher profiles. This is needed for the isTeacher() check to work.
     match /teachers/{teacherId} {
         allow get: if request.auth != null;
     }
 
-    // Allow authenticated students to read the details of their class
-    // to see which modules (homeworks, announcements etc.) are active.
+    // Allow authenticated students to read the details of their class.
     match /classes/{classId} {
       allow get: if request.auth != null;
     }
@@ -53,7 +62,7 @@ service cloud.firestore {
     // Students can create their own submissions.
     match /{path=**}/submissions/{submissionId} {
       allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
-      // Allow students to read their own submissions.
+      // Students can read their own submissions.
       allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
     }
     
