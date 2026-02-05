@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, BehaviorLog, TeacherProfile, Badge } from '@/lib/types';
+import { Student, Class, BehaviorLog, TeacherProfile } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, UserPlus, X, Check, Share2, Settings
@@ -39,6 +38,7 @@ import { Loader2 } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_BADGES } from '@/lib/grading-defaults';
+import { Badge } from '@/components/ui/badge';
 
 
 export function SinifKahramanlariTab({ students, currentClass, teacherProfile }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
@@ -290,3 +290,4 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
     </div>
   );
 }
+    
