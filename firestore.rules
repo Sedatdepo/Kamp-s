@@ -4,71 +4,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // This function checks if the logged-in user is a teacher.
     function isTeacher() {
-      // It's safe because there's a specific 'get' rule for the /teachers path below.
+      // This is safe because of the more-specific rule for /teachers below.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // RULE 1: Any authenticated user can check if a user is a teacher.
-    // This is required for the isTeacher() function to work without recursion issues.
+    // THIS RULE IS CRITICAL. It is more specific than the wildcard rule below.
+    // Firestore evaluates this first for any access to /teachers/{id}.
+    // It does NOT call isTeacher(), preventing a loop.
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
     }
 
-    // RULE 2: Teachers can do ANYTHING. Read, write, list all collections.
-    // This is a broad rule that simplifies permissions for a single-teacher app.
-    match /{path=**} {
+    // This is the "teacher god mode" rule. If a user is a teacher, they can
+    // do anything to any document in the database (except what's handled by the
+    // more specific /teachers rule above).
+    match /{document=**} {
       allow read, write: if isTeacher();
     }
     
-    // --- PUBLIC & STUDENT RULES (For non-teachers) ---
-    // These rules allow access even if the user is NOT a teacher.
+    // ---- STUDENT RULES ----
+    // The rules below are for non-teachers, because a teacher would have already been granted access.
     
-    // Anyone can see public pages (announcements, seating plans, etc.)
-    match /publicViews/{viewId} {
-      allow get: if true;
-    }
+    match /publicViews/{viewId} { allow get: if true; }
+    match /classCodes/{code} { allow get: if true; }
     
-    // Anyone can look up a class code to get to the student login page.
-    match /classCodes/{code} {
-      allow get: if true;
-    }
-    
-    // Allow reading from the students collection for the login screen,
-    // and for students to view their own data after they log in anonymously.
-    match /students/{studentId} { 
-      allow read: if true; 
-      allow update(authUid): if request.auth != null; // Students can set their authUid on login
-    }
-    
-    // Students (who are authenticated anonymously) need to read some related data.
-    match /classes/{classId} { allow get: if request.auth != null; }
+    // Students can read lists of these collections
     match /lessons/{lessonId} { allow read: if request.auth != null; }
     match /clubs/{clubId} { allow read: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
-    // Homework subcollection rules for students
-    match /classes/{classId}/homeworks/{homeworkId} {
-      allow get: if request.auth != null;
-    }
+    // Students can read their own class info
+    match /classes/{classId} { allow get: if request.auth != null; }
     
+    // Anyone can read student list for login, and students can update their own authUid
+    match /students/{studentId} {
+      allow read: if true; 
+      allow update(authUid): if request.auth != null;
+    }
+
+    // Students can read their own info form
+    match /infoForms/{formId} {
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
+    }
+
+    // Students can read homeworks and read/create their own submissions
+    match /classes/{classId}/homeworks/{homeworkId} {
+        allow get: if request.auth != null;
+    }
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
       allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
     }
     
-    // Info form rules for students
-    match /infoForms/{studentId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Messaging rules for students
+    // Messaging rules for participants
     match /messages/{messageId} {
-      // This allows reads/writes if the user's UID is in the `participants` array.
-      allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
-      // This allows the query (`where('participants', 'array-contains', ...)`).
       allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
     }
   }
 }
