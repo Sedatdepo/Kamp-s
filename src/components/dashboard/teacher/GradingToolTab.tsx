@@ -6,7 +6,6 @@ import {
   Student,
   TeacherProfile,
   Class,
-  GradingScores,
   Criterion,
   ActiveGradingTab, 
   ActiveTerm
