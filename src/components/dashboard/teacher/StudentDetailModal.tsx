@@ -138,12 +138,12 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
     useEffect(() => {
         const fetchSubmissions = async () => {
-            if (!db || !currentClass || homeworksLoading || !homeworks) {
+            if (!db || !currentClass || homeworksLoading || !homeworks || !student.authUid) {
                 setSubmissionsLoading(false);
                 return;
             };
             setSubmissionsLoading(true);
-            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
+            const submissionsQuery = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
             const querySnapshot = await getDocs(submissionsQuery);
             const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
 
@@ -151,7 +151,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
             setSubmissionsLoading(false);
         };
         fetchSubmissions();
-    }, [db, currentClass, homeworks, student.id, homeworksLoading]);
+    }, [db, currentClass, homeworks, student.authUid, homeworksLoading]);
 
     if (!currentClass) {
         return <p>Sınıf bilgisi yüklenemedi.</p>;
@@ -344,10 +344,12 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     const { data: infoForm } = useDoc<InfoForm | null>(useMemoFirebase(() => db ? doc(db, 'infoForms', student.id) : null, [db, student.id]));
     const { data: riskFactors } = useCollection<RiskFactor>(useMemoFirebase(() => db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
     const { data: homeworks } = useCollection<Homework>(useMemoFirebase(() => db && currentClass ? query(collection(db, 'classes', currentClass.id, 'homeworks')) : null, [db, currentClass]));
+    
     const { data: submissions } = useCollection<Submission>(useMemoFirebase(() => {
-        if (!db || !currentClass) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentId', '==', student.id));
-    }, [db, student.id, currentClass]));
+        if (!db || !currentClass || !student.authUid) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', student.authUid));
+    }, [db, student.authUid, currentClass]));
+
     const { data: lessons } = useCollection<Lesson>(useMemoFirebase(() => db ? query(collection(db, 'lessons'), where('teacherId', '==', teacherProfile.id)) : null, [db, teacherProfile.id]));
 
     const handleExportReport = () => {
