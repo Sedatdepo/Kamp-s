@@ -56,9 +56,9 @@ service cloud.firestore {
       );
     }
 
-    // UPDATED: Students AND Teachers can manage info forms.
+    // Corrected rule for infoForms
     match /infoForms/{formId} {
-        allow read: if isTeacher() || (request.auth != null && resource.data.authUid == request.auth.uid);
+        allow read: if isTeacher() || (request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid);
         allow write: if isTeacher() || (request.auth != null && request.resource.data.authUid == request.auth.uid);
     }
     
