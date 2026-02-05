@@ -4,51 +4,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Check if the user ID exists in the /teachers collection.
+    // This is the single source of truth for "is a teacher".
     function isTeacher() {
-      // This is safe because of the more-specific rule for /teachers below.
+      // This is safe because of the more-specific rule for /teachers/{teacherId} below.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // THIS RULE IS CRITICAL. It is more specific than the wildcard rule below.
-    // Firestore evaluates this first for any access to /teachers/{id}.
-    // It does NOT call isTeacher(), preventing a loop.
+    // --- CORE SECURITY RULES ---
+
+    // This rule is CRITICAL. It allows the isTeacher() function to work without causing a recursive loop.
+    // Any authenticated user can check for the existence of a teacher document.
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
     }
 
-    // This is the "teacher god mode" rule. If a user is a teacher, they can
-    // do anything to any document in the database (except what's handled by the
-    // more specific /teachers rule above).
-    match /{document=**} {
+    // "God Mode" for the teacher. If the user is a teacher, they can do anything.
+    // This single rule grants all read (get, list) and write (create, update, delete)
+    // permissions across the entire database. This is simple and effective for a
+    // single-admin application.
+    match /{path=**} {
       allow read, write: if isTeacher();
     }
     
-    // ---- STUDENT RULES ----
-    // The rules below are for non-teachers, because a teacher would have already been granted access.
+    // ---- STUDENT & PUBLIC RULES ----
+    // The rules below ONLY apply if the user is NOT a teacher, because a teacher
+    // would have already been granted access by the "God Mode" rule above.
     
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    // Students can read lists of these collections
+    // Students can read lists of these collections for selection purposes.
     match /lessons/{lessonId} { allow read: if request.auth != null; }
     match /clubs/{clubId} { allow read: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
-    // Students can read their own class info
-    match /classes/{classId} { allow get: if request.auth != null; }
+    // Students can get their specific class document.
+    match /classes/{classId} { 
+      allow get: if request.auth != null; 
+    }
     
-    // Anyone can read student list for login, and students can update their own authUid
+    // Student login process: anyone can read the list to find their name.
+    // Students can write their auth UID after anonymous login.
     match /students/{studentId} {
       allow read: if true; 
-      allow update(authUid): if request.auth != null;
+      allow update: if request.auth != null && request.resource.data.authUid == request.auth.uid;
     }
 
-    // Students can read their own info form
+    // Students can manage their own info form
     match /infoForms/{formId} {
         allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
-
-    // Students can read homeworks and read/create their own submissions
+    
+    // Homework submissions
     match /classes/{classId}/homeworks/{homeworkId} {
         allow get: if request.auth != null;
     }
@@ -59,8 +67,7 @@ service cloud.firestore {
     
     // Messaging rules for participants
     match /messages/{messageId} {
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-      allow read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow list, read, create, update: if request.auth != null && request.auth.uid in resource.data.participants;
     }
   }
 }
