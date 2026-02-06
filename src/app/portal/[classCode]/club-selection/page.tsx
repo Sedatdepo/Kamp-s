@@ -56,24 +56,23 @@ export default function StudentClubSelectionPage() {
     const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
     const handlePreferenceChange = (clubId: string) => {
-        const isSelected = selectedPreferences.includes(clubId);
-        let newSelectedPreferences = [...selectedPreferences];
-
-        if (isSelected) {
-            newSelectedPreferences = newSelectedPreferences.filter(id => id !== clubId);
-            setSelectedPreferences(newSelectedPreferences);
-        } else {
-            if (selectedPreferences.length < 3) {
-                newSelectedPreferences.push(clubId);
-                setSelectedPreferences(newSelectedPreferences);
+        setSelectedPreferences(prev => {
+            const isSelected = prev.includes(clubId);
+            if (isSelected) {
+                return prev.filter(id => id !== clubId);
             } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'En Fazla 3 Tercih',
-                    description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
-                });
+                if (prev.length < 3) {
+                    return [...prev, clubId];
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'En Fazla 3 Tercih',
+                        description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
+                    });
+                    return prev;
+                }
             }
-        }
+        });
     };
 
     const handleSavePreferences = async () => {
@@ -135,16 +134,18 @@ export default function StudentClubSelectionPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             {clubs?.map(club => (
-                                <div key={club.id}
+                                <Label 
+                                     key={club.id}
+                                     htmlFor={`club-${club.id}`}
                                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(club.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
-                                     onClick={() => handlePreferenceChange(club.id)}
                                 >
                                      <Checkbox
                                         id={`club-${club.id}`}
                                         checked={selectedPreferences.includes(club.id)}
+                                        onCheckedChange={() => handlePreferenceChange(club.id)}
                                      />
-                                     <Label htmlFor={`club-${club.id}`} className="flex-grow cursor-pointer">{club.name}</Label>
-                                </div>
+                                     <span className="flex-grow cursor-pointer">{club.name}</span>
+                                </Label>
                             ))}
                         </div>
                         <Button onClick={handleSavePreferences} disabled={isSaving}>

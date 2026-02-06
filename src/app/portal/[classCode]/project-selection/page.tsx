@@ -55,24 +55,23 @@ export default function StudentProjectSelectionPage() {
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
     const handlePreferenceChange = (lessonId: string) => {
-        const isSelected = selectedPreferences.includes(lessonId);
-        let newSelectedPreferences = [...selectedPreferences];
-
-        if (isSelected) {
-            newSelectedPreferences = newSelectedPreferences.filter(id => id !== lessonId);
-            setSelectedPreferences(newSelectedPreferences);
-        } else {
-            if (selectedPreferences.length < 3) {
-                newSelectedPreferences.push(lessonId);
-                setSelectedPreferences(newSelectedPreferences);
+        setSelectedPreferences(prev => {
+            const isSelected = prev.includes(lessonId);
+            if (isSelected) {
+                return prev.filter(id => id !== lessonId);
             } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'En Fazla 3 Tercih',
-                    description: 'En fazla 3 proje dersi seçebilirsiniz.',
-                });
+                if (prev.length < 5) {
+                    return [...prev, lessonId];
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'En Fazla 5 Tercih',
+                        description: 'En fazla 5 proje dersi seçebilirsiniz.',
+                    });
+                    return prev;
+                }
             }
-        }
+        });
     };
 
     const handleSavePreferences = async () => {
@@ -128,23 +127,25 @@ export default function StudentProjectSelectionPage() {
                     <CardHeader>
                         <CardTitle>Proje Dersi Seçimi</CardTitle>
                         <CardDescription>
-                            Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre en fazla 3 tane olacak şekilde seçiniz.
+                            Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre en fazla 5 tane olacak şekilde seçiniz.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             {lessons?.map(lesson => (
-                                <div key={lesson.id}
-                                     className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(lesson.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
-                                     onClick={() => handlePreferenceChange(lesson.id)}
+                                <Label 
+                                    htmlFor={`lesson-${lesson.id}`}
+                                    key={lesson.id}
+                                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(lesson.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
                                 >
                                      <Checkbox
                                         id={`lesson-${lesson.id}`}
                                         checked={selectedPreferences.includes(lesson.id)}
+                                        onCheckedChange={() => handlePreferenceChange(lesson.id)}
                                      />
-                                     <Label htmlFor={`lesson-${lesson.id}`} className="flex-grow cursor-pointer">{lesson.name}</Label>
+                                     <span className="flex-grow cursor-pointer">{lesson.name}</span>
                                      <span className="text-xs text-muted-foreground">Kontenjan: {lesson.quota}</span>
-                                </div>
+                                </Label>
                             ))}
                         </div>
                         <Button onClick={handleSavePreferences} disabled={isSaving}>
