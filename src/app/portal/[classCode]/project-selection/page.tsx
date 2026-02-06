@@ -26,6 +26,7 @@ export default function StudentProjectSelectionPage() {
     const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
+    // 1. Initial load from session storage to secure the page
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
@@ -39,22 +40,23 @@ export default function StudentProjectSelectionPage() {
                 return;
             }
             setStudent(storedStudent);
+            // Initialize preferences from the stored student data
             setSelectedPreferences(storedStudent.projectPreferences || []);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
-    
-    // Real-time listener for student data
+
+    // 2. Real-time listener for student data to keep it fresh
     useEffect(() => {
         if (!student?.id || !db) return;
 
-        const studentRef = doc(db, 'students', student.id);
-        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+        const unsubscribe = onSnapshot(doc(db, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
                 setStudent(liveStudentData);
                 setSelectedPreferences(liveStudentData.projectPreferences || []);
+                // Keep session storage in sync for navigation within the portal
                 try {
                     const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
                     authData.student = liveStudentData;
@@ -65,23 +67,25 @@ export default function StudentProjectSelectionPage() {
             }
         });
 
-        return () => unsubscribe();
+        return () => unsubscribe(); // Cleanup listener on unmount
     }, [student?.id, db]);
 
-
+    // 3. Fetch available lessons for the teacher
     const lessonsQuery = useMemoFirebase(() => {
-        if (!db || !student) return null;
+        if (!db || !student?.teacherId) return null;
         return query(collection(db, 'lessons'), where('teacherId', '==', student.teacherId));
-    }, [db, student]);
+    }, [db, student?.teacherId]);
 
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
-    const handlePreferenceChange = (checked: boolean, lessonId: string) => {
+    // 4. Handle preference selection changes
+    const handlePreferenceChange = (lessonId: string) => {
         setSelectedPreferences(currentPrefs => {
             const isCurrentlySelected = currentPrefs.includes(lessonId);
 
-            if (checked && !isCurrentlySelected) { // Trying to add
+            if (!isCurrentlySelected) { // Trying to add
                 if (currentPrefs.length >= 5) {
+                    // Defer the toast to avoid updating state during render
                     setTimeout(() => {
                         toast({
                             variant: 'destructive',
@@ -89,16 +93,16 @@ export default function StudentProjectSelectionPage() {
                             description: 'En fazla 5 proje dersi seçebilirsiniz.',
                         });
                     }, 0);
-                    return currentPrefs;
+                    return currentPrefs; // Return current state without changes
                 }
                 return [...currentPrefs, lessonId];
-            } else if (!checked && isCurrentlySelected) { // Trying to remove
+            } else { // Trying to remove
                 return currentPrefs.filter(id => id !== lessonId);
             }
-            return currentPrefs;
         });
     };
 
+    // 5. Save preferences to Firestore
     const handleSavePreferences = async () => {
         if (!db || !student) return;
 
@@ -109,15 +113,12 @@ export default function StudentProjectSelectionPage() {
             await updateDoc(studentRef, {
                 projectPreferences: selectedPreferences
             });
-            // Update sessionStorage as well
-            const authData = JSON.parse(sessionStorage.getItem('student_portal_auth')!);
-            authData.student.projectPreferences = selectedPreferences;
-            sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
-
+            
             toast({
                 title: 'Tercihleriniz Kaydedildi!',
                 description: `${selectedPreferences.length} proje tercihi başarıyla güncellendi.`,
             });
+            router.push(`/portal/${classCode}`);
         } catch (error) {
             console.error("Failed to save preferences:", error);
             toast({ variant: 'destructive', title: 'Hata', description: 'Tercihleriniz kaydedilemedi.' });
@@ -126,12 +127,12 @@ export default function StudentProjectSelectionPage() {
         }
     };
     
+    // 6. Manage loading state
     useEffect(() => {
         if (student && !lessonsLoading) {
             setLoading(false);
         }
     }, [student, lessonsLoading]);
-
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -159,20 +160,20 @@ export default function StudentProjectSelectionPage() {
                     <CardHeader>
                         <CardTitle>Proje Dersi Seçimi</CardTitle>
                         <CardDescription>
-                            Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre en fazla 5 tane olacak şekilde seçiniz.
+                            Lütfen proje ödevi almak istediğiniz dersleri en fazla 5 tane olacak şekilde seçiniz.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            {lessons?.map(lesson => (
+                            {(lessons || []).map(lesson => (
                                 <div
                                     key={lesson.id}
-                                    onClick={() => handlePreferenceChange(!selectedPreferences.includes(lesson.id), lesson.id)}
-                                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(lesson.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
+                                    className="flex items-center gap-3 p-3 border rounded-lg"
                                 >
                                      <Checkbox
                                         id={`lesson-${lesson.id}`}
                                         checked={selectedPreferences.includes(lesson.id)}
+                                        onCheckedChange={() => handlePreferenceChange(lesson.id)}
                                      />
                                      <Label htmlFor={`lesson-${lesson.id}`} className="flex-grow cursor-pointer">{lesson.name}</Label>
                                      <span className="text-xs text-muted-foreground">Kontenjan: {lesson.quota}</span>
