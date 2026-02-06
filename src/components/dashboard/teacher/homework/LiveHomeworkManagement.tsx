@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -227,8 +228,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
                 questions: questions || [],
-                link: link.trim() || undefined,
-                linkText: linkText.trim() || undefined,
+                link: link.trim() || '',
+                linkText: linkText.trim() || '',
                 assignmentType: 'regular',
             };
 
