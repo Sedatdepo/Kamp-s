@@ -43,7 +43,15 @@ export default function StudentGamificationPage() {
         if (!student?.id || !firestore) return;
         const unsubscribe = onSnapshot(doc(firestore, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
-                setStudent({ id: docSnap.id, ...docSnap.data() } as Student);
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on kahramanlar page", e);
+                }
             }
         });
         return () => unsubscribe();
