@@ -28,9 +28,9 @@ service cloud.firestore {
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    match /lessons/{lessonId} { allow get: if request.auth != null; }
-    match /clubs/{clubId} { allow get: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    match /lessons/{lessonId} { allow read: if request.auth != null; }
+    match /clubs/{clubId} { allow read: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
     match /classes/{classId} { 
       allow get: if request.auth != null; 
