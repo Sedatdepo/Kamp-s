@@ -55,23 +55,22 @@ export default function StudentProjectSelectionPage() {
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
     const handlePreferenceChange = (lessonId: string) => {
-        setSelectedPreferences(prev => {
-            const isSelected = prev.includes(lessonId);
-            if (isSelected) {
-                return prev.filter(id => id !== lessonId);
+        const isSelected = selectedPreferences.includes(lessonId);
+        if (isSelected) {
+            setSelectedPreferences(prev => prev.filter(id => id !== lessonId));
+        } else {
+            if (selectedPreferences.length < 5) {
+                setSelectedPreferences(prev => [...prev, lessonId]);
             } else {
-                if (prev.length < 5) {
-                    return [...prev, lessonId];
-                } else {
+                setTimeout(() => {
                     toast({
                         variant: 'destructive',
                         title: 'En Fazla 5 Tercih',
                         description: 'En fazla 5 proje dersi seçebilirsiniz.',
                     });
-                    return prev;
-                }
+                }, 0);
             }
-        });
+        }
     };
 
     const handleSavePreferences = async () => {
@@ -133,19 +132,18 @@ export default function StudentProjectSelectionPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             {lessons?.map(lesson => (
-                                <Label 
-                                    htmlFor={`lesson-${lesson.id}`}
+                                <div
                                     key={lesson.id}
+                                    onClick={() => handlePreferenceChange(lesson.id)}
                                     className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(lesson.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
                                 >
                                      <Checkbox
                                         id={`lesson-${lesson.id}`}
                                         checked={selectedPreferences.includes(lesson.id)}
-                                        onCheckedChange={() => handlePreferenceChange(lesson.id)}
                                      />
-                                     <span className="flex-grow cursor-pointer">{lesson.name}</span>
+                                     <Label htmlFor={`lesson-${lesson.id}`} className="flex-grow cursor-pointer">{lesson.name}</Label>
                                      <span className="text-xs text-muted-foreground">Kontenjan: {lesson.quota}</span>
-                                </Label>
+                                </div>
                             ))}
                         </div>
                         <Button onClick={handleSavePreferences} disabled={isSaving}>

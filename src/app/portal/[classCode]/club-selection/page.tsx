@@ -56,23 +56,22 @@ export default function StudentClubSelectionPage() {
     const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
     const handlePreferenceChange = (clubId: string) => {
-        setSelectedPreferences(prev => {
-            const isSelected = prev.includes(clubId);
-            if (isSelected) {
-                return prev.filter(id => id !== clubId);
+        const isSelected = selectedPreferences.includes(clubId);
+        if (isSelected) {
+            setSelectedPreferences(prev => prev.filter(id => id !== clubId));
+        } else {
+            if (selectedPreferences.length < 3) {
+                setSelectedPreferences(prev => [...prev, clubId]);
             } else {
-                if (prev.length < 3) {
-                    return [...prev, clubId];
-                } else {
+                 setTimeout(() => {
                     toast({
                         variant: 'destructive',
                         title: 'En Fazla 3 Tercih',
                         description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
                     });
-                    return prev;
-                }
+                }, 0);
             }
-        });
+        }
     };
 
     const handleSavePreferences = async () => {
@@ -134,18 +133,17 @@ export default function StudentClubSelectionPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             {clubs?.map(club => (
-                                <Label 
+                                <div
                                      key={club.id}
-                                     htmlFor={`club-${club.id}`}
+                                     onClick={() => handlePreferenceChange(club.id)}
                                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(club.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
                                 >
                                      <Checkbox
                                         id={`club-${club.id}`}
                                         checked={selectedPreferences.includes(club.id)}
-                                        onCheckedChange={() => handlePreferenceChange(club.id)}
                                      />
-                                     <span className="flex-grow cursor-pointer">{club.name}</span>
-                                </Label>
+                                     <Label htmlFor={`club-${club.id}`} className="flex-grow cursor-pointer">{club.name}</Label>
+                                </div>
                             ))}
                         </div>
                         <Button onClick={handleSavePreferences} disabled={isSaving}>
