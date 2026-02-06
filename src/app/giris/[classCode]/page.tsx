@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -90,9 +91,17 @@ export default function StudentLoginPage() {
                 
                 if (user) {
                     const studentRef = doc(firestore, 'students', student.id);
-                    await updateDoc(studentRef, {
-                        authUid: user.uid
-                    });
+                    const infoFormRef = doc(firestore, 'infoForms', student.id);
+                    
+                    const batch = writeBatch(firestore);
+
+                    // Update student doc with the latest authUid
+                    batch.update(studentRef, { authUid: user.uid });
+                    
+                    // Also update/create infoForm doc with the authUid to ensure rule consistency
+                    batch.set(infoFormRef, { authUid: user.uid }, { merge: true });
+
+                    await batch.commit();
                     
                     const updatedStudent = { ...student, authUid: user.uid };
 
