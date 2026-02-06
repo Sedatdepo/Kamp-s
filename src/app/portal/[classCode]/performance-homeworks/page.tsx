@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
@@ -104,6 +104,27 @@ export default function StudentPerformanceHomeworkPage() {
         }
     }, [classCode, router]);
 
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                 try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on performance homeworks page", e);
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
+
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !student?.classId || !student?.id) return null;
         return query(
@@ -125,7 +146,11 @@ export default function StudentPerformanceHomeworkPage() {
     }
 
     if (selectedHomework) {
-        return <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />;
+        return (
+            <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
+                <HomeworkDetailView homework={selectedHomework} onBack={() => setSelectedHomework(null)} />
+            </div>
+        );
     }
 
     return (

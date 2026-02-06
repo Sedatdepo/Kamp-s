@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, doc, updateDoc, where } from 'firebase/firestore';
+import { query, collection, doc, updateDoc, where, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,36 +42,59 @@ export default function StudentClubSelectionPage() {
             setSelectedPreferences(storedStudent.clubPreferences || []);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
-        } finally {
-            setLoading(false);
         }
     }, [classCode, router]);
 
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                setSelectedPreferences(liveStudentData.clubPreferences || []);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on club selection page", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
+
     const clubsQuery = useMemoFirebase(() => {
         if (!db || !student) return null;
-        // Clubs are usually shared across the school for a teacher, so just get all for teacher
         return query(collection(db, 'clubs'), where('teacherId', '==', student.teacherId));
     }, [db, student]);
 
     const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
-    const handlePreferenceChange = (clubId: string) => {
-        const isSelected = selectedPreferences.includes(clubId);
-        if (isSelected) {
-            setSelectedPreferences(prev => prev.filter(id => id !== clubId));
-        } else {
-            if (selectedPreferences.length < 3) {
-                setSelectedPreferences(prev => [...prev, clubId]);
-            } else {
-                 setTimeout(() => {
+    const handlePreferenceChange = (checked: boolean, clubId: string) => {
+        setSelectedPreferences(currentPrefs => {
+            const isCurrentlySelected = currentPrefs.includes(clubId);
+            if(checked && !isCurrentlySelected) {
+                if (currentPrefs.length < 3) {
+                    return [...currentPrefs, clubId];
+                } else {
                     toast({
                         variant: 'destructive',
                         title: 'En Fazla 3 Tercih',
                         description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
                     });
-                }, 0);
+                    return currentPrefs;
+                }
+            } else if (!checked && isCurrentlySelected) {
+                return currentPrefs.filter(id => id !== clubId);
             }
-        }
+            return currentPrefs;
+        });
     };
 
     const handleSavePreferences = async () => {
@@ -84,7 +107,6 @@ export default function StudentClubSelectionPage() {
             await updateDoc(studentRef, {
                 clubPreferences: selectedPreferences
             });
-            // Update sessionStorage as well
             const authData = JSON.parse(sessionStorage.getItem('student_portal_auth')!);
             authData.student.clubPreferences = selectedPreferences;
             sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
@@ -100,8 +122,14 @@ export default function StudentClubSelectionPage() {
             setIsSaving(false);
         }
     };
+    
+     useEffect(() => {
+        if (student && !clubsLoading) {
+            setLoading(false);
+        }
+    }, [student, clubsLoading]);
 
-    if (loading || clubsLoading || !student) {
+    if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -135,7 +163,7 @@ export default function StudentClubSelectionPage() {
                             {clubs?.map(club => (
                                 <div
                                      key={club.id}
-                                     onClick={() => handlePreferenceChange(club.id)}
+                                     onClick={() => handlePreferenceChange(!selectedPreferences.includes(club.id), club.id)}
                                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(club.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
                                 >
                                      <Checkbox

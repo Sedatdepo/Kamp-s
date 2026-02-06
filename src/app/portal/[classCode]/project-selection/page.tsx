@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, doc, updateDoc, where } from 'firebase/firestore';
+import { query, collection, doc, updateDoc, where, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,10 +42,32 @@ export default function StudentProjectSelectionPage() {
             setSelectedPreferences(storedStudent.projectPreferences || []);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
-        } finally {
-            setLoading(false);
         }
     }, [classCode, router]);
+    
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                setSelectedPreferences(liveStudentData.projectPreferences || []);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on project selection page", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
 
     const lessonsQuery = useMemoFirebase(() => {
         if (!db || !student) return null;
@@ -54,23 +76,26 @@ export default function StudentProjectSelectionPage() {
 
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
-    const handlePreferenceChange = (lessonId: string) => {
-        const isSelected = selectedPreferences.includes(lessonId);
-        if (isSelected) {
-            setSelectedPreferences(prev => prev.filter(id => id !== lessonId));
-        } else {
-            if (selectedPreferences.length < 5) {
-                setSelectedPreferences(prev => [...prev, lessonId]);
-            } else {
-                setTimeout(() => {
+    const handlePreferenceChange = (checked: boolean, lessonId: string) => {
+        setSelectedPreferences(currentPrefs => {
+            const isCurrentlySelected = currentPrefs.includes(lessonId);
+
+            if (checked && !isCurrentlySelected) { // Trying to add
+                if (currentPrefs.length < 5) {
+                    return [...currentPrefs, lessonId];
+                } else {
                     toast({
                         variant: 'destructive',
                         title: 'En Fazla 5 Tercih',
                         description: 'En fazla 5 proje dersi seçebilirsiniz.',
                     });
-                }, 0);
+                    return currentPrefs;
+                }
+            } else if (!checked && isCurrentlySelected) { // Trying to remove
+                return currentPrefs.filter(id => id !== lessonId);
             }
-        }
+            return currentPrefs;
+        });
     };
 
     const handleSavePreferences = async () => {
@@ -99,8 +124,15 @@ export default function StudentProjectSelectionPage() {
             setIsSaving(false);
         }
     };
+    
+    useEffect(() => {
+        if (student && !lessonsLoading) {
+            setLoading(false);
+        }
+    }, [student, lessonsLoading]);
 
-    if (loading || lessonsLoading || !student) {
+
+    if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -134,7 +166,7 @@ export default function StudentProjectSelectionPage() {
                             {lessons?.map(lesson => (
                                 <div
                                     key={lesson.id}
-                                    onClick={() => handlePreferenceChange(lesson.id)}
+                                    onClick={() => handlePreferenceChange(!selectedPreferences.includes(lesson.id), lesson.id)}
                                     className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${selectedPreferences.includes(lesson.id) ? 'bg-primary/10 border-primary' : 'bg-background hover:bg-muted/50'}`}
                                 >
                                      <Checkbox

@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, updateDoc, increment, arrayUnion, collectionGroup, getDocs, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -255,6 +255,29 @@ export default function StudentRegularHomeworkPage() {
             router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
+
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on regular homeworks page", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
 
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !student?.classId) return null;

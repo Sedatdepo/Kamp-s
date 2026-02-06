@@ -8,7 +8,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function StudentProjectPage() {
@@ -21,14 +21,43 @@ export default function StudentProjectPage() {
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) throw new Error("Auth data not found");
-            const { student: storedStudent } = JSON.parse(authData);
-            if (!storedStudent) throw new Error("Student data not found in auth");
+            if (!authData) {
+                router.replace(`/giris/${classCode}`);
+                return;
+            }
+            const { student: storedStudent, classCode: storedClassCode } = JSON.parse(authData);
+             if (storedClassCode !== classCode || !storedStudent) {
+                router.replace(`/giris/${classCode}`);
+                return;
+            }
             setStudent(storedStudent);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
+
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on project homework page", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
 
     const assignedLessonRef = useMemoFirebase(() => {
         if (!db || !student?.assignedLesson) return null;

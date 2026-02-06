@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -13,7 +11,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, updateDoc, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -90,6 +88,29 @@ export default function StudentInfoFormPage() {
         }
     }, [classCode, router]);
 
+    // Real-time listener for student data
+    useEffect(() => {
+        if (!student?.id || !db) return;
+
+        const studentRef = doc(db, 'students', student.id);
+        const unsubscribe = onSnapshot(studentRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
+                setStudent(liveStudentData);
+                try {
+                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    authData.student = liveStudentData;
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                } catch (e) {
+                    console.error("Could not update session storage on info form page", e);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [student?.id, db]);
+
+
     const { data: existingForm, isLoading: formLoading } = useDoc<InfoForm>(useMemoFirebase(() => student ? doc(db, 'infoForms', student.id) : null, [db, student]));
     const riskFactorsQuery = useMemoFirebase(() => (student ? query(collection(db, 'riskFactors'), where('teacherId', '==', student.teacherId)) : null), [db, student]);
     const { data: riskFactors, isLoading: risksLoading } = useCollection<RiskFactor>(riskFactorsQuery);
@@ -100,9 +121,13 @@ export default function StudentInfoFormPage() {
 
     // Populate form with existing data
     useEffect(() => {
-        if (student) {
+        if (student && existingForm) {
             form.reset({
                 ...existingForm,
+                selectedRisks: student.risks || [],
+            });
+        } else if (student) {
+             form.reset({
                 selectedRisks: student.risks || [],
             });
         }
