@@ -11,7 +11,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, query, where, onSnapshot, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -110,13 +110,42 @@ export default function StudentInfoFormPage() {
         return () => unsubscribe();
     }, [student?.id, db]);
 
+    const [existingForm, setExistingForm] = useState<InfoForm | null>(null);
+    const [formLoading, setFormLoading] = useState(true);
 
-    const { data: existingForm, isLoading: formLoading } = useDoc<InfoForm>(useMemoFirebase(() => student ? doc(db, 'infoForms', student.id) : null, [db, student]));
     const riskFactorsQuery = useMemoFirebase(() => (student ? query(collection(db, 'riskFactors'), where('teacherId', '==', student.teacherId)) : null), [db, student]);
     const { data: riskFactors, isLoading: risksLoading } = useCollection<RiskFactor>(riskFactorsQuery);
     
     const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
+    
+    // Fetch form data with getDoc instead of useDoc
+    useEffect(() => {
+        if (student && db) {
+            const fetchFormData = async () => {
+                setFormLoading(true);
+                const formRef = doc(db, 'infoForms', student.id);
+                try {
+                    const docSnap = await getDoc(formRef);
+                    if (docSnap.exists()) {
+                        setExistingForm({ id: docSnap.id, ...docSnap.data() } as InfoForm);
+                    } else {
+                        setExistingForm(null);
+                    }
+                } catch (e) {
+                    console.error("Error fetching info form:", e);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Hata',
+                        description: 'Bilgi formu yüklenemedi. İzinlerinizi kontrol edin.',
+                    });
+                } finally {
+                    setFormLoading(false);
+                }
+            };
+            fetchFormData();
+        }
+    }, [student, db, toast]);
 
 
     // Populate form with existing data
