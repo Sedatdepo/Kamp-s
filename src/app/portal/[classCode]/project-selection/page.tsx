@@ -55,20 +55,20 @@ export default function StudentProjectSelectionPage() {
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
     const handlePreferenceChange = (lessonId: string) => {
-        setSelectedPreferences(prev => {
-            if (prev.includes(lessonId)) {
-                return prev.filter(id => id !== lessonId);
+        const isSelected = selectedPreferences.includes(lessonId);
+        if (isSelected) {
+            setSelectedPreferences(prev => prev.filter(id => id !== lessonId));
+        } else {
+            if (selectedPreferences.length < 3) {
+                setSelectedPreferences(prev => [...prev, lessonId]);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'En Fazla 3 Tercih',
+                    description: 'En fazla 3 proje dersi seçebilirsiniz.',
+                });
             }
-            if (prev.length < 3) {
-                return [...prev, lessonId];
-            }
-            toast({
-                variant: 'destructive',
-                title: 'En Fazla 3 Tercih',
-                description: 'En fazla 3 proje dersi seçebilirsiniz.',
-            });
-            return prev;
-        });
+        }
     };
 
     const handleSavePreferences = async () => {

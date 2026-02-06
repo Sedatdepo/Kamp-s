@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -57,21 +56,20 @@ export default function StudentClubSelectionPage() {
     const { data: clubs, isLoading: clubsLoading } = useCollection<Club>(clubsQuery);
 
     const handlePreferenceChange = (clubId: string) => {
-        setSelectedPreferences(prev => {
-            if (prev.includes(clubId)) {
-                return prev.filter(id => id !== clubId);
+        const isSelected = selectedPreferences.includes(clubId);
+        if (isSelected) {
+            setSelectedPreferences(prev => prev.filter(id => id !== clubId));
+        } else {
+            if (selectedPreferences.length < 3) {
+                setSelectedPreferences(prev => [...prev, clubId]);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'En Fazla 3 Tercih',
+                    description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
+                });
             }
-            // Allow selecting up to 3 clubs
-            if (prev.length < 3) {
-                return [...prev, clubId];
-            }
-            toast({
-                variant: 'destructive',
-                title: 'En Fazla 3 Tercih',
-                description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
-            });
-            return prev;
-        });
+        }
     };
 
     const handleSavePreferences = async () => {
