@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap } from 'lucide-react';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -121,45 +121,75 @@ export default function StudentPortalPage() {
             </header>
             
             <main className="max-w-4xl mx-auto">
-                 {currentClass.isGamificationActive && (
-                    <Card className="mb-8">
-                        <CardHeader>
-                            <CardTitle>Sınıf Kahramanları</CardTitle>
-                            <CardDescription>Davranış puanın ve kazandığın rozetler.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex items-center gap-6">
-                            <div>
-                                <p className="text-muted-foreground text-sm">Davranış Puanı</p>
-                                <p className="text-5xl font-bold text-primary">{student.behaviorScore || 100}</p>
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-muted-foreground text-sm mb-2">Kazandığın Rozetler</p>
-                                <div className="flex flex-wrap gap-4">
-                                    {(student.badges && student.badges.length > 0) ? (
-                                        <TooltipProvider>
-                                            {student.badges.map(badgeId => {
-                                                const badge = availableBadges.find(b => b.id === badgeId);
-                                                return badge ? (
-                                                    <Tooltip key={badge.id}>
-                                                        <TooltipTrigger asChild>
-                                                            <div className="text-4xl cursor-pointer">{badge.icon}</div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p className="font-bold">{badge.name}</p>
-                                                            <p>{badge.description}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ) : null;
-                                            })}
-                                        </TooltipProvider>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground italic">Henüz rozet kazanmadın.</p>
-                                    )}
+                 <Card className="mb-8">
+                    <CardHeader>
+                        <CardTitle>Bildirimler ve Son Etkinlikler</CardTitle>
+                        <CardDescription>Sana özel son gelişmeler ve görevler.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && (
+                            <Link href={`/view/announcements/${classCode}`} passHref>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-blue-100 text-blue-600 p-2 rounded-full mt-1">
+                                        <Megaphone className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Yeni Duyuru</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{currentClass.announcements[0].text}</p>
+                                    </div>
                                 </div>
+                            </Link>
+                        )}
+                        {currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson && (
+                            <Link href={`/portal/${classCode}/project-homework`} passHref>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
+                                        <ClipboardList className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Proje Ödevin Atandı</p>
+                                        <p className="text-xs text-muted-foreground">Proje ödevi konunu görmek için tıkla.</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
+                        {currentClass.isSociogramActive && (
+                            <Link href={`/sosyogram/${classCode}`} passHref>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-teal-100 text-teal-600 p-2 rounded-full mt-1">
+                                        <Users className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Sosyogram Anketi Aktif</p>
+                                        <p className="text-xs text-muted-foreground">Sınıf arkadaşlarınla ilgili anket seni bekliyor.</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
+                        {currentClass.isGradesPublished && (
+                            <Link href={`/portal/${classCode}/notlarim`} passHref>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-1">
+                                        <GraduationCap className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Notların Yayınlandı</p>
+                                        <p className="text-xs text-muted-foreground">Dönem notlarını ve genel ortalamanı görüntüle.</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
+                        {!(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0) &&
+                         !(currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson) &&
+                         !currentClass.isSociogramActive &&
+                         !currentClass.isGradesPublished &&
+                        (
+                            <div className="text-center py-6 text-muted-foreground text-sm">
+                                <p>Henüz yeni bir bildirim yok.</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <ModuleCard title="Notlarım" icon={<GraduationCap className="text-emerald-500" />} href={`/portal/${classCode}/notlarim`} isPublished={currentClass.isGradesPublished} />
                     <ModuleCard title="Öğretmene Mesaj" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
