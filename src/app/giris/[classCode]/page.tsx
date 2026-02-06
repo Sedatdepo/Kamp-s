@@ -95,8 +95,8 @@ export default function StudentLoginPage() {
                     
                     const batch = writeBatch(firestore);
 
-                    // Update student doc with the latest authUid
-                    batch.update(studentRef, { authUid: user.uid });
+                    // Use set with merge to ensure the document is created or updated safely.
+                    batch.set(studentRef, { authUid: user.uid }, { merge: true });
                     
                     // Also update/create infoForm doc with the authUid to ensure rule consistency
                     batch.set(infoFormRef, { authUid: user.uid }, { merge: true });
