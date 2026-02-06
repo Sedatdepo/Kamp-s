@@ -243,9 +243,6 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [allHomeworks, setAllHomeworks] = useState<Homework[]>([]);
-    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
-    const [dataLoading, setDataLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -259,23 +256,25 @@ export default function StudentRegularHomeworkPage() {
         }
     }, [classCode, router]);
 
-    const fetchData = useCallback(async () => {
-        if (!db || !student?.classId || !authUser?.uid) {
-            setDataLoading(false);
+    const homeworksQuery = useMemoFirebase(() => {
+        if (!db || !student?.classId) return null;
+        return query(collection(db, 'classes', student.classId, 'homeworks'), where('assignmentType', '==', 'regular'));
+    }, [db, student?.classId]);
+
+    const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+    
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
+
+    const fetchSubmissions = useCallback(async () => {
+        if (homeworksLoading || !db || !student?.classId || !authUser?.uid || !homeworks) {
+            setSubmissionsLoading(false);
             return;
         }
-        setDataLoading(true);
-
+        setSubmissionsLoading(true);
         try {
-            // 1. Fetch homeworks for the class
-            const homeworksQuery = query(collection(db, 'classes', student.classId, 'homeworks'), where('assignmentType', '==', null));
-            const homeworksSnapshot = await getDocs(homeworksQuery);
-            const homeworksData = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
-            setAllHomeworks(homeworksData);
-
-            // 2. For each homework, fetch this student's submission
-            if (homeworksData.length > 0) {
-                const submissionPromises = homeworksData.map(hw => 
+            if (homeworks.length > 0) {
+                const submissionPromises = homeworks.map(hw => 
                     getDocs(query(
                         collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`),
                         where('studentAuthUid', '==', authUser.uid)
@@ -289,27 +288,23 @@ export default function StudentRegularHomeworkPage() {
             } else {
                 setAllSubmissions([]);
             }
-
         } catch (error) {
             console.error("Error fetching homework data:", error);
         } finally {
-            setDataLoading(false);
+            setSubmissionsLoading(false);
         }
-    }, [db, student, authUser]);
-
-
+    }, [db, student, authUser, homeworks, homeworksLoading]);
+    
     useEffect(() => {
-        if (student && authUser) {
-            fetchData();
-        }
-    }, [student, authUser, fetchData]);
+        fetchSubmissions();
+    }, [fetchSubmissions]);
     
     const regularHomeworks = useMemo(() => {
-        if (!allHomeworks) return [];
-        return [...allHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [allHomeworks]);
+        if (!homeworks) return [];
+        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
     
-    if (authLoading || !student || dataLoading) {
+    if (authLoading || !student || homeworksLoading || submissionsLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 

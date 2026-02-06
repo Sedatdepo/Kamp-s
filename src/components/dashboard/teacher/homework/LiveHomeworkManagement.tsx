@@ -78,7 +78,7 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
     const liveHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
+        return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'regular'));
     }, [db, classId]);
 
     const { data: liveHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(liveHomeworksQuery);
@@ -222,13 +222,14 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
                  });
             }
 
-            const homeworkData = {
+            const homeworkData: Partial<Homework> = {
                 text: text || '',
                 dueDate: dueDate ? dueDate.toISOString() : null,
                 file: fileData,
                 questions: questions || [],
-                link: link.trim() || null,
-                linkText: linkText.trim() || null,
+                link: link.trim() || undefined,
+                linkText: linkText.trim() || undefined,
+                assignmentType: 'regular',
             };
 
             if (editingHomework) {

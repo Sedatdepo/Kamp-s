@@ -142,7 +142,7 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
 
     const regularHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
-        return query(collection(db, 'classes', classId, 'homeworks'), where('rubric', '==', null));
+        return query(collection(db, 'classes', classId, 'homeworks'), where('assignmentType', '==', 'regular'));
     }, [db, classId]);
 
     const { data: homeworks, isLoading } = useCollection<Homework>(regularHomeworksQuery);
