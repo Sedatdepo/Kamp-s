@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare } from 'lucide-react';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -160,6 +161,7 @@ export default function StudentPortalPage() {
                     </Card>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ModuleCard title="Notlarım" icon={<GraduationCap className="text-emerald-500" />} href={`/portal/${classCode}/notlarim`} isPublished={currentClass.isGradesPublished} />
                     <ModuleCard title="Öğretmene Mesaj" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
                     <ModuleCard title="Oturma Planı" icon={<Grid className="text-blue-500" />} href={`/view/seating-plan/${classCode}`} isPublished={currentClass.isSeatingPlanPublished} />
                     <ModuleCard title="Nöbet Listesi" icon={<ListChecks className="text-green-500" />} href={`/view/duty-roster/${classCode}`} isPublished={currentClass.isDutyRosterPublished} />

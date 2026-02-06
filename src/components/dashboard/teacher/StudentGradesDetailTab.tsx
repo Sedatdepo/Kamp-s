@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -7,14 +8,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
-import { exportDetailedGradesToRtf } from '@/lib/word-export'; // Yeni import
+import { FileDown, Share2 } from 'lucide-react';
+import { exportDetailedGradesToRtf } from '@/lib/word-export';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/useAuth';
+import { doc, updateDoc } from 'firebase/firestore';
+
 
 interface StudentGradesDetailTabProps {
   students: Student[];
   teacherProfile: TeacherProfile | null;
-  currentClass: Class | null; // currentClass eklendi
+  currentClass: Class | null;
 }
 
 const calculateAverageForCriteria = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
@@ -22,7 +28,7 @@ const calculateAverageForCriteria = (scores: { [key: string]: number } | undefin
     const totalMax = criteria.reduce((sum, c) => sum + (Number(c.max) || 0), 0);
     if (totalMax === 0) return 0;
     const totalScore = Object.values(scores).reduce((sum, score) => sum + (Number(score) || 0), 0);
-    return (totalScore / totalMax) * 100;
+    return ((totalScore / totalMax) * 100);
 };
 
 const getGradeColor = (grade: number) => {
@@ -46,6 +52,20 @@ const GradeCell = ({ grade }: { grade: number | undefined | null }) => {
 
 export function StudentGradesDetailTab({ students, teacherProfile, currentClass }: StudentGradesDetailTabProps) {
     const { toast } = useToast();
+    const { db } = useAuth();
+    
+    const handleTogglePublish = async (checked: boolean) => {
+        if (!currentClass || !db) return;
+        const classRef = doc(db, 'classes', currentClass.id);
+        
+        try {
+            await updateDoc(classRef, { isGradesPublished: checked });
+            toast({ title: `Notlar öğrenciler için ${checked ? 'yayınlandı' : 'yayından kaldırıldı'}.` });
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Hata', description: 'Yayın durumu değiştirilemedi.' });
+        }
+    };
 
     const calculateTermAverage = (student: Student, termGrades?: GradingScores): number => {
         if (!termGrades || !teacherProfile) return 0;
@@ -116,9 +136,20 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
                         <CardTitle>Detaylı Not Listesi</CardTitle>
                         <CardDescription>Tüm sınıfın her iki döneme ait sınav, performans ve proje notlarını bir arada görüntüleyin.</CardDescription>
                     </div>
-                    <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
-                        <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="publish-grades"
+                                checked={currentClass?.isGradesPublished || false}
+                                onCheckedChange={handleTogglePublish}
+                                disabled={!currentClass}
+                            />
+                            <Label htmlFor="publish-grades" className="text-sm font-medium">Paylaş</Label>
+                        </div>
+                        <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
+                            <FileDown className="mr-2 h-4 w-4" /> RTF Olarak İndir
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
