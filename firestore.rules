@@ -35,7 +35,9 @@ service cloud.firestore {
     
     match /students/{studentId} {
       // A student can only read/update their OWN document.
-      allow read, update: if request.auth != null && request.auth.uid == resource.data.authUid;
+      allow list: if true;
+      allow get: if request.auth != null && resource.data.authUid == request.auth.uid;
+      allow update: if request.auth != null && request.resource.data.authUid == request.auth.uid;
     }
 
     match /infoForms/{formId} {
