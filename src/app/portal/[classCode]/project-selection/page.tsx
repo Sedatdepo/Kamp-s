@@ -56,11 +56,15 @@ export default function StudentProjectSelectionPage() {
 
     const handlePreferenceChange = (lessonId: string) => {
         const isSelected = selectedPreferences.includes(lessonId);
+        let newSelectedPreferences = [...selectedPreferences];
+
         if (isSelected) {
-            setSelectedPreferences(prev => prev.filter(id => id !== lessonId));
+            newSelectedPreferences = newSelectedPreferences.filter(id => id !== lessonId);
+            setSelectedPreferences(newSelectedPreferences);
         } else {
             if (selectedPreferences.length < 3) {
-                setSelectedPreferences(prev => [...prev, lessonId]);
+                newSelectedPreferences.push(lessonId);
+                setSelectedPreferences(newSelectedPreferences);
             } else {
                 toast({
                     variant: 'destructive',
@@ -135,8 +139,8 @@ export default function StudentProjectSelectionPage() {
                                      onClick={() => handlePreferenceChange(lesson.id)}
                                 >
                                      <Checkbox
+                                        id={`lesson-${lesson.id}`}
                                         checked={selectedPreferences.includes(lesson.id)}
-                                        onCheckedChange={() => handlePreferenceChange(lesson.id)}
                                      />
                                      <Label htmlFor={`lesson-${lesson.id}`} className="flex-grow cursor-pointer">{lesson.name}</Label>
                                      <span className="text-xs text-muted-foreground">Kontenjan: {lesson.quota}</span>

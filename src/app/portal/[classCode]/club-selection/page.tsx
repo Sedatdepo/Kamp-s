@@ -57,11 +57,15 @@ export default function StudentClubSelectionPage() {
 
     const handlePreferenceChange = (clubId: string) => {
         const isSelected = selectedPreferences.includes(clubId);
+        let newSelectedPreferences = [...selectedPreferences];
+
         if (isSelected) {
-            setSelectedPreferences(prev => prev.filter(id => id !== clubId));
+            newSelectedPreferences = newSelectedPreferences.filter(id => id !== clubId);
+            setSelectedPreferences(newSelectedPreferences);
         } else {
             if (selectedPreferences.length < 3) {
-                setSelectedPreferences(prev => [...prev, clubId]);
+                newSelectedPreferences.push(clubId);
+                setSelectedPreferences(newSelectedPreferences);
             } else {
                 toast({
                     variant: 'destructive',
@@ -136,9 +140,8 @@ export default function StudentClubSelectionPage() {
                                      onClick={() => handlePreferenceChange(club.id)}
                                 >
                                      <Checkbox
-                                        checked={selectedPreferences.includes(club.id)}
-                                        onCheckedChange={() => handlePreferenceChange(club.id)}
                                         id={`club-${club.id}`}
+                                        checked={selectedPreferences.includes(club.id)}
                                      />
                                      <Label htmlFor={`club-${club.id}`} className="flex-grow cursor-pointer">{club.name}</Label>
                                 </div>
