@@ -69,20 +69,20 @@ export default function StudentMessagingPage() {
     const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
 
     const messagesQuery = useMemoFirebase(() => {
-        if (!db || !student?.authUid) return null;
+        if (!db || !authUser?.uid) return null;
         return query(
             collection(db, 'messages'),
-            where('participants', 'array-contains', student.authUid),
+            where('participants', 'array-contains', authUser.uid),
             orderBy('timestamp', 'asc')
         );
-    }, [db, student?.authUid]);
+    }, [db, authUser?.uid]);
 
     const { data: messages } = useCollection<Message>(messagesQuery);
     
     // Mark messages as read
     useEffect(() => {
-        if (db && messages && messages.length > 0 && student?.authUid) {
-            const unread = messages.filter(msg => msg.receiverId === student.authUid && !msg.isRead);
+        if (db && messages && messages.length > 0 && authUser?.uid) {
+            const unread = messages.filter(msg => msg.receiverId === authUser.uid && !msg.isRead);
             if (unread.length > 0) {
                 const batch = writeBatch(db);
                 unread.forEach(msg => {
@@ -91,7 +91,7 @@ export default function StudentMessagingPage() {
                 batch.commit().catch(console.error);
             }
         }
-    }, [db, messages, student?.authUid]);
+    }, [db, messages, authUser?.uid]);
     
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -157,8 +157,8 @@ export default function StudentMessagingPage() {
                     <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-2 sm:p-4">
                         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                             {messages?.map((msg) => (
-                                <div key={msg.id} className={`flex my-2 ${msg.senderId === student?.authUid ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === student?.authUid ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
+                                <div key={msg.id} className={`flex my-2 ${msg.senderId === authUser?.uid ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-xs text-sm ${msg.senderId === authUser?.uid ? 'bg-primary text-primary-foreground' : 'bg-white border'}`}>
                                         <p className="whitespace-pre-wrap"><Linkify text={msg.text} /></p>
                                         <p className="text-xs opacity-70 text-right mt-1">{msg.timestamp ? format(msg.timestamp.toDate(), 'p', { locale: tr }) : ''}</p>
                                     </div>
