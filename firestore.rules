@@ -38,14 +38,14 @@ service cloud.firestore {
     
     match /students/{studentId} {
       // Students can only read and update their OWN document.
-      allow read, update: if request.auth != null && resource.data.authUid == request.auth.uid;
+      allow read, update: if request.auth != null && exists(/databases/$(database)/documents/students/$(studentId)) && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
     }
 
     match /infoForms/{formId} {
         // Students can only read/write their OWN info form.
         // This relies on the application logic correctly setting the authUid on the infoForm document.
         allow create: if request.auth.uid == request.resource.data.authUid;
-        allow read, update, delete: if request.auth.uid == resource.data.authUid;
+        allow read, update, delete: if exists(/databases/$(database)/documents/students/$(formId)) && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     
     match /classes/{classId}/homeworks/{homeworkId} {
