@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, onSnapshot, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge, Homework } from '@/lib/types';
 import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -92,12 +91,16 @@ export default function StudentPortalPage() {
         if (!db || !student?.id || !currentClass?.id) return null;
         return query(
             collection(db, 'classes', currentClass.id, 'homeworks'),
-            where('assignedStudents', 'array-contains', student.id),
-            orderBy('assignedDate', 'desc'),
-            limit(3) // Son 3 ödevi getir
+            where('assignedStudents', 'array-contains', student.id)
         );
     }, [db, currentClass?.id, student?.id]);
-    const { data: recentHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+    const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+
+    const recentHomeworks = useMemo(() => {
+        if (!allHomeworks) return [];
+        return [...allHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime()).slice(0, 3);
+    }, [allHomeworks]);
+
 
     const latestBehaviorLog = useMemo(() => {
         if (!student?.behaviorLogs || student.behaviorLogs.length === 0) return null;
@@ -231,15 +234,7 @@ export default function StudentPortalPage() {
                         )}
                         {currentClass.isGradesPublished && (
                             <Link href={`/portal/${classCode}/notlarim`} passHref>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-1">
-                                        <GraduationCap className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Notların Yayınlandı</p>
-                                        <p className="text-xs text-muted-foreground">Dönem notlarını ve genel ortalamanı görüntüle.</p>
-                                    </div>
-                                </div>
+                                <div className="flex items-center justify-center text-green-600 font-medium"><CheckCircle className="mr-2 h-4 w-4"/> Dolduruldu</div>
                             </Link>
                         )}
                         {noNotifications && (
