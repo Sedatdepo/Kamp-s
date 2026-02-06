@@ -72,16 +72,12 @@ export default function StudentMessagingPage() {
         if (!db || !authUser?.uid) return null;
         return query(
             collection(db, 'messages'),
-            where('participants', 'array-contains', authUser.uid)
+            where('participants', 'array-contains', authUser.uid),
+            orderBy('timestamp', 'asc')
         );
     }, [db, authUser?.uid]);
 
-    const { data: unsortedMessages } = useCollection<Message>(messagesQuery);
-
-    const messages = useMemo(() => {
-        if (!unsortedMessages) return null;
-        return [...unsortedMessages].sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
-    }, [unsortedMessages]);
+    const { data: messages } = useCollection<Message>(messagesQuery);
     
     // Mark messages as read
     useEffect(() => {
