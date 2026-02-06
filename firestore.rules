@@ -42,12 +42,10 @@ service cloud.firestore {
     }
 
     match /infoForms/{formId} {
-        // Students can read their own form (or know it doesn't exist).
-        allow get: if request.auth != null && (resource == null || resource.data.authUid == request.auth.uid);
-        // Students can create their own form.
-        allow create: if request.auth != null && request.resource.data.authUid == request.auth.uid;
-        // Students can update their own form.
-        allow update: if request.auth != null && resource.data.authUid == request.auth.uid;
+        // A student can read or write their own form. Ownership is determined by checking
+        // the authUid on the corresponding student document. This prevents stale authUid issues.
+        allow read, write: if request.auth != null && 
+                              get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     
     match /classes/{classId}/homeworks/{homeworkId} {
