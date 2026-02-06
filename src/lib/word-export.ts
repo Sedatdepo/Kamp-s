@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, GenerateMaterialOutput } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, GenerateMaterialOutput, StudentReportOutput } from './types';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -930,7 +930,7 @@ export function exportPrintableHomeworkToRtf({ assignment, rubric, teacherProfil
             </tbody>
         </table>
     `;
-
+    
     const questionsHtml = assignment.questions && assignment.questions.length > 0 ? `
         <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Sorular</h2>
         <ol>
@@ -1567,7 +1567,60 @@ export function exportInfoFormsStatusToRtf({ students, infoForms, currentClass, 
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
-// --- STUDENT DEVELOPMENT REPORT EXPORT ---
+// --- STUDENT DEVELOPMENT REPORT EXPORT (AI) ---
+interface ExportStudentDevelopmentReportArgs {
+    student: Student;
+    teacherProfile: TeacherProfile | null;
+    currentClass: Class;
+    aiReport: StudentReportOutput;
+}
+
+export function exportStudentDevelopmentReportToRtf({ student, teacherProfile, currentClass, aiReport }: ExportStudentDevelopmentReportArgs) {
+    const reportTitle = "Yapay Zeka Destekli Öğrenci Gelişim Raporu";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${student.name} - Gelişim Raporu`;
+
+    const content = `
+        ${header}
+        <h3>A. ÖĞRENCİ BİLGİLERİ</h3>
+        <p><b>Adı Soyadı:</b> ${student.name}</p>
+        <p><b>Sınıfı / Numarası:</b> ${currentClass.name} / ${student.number}</p>
+        <br/>
+
+        <h3>B. YAPAY ZEKA DEĞERLENDİRMESİ</h3>
+        
+        <h4>1. Dönem Analizi</h4>
+        <p>${aiReport.term1Analysis}</p>
+        <br/>
+        
+        <h4>2. Dönem Analizi</h4>
+        <p>${aiReport.term2Analysis}</p>
+        <br/>
+
+        <h4>Genel Sosyal ve Davranışsal Durum</h4>
+        <p>${aiReport.socialAndBehavioralStatus}</p>
+        <br/>
+
+        <h4>Risk ve Ailevi Durum Analizi</h4>
+        <p>${aiReport.overallRiskAnalysis}</p>
+        <br/>
+
+        <h4>Öne Çıkan Güçlü Yönler</h4>
+        <p>${aiReport.strengths.replace(/\n/g, '<br/>')}</p>
+        <br/>
+        
+        <h4>Öğretmene Yönelik Tavsiyeler</h4>
+        <p>${aiReport.recommendations.replace(/\n/g, '<br/>')}</p>
+
+        ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${student.name.replace(/ /g, '_')}_Gelisim_Raporu.rtf`);
+}
+
+// --- STUDENT DEVELOPMENT REPORT EXPORT (MANUAL) ---
 interface StudentDevelopmentReportArgs {
     student: Student;
     infoForm: InfoForm | null;
@@ -1580,7 +1633,7 @@ interface StudentDevelopmentReportArgs {
     lessons: Lesson[];
     aiReport: StudentReportOutput | null;
 }
-export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFactors, teacherProfile, currentClass, homeworks, submissions, disciplineRecords, lessons, aiReport }: StudentDevelopmentReportArgs) {
+export function exportStudentDevelopmentReportToRtf_manual({ student, infoForm, riskFactors, teacherProfile, currentClass, homeworks, submissions, disciplineRecords, lessons, aiReport }: StudentDevelopmentReportArgs) {
     const reportTitle = "ÖĞRENCİ GELİŞİM VE DEĞERLENDİRME RAPORU";
     const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
     const footer = generateReportFooter(teacherProfile);
@@ -1783,134 +1836,4 @@ export function exportStudentDevelopmentReportToRtf({ student, infoForm, riskFac
     `;
 
     downloadRtf(generateHtmlShell(content, title), `${title.replace(/ /g, '_')}.rtf`);
-}
-
-// --- HOMEWORK STATUS EXPORT ---
-interface ExportHomeworkStatusArgs {
-    students: Student[];
-    homeworks: Homework[]; 
-    submissions: Submission[];
-    currentClass: Class;
-    teacherProfile?: TeacherProfile | null;
-}
-
-export function exportHomeworkStatusToRtf({ students, homeworks, submissions, currentClass, teacherProfile }: ExportHomeworkStatusArgs) {
-    const reportTitle = "Ödev Durum Raporu";
-    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
-    const footer = generateReportFooter(teacherProfile);
-    const title = `${currentClass.name} - ${reportTitle}`;
-    
-    if (students.length === 0) return;
-    
-    const sortedHomeworks = [...homeworks].sort((a,b) => new Date(a.assignedDate).getTime() - new Date(b.assignedDate).getTime());
-
-    const tableHeader = `
-        <tr>
-            <th class="horizontal" style="width:5%;">S.No</th>
-            <th class="horizontal" style="width:10%;">Okul No</th>
-            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
-            ${sortedHomeworks.map((hw, i) => `<th class="horizontal" style="width:5%;"><span class="small-text">${i+1}. Ödev</span></th>`).join('')}
-        </tr>
-    `;
-
-    const dataRows = students.map((student, index) => {
-        return `
-            <tr>
-                <td class="center">${index + 1}</td>
-                <td class="center">${student.number}</td>
-                <td>${student.name}</td>
-                ${sortedHomeworks.map(hw => {
-                    const hasSubmitted = submissions.some(sub => sub.studentId === student.id && sub.homeworkId === hw.id);
-                    return `<td class="center bold">${hasSubmitted ? '+' : '-'}</td>`;
-                }).join('')}
-            </tr>
-        `;
-    }).join('');
-    
-    const homeworkList = sortedHomeworks.map((hw, i) => `<p class="small-text"><b>${i+1}. Ödev:</b> ${hw.text}</p>`).join('');
-
-    const content = `
-      ${header}
-      <table>
-        <thead>${tableHeader}</thead>
-        <tbody>${dataRows}</tbody>
-      </table>
-      <br>
-      <h3>Ödev Listesi</h3>
-      ${homeworkList}
-      ${footer}
-    `;
-
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
-}
-
-
-
-// --- HOMEWORK DETAIL EXPORT ---
-interface ExportHomeworkDetailArgs {
-    homework: Homework;
-    teacherProfile: TeacherProfile | null;
-    currentClass: Class | null;
-}
-
-export function exportHomeworkDetailToRtf({ homework, teacherProfile, currentClass }: ExportHomeworkDetailArgs) {
-    const title = homework.text;
-    const filename = `${title.replace(/ /g, '_').substring(0, 20)}.rtf`;
-
-    const header = generateReportHeader(`ÖDEV YÖNERGESİ`, currentClass!, teacherProfile);
-
-    const rubricHtml = homework.rubric ? `
-        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">DEĞERLENDİRME KRİTERLERİ</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
-            <thead>
-                <tr style="background-color: #f2f2f2;">
-                    <th style="padding: 8px; font-weight: bold;">Kriter</th>
-                    <th style="padding: 8px; font-weight: bold;">Açıklama</th>
-                    <th style="padding: 8px; font-weight: bold; width: 15%;">Puan</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${homework.rubric.map((item: any) => `
-                    <tr>
-                        <td style="padding: 8px;">${item.label}</td>
-                        <td style="padding: 8px;">${item.desc || ''}</td>
-                        <td style="padding: 8px; text-align: center;">${item.score}</td>
-                    </tr>
-                `).join('')}
-                <tr>
-                    <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">TOPLAM</td>
-                    <td style="padding: 8px; text-align: center; font-weight: bold;">${homework.rubric.reduce((sum: number, item: any) => sum + parseInt(item.score || '0', 10), 0)}</td>
-                </tr>
-            </tbody>
-        </table>
-    ` : '';
-    
-    const questionsHtml = homework.questions && homework.questions.length > 0 ? `
-        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">ÖDEV SORULARI</h3>
-        <ol>
-            ${homework.questions.map(q => `<li><p>${q.text}</p></li>`).join('')}
-        </ol>
-    ` : '';
-
-    const content = `
-      ${header}
-      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1cm;">
-        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 30px;">
-          <h1 style="margin: 0; font-size: 18pt;">${homework.text}</h1>
-          <p style="margin: 0; font-size: 11pt;">${teacherProfile?.reportConfig?.academicYear || '...'} Eğitim Öğretim Yılı ${homework.lessonName || 'Dersi'} Ödevi</p>
-          ${homework.dueDate ? `<p style="margin-top: 5px; font-size: 12pt; font-weight: bold;">Son Teslim Tarihi: ${format(parseISO(homework.dueDate), 'dd MMMM yyyy', { locale: tr })}</p>` : ''}
-        </div>
-        
-        <h3 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">YÖNERGE</h3>
-        <p>${(homework.instructions || '').replace(/\n/g, '<br/>')}</p>
-        
-        ${questionsHtml}
-        ${rubricHtml}
-
-      </div>
-    `;
-
-    const finalHtml = generateHtmlShell(content, title);
-    downloadRtf(finalHtml, filename);
 }

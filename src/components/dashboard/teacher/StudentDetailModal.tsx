@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, UserCheck, GraduationCap, Edit, Wand2, Loader2 } from 'lucide-react';
+import { BookOpen, UserCheck, GraduationCap, Edit, Wand2, Loader2, FileDown } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { generateStudentReport } from '@/ai/flows/generate-student-report-flow';
+import { exportStudentDevelopmentReportToRtf } from '@/lib/word-export';
 
 
 interface StudentDetailModalProps {
@@ -309,6 +310,19 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
     }
   };
 
+  const handleExportReport = () => {
+    if (!aiReport || !student || !currentClass || !teacherProfile) {
+        toast({ title: 'Rapor Yok', description: 'Lütfen önce yapay zeka ile bir rapor oluşturun.', variant: 'destructive'});
+        return;
+    }
+    exportStudentDevelopmentReportToRtf({
+        student,
+        teacherProfile,
+        currentClass,
+        aiReport,
+    });
+  }
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -357,8 +371,18 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                 <TabsContent value="report" className="mt-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Yapay Zeka Destekli Gelişim Raporu</CardTitle>
-                      <CardDescription>Öğrencinin tüm verilerini analiz ederek bütüncül bir rapor oluşturun.</CardDescription>
+                      <div className="flex justify-between items-start">
+                          <div>
+                              <CardTitle>Yapay Zeka Destekli Gelişim Raporu</CardTitle>
+                              <CardDescription>Öğrencinin tüm verilerini analiz ederek bütüncül bir rapor oluşturun.</CardDescription>
+                          </div>
+                          {aiReport && (
+                              <Button variant="outline" size="sm" onClick={handleExportReport}>
+                                  <FileDown className="mr-2 h-4 w-4" />
+                                  Word Olarak İndir
+                              </Button>
+                          )}
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>

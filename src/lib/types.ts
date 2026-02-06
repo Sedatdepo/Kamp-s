@@ -639,8 +639,6 @@ export interface Database {
     dersProgrami: Timetable;
 }
 
-// --- SOCIOGRAM AI ANALYSIS TYPES ---
-
 export const SociogramAnalysisInput = z.object({
     studentNames: z.array(z.string()).describe("Sınıftaki tüm öğrencilerin isim listesi."),
     relationships: z.array(z.object({
@@ -792,5 +790,30 @@ fatherName: string;
 }
 
 export interface EdebiyatAsistanDocument extends Archivable {}
+
+// --- AI Flow Schemas ---
+export const StudentReportInputSchema = z.object({
+  studentName: z.string().describe('Öğrencinin adı ve soyadı.'),
+  classInfo: z.string().describe('Öğrencinin sınıfı, örneğin "10/A".'),
+  finalAverage: z.number().optional().describe('Öğrencinin yıl sonu not ortalaması.'),
+  term1Average: z.number().optional().describe('Öğrencinin 1. dönem not ortalaması.'),
+  term2Average: z.number().optional().describe('Öğrencinin 2. dönem not ortalaması.'),
+  attendanceCount: z.number().describe('Öğrencinin toplam devamsız gün sayısı.'),
+  behaviorScore: z.number().describe('Öğrencinin davranış puanı (100 üzerinden).'),
+  riskFactors: z.array(z.string()).describe('Öğrencinin kendisi için işaretlediği risk faktörlerinin listesi.'),
+  infoFormData: z.string().describe('Öğrencinin doldurduğu bilgi formundan elde edilen kişisel ve ailevi bilgileri içeren metin.'),
+  teacherNotes: z.string().optional().describe('Öğretmenin öğrenci hakkındaki ek gözlem notları.'),
+});
+export type StudentReportInput = z.infer<typeof StudentReportInputSchema>;
+
+export const StudentReportOutputSchema = z.object({
+  term1Analysis: z.string().describe("1. Dönem Değerlendirmesi: Öğrencinin ilk dönem not ortalaması, davranışları ve devamsızlıkları temelinde akademik ve sosyal durumunun analizi."),
+  term2Analysis: z.string().describe("2. Dönem Değerlendirmesi: Öğrencinin ikinci dönem performansının, ilk dönemle karşılaştırmalı olarak akademik ve sosyal açıdan analizi."),
+  socialAndBehavioralStatus: z.string().describe("Öğrencinin davranış puanı, devamsızlık durumu ve genel sosyal uyumu hakkında yıl geneli bir değerlendirme."),
+  overallRiskAnalysis: z.string().describe("Öğrencinin beyan ettiği risk faktörleri ve öğrenci bilgi formu verilerinin, genel durumu üzerindeki olası etkilerinin bütüncül bir analizi."),
+  strengths: z.string().describe("Tüm veriler ışığında öğrencinin öne çıkan güçlü yönleri, potansiyeli ve olumlu özelliklerinin madde madde listesi."),
+  recommendations: z.string().describe("Öğretmene yönelik, bu öğrenciye özel, somut ve eyleme geçirilebilir pedagojik tavsiyelerin madde madde listesi."),
+});
+export type StudentReportOutput = z.infer<typeof StudentReportOutputSchema>;
     
     
