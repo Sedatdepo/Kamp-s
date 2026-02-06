@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -114,7 +115,7 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
             <GradeCard title="1. Performans" icon={<GraduationCap/>} value={perf1} />
             <GradeCard title="2. Performans" icon={<GraduationCap/>} value={perf2} />
             <GradeCard title="Proje Ödevi" icon={<BookOpen/>} value={projAvg} />
-            <GradeCard title="Davranış Notu" icon={<UserCheck/>} value={behaviorAvg} />
+            <GradeCard title="Davranış Puanı" icon={<UserCheck/>} value={student.behaviorScore} />
         </div>
     )
 };
@@ -374,25 +375,31 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                         {aiReport && (
                             <div className="space-y-4 pt-4 border-t">
                                 <h3 className="font-bold text-lg">Oluşturulan Rapor</h3>
-                                <div className="p-4 bg-blue-50 rounded-lg">
-                                    <h4 className="font-semibold">Akademik Durum</h4>
-                                    <p>{aiReport.academicStatus}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                        <h4 className="font-semibold text-blue-800">1. Dönem Analizi</h4>
+                                        <p className="text-sm text-slate-700">{aiReport.term1Analysis}</p>
+                                    </div>
+                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                                        <h4 className="font-semibold text-purple-800">2. Dönem Analizi</h4>
+                                        <p className="text-sm text-slate-700">{aiReport.term2Analysis}</p>
+                                    </div>
                                 </div>
-                                <div className="p-4 bg-green-50 rounded-lg">
-                                    <h4 className="font-semibold">Sosyal ve Davranışsal Durum</h4>
-                                    <p>{aiReport.socialAndBehavioralStatus}</p>
+                                <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                                    <h4 className="font-semibold text-green-800">Genel Sosyal ve Davranışsal Durum</h4>
+                                    <p className="text-sm text-slate-700">{aiReport.socialAndBehavioralStatus}</p>
                                 </div>
-                                <div className="p-4 bg-red-50 rounded-lg">
-                                    <h4 className="font-semibold">Risk Analizi</h4>
-                                    <p>{aiReport.riskAnalysis}</p>
+                                <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+                                    <h4 className="font-semibold text-red-800">Risk ve Ailevi Durum Analizi</h4>
+                                    <p className="text-sm text-slate-700">{aiReport.overallRiskAnalysis}</p>
                                 </div>
-                                <div className="p-4 bg-yellow-50 rounded-lg">
-                                    <h4 className="font-semibold">Güçlü Yönler</h4>
-                                    <p className="whitespace-pre-line">{aiReport.strengths}</p>
+                                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                                    <h4 className="font-semibold text-yellow-800">Güçlü Yönler</h4>
+                                    <p className="text-sm text-slate-700 whitespace-pre-line">{aiReport.strengths}</p>
                                 </div>
-                                <div className="p-4 bg-indigo-50 rounded-lg">
-                                    <h4 className="font-semibold">Öğretmene Tavsiyeler</h4>
-                                    <p className="whitespace-pre-line">{aiReport.recommendations}</p>
+                                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                                    <h4 className="font-semibold text-indigo-800">Öğretmene Tavsiyeler</h4>
+                                    <p className="text-sm text-slate-700 whitespace-pre-line">{aiReport.recommendations}</p>
                                 </div>
                             </div>
                         )}
