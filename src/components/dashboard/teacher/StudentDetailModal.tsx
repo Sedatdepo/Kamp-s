@@ -1,22 +1,24 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission } from '@/lib/types';
+import { Student, TeacherProfile, Criterion, GradingScores, Class, Homework, Submission, StudentReportOutput, RiskFactor, InfoForm } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, UserCheck, GraduationCap, Edit } from 'lucide-react';
+import { BookOpen, UserCheck, GraduationCap, Edit, Wand2, Loader2 } from 'lucide-react';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { generateStudentReport } from '@/ai/flows/generate-student-report-flow';
 
 
 interface StudentDetailModalProps {
@@ -202,6 +204,27 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
 
 export function StudentDetailModal({ student, teacherProfile, currentClass, isOpen, setIsOpen }: StudentDetailModalProps) {
   const [activeTab, setActiveTab] = useState('grades');
+  const { db } = useAuth();
+  const { toast } = useToast();
+  
+  // AI Report State
+  const [aiReport, setAiReport] = useState<StudentReportOutput | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [teacherNotes, setTeacherNotes] = useState('');
+
+  // Fetch data needed for the report
+  const riskFactorsQuery = useMemoFirebase(() => {
+    if (!db || !teacherProfile?.id) return null;
+    return query(collection(db, 'riskFactors'), where('teacherId', '==', teacherProfile.id));
+  }, [db, teacherProfile?.id]);
+  const { data: allRiskFactors } = useCollection<RiskFactor>(riskFactorsQuery);
+  
+  const infoFormQuery = useMemoFirebase(() => {
+    if(!db || !student?.id) return null;
+    return doc(db, 'infoForms', student.id);
+  }, [db, student?.id]);
+  const { data: infoForm } = useDoc<InfoForm>(infoFormQuery);
+
 
   const calculateTermAverage = (termGrades?: GradingScores) => {
     if (!termGrades || !teacherProfile) return 0;
@@ -241,6 +264,51 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
   const term2Avg = calculateTermAverage(student.term2Grades);
   const finalAverage = (term1Avg > 0 && term2Avg > 0) ? (term1Avg + term2Avg) / 2 : (term1Avg > 0 ? term1Avg : term2Avg);
 
+  const handleGenerateReport = async () => {
+    if (!student || !currentClass || !allRiskFactors) {
+      toast({ title: 'Eksik Veri', description: 'Rapor oluşturmak için gerekli tüm veriler yüklenemedi.', variant: 'destructive' });
+      return;
+    }
+    setIsGeneratingReport(true);
+    setAiReport(null);
+
+    const riskFactorLabels = (student.risks || [])
+      .map(riskId => allRiskFactors.find(rf => rf.id === riskId)?.label)
+      .filter(Boolean) as string[];
+
+    let infoFormDataString = "Öğrenci bilgi formu doldurulmamış.";
+    if (infoForm) {
+      infoFormDataString = Object.entries(infoForm)
+        .filter(([key, value]) => key !== 'id' && key !== 'studentId' && key !== 'submitted' && value)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+    }
+    
+    try {
+      const reportInput = {
+        studentName: student.name,
+        classInfo: currentClass.name,
+        finalAverage: finalAverage,
+        term1Average: term1Avg,
+        term2Average: term2Avg,
+        attendanceCount: student.attendance?.filter(a => a.status === 'absent').length || 0,
+        behaviorScore: student.behaviorScore || 100,
+        riskFactors: riskFactorLabels,
+        infoFormData: infoFormDataString,
+        teacherNotes: teacherNotes,
+      };
+
+      const result = await generateStudentReport(reportInput);
+      setAiReport(result);
+    } catch(err) {
+      console.error(err);
+      toast({ title: 'Yapay Zeka Hatası', description: 'Rapor oluşturulurken bir sorun oluştu.', variant: 'destructive'});
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl p-0">
@@ -257,9 +325,10 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
         </DialogHeader>
         <div className="p-6 pt-0 bg-muted/50">
             <Tabs defaultValue="grades" onValueChange={(val) => setActiveTab(val)}>
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="grades">Not Durumu</TabsTrigger>
                     <TabsTrigger value="homeworks">Ödevler</TabsTrigger>
+                    <TabsTrigger value="report">Gelişim Raporu</TabsTrigger>
                 </TabsList>
                 <TabsContent value="grades" className="mt-4">
                      <Tabs defaultValue="term1">
@@ -283,6 +352,52 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                 </TabsContent>
                 <TabsContent value="homeworks" className="mt-4">
                    <HomeworkStatusTab student={student} currentClass={currentClass} />
+                </TabsContent>
+                <TabsContent value="report" className="mt-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Yapay Zeka Destekli Gelişim Raporu</CardTitle>
+                      <CardDescription>Öğrencinin tüm verilerini analiz ederek bütüncül bir rapor oluşturun.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <Label htmlFor="teacher-notes">Ek Öğretmen Notları</Label>
+                            <Textarea id="teacher-notes" value={teacherNotes} onChange={(e) => setTeacherNotes(e.target.value)} placeholder="Rapor oluşturulurken dikkate alınmasını istediğiniz ek gözlemlerinizi buraya yazın..." />
+                        </div>
+                        <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
+                            {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                            Rapor Oluştur
+                        </Button>
+
+                        {isGeneratingReport && <div className="text-center p-4"><Loader2 className="h-6 w-6 animate-spin mx-auto"/> <p>Rapor oluşturuluyor...</p></div>}
+                        
+                        {aiReport && (
+                            <div className="space-y-4 pt-4 border-t">
+                                <h3 className="font-bold text-lg">Oluşturulan Rapor</h3>
+                                <div className="p-4 bg-blue-50 rounded-lg">
+                                    <h4 className="font-semibold">Akademik Durum</h4>
+                                    <p>{aiReport.academicStatus}</p>
+                                </div>
+                                <div className="p-4 bg-green-50 rounded-lg">
+                                    <h4 className="font-semibold">Sosyal ve Davranışsal Durum</h4>
+                                    <p>{aiReport.socialAndBehavioralStatus}</p>
+                                </div>
+                                <div className="p-4 bg-red-50 rounded-lg">
+                                    <h4 className="font-semibold">Risk Analizi</h4>
+                                    <p>{aiReport.riskAnalysis}</p>
+                                </div>
+                                <div className="p-4 bg-yellow-50 rounded-lg">
+                                    <h4 className="font-semibold">Güçlü Yönler</h4>
+                                    <p className="whitespace-pre-line">{aiReport.strengths}</p>
+                                </div>
+                                <div className="p-4 bg-indigo-50 rounded-lg">
+                                    <h4 className="font-semibold">Öğretmene Tavsiyeler</h4>
+                                    <p className="whitespace-pre-line">{aiReport.recommendations}</p>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                  </Card>
                 </TabsContent>
             </Tabs>
         </div>
