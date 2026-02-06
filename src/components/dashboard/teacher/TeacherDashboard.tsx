@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDialog } from './ProfileDialog';
+import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -38,7 +39,6 @@ const KazanımlarTab = dynamic(() => import('@/components/dashboard/teacher/Kaza
 const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
 const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.StudentInfoFormTab), { loading: LoadingSpinner });
 const GradingToolTab = dynamic(() => import('@/components/dashboard/teacher/GradingToolTab').then(mod => mod.GradingToolTab), { loading: LoadingSpinner });
-const CommunicationTab = dynamic(() => import('@/components/dashboard/teacher/CommunicationTab').then(mod => mod.CommunicationTab), { loading: LoadingSpinner });
 const HomeworkTab = dynamic(() => import('@/components/dashboard/teacher/homework/HomeworkTab').then(mod => mod.HomeworkTab), { loading: LoadingSpinner });
 const ElectionTab = dynamic(() => import('@/components/dashboard/teacher/ElectionTab').then(mod => mod.ElectionTab), { loading: LoadingSpinner });
 const AnnualPlanTab = dynamic(() => import('@/components/dashboard/teacher/AnnualPlanTab').then(mod => mod.AnnualPlanTab), { loading: LoadingSpinner });
