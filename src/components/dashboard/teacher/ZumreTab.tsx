@@ -52,21 +52,6 @@ const VARSAYILAN_BRANSLAR = [
     "Matematik Öğretmeni", "Türk Dili ve Edebiyatı Öğretmeni", "Tarih Öğretmeni"
 ];
 
-const tr = (text: string) => {
-    if (!text) return '';
-    let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
-    const replacements: { [key: string]: string } = {
-        'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
-        'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
-        'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
-    };
-
-    for (const char in replacements) {
-        escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
-    }
-    return escapedText;
-};
-
 export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherProfile | null }) {
     const { db: localDb, setDb: setLocalDb } = useDatabase();
     const { zumreDocuments: archives = [] } = localDb;
@@ -230,23 +215,23 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
             const gorusme = data.gorusmeler[index];
             let opinionsHtml = '';
             if (gorusme?.opinions && gorusme.opinions.length > 0) {
-                opinionsHtml = '<ul>' + gorusme.opinions.map(op => `<li><b>${tr(op.name)}:</b> ${tr(op.text)}</li>`).join('') + '</ul>';
+                opinionsHtml = '<ul>' + gorusme.opinions.map(op => `<li><b>${op.name}:</b> ${op.text}</li>`).join('') + '</ul>';
             }
             return `
                 <div style="margin-top: 15px;">
-                    <p style="margin:0; font-weight: bold;">${index + 1}. ${tr(item.madde)}</p>
-                    <div style="text-indent: 0; margin-top: 5px;">${tr((gorusme?.detay || 'Görüşülmedi.')).replace(/\n/g, '<br/>')}</div>
+                    <p style="margin:0; font-weight: bold;">${index + 1}. ${item.madde}</p>
+                    <div style="text-indent: 0; margin-top: 5px;">${(gorusme?.detay || 'Görüşülmedi.')}</div>
                     ${opinionsHtml}
                 </div>
             `;
         }).join('');
-        const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${tr(karar)}</p>`).join('');
+        const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${karar}</p>`).join('');
         
         return `
           <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Zümre Tutanağı</title>
           <style>body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; } .container { width: 90%; margin: auto; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 5px; }</style>
           </head><body><div class="container">
-              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? tr(data.okulAdi.toLocaleUpperCase('tr-TR')) : '...................... MÜDÜRLÜĞÜ'}<br/>${tr(data.academicYear)} EĞİTİM-ÖĞRETİM YILI ${tr(data.sinif.toLocaleUpperCase('tr-TR'))} ZÜMRESİ<br/>${tr(data.donem.toLocaleUpperCase('tr-TR'))} ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
+              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? data.okulAdi.toLocaleUpperCase('tr-TR') : '...................... MÜDÜRLÜĞÜ'}<br/>${data.academicYear} EĞİTİM-ÖĞRETİM YILI ${data.sinif.toLocaleUpperCase('tr-TR')} ZÜMRESİ<br/>${data.donem.toLocaleUpperCase('tr-TR')} ZÜMRE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
               <br/>
               <p><strong>Toplantı Tarihi:</strong> ${formattedDate} &nbsp;&nbsp; <strong>Saat:</strong> ${data.saat} &nbsp;&nbsp; <strong>Yer:</strong> ${data.yer}</p>
               <br/>
@@ -257,7 +242,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
               <table style="page-break-inside: avoid;">
                 <tr style="background-color: #f0f0f0;"><th colspan="3">TOPLANTIYA KATILANLAR</th></tr>
                 <tr><th>Sıra</th><th>Branş / Adı Soyadı</th><th>İmza</th></tr>
-                ${data.katilimcilar.filter(k => k.brans).map((k, i) => `<tr><td style="text-align:center; width:50px;">${i + 1}</td><td><b>${tr(k.brans)}</b><br/>${tr(k.adSoyad)}</td><td></td></tr>`).join('')}
+                ${data.katilimcilar.filter(k => k.brans).map((k, i) => `<tr><td style="text-align:center; width:50px;">${i + 1}</td><td><b>${k.brans}</b><br/>${k.adSoyad}</td><td></td></tr>`).join('')}
               </table>
               <br/><br/>
               <div style="text-align: center; margin-left: 50%;">
@@ -270,7 +255,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     const handleExport = () => {
         const content = generateDocumentHTML(form.getValues());
         const filename = `Zumre_Tutanagi_${form.getValues('sinif')}.doc`;
-        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

@@ -58,22 +58,6 @@ const VARSAYILAN_KATILIMCILAR = [
     "Biyoloji", "Tarih", "Coğrafya", "Din Kültürü ve Ahlak Bilgisi", "İngilizce"
 ];
 
-const tr = (text: string) => {
-    if (!text) return '';
-    let escapedText = text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}');
-    const replacements: { [key: string]: string } = {
-        'ı': "\\'fd", 'İ': "\\'dd", 'ş': "\\'fe", 'Ş': "\\'de",
-        'ğ': "\\'f0", 'Ğ': "\\'d0", 'ü': "\\'fc", 'Ü': "\\'dc",
-        'ö': "\\'f6", 'Ö': "\\'d6", 'ç': "\\'e7", 'Ç': "\\'c7",
-    };
-
-    for (const char in replacements) {
-        escapedText = escapedText.replace(new RegExp(char, 'g'), replacements[char]);
-    }
-    return escapedText;
-};
-
-
 export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProfile | null }) {
     const { db: localDb, setDb: setLocalDb } = useDatabase();
     const { sokDocuments: archives = [] } = localDb;
@@ -233,7 +217,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
         const gorusmelerHtml = data.gundemMaddeleri.map((item, index) => `
             <div style="margin-top: 15px;">
                 <p style="margin:0; font-weight: bold;">${index + 1}. ${item.madde}</p>
-                <div style="text-indent: 0; margin-top: 5px;">${(data.gorusmeler[index]?.detay || 'Görüşülmedi.').replace(/\n/g, '<br/>')}</div>
+                <div style="text-indent: 0; margin-top: 5px;">${(data.gorusmeler[index]?.detay || 'Görüşülmedi.')}</div>
             </div>
         `).join('');
         const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${karar}</p>`).join('');
@@ -242,7 +226,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
           <!DOCTYPE html><html><head><meta charset="UTF-8"><title>ŞÖK Tutanağı</title>
           <style>body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; } .container { width: 90%; margin: auto; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 5px; }</style>
           </head><body><div class="container">
-              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? tr(data.okulAdi.toLocaleUpperCase('tr-TR')) : '...................... MÜDÜRLÜĞÜ'}<br/>${tr(data.academicYear)} EĞİTİM-ÖĞRETİM YILI ${tr(data.sinif)} SINIFI<br/>${tr(data.donem.toLocaleUpperCase('tr-TR'))} ŞUBE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
+              <h3 style="text-align: center;">T.C.<br/>${data.okulAdi ? data.okulAdi.toLocaleUpperCase('tr-TR') : '...................... MÜDÜRLÜĞÜ'}<br/>${data.academicYear} EĞİTİM-ÖĞRETİM YILI ${data.sinif} SINIFI<br/>${data.donem.toLocaleUpperCase('tr-TR')} ŞUBE ÖĞRETMENLER KURULU TOPLANTI TUTANAĞI</h3>
               <br/>
               <p><strong>Toplantı Tarihi:</strong> ${formattedDate} &nbsp;&nbsp; <strong>Saat:</strong> ${data.saat} &nbsp;&nbsp; <strong>Yer:</strong> ${data.yer}</p>
               <br/>
@@ -266,7 +250,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
     const handleExport = () => {
         const content = generateDocumentHTML(form.getValues());
         const filename = `SOK_Tutanagi_${form.getValues('sinif')}.doc`;
-        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
