@@ -9,14 +9,6 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    function isStudentOwner(studentId) {
-      // Helper to check if the requesting user is the owner of a student document.
-      // It's safer to check for existence before getting the data.
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/students/$(studentId)) &&
-             get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
-    }
-    
     // --- CORE TEACHER RULE ---
     // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
     match /teachers/{teacherId} {
@@ -46,13 +38,15 @@ service cloud.firestore {
     
     match /students/{studentId} {
       allow read: if true; 
-      // Use the helper function for clarity and safety
-      allow update: if isStudentOwner(studentId);
+      allow update: if request.auth != null &&
+                     exists(/databases/$(database)/documents/students/$(studentId)) &&
+                     get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid;
     }
 
     match /infoForms/{formId} {
-        // Use the helper function. The formId is the studentId.
-        allow read, write: if isStudentOwner(formId);
+        allow read, write: if request.auth != null &&
+                             exists(/databases/$(database)/documents/students/$(formId)) &&
+                             get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     
     match /classes/{classId}/homeworks/{homeworkId} {
