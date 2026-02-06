@@ -140,9 +140,13 @@ export default function StudentInfoFormPage() {
             const infoFormRef = doc(db, 'infoForms', student.id);
             const studentRef = doc(db, 'students', student.id);
 
-            const infoFormData: Omit<InfoForm, 'id'> = {
-                ...(existingForm || {}),
-                ...data,
+            // Create a clean data object by filtering out undefined values which Firestore doesn't support.
+            const cleanData = Object.fromEntries(
+                Object.entries(data).filter(([, v]) => v !== undefined)
+            );
+
+            const infoFormData = {
+                ...cleanData,
                 studentId: student.id,
                 submitted: true,
                 authUid: student.authUid,
