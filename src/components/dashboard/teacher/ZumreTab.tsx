@@ -19,6 +19,7 @@ import { TeacherProfile, ZumreDocument } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // --- FORM SCHEMAS & TYPES ---
 const formSchema = z.object({
@@ -37,7 +38,10 @@ const formSchema = z.object({
         adSoyad: z.string()
     })),
     gundemMaddeleri: z.array(z.object({ madde: z.string() })),
-    gorusmeler: z.array(z.object({ detay: z.string() })),
+    gorusmeler: z.array(z.object({ 
+        detay: z.string(),
+        opinions: z.array(z.object({ name: z.string(), text: z.string() })).optional()
+    })),
     kararlar: z.string(),
 });
 
@@ -82,9 +86,9 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         yer: "Zümre Odası",
         mudurYardimcisi: teacherProfile?.principalName || "",
         sinifRehberOgretmeni: teacherProfile?.name || "",
-        katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: (b === "Zümre Başkanı" ? teacherProfile?.name : "") || '' })),
+        katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: (b === "Zümre Başkanı" ? teacherProfile?.departmentHeadName || teacherProfile?.name : "") || '' })),
         gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
-        gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '' })),
+        gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '', opinions: [] })),
         kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
         okulAdi: teacherProfile?.schoolName || "",
     }), [teacherProfile]);
@@ -93,9 +97,12 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         resolver: zodResolver(formSchema),
         defaultValues,
     });
+    
+    const katilimcilar = form.watch('katilimcilar');
 
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
     const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
+    const { fields: katilimciFields, append: appendKatilimci, remove: removeKatilimci } = useFieldArray({ control: form.control, name: "katilimcilar" });
 
     const handleNewRecord = useCallback(() => {
         setSelectedRecordId(null);
@@ -219,13 +226,21 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
     const generateDocumentHTML = (data: FormData) => {
         const formattedDate = new Date(data.tarih).toLocaleDateString('tr-TR');
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
-        const gorusmelerHtml = data.gundemMaddeleri.map((item, index) => `
-            <div style="margin-top: 15px;">
-                <p style="margin:0; font-weight: bold;">${index + 1}. ${item.madde}</p>
-                <div style="text-indent: 0; margin-top: 5px;">${(data.gorusmeler[index]?.detay || 'Görüşülmedi.').replace(/\n/g, '<br/>')}</div>
-            </div>
-        `).join('');
-        const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${karar}</p>`).join('');
+        const gorusmelerHtml = data.gundemMaddeleri.map((item, index) => {
+            const gorusme = data.gorusmeler[index];
+            let opinionsHtml = '';
+            if (gorusme?.opinions && gorusme.opinions.length > 0) {
+                opinionsHtml = '<ul>' + gorusme.opinions.map(op => `<li><b>${tr(op.name)}:</b> ${tr(op.text)}</li>`).join('') + '</ul>';
+            }
+            return `
+                <div style="margin-top: 15px;">
+                    <p style="margin:0; font-weight: bold;">${index + 1}. ${tr(item.madde)}</p>
+                    <div style="text-indent: 0; margin-top: 5px;">${tr((gorusme?.detay || 'Görüşülmedi.')).replace(/\n/g, '<br/>')}</div>
+                    ${opinionsHtml}
+                </div>
+            `;
+        }).join('');
+        const kararlarHtml = data.kararlar.split('\n').map(karar => `<p style="margin: 0; padding: 2px 0;">${tr(karar)}</p>`).join('');
         
         return `
           <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Zümre Tutanağı</title>
@@ -242,7 +257,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
               <table style="page-break-inside: avoid;">
                 <tr style="background-color: #f0f0f0;"><th colspan="3">TOPLANTIYA KATILANLAR</th></tr>
                 <tr><th>Sıra</th><th>Branş / Adı Soyadı</th><th>İmza</th></tr>
-                ${data.katilimcilar.filter(k => k.brans).map((k, i) => `<tr><td style="text-align:center; width:50px;">${i + 1}</td><td><b>${k.brans}</b><br/>${k.adSoyad}</td><td></td></tr>`).join('')}
+                ${data.katilimcilar.filter(k => k.brans).map((k, i) => `<tr><td style="text-align:center; width:50px;">${i + 1}</td><td><b>${tr(k.brans)}</b><br/>${tr(k.adSoyad)}</td><td></td></tr>`).join('')}
               </table>
               <br/><br/>
               <div style="text-align: center; margin-left: 50%;">
@@ -309,6 +324,21 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                                     <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Onaylayan</FormLabel><FormControl><Input placeholder="Okul Müdürü / Müdür Yrd." {...field} /></FormControl></FormItem>)} />
                                 </CardContent>
                             </Card>
+                            
+                             <Card>
+                                <CardHeader><CardTitle>Katılımcı Öğretmenler</CardTitle></CardHeader>
+                                <CardContent className="space-y-2">
+                                    {katilimciFields.map((item, index) => (
+                                        <div key={item.id} className="flex items-center gap-2">
+                                            <Input {...form.register(`katilimcilar.${index}.brans`)} placeholder="Branş" />
+                                            <Input {...form.register(`katilimcilar.${index}.adSoyad`)} placeholder="Ad Soyad" />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeKatilimci(index)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" onClick={() => appendKatilimci({ brans: '', adSoyad: ''})}><PlusCircle className="mr-2 h-4 w-4"/> Katılımcı Ekle</Button>
+                                </CardContent>
+                            </Card>
+
                             <Card>
                                 <CardHeader><CardTitle>Gündem ve Görüşmeler</CardTitle></CardHeader>
                                 <CardContent className="space-y-6">
@@ -320,7 +350,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                                                 <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                             </div>
                                             <div className="pl-8 relative">
-                                                <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
+                                                <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Genel görüşme detayları..." />
                                                 <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
                                                     {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
                                                     Doldur
@@ -328,9 +358,10 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                                             </div>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '', opinions: [] }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                                 </CardContent>
                             </Card>
+
                              <Card>
                                 <CardHeader>
                                     <div className="flex justify-between items-center">
