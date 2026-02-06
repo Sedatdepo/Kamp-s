@@ -5,14 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
-import { Loader2, User, Key, LogIn } from 'lucide-react';
+import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously, type User } from 'firebase/auth';
 
 
 export default function StudentLoginPage() {
@@ -81,8 +81,12 @@ export default function StudentLoginPage() {
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
              try {
-                const userCredential = await signInAnonymously(auth);
-                const user = userCredential.user;
+                let user: User | null = auth.currentUser;
+                // If there's no user, or the user is not anonymous (e.g. a teacher is logged in), sign in anonymously.
+                if (!user || !user.isAnonymous) {
+                    const userCredential = await signInAnonymously(auth);
+                    user = userCredential.user;
+                }
                 
                 if (user) {
                     const studentRef = doc(firestore, 'students', student.id);
@@ -94,6 +98,8 @@ export default function StudentLoginPage() {
 
                     sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: updatedStudent, classCode }));
                     router.push(`/portal/${classCode}`);
+                } else {
+                    throw new Error("Kullanıcı oturumu oluşturulamadı.");
                 }
             } catch (e) {
                 console.error("Anonymous sign-in or student update failed:", e);
@@ -125,7 +131,7 @@ export default function StudentLoginPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><UserIcon /> Öğrenci Girişi</CardTitle>
                         <CardDescription>Portala erişmek için bilgilerinizi girin.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
