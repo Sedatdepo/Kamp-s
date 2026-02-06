@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { Student, Class, TeacherProfile, Badge } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone } from 'lucide-react';
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, onSnapshot, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { Student, Class, TeacherProfile, Badge, Homework } from '@/lib/types';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -36,7 +36,7 @@ export default function StudentPortalPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore: db } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
@@ -62,9 +62,9 @@ export default function StudentPortalPage() {
     
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !firestore) return;
+        if (!student?.id || !db) return;
 
-        const studentRef = doc(firestore, 'students', student.id);
+        const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
             if (docSnap.exists()) {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
@@ -80,20 +80,37 @@ export default function StudentPortalPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, firestore]);
+    }, [student?.id, db]);
 
-    const classDocRef = useMemoFirebase(() => (student ? doc(firestore, 'classes', student.classId) : null), [firestore, student]);
+    const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
     
-    const teacherDocRef = useMemoFirebase(() => (student ? doc(firestore, 'teachers', student.teacherId) : null), [firestore, student]);
+    const teacherDocRef = useMemoFirebase(() => (student ? doc(db, 'teachers', student.teacherId) : null), [db, student]);
     const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
+    
+    const homeworksQuery = useMemoFirebase(() => {
+        if (!db || !student?.id || !currentClass?.id) return null;
+        return query(
+            collection(db, 'classes', currentClass.id, 'homeworks'),
+            where('assignedStudents', 'array-contains', student.id),
+            orderBy('assignedDate', 'desc'),
+            limit(3) // Son 3 ödevi getir
+        );
+    }, [db, currentClass?.id, student?.id]);
+    const { data: recentHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
+
+    const latestBehaviorLog = useMemo(() => {
+        if (!student?.behaviorLogs || student.behaviorLogs.length === 0) return null;
+        return [...student.behaviorLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    }, [student?.behaviorLogs]);
+
     const availableBadges = teacherProfile?.badgeCriteria || INITIAL_BADGES;
 
     useEffect(() => {
-        if (student && !classLoading) {
+        if (student && !classLoading && !homeworksLoading) {
             setLoading(false);
         }
-    }, [student, classLoading]);
+    }, [student, classLoading, homeworksLoading]);
 
 
     const handleLogout = () => {
@@ -104,6 +121,13 @@ export default function StudentPortalPage() {
     if (loading || !student || !currentClass) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
+    
+    const noNotifications = !(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0) &&
+                         !(currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson) &&
+                         !currentClass.isSociogramActive &&
+                         !currentClass.isGradesPublished &&
+                         !latestBehaviorLog &&
+                         (!recentHomeworks || recentHomeworks.length === 0);
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -127,6 +151,45 @@ export default function StudentPortalPage() {
                         <CardDescription>Sana özel son gelişmeler ve görevler.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
+                        {latestBehaviorLog && (
+                            <Link href={`/portal/${classCode}/kahramanlar`} passHref>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-yellow-100 text-yellow-600 p-2 rounded-full mt-1">
+                                        <Award className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Yeni Davranış Notu</p>
+                                        <p className="text-xs text-muted-foreground">{latestBehaviorLog.label} ({latestBehaviorLog.points > 0 ? '+' : ''}{latestBehaviorLog.points} Puan)</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
+                        {currentClass.isRegularHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'regular' || !hw.assignmentType).slice(0, 1).map(hw => (
+                            <Link href={`/portal/${classCode}/regular-homeworks`} passHref key={hw.id}>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-orange-100 text-orange-600 p-2 rounded-full mt-1">
+                                        <BookText className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Yeni Günlük Ödev</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                         {currentClass.isPerformanceHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'performance').slice(0, 1).map(hw => (
+                            <Link href={`/portal/${classCode}/performance-homeworks`} passHref key={hw.id}>
+                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
+                                        <Trophy className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Yeni Performans Ödevi</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                         {currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && (
                             <Link href={`/view/announcements/${classCode}`} passHref>
                                 <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
@@ -179,11 +242,7 @@ export default function StudentPortalPage() {
                                 </div>
                             </Link>
                         )}
-                        {!(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0) &&
-                         !(currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson) &&
-                         !currentClass.isSociogramActive &&
-                         !currentClass.isGradesPublished &&
-                        (
+                        {noNotifications && (
                             <div className="text-center py-6 text-muted-foreground text-sm">
                                 <p>Henüz yeni bir bildirim yok.</p>
                             </div>
@@ -202,7 +261,7 @@ export default function StudentPortalPage() {
                     <ModuleCard title="Sosyogram Anketi" icon={<Users className="text-teal-500" />} href={`/sosyogram/${classCode}`} isPublished={currentClass.isSociogramActive} />
                     <ModuleCard title="Kulüp Tercihi" icon={<Drama className="text-pink-500" />} href={`/portal/${classCode}/club-selection`} isPublished={currentClass.isClubSelectionActive} />
                     <ModuleCard title="Bilgi Formu" icon={<FileSignature className="text-rose-500" />} href={`/portal/${classCode}/bilgi-formu`} isPublished={currentClass.isInfoFormActive || currentClass.isRiskFormActive} />
-                    <ModuleCard title="Sınıf Kahramanları" icon={<Trophy className="text-yellow-500" />} href={`/portal/${classCode}/kahramanlar`} isPublished={currentClass.isGamificationActive} />
+                    <ModuleCard title="Başarılarım" icon={<Trophy className="text-yellow-500" />} href={`/portal/${classCode}/kahramanlar`} isPublished={currentClass.isGamificationActive} />
                     <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                     <ModuleCard title="Sınıf Seçimi Oylaması" icon={<Vote className="text-red-500" />} href={`/oylama/${classCode}`} isPublished={currentClass.isElectionActive} />
                     <ModuleCard title="Duyurular" icon={<MessageCircle className="text-cyan-500" />} href={`/view/announcements/${classCode}`} isPublished={currentClass.isAnnouncementsPublished} />
