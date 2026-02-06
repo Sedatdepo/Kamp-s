@@ -80,16 +80,17 @@ export default function StudentClubSelectionPage() {
         setSelectedPreferences(currentPrefs => {
             const isCurrentlySelected = currentPrefs.includes(clubId);
             if(checked && !isCurrentlySelected) {
-                if (currentPrefs.length < 3) {
-                    return [...currentPrefs, clubId];
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'En Fazla 3 Tercih',
-                        description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
-                    });
+                if (currentPrefs.length >= 3) {
+                    setTimeout(() => {
+                        toast({
+                            variant: 'destructive',
+                            title: 'En Fazla 3 Tercih',
+                            description: 'En fazla 3 sosyal kulüp seçebilirsiniz.',
+                        });
+                    }, 0);
                     return currentPrefs;
                 }
+                return [...currentPrefs, clubId];
             } else if (!checked && isCurrentlySelected) {
                 return currentPrefs.filter(id => id !== clubId);
             }

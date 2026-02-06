@@ -81,16 +81,17 @@ export default function StudentProjectSelectionPage() {
             const isCurrentlySelected = currentPrefs.includes(lessonId);
 
             if (checked && !isCurrentlySelected) { // Trying to add
-                if (currentPrefs.length < 5) {
-                    return [...currentPrefs, lessonId];
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'En Fazla 5 Tercih',
-                        description: 'En fazla 5 proje dersi seçebilirsiniz.',
-                    });
+                if (currentPrefs.length >= 5) {
+                    setTimeout(() => {
+                        toast({
+                            variant: 'destructive',
+                            title: 'En Fazla 5 Tercih',
+                            description: 'En fazla 5 proje dersi seçebilirsiniz.',
+                        });
+                    }, 0);
                     return currentPrefs;
                 }
+                return [...currentPrefs, lessonId];
             } else if (!checked && isCurrentlySelected) { // Trying to remove
                 return currentPrefs.filter(id => id !== lessonId);
             }
