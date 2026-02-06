@@ -44,9 +44,24 @@ const RegularHomeworkCard = ({ homework, students, submissions, classId, onScore
         const batch = writeBatch(db);
         submissions.forEach(sub => {
             const localChanges = localSubmissions[sub.id];
-            if (localChanges && (localChanges.grade !== sub.grade || localChanges.feedback !== sub.feedback)) {
-                const subRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', sub.id);
-                batch.update(subRef, localChanges);
+            if (localChanges) {
+                const originalSub = submissions.find(s => s.id === sub.id) || {};
+                const updates: { [key: string]: any } = {};
+
+                const localGrade = localChanges.grade === undefined ? null : localChanges.grade;
+                const originalGrade = originalSub.grade === undefined ? null : originalSub.grade;
+
+                if (localGrade !== originalGrade) {
+                    updates.grade = localGrade;
+                }
+                if (localChanges.feedback !== originalSub.feedback) {
+                    updates.feedback = localChanges.feedback || '';
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    const subRef = doc(db, 'classes', classId, 'homeworks', homework.id, 'submissions', sub.id);
+                    batch.update(subRef, updates);
+                }
             }
         });
         try {
@@ -54,6 +69,7 @@ const RegularHomeworkCard = ({ homework, students, submissions, classId, onScore
             toast({ title: 'Değerlendirmeler kaydedildi.' });
             onScoresUpdated();
         } catch (error) {
+            console.error('Save all error:', error);
             toast({ variant: 'destructive', title: 'Hata!', description: 'Değerlendirmeler kaydedilemedi.' });
         }
     };
