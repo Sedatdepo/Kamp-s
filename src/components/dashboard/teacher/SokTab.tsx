@@ -36,7 +36,7 @@ const formSchema = z.object({
         adSoyad: z.string()
     })),
     gundemMaddeleri: z.array(z.object({ madde: z.string() })),
-    gorusmeler: z.array(z.object({ detay: z.string() })),
+    gorusmeler: z.array(z.object({ detay: z.string(), keywords: z.string().optional() })),
     kararlar: z.string(),
 });
 
@@ -79,7 +79,7 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
         sinifRehberOgretmeni: teacherProfile?.name || "",
         katilimcilar: VARSAYILAN_KATILIMCILAR.map(b => ({ brans: b, adSoyad: (b === "Rehber Öğretmen" ? teacherProfile?.guidanceCounselorName : "") || '' })),
         gundemMaddeleri: SOK_GUNDEM_MADDELERI.map(m => ({ madde: m })),
-        gorusmeler: SOK_GUNDEM_MADDELERI.map(() => ({ detay: '' })),
+        gorusmeler: SOK_GUNDEM_MADDELERI.map(() => ({ detay: '', keywords: '' })),
         kararlar: "",
         okulAdi: teacherProfile?.schoolName || "",
     }), [teacherProfile]);
@@ -153,6 +153,9 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
 
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
+        const keywords = form.getValues(`gorusmeler.${index}.keywords`) || "";
+        const participants = form.getValues('katilimcilar').map(k => k.adSoyad).filter(Boolean);
+
         if (!agendaTitle) {
           toast({ title: 'Hata', description: 'Lütfen önce gündem maddesi başlığını girin.', variant: 'destructive' });
           return;
@@ -164,6 +167,8 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
             agendaTitle,
             classInfo: form.getValues('sinif'),
             teacherInfo: form.getValues('sinifRehberOgretmeni'),
+            participants,
+            keywords
           });
           if (response.generatedText) {
             form.setValue(`gorusmeler.${index}.detay`, response.generatedText, { shouldDirty: true });
@@ -329,15 +334,20 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
                                                 <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                             </div>
                                             <div className="pl-8 relative">
+                                                <Label className="text-xs font-semibold text-gray-500">Görüşmeler</Label>
                                                 <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
                                                 <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
                                                     {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
                                                     Doldur
                                                 </Button>
                                             </div>
+                                            <div className="pl-8">
+                                                <Label className="text-xs font-semibold text-gray-500">AI Anahtar Kelimeler</Label>
+                                                <Input {...form.register(`gorusmeler.${index}.keywords`)} placeholder="İşlenmesini istediğiniz anahtar kelimeler veya cümleler..." className="text-xs h-8" />
+                                            </div>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '', keywords: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                                 </CardContent>
                             </Card>
                              <Card>

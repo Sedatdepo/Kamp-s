@@ -40,7 +40,7 @@ const formSchema = z.object({
     gundemMaddeleri: z.array(z.object({ madde: z.string() })),
     gorusmeler: z.array(z.object({ 
         detay: z.string(),
-        opinions: z.array(z.object({ name: z.string(), text: z.string() })).optional()
+        keywords: z.string().optional()
     })),
     kararlar: z.string(),
 });
@@ -73,7 +73,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         sinifRehberOgretmeni: teacherProfile?.name || "",
         katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: (b === "Zümre Başkanı" ? teacherProfile?.departmentHeadName || teacherProfile?.name : "") || '' })),
         gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
-        gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '', opinions: [] })),
+        gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '', keywords: '' })),
         kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
         okulAdi: teacherProfile?.schoolName || "",
     }), [teacherProfile]);
@@ -149,6 +149,9 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
 
     const handleAutoFill = async (index: number) => {
         const agendaTitle = form.getValues(`gundemMaddeleri.${index}.madde`).trim();
+        const keywords = form.getValues(`gorusmeler.${index}.keywords`) || "";
+        const participants = form.getValues('katilimcilar').map(k => k.adSoyad).filter(Boolean);
+
         if (!agendaTitle) {
           toast({ title: 'Hata', description: 'Lütfen önce gündem maddesi başlığını girin.', variant: 'destructive' });
           return;
@@ -160,6 +163,8 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
             agendaTitle,
             classInfo: form.getValues('sinif'),
             teacherInfo: form.getValues('sinifRehberOgretmeni'),
+            participants,
+            keywords
           });
           if (response.generatedText) {
             form.setValue(`gorusmeler.${index}.detay`, response.generatedText, { shouldDirty: true });
@@ -268,7 +273,7 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
 
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 relative font-sans">
-             <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
+            <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
                  <div className="flex items-center gap-3">
                     <div className="bg-purple-100 p-2 rounded-lg text-purple-700"><Users2 className="h-6 w-6" /></div>
                     <div>
@@ -335,15 +340,20 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
                                                 <Button type="button" variant="ghost" size="icon" className="text-red-400" onClick={() => { removeGundem(index); removeGorusme(index); }}><Trash2 className="h-4 w-4"/></Button>
                                             </div>
                                             <div className="pl-8 relative">
-                                                <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Genel görüşme detayları..." />
+                                                <Label className="text-xs font-semibold text-gray-500">Görüşmeler</Label>
+                                                <Textarea {...form.register(`gorusmeler.${index}.detay`)} className="min-h-[100px]" placeholder="Görüşme detayları..." />
                                                 <Button type="button" variant="secondary" size="sm" onClick={() => handleAutoFill(index)} disabled={isGenerating === index} className="absolute bottom-2 right-2">
                                                     {isGenerating === index ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Wand2 className="mr-2 h-3 w-3"/>}
                                                     Doldur
                                                 </Button>
                                             </div>
+                                            <div className="pl-8">
+                                                <Label className="text-xs font-semibold text-gray-500">AI Anahtar Kelimeler</Label>
+                                                <Input {...form.register(`gorusmeler.${index}.keywords`)} placeholder="İşlenmesini istediğiniz anahtar kelimeler veya cümleler..." className="text-xs h-8" />
+                                            </div>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '', opinions: [] }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
+                                    <Button type="button" variant="outline" className="w-full" onClick={() => { appendGundem({ madde: '' }); appendGorusme({ detay: '', keywords: '' }); }}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Madde Ekle</Button>
                                 </CardContent>
                             </Card>
 
