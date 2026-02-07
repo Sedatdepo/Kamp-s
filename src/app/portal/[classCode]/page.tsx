@@ -263,6 +263,9 @@ export default function StudentPortalPage() {
                     <ModuleCard title="Duyurular" icon={<MessageCircle className="text-cyan-500" />} href={`/view/announcements/${classCode}`} isPublished={currentClass.isAnnouncementsPublished} />
                 </div>
             </main>
+            <p className="text-center text-xs text-muted-foreground mt-8">
+                Sedat İleri tarafından geliştirildi.
+            </p>
         </div>
     );
 }
