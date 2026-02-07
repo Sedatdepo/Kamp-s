@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Lesson } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, ListChecks } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, ListChecks, CheckCircle } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export default function StudentProjectSelectionPage() {
     const params = useParams();
@@ -26,7 +27,7 @@ export default function StudentProjectSelectionPage() {
     const [selectedPreferences, setSelectedPreferences] = useState<string[]>(Array(5).fill(''));
     const [isSaving, setIsSaving] = useState(false);
 
-    // 1. Initial load from session storage to secure the page
+    // 1. Initial load from session storage
     useEffect(() => {
         try {
             const authData = sessionStorage.getItem('student_portal_auth');
@@ -40,7 +41,6 @@ export default function StudentProjectSelectionPage() {
                 return;
             }
             setStudent(storedStudent);
-            // Initialize preferences from the stored student data
             const currentPrefs = storedStudent.projectPreferences || [];
             const initialPrefs = Array(5).fill('');
             currentPrefs.forEach((p: string, i: number) => {
@@ -52,7 +52,7 @@ export default function StudentProjectSelectionPage() {
         }
     }, [classCode, router]);
 
-    // 2. Real-time listener for student data to keep it fresh
+    // 2. Real-time listener for student data
     useEffect(() => {
         if (!student?.id || !db) return;
 
@@ -68,7 +68,6 @@ export default function StudentProjectSelectionPage() {
                 });
                 setSelectedPreferences(newPrefs);
 
-                // Keep session storage in sync for navigation within the portal
                 try {
                     const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
                     authData.student = liveStudentData;
@@ -79,7 +78,7 @@ export default function StudentProjectSelectionPage() {
             }
         });
 
-        return () => unsubscribe(); // Cleanup listener on unmount
+        return () => unsubscribe();
     }, [student?.id, db]);
 
     // 3. Fetch available lessons for the teacher
@@ -90,37 +89,38 @@ export default function StudentProjectSelectionPage() {
 
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
+    // 4. Find the assigned lesson
+    const assignedLesson = useMemo(() => {
+        if (!student?.assignedLesson || !lessons) return null;
+        return lessons.find(l => l.id === student.assignedLesson);
+    }, [student?.assignedLesson, lessons]);
+
+
     const handlePreferenceChange = (index: number, lessonId: string) => {
         const newPrefs = [...selectedPreferences];
-
-        // If trying to select a lesson that's already chosen in another slot, show an error.
         if (lessonId && newPrefs.filter((p, i) => i !== index).includes(lessonId)) {
             toast({
                 variant: "destructive",
                 title: "Ders Zaten Seçildi",
                 description: "Bu dersi başka bir tercih olarak zaten seçtiniz.",
             });
-            return; // Don't update state
+            return;
         }
-        
         newPrefs[index] = lessonId;
         setSelectedPreferences(newPrefs);
     };
 
     const handleSavePreferences = async () => {
         if (!db || !student) return;
-
         setIsSaving(true);
         const studentRef = doc(db, 'students', student.id);
-
         const finalPreferences = selectedPreferences.filter(p => p && p !== '');
 
         try {
             await updateDoc(studentRef, {
                 projectPreferences: finalPreferences
             });
-
-            // Update session storage
+            
             try {
                 const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
                 authData.student.projectPreferences = finalPreferences;
@@ -173,18 +173,32 @@ export default function StudentProjectSelectionPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Proje Dersi Seçimi</CardTitle>
-                        <CardDescription>
-                            Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre seçiniz. En fazla 5 tercih yapabilirsiniz.
-                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-4">
+                       {assignedLesson ? (
+                            <div className="p-4 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-r-lg">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle className="h-6 w-6"/>
+                                    <div>
+                                        <h3 className="font-bold">Proje Dersiniz Atandı!</h3>
+                                        <p>Öğretmeniniz tarafından size atanan proje dersi: <strong>{assignedLesson.name}</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                             <CardDescription>
+                                Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre seçiniz. En fazla 5 tercih yapabilirsiniz.
+                            </CardDescription>
+                        )}
+                        
+                        <div className={cn("space-y-4", assignedLesson && "opacity-50 pointer-events-none")}>
                             {Array.from({ length: 5 }).map((_, index) => (
                                 <div key={index}>
                                     <Label className="font-semibold text-muted-foreground"> {index + 1}. Tercih</Label>
                                     <Select
                                         value={selectedPreferences[index] || ''}
                                         onValueChange={(value) => handlePreferenceChange(index, value === 'none' ? '' : value)}
+                                        disabled={!!assignedLesson}
                                     >
                                         <SelectTrigger className="mt-1">
                                             <SelectValue placeholder="Ders seçin..." />
@@ -205,7 +219,7 @@ export default function StudentProjectSelectionPage() {
                                 </div>
                             ))}
                         </div>
-                        <Button onClick={handleSavePreferences} disabled={isSaving} className="w-full">
+                        <Button onClick={handleSavePreferences} disabled={isSaving || !!assignedLesson} className="w-full">
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2 h-4 w-4"/>
                             Tercihlerimi Kaydet
