@@ -10,8 +10,10 @@ import { Student, Class } from '@/lib/types';
 import { doc, writeBatch } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { cn } from "@/lib/utils";
 
 interface AttendanceTabProps {
   students: Student[];
@@ -108,16 +110,33 @@ export function AttendanceTab({ students: initialStudents, onStudentsChange, cur
         <Card>
           <CardHeader>
             <CardTitle>Tarih Seçimi</CardTitle>
+             <CardDescription>{format(selectedDate, "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              locale={tr}
-              className="p-0"
-              disabled={(date) => date > new Date()}
-            />
+          <CardContent>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <span>Tarihi Değiştir</span>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => date && setSelectedDate(date)}
+                        locale={tr}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                    />
+                </PopoverContent>
+            </Popover>
           </CardContent>
         </Card>
         <Card>
@@ -130,7 +149,6 @@ export function AttendanceTab({ students: initialStudents, onStudentsChange, cur
             <div className="flex justify-between"><span>Yok:</span><span className="font-bold text-destructive">{stats.absent}</span></div>
             <div className="flex justify-between"><span>Geç:</span><span className="font-bold text-orange-500">{stats.late}</span></div>
             <div className="flex justify-between"><span>İzinli:</span><span className="font-bold text-blue-500">{stats.excused}</span></div>
-            <div className="flex justify-between"><span>İşaretlenmedi:</span><span className="font-bold text-muted-foreground">{stats.unmarked}</span></div>
             <div className="flex justify-between border-t pt-2 mt-2"><b>Toplam:</b><b>{stats.total}</b></div>
           </CardContent>
         </Card>
