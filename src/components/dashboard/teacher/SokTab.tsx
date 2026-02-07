@@ -88,7 +88,8 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
         resolver: zodResolver(formSchema),
         defaultValues,
     });
-
+    
+    const { fields: katilimciFields, append: appendKatilimci, remove: removeKatilimci } = useFieldArray({ control: form.control, name: "katilimcilar" });
     const { fields: gundemFields, append: appendGundem, remove: removeGundem, move: moveGundem } = useFieldArray({ control: form.control, name: "gundemMaddeleri" });
     const { fields: gorusmeFields, append: appendGorusme, remove: removeGorusme, move: moveGorusme } = useFieldArray({ control: form.control, name: "gorusmeler" });
 
@@ -302,6 +303,19 @@ export default function SokTab({ teacherProfile }: { teacherProfile: TeacherProf
                                     <FormField control={form.control} name="yer" render={({ field }: any) => (<FormItem><FormLabel>Yer</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                     <FormField control={form.control} name="sinifRehberOgretmeni" render={({ field }: any) => (<FormItem><FormLabel>Toplantı Başkanı</FormLabel><FormControl><Input placeholder="Sınıf Rehber Öğretmeni" {...field} /></FormControl></FormItem>)} />
                                     <FormField control={form.control} name="mudurYardimcisi" render={({ field }: any) => (<FormItem><FormLabel>Onaylayan</FormLabel><FormControl><Input placeholder="Okul Müdürü / Müdür Yrd." {...field} /></FormControl></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Katılımcı Öğretmenler</CardTitle></CardHeader>
+                                <CardContent className="space-y-2">
+                                    {katilimciFields.map((item, index) => (
+                                        <div key={item.id} className="flex items-center gap-2">
+                                            <Input {...form.register(`katilimcilar.${index}.brans`)} placeholder="Branş" />
+                                            <Input {...form.register(`katilimcilar.${index}.adSoyad`)} placeholder="Ad Soyad" />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeKatilimci(index)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" onClick={() => appendKatilimci({ brans: '', adSoyad: ''})}><PlusCircle className="mr-2 h-4 w-4"/> Katılımcı Ekle</Button>
                                 </CardContent>
                             </Card>
                              <Card>
