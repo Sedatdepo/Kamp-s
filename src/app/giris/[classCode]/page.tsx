@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -46,13 +45,18 @@ export default function StudentLoginPage() {
                     const classSnap = await getDoc(classRef);
                     if (classSnap.exists()) {
                         setClassName(classSnap.data().name);
+                    } else {
+                        setError("Sınıf bilgisi bulunamadı.");
+                        setLoading(false);
                     }
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
+                    setLoading(false);
                 }
             } catch (e) {
                 console.error(e);
                 setError("Sınıf bilgileri alınırken bir hata oluştu.");
+                setLoading(false);
             }
         };
         fetchClassId();
