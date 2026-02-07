@@ -10,15 +10,14 @@ import { Loader2, ArrowLeft, Save, FileText, User, Heart, Home, School } from 'l
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, updateDoc, collection, query, where, onSnapshot, getDoc } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
@@ -53,7 +52,6 @@ const formSchema = z.object({
   parentalAttitude: z.string().optional(),
   hasDisability: z.enum(['yes', 'no']).optional(),
   isMartyrVeteranChild: z.enum(['yes', 'no']).optional(),
-  selectedRisks: z.array(z.string()).optional(),
   economicStatus: z.enum(['iyi', 'orta', 'kotu']).optional(),
 });
 
@@ -69,7 +67,7 @@ export default function StudentInfoFormPage() {
     const [student, setStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     
-    const form = useForm<FormData>({ resolver: zodResolver(formSchema), defaultValues: { selectedRisks: [] } });
+    const form = useForm<FormData>({ resolver: zodResolver(formSchema), defaultValues: { } });
 
     // Initial student loading from session
     useEffect(() => {
@@ -113,11 +111,6 @@ export default function StudentInfoFormPage() {
     const [existingForm, setExistingForm] = useState<InfoForm | null>(null);
     const [formLoading, setFormLoading] = useState(true);
 
-    const riskFactorsQuery = useMemoFirebase(() => (student ? query(collection(db, 'riskFactors'), where('teacherId', '==', student.teacherId)) : null), [db, student]);
-    const { data: riskFactors, isLoading: risksLoading } = useCollection<RiskFactor>(riskFactorsQuery);
-    
-    const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student]);
-    const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
     
     // Fetch form data with getDoc instead of useDoc
     useEffect(() => {
@@ -153,11 +146,6 @@ export default function StudentInfoFormPage() {
         if (student && existingForm) {
             form.reset({
                 ...existingForm,
-                selectedRisks: student.risks || [],
-            });
-        } else if (student) {
-             form.reset({
-                selectedRisks: student.risks || [],
             });
         }
     }, [existingForm, student, form]);
@@ -167,7 +155,6 @@ export default function StudentInfoFormPage() {
         setIsSaving(true);
         try {
             const infoFormRef = doc(db, 'infoForms', student.id);
-            const studentRef = doc(db, 'students', student.id);
 
             // Create a clean data object by filtering out undefined values which Firestore doesn't support.
             const cleanData = Object.fromEntries(
@@ -180,11 +167,8 @@ export default function StudentInfoFormPage() {
                 submitted: true,
                 authUid: student.authUid,
             };
-
-            const studentUpdateData = { risks: data.selectedRisks || [] };
             
             await setDoc(infoFormRef, infoFormData, { merge: true });
-            await updateDoc(studentRef, studentUpdateData);
 
             toast({ title: 'Başarıyla Kaydedildi!', description: 'Bilgi formunuz güncellendi.' });
             router.push(`/portal/${classCode}`);
@@ -196,7 +180,7 @@ export default function StudentInfoFormPage() {
         }
     };
     
-    const loading = !student || formLoading || risksLoading || classLoading;
+    const loading = !student || formLoading;
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -221,7 +205,7 @@ export default function StudentInfoFormPage() {
             <main className="max-w-4xl mx-auto">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full space-y-4">
+                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full space-y-4">
                             
                             {/* Kişisel Bilgiler */}
                             <AccordionItem value="item-1" className="border rounded-xl bg-white shadow-sm">
@@ -265,47 +249,6 @@ export default function StudentInfoFormPage() {
                                      </div>
                                 </AccordionContent>
                             </AccordionItem>
-
-                            {/* Risk Faktörleri */}
-                            {currentClass?.isRiskFormActive && (
-                                <AccordionItem value="item-4" className="border rounded-xl bg-white shadow-sm">
-                                    <AccordionTrigger className="p-4"><div className="flex items-center gap-2"><Heart/>Özel Durum ve Risk Faktörleri</div></AccordionTrigger>
-                                    <AccordionContent className="p-6 pt-0">
-                                        <p className="text-sm text-muted-foreground mb-4">Aşağıdaki durumlardan size uygun olanları işaretleyiniz. Bu bilgiler sadece rehber öğretmeniniz tarafından görülecektir.</p>
-                                        <FormField
-                                            control={form.control}
-                                            name="selectedRisks"
-                                            render={() => (
-                                                <FormItem className="space-y-3">
-                                                    {riskFactors?.map((factor) => (
-                                                        <FormField
-                                                            key={factor.id}
-                                                            control={form.control}
-                                                            name="selectedRisks"
-                                                            render={({ field }) => (
-                                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                                    <FormControl>
-                                                                        <Checkbox
-                                                                            checked={field.value?.includes(factor.id)}
-                                                                            onCheckedChange={(checked) => {
-                                                                                return checked
-                                                                                    ? field.onChange([...(field.value || []), factor.id])
-                                                                                    : field.onChange(field.value?.filter((value) => value !== factor.id));
-                                                                            }}
-                                                                        />
-                                                                    </FormControl>
-                                                                    <FormLabel className="font-normal">{factor.label}</FormLabel>
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    ))}
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </AccordionContent>
-                                </AccordionItem>
-                            )}
-
                         </Accordion>
                         <Button type="submit" disabled={isSaving} className="w-full mt-6">
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
