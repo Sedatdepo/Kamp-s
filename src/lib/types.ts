@@ -73,7 +73,7 @@ export interface Homework {
   rubric?: any; // To differentiate performance homeworks
   instructions?: string;
   assignedStudents?: string[];
-  assignmentType?: 'performance' | 'project';
+  assignmentType?: 'performance' | 'project' | 'regular';
   file?: {
     dataUrl: string;
     name: string;
@@ -264,6 +264,7 @@ export interface Student {
   gender?: 'M' | 'F';
   
   risks: string[]; // Array of riskFactor IDs
+  riskFormSubmitted?: boolean;
   projectPreferences: string[]; // Array of lesson IDs
   clubPreferences?: string[]; // NEW: Array of club IDs
   assignedLesson: string | null; // lesson ID
@@ -470,8 +471,8 @@ export interface ZumreDocument extends Archivable {
         mudurYardimcisi: string;
         sinifRehberOgretmeni: string; // Zümre Başkanı
         katilimcilar: { brans: string; adSoyad: string }[];
-        gundemMaddeleri: { madde: string }[];
-        gorusmeler: { detay: string }[];
+        gundemMaddeleri: { madde: string; keywords?: string }[];
+        gorusmeler: { detay: string; opinions?: { name: string; text: string }[] }[];
         kararlar: string;
     };
 }
@@ -490,7 +491,7 @@ export interface SokDocument extends Archivable {
         mudurYardimcisi: string;
         sinifRehberOgretmeni: string;
         katilimcilar: { brans: string; adSoyad: string }[];
-        gundemMaddeleri: { madde: string }[];
+        gundemMaddeleri: { madde: string; keywords?: string }[];
         gorusmeler: { detay: string }[];
         kararlar: string;
     };
