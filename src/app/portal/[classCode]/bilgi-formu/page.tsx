@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Student, InfoForm, RiskFactor, Class } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, FileText, User, Heart, Home, School } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, FileText, User, Heart, Home, School, CheckCircle } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -184,6 +184,29 @@ export default function StudentInfoFormPage() {
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    if (existingForm?.submitted) {
+        return (
+             <div className="min-h-screen bg-gray-50 p-4 sm:p-8 flex items-center justify-center">
+                <main className="max-w-md w-full">
+                    <Card className="text-center p-8">
+                        <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
+                        <CardHeader>
+                            <CardTitle>Bilgileriniz Alındı</CardTitle>
+                            <CardDescription>Bilgi formunu daha önce doldurdunuz. Verdiğiniz bilgiler için teşekkür ederiz.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button asChild variant="outline">
+                                <Link href={`/portal/${classCode}`}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        );
     }
 
     return (

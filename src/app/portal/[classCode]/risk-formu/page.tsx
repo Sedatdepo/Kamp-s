@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, RiskFactor } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -84,11 +84,12 @@ export default function StudentRiskFormPage() {
 
         try {
             await updateDoc(studentRef, {
-                risks: selectedRisks
+                risks: selectedRisks,
+                riskFormSubmitted: true,
             });
             
             toast({
-                title: 'Tercihleriniz Kaydedildi!',
+                title: 'Bildiriminiz Kaydedildi!',
                 description: `Risk faktörleri güncellendi.`,
             });
             router.push(`/portal/${classCode}`);
@@ -108,6 +109,29 @@ export default function StudentRiskFormPage() {
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    if (student.riskFormSubmitted) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-4 sm:p-8 flex items-center justify-center">
+                <main className="max-w-md w-full">
+                    <Card className="text-center p-8">
+                        <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
+                        <CardHeader>
+                            <CardTitle>Bildiriminiz Alındı</CardTitle>
+                            <CardDescription>Risk bildirim formunu daha önce doldurdunuz. Gerekli durumlarda öğretmeniniz sizinle iletişime geçecektir.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button asChild variant="outline">
+                                <Link href={`/portal/${classCode}`}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        );
     }
 
     return (
