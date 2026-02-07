@@ -45,6 +45,9 @@ export default function HomePage() {
             <TeacherLoginForm />
           </CardContent>
         </Card>
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          Sedat İleri tarafından geliştirildi.
+        </p>
       </div>
     </div>
   );
