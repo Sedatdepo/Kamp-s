@@ -78,6 +78,8 @@ export const initialDb: Database = {
         { id: 6, start: '13:10', end: '13:50' },
         { id: 7, start: '14:00', end: '14:40' },
         { id: 8, start: '14:50', end: '15:30' },
+        { id: 9, start: '15:40', end: '16:20' },
+        { id: 10, start: '16:30', end: '17:10' }
     ],
     subjects: [
       { id: 1, name: 'Matematik', color: 'bg-blue-100 text-blue-800 border-blue-200' },
