@@ -11,7 +11,7 @@ import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { query, collection, doc, updateDoc, where, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
 export default function StudentProjectSelectionPage() {
@@ -23,7 +23,7 @@ export default function StudentProjectSelectionPage() {
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
+    const [selectedPreferences, setSelectedPreferences] = useState<string[]>(Array(5).fill(''));
     const [isSaving, setIsSaving] = useState(false);
 
     // 1. Initial load from session storage to secure the page
@@ -41,7 +41,12 @@ export default function StudentProjectSelectionPage() {
             }
             setStudent(storedStudent);
             // Initialize preferences from the stored student data
-            setSelectedPreferences(storedStudent.projectPreferences || []);
+            const currentPrefs = storedStudent.projectPreferences || [];
+            const initialPrefs = Array(5).fill('');
+            currentPrefs.forEach((p: string, i: number) => {
+                if (i < 5) initialPrefs[i] = p;
+            });
+            setSelectedPreferences(initialPrefs);
         } catch (error) {
             router.replace(`/giris/${classCode}`);
         }
@@ -55,7 +60,14 @@ export default function StudentProjectSelectionPage() {
             if (docSnap.exists()) {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
                 setStudent(liveStudentData);
-                setSelectedPreferences(liveStudentData.projectPreferences || []);
+                
+                const currentPrefs = liveStudentData.projectPreferences || [];
+                const newPrefs = Array(5).fill('');
+                currentPrefs.forEach((p, i) => {
+                    if(i < 5) newPrefs[i] = p;
+                });
+                setSelectedPreferences(newPrefs);
+
                 // Keep session storage in sync for navigation within the portal
                 try {
                     const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
@@ -78,45 +90,48 @@ export default function StudentProjectSelectionPage() {
 
     const { data: lessons, isLoading: lessonsLoading } = useCollection<Lesson>(lessonsQuery);
 
-    // 4. Handle preference selection changes
-    const handlePreferenceChange = (lessonId: string) => {
-        setSelectedPreferences(currentPrefs => {
-            const isCurrentlySelected = currentPrefs.includes(lessonId);
+    const handlePreferenceChange = (index: number, lessonId: string) => {
+        const newPrefs = [...selectedPreferences];
 
-            if (!isCurrentlySelected) { // Trying to add
-                if (currentPrefs.length >= 5) {
-                    // Defer the toast to avoid updating state during render
-                    setTimeout(() => {
-                        toast({
-                            variant: 'destructive',
-                            title: 'En Fazla 5 Tercih',
-                            description: 'En fazla 5 proje dersi seçebilirsiniz.',
-                        });
-                    }, 0);
-                    return currentPrefs; // Return current state without changes
-                }
-                return [...currentPrefs, lessonId];
-            } else { // Trying to remove
-                return currentPrefs.filter(id => id !== lessonId);
-            }
-        });
+        // If trying to select a lesson that's already chosen in another slot, show an error.
+        if (lessonId && newPrefs.filter((p, i) => i !== index).includes(lessonId)) {
+            toast({
+                variant: "destructive",
+                title: "Ders Zaten Seçildi",
+                description: "Bu dersi başka bir tercih olarak zaten seçtiniz.",
+            });
+            return; // Don't update state
+        }
+        
+        newPrefs[index] = lessonId;
+        setSelectedPreferences(newPrefs);
     };
 
-    // 5. Save preferences to Firestore
     const handleSavePreferences = async () => {
         if (!db || !student) return;
 
         setIsSaving(true);
         const studentRef = doc(db, 'students', student.id);
 
+        const finalPreferences = selectedPreferences.filter(p => p && p !== '');
+
         try {
             await updateDoc(studentRef, {
-                projectPreferences: selectedPreferences
+                projectPreferences: finalPreferences
             });
+
+            // Update session storage
+            try {
+                const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                authData.student.projectPreferences = finalPreferences;
+                sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+            } catch (e) {
+                console.error("Could not update session storage on project selection page", e);
+            }
             
             toast({
                 title: 'Tercihleriniz Kaydedildi!',
-                description: `${selectedPreferences.length} proje tercihi başarıyla güncellendi.`,
+                description: `${finalPreferences.length} proje tercihi başarıyla güncellendi.`,
             });
             router.push(`/portal/${classCode}`);
         } catch (error) {
@@ -127,7 +142,6 @@ export default function StudentProjectSelectionPage() {
         }
     };
     
-    // 6. Manage loading state
     useEffect(() => {
         if (student && !lessonsLoading) {
             setLoading(false);
@@ -160,27 +174,38 @@ export default function StudentProjectSelectionPage() {
                     <CardHeader>
                         <CardTitle>Proje Dersi Seçimi</CardTitle>
                         <CardDescription>
-                            Lütfen proje ödevi almak istediğiniz dersleri en fazla 5 tane olacak şekilde seçiniz.
+                            Lütfen proje ödevi almak istediğiniz dersleri öncelik sırasına göre seçiniz. En fazla 5 tercih yapabilirsiniz.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            {(lessons || []).map(lesson => (
-                                <div
-                                    key={lesson.id}
-                                    className="flex items-center gap-3 p-3 border rounded-lg"
-                                >
-                                     <Checkbox
-                                        id={`lesson-${lesson.id}`}
-                                        checked={selectedPreferences.includes(lesson.id)}
-                                        onCheckedChange={() => handlePreferenceChange(lesson.id)}
-                                     />
-                                     <Label htmlFor={`lesson-${lesson.id}`} className="flex-grow cursor-pointer">{lesson.name}</Label>
-                                     <span className="text-xs text-muted-foreground">Kontenjan: {lesson.quota}</span>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-4">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <div key={index}>
+                                    <Label className="font-semibold text-muted-foreground"> {index + 1}. Tercih</Label>
+                                    <Select
+                                        value={selectedPreferences[index] || ''}
+                                        onValueChange={(value) => handlePreferenceChange(index, value === 'none' ? '' : value)}
+                                    >
+                                        <SelectTrigger className="mt-1">
+                                            <SelectValue placeholder="Ders seçin..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">-- Seçimi Kaldır --</SelectItem>
+                                            {lessons?.map(lesson => (
+                                                <SelectItem 
+                                                    key={lesson.id} 
+                                                    value={lesson.id} 
+                                                    disabled={selectedPreferences.includes(lesson.id) && selectedPreferences[index] !== lesson.id}
+                                                >
+                                                    {lesson.name} (Kontenjan: {lesson.quota})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             ))}
                         </div>
-                        <Button onClick={handleSavePreferences} disabled={isSaving}>
+                        <Button onClick={handleSavePreferences} disabled={isSaving} className="w-full">
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2 h-4 w-4"/>
                             Tercihlerimi Kaydet
