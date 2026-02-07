@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Lesson } from '@/lib/types';
 import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
