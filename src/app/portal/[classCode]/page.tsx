@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge, Homework } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, AlertTriangle } from 'lucide-react';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -268,4 +268,4 @@ export default function StudentPortalPage() {
             </p>
         </div>
     );
-}
+    
