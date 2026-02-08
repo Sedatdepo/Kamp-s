@@ -11,7 +11,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -108,38 +108,8 @@ export default function StudentInfoFormPage() {
         return () => unsubscribe();
     }, [student?.id, db]);
 
-    const [existingForm, setExistingForm] = useState<InfoForm | null>(null);
-    const [formLoading, setFormLoading] = useState(true);
-
-    
-    // Fetch form data with getDoc instead of useDoc
-    useEffect(() => {
-        if (student && db) {
-            const fetchFormData = async () => {
-                setFormLoading(true);
-                const formRef = doc(db, 'infoForms', student.id);
-                try {
-                    const docSnap = await getDoc(formRef);
-                    if (docSnap.exists()) {
-                        setExistingForm({ id: docSnap.id, ...docSnap.data() } as InfoForm);
-                    } else {
-                        setExistingForm(null);
-                    }
-                } catch (e) {
-                    console.error("Error fetching info form:", e);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Hata',
-                        description: 'Bilgi formu yüklenemedi. İzinlerinizi kontrol edin.',
-                    });
-                } finally {
-                    setFormLoading(false);
-                }
-            };
-            fetchFormData();
-        }
-    }, [student, db, toast]);
-
+    const infoFormRef = useMemoFirebase(() => (db && student?.id ? doc(db, 'infoForms', student.id) : null), [db, student?.id]);
+    const { data: existingForm, isLoading: formLoading } = useDoc<InfoForm>(infoFormRef);
 
     // Populate form with existing data
     useEffect(() => {
@@ -171,7 +141,7 @@ export default function StudentInfoFormPage() {
             await setDoc(infoFormRef, infoFormData, { merge: true });
 
             toast({ title: 'Başarıyla Kaydedildi!', description: 'Bilgi formunuz güncellendi.' });
-            router.push(`/portal/${classCode}`);
+            // No longer need router.push, as useDoc will update the UI automatically.
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Hata', description: 'Form kaydedilemedi.' });

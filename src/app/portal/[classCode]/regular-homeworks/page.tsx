@@ -286,41 +286,18 @@ export default function StudentRegularHomeworkPage() {
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
     
-    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
-    const [submissionsLoading, setSubmissionsLoading] = useState(true);
+    const submissionsQuery = useMemoFirebase(() => {
+        if (!db || !authUser?.uid) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
+    }, [db, authUser?.uid]);
 
-    const fetchSubmissions = useCallback(async () => {
-        if (homeworksLoading || !db || !student?.classId || !authUser?.uid || !homeworks) {
-            setSubmissionsLoading(false);
-            return;
-        }
-        setSubmissionsLoading(true);
-        try {
-            if (homeworks.length > 0) {
-                const submissionPromises = homeworks.map(hw => 
-                    getDocs(query(
-                        collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`),
-                        where('studentAuthUid', '==', authUser.uid)
-                    ))
-                );
-                const submissionSnapshots = await Promise.all(submissionPromises);
-                const submissionsData = submissionSnapshots.flatMap(snapshot => 
-                    snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Submission))
-                );
-                setAllSubmissions(submissionsData);
-            } else {
-                setAllSubmissions([]);
-            }
-        } catch (error) {
-            console.error("Error fetching homework data:", error);
-        } finally {
-            setSubmissionsLoading(false);
-        }
-    }, [db, student, authUser, homeworks, homeworksLoading]);
-    
-    useEffect(() => {
-        fetchSubmissions();
-    }, [fetchSubmissions]);
+    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+
+    const submissionsForThisClass = useMemo(() => {
+        if (!allSubmissions || !homeworks) return [];
+        const homeworkIds = new Set(homeworks.map(hw => hw.id));
+        return allSubmissions.filter(sub => sub.homeworkId && homeworkIds.has(sub.homeworkId));
+    }, [allSubmissions, homeworks]);
     
     const regularHomeworks = useMemo(() => {
         if (!homeworks) return [];
@@ -362,7 +339,7 @@ export default function StudentRegularHomeworkPage() {
                             <div className="space-y-4">
                             {regularHomeworks.length > 0 ? (
                                 regularHomeworks.map((hw) => {
-                                    const submissionForHw = allSubmissions?.find(s => s.homeworkId === hw.id);
+                                    const submissionForHw = submissionsForThisClass?.find(s => s.homeworkId === hw.id);
                                     return (
                                         <HomeworkItem 
                                             key={hw.id} 
