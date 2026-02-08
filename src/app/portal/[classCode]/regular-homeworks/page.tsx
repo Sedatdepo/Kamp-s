@@ -288,16 +288,24 @@ export default function StudentRegularHomeworkPage() {
     
     useEffect(() => {
         const fetchSubmissions = async () => {
-            if (!db || !authUser?.uid || !homeworks || homeworks.length === 0) {
+            if (!db || !authUser?.uid || !homeworks || homeworks.length === 0 || !student?.classId) {
                 setSubmissionsLoading(false);
                 return;
             }
             setSubmissionsLoading(true);
             try {
-                const q = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
-                const querySnapshot = await getDocs(q);
-                const subs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-                setAllSubmissions(subs);
+                 const submissionPromises = homeworks.map(hw => {
+                    const submissionsColRef = collection(db, 'classes', student.classId!, 'homeworks', hw.id, 'submissions');
+                    const q = query(submissionsColRef, where('studentAuthUid', '==', authUser.uid));
+                    return getDocs(q);
+                });
+
+                const querySnapshots = await Promise.all(submissionPromises);
+                const allSubs = querySnapshots.flatMap(snapshot => 
+                    snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission))
+                );
+                
+                setAllSubmissions(allSubs);
             } catch (error) {
                 console.error("Failed to fetch submissions:", error);
             } finally {
@@ -308,7 +316,7 @@ export default function StudentRegularHomeworkPage() {
         if (!homeworksLoading) {
             fetchSubmissions();
         }
-    }, [db, authUser, homeworks, homeworksLoading]);
+    }, [db, authUser, homeworks, homeworksLoading, student?.classId]);
 
     const submissionsForThisClass = useMemo(() => {
         if (!allSubmissions || !homeworks) return [];
