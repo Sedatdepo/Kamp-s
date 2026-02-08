@@ -22,6 +22,16 @@
       ]
     },
     {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "classId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
         "collectionGroup": "lessons",
         "queryScope": "COLLECTION",
         "fields": [ { "fieldPath": "teacherId", "order": "ASCENDING" } ]
