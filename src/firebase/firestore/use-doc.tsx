@@ -54,8 +54,8 @@ export function useDoc<T = any>(
 
 
   useEffect(() => {
-    // Wait until authentication state is resolved and a user is present.
-    if (authIsLoading || !user) {
+    // Wait until authentication state is resolved and a user is present with a UID.
+    if (authIsLoading || !user?.uid) {
       setIsLoading(true);
       setData(null);
       setError(null);
@@ -101,7 +101,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, authIsLoading, user]); // Re-run if the memoizedDocRef changes or user changes.
+  }, [memoizedDocRef, authIsLoading, user?.uid]); // Re-run if the memoizedDocRef changes or user changes.
 
   if(memoizedDocRef && !(memoizedDocRef as any).__memo) {
     throw new Error(memoizedDocRef + ' was not properly memoized using useMemoFirebase');
