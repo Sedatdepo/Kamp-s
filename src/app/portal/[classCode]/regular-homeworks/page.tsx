@@ -243,6 +243,8 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -256,7 +258,6 @@ export default function StudentRegularHomeworkPage() {
         }
     }, [classCode, router]);
 
-    // Real-time listener for student data
     useEffect(() => {
         if (!student?.id || !db) return;
 
@@ -278,7 +279,6 @@ export default function StudentRegularHomeworkPage() {
         return () => unsubscribe();
     }, [student?.id, db]);
 
-
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !student?.classId) return null;
         return query(collection(db, 'classes', student.classId, 'homeworks'), where('assignmentType', '==', 'regular'));
@@ -286,12 +286,29 @@ export default function StudentRegularHomeworkPage() {
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
     
-    const submissionsQuery = useMemoFirebase(() => {
-        if (!db || !authUser?.uid) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
-    }, [db, authUser?.uid]);
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            if (!db || !authUser?.uid || !homeworks || homeworks.length === 0) {
+                setSubmissionsLoading(false);
+                return;
+            }
+            setSubmissionsLoading(true);
+            try {
+                const q = query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
+                const querySnapshot = await getDocs(q);
+                const subs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+                setAllSubmissions(subs);
+            } catch (error) {
+                console.error("Failed to fetch submissions:", error);
+            } finally {
+                setSubmissionsLoading(false);
+            }
+        };
 
-    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
+        if (!homeworksLoading) {
+            fetchSubmissions();
+        }
+    }, [db, authUser, homeworks, homeworksLoading]);
 
     const submissionsForThisClass = useMemo(() => {
         if (!allSubmissions || !homeworks) return [];
