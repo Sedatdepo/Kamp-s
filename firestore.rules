@@ -3,6 +3,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Bu kural, öğrencinin kendi ödev teslimlerini görebilmesi için gereken
+    // özel "collectionGroup" sorgusuna izin vermek için eklenmiştir.
+    // Önceki "her şeye izin ver" kuralı bu özel sorgu tipini kapsamıyordu.
+    match /{path=**}/submissions/{submissionId} {
+      allow read, write: if true;
+    }
+    
+    // Diğer tüm okuma ve yazma işlemleri için genel kural.
     match /{document=**} {
       allow read, write: if true;
     }
