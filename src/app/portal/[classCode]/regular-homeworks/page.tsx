@@ -296,8 +296,7 @@ export default function StudentRegularHomeworkPage() {
             try {
                  const submissionPromises = homeworks.map(hw => {
                     const submissionsColRef = collection(db, 'classes', student.classId!, 'homeworks', hw.id, 'submissions');
-                    const q = query(submissionsColRef, where('studentAuthUid', '==', authUser.uid));
-                    return getDocs(q);
+                    return getDocs(submissionsColRef);
                 });
 
                 const querySnapshots = await Promise.all(submissionPromises);
@@ -321,8 +320,8 @@ export default function StudentRegularHomeworkPage() {
     const submissionsForThisClass = useMemo(() => {
         if (!allSubmissions || !homeworks) return [];
         const homeworkIds = new Set(homeworks.map(hw => hw.id));
-        return allSubmissions.filter(sub => sub.homeworkId && homeworkIds.has(sub.homeworkId));
-    }, [allSubmissions, homeworks]);
+        return allSubmissions.filter(sub => sub.studentAuthUid === authUser?.uid && sub.homeworkId && homeworkIds.has(sub.homeworkId));
+    }, [allSubmissions, homeworks, authUser]);
     
     const regularHomeworks = useMemo(() => {
         if (!homeworks) return [];
@@ -373,7 +372,7 @@ export default function StudentRegularHomeworkPage() {
                                             authUser={authUser}
                                             classId={student!.classId} 
                                             submission={submissionForHw}
-                                            onMarkAsSubmitted={() => {}} // This is handled by teacher view, student submits via button
+                                            onMarkAsSubmitted={() => {}}
                                         />
                                     )
                                 })
