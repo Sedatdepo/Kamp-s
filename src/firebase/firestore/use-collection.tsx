@@ -64,12 +64,11 @@ export function useCollection<T = any>(
 
   const firebaseContext = useContext(FirebaseContext);
   const authIsLoading = firebaseContext ? firebaseContext.isUserLoading : true;
-  const user = firebaseContext ? firebaseContext.user : null;
 
 
   useEffect(() => {
-    // Wait until authentication state is resolved and a user is present with a UID.
-    if (authIsLoading || !user?.uid) {
+    // Wait until authentication state is resolved.
+    if (authIsLoading) {
       setIsLoading(true);
       setData(null);
       setError(null);
@@ -120,7 +119,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, authIsLoading, user?.uid]); // Re-run if the target query/reference changes or user changes.
+  }, [memoizedTargetRefOrQuery, authIsLoading]); // Re-run if the target query/reference changes or user changes.
   
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
