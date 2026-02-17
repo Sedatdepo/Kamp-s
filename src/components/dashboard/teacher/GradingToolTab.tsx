@@ -8,7 +8,8 @@ import {
   Class,
   Criterion,
   ActiveGradingTab, 
-  ActiveTerm
+  ActiveTerm,
+  DisciplineRecord
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 import { exportGradingToRtf } from '@/lib/word-export';
+import { useDatabase } from '@/hooks/use-database';
 
 
 interface GradingToolTabProps {
@@ -157,6 +159,8 @@ export function GradingToolTab({
 }: GradingToolTabProps) {
   const { toast } = useToast();
   const { db } = useAuth();
+  const { db: localDb } = useDatabase();
+  const { disciplineRecords = [] } = localDb;
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
@@ -401,6 +405,7 @@ export function GradingToolTab({
         onBulkUpdate={setStudents}
         perfCriteria={perfCriteria}
         projCriteria={projCriteria}
+        disciplineRecords={disciplineRecords}
       />
 
       {teacherProfile && (

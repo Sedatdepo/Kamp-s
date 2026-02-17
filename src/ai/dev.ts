@@ -10,5 +10,6 @@ import './flows/generate-material-flow';
 import './flows/generate-edebiyat-materyal-flow';
 import './flows/extract-outcomes-from-pdf-flow';
 import './flows/generate-meeting-decisions-flow';
+import './flows/generate-performance-grade-flow';
 
     

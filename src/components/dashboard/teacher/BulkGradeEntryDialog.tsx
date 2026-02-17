@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, GradingScores, Criterion } from '@/lib/types';
+import { Student, GradingScores, Criterion, DisciplineRecord } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Loader2, Wand2 } from 'lucide-react';
+import { generatePerformanceGrade } from '@/ai/flows/generate-performance-grade-flow';
 
 interface BulkGradeEntryDialogProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ interface BulkGradeEntryDialogProps {
   onBulkUpdate: (updatedStudents: Student[]) => void;
   perfCriteria: Criterion[];
   projCriteria: Criterion[];
+  disciplineRecords: DisciplineRecord[];
 }
 
 export type GradeType = 
@@ -28,13 +31,14 @@ export type GradeType =
     | 'writtenExam1' | 'speakingExam1' | 'listeningExam1'
     | 'writtenExam2' | 'speakingExam2' | 'listeningExam2';
 
-export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate, perfCriteria, projCriteria }: BulkGradeEntryDialogProps) {
+export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate, perfCriteria, projCriteria, disciplineRecords }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
   const { db } = useAuth();
   const termGradesKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
   const isLiteratureTeacher = teacherBranch === 'Edebiyat' || teacherBranch === 'Türk Dili ve Edebiyatı';
 
   const [editableStudents, setEditableStudents] = useState<Student[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     setEditableStudents(JSON.parse(JSON.stringify(students)));
@@ -187,6 +191,61 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         });
     }
   };
+  
+  const handleAiFill = async () => {
+    setIsGenerating(true);
+    try {
+        const updatedStudentsPromises = sortedStudents.map(async (student) => {
+            const termGrades = student[termGradesKey];
+
+            const exams = [termGrades?.exam1, termGrades?.exam2].filter(g => g !== undefined && g !== null && g >= 0) as number[];
+            const examAverage = exams.length > 0 ? exams.reduce((a, b) => a + b, 0) / exams.length : 50;
+
+            const positiveBehaviorCount = (student.badges || []).length;
+            const negativeBehaviorCount = (student.behaviorLogs || []).filter(log => log.points < 0).length;
+            const disciplineRecordCount = (disciplineRecords || []).filter(r => r.formData?.studentInfo?.studentId === student.id).length;
+
+            const aiInput = {
+                studentName: student.name,
+                examAverage: examAverage,
+                behaviorScore: student.behaviorScore || 100,
+                positiveBehaviorCount,
+                negativeBehaviorCount,
+                disciplineRecordCount,
+            };
+
+            const result = await generatePerformanceGrade(aiInput);
+            
+            const updatedStudent = JSON.parse(JSON.stringify(student));
+            if (!updatedStudent[termGradesKey]) {
+                updatedStudent[termGradesKey] = {};
+            }
+
+            updatedStudent[termGradesKey].perf1 = result.perf1_grade;
+            updatedStudent[termGradesKey].perf2 = result.perf2_grade;
+
+            return updatedStudent;
+        });
+
+        const updatedStudents = await Promise.all(updatedStudentsPromises);
+
+        setEditableStudents(updatedStudents);
+        toast({
+            title: "Yapay Zeka Tamamladı!",
+            description: "Tüm öğrenciler için performans notları başarıyla oluşturuldu. Kaydetmeyi unutmayın.",
+        });
+
+    } catch (error) {
+        console.error("AI grade generation failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Hata',
+            description: 'Yapay zeka ile notlar oluşturulurken bir sorun oluştu.'
+        });
+    } finally {
+        setIsGenerating(false);
+    }
+  };
 
   const GradeInput = ({ studentId, gradeType }: { studentId: string; gradeType: GradeType }) => {
     const student = editableStudents.find(s => s.id === studentId);
@@ -263,10 +322,18 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Toplu Not Girişi ({activeTerm}. Dönem)</DialogTitle>
-          <DialogDescription>
-            Excel'den bir not sütununu kopyalayıp ilgili sütunun altındaki alana yapıştırın veya doğrudan tablo üzerinden notları girin.
-          </DialogDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <DialogTitle>Toplu Not Girişi ({activeTerm}. Dönem)</DialogTitle>
+              <DialogDescription>
+                Excel'den bir not sütununu kopyalayıp ilgili sütunun altındaki alana yapıştırın veya doğrudan tablo üzerinden notları girin.
+              </DialogDescription>
+            </div>
+            <Button onClick={handleAiFill} disabled={isGenerating} size="sm">
+              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}
+              AI ile Doldur
+            </Button>
+          </div>
         </DialogHeader>
         <ScrollArea className="flex-1">
           <Table>

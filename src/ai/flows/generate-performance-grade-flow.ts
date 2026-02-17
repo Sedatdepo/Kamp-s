@@ -1,35 +1,27 @@
 'use server';
 /**
- * @fileOverview Öğrenci verilerini analiz ederek performans notları ve geçme durumu hakkında tavsiyeler üreten yapay zeka akışı.
+ * @fileOverview Öğrencinin bütünsel verilerini analiz ederek, adil ve gerekçeli performans notları üreten yapay zeka akışı.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { INITIAL_PERF_CRITERIA } from '@/lib/grading-defaults';
 
 const PerformanceGradeInputSchema = z.object({
   studentName: z.string().describe('Öğrencinin adı.'),
-  exam1Average: z.number().optional().describe('1. Dönem sınav ortalaması.'),
-  exam2Average: z.number().optional().describe('2. Dönem sınav ortalaması.'),
-  homeworkSubmissionRate: z.string().describe('Ödev teslim oranı (örn: "10 ödevden 8 tanesini yaptı").'),
-  attendanceCount: z.number().describe('Toplam devamsız gün sayısı.'),
-  behaviorScore: z.number().describe('Davranış puanı (100 üzerinden).'),
-  riskFactors: z.array(z.string()).describe('Öğrencinin sahip olduğu risk faktörleri.'),
-  teacherNotes: z.string().optional().describe('Öğretmenin öğrenci hakkındaki ek notları.'),
+  examAverage: z.number().optional().describe('Aktif dönemdeki sınav ortalaması. Performans notları için taban çizgisi olarak kullanılmalıdır.'),
+  behaviorScore: z.number().describe('Davranış puanı (100 üzerinden). Yüksek puan olumlu bir göstergedir.'),
+  positiveBehaviorCount: z.number().describe('Kazanılan olumlu davranış/rozet sayısı. Notu olumlu etkiler.'),
+  negativeBehaviorCount: z.number().describe('Alınan olumsuz davranış kaydı sayısı. Notu olumsuz etkileyebilir.'),
+  disciplineRecordCount: z.number().describe('Hakkında açılmış disiplin süreci sayısı. Bu, not üzerinde ciddi bir olumsuz etken olabilir.'),
 });
 
 export type PerformanceGradeInput = z.infer<typeof PerformanceGradeInputSchema>;
 
 const PerformanceGradeOutputSchema = z.object({
-  term1_perf1_grade: z.number().describe("1. Dönem 1. Performans notu önerisi (0-100 arası)."),
-  term1_perf1_reason: z.string().describe("Bu notun neden önerildiğine dair kısa gerekçe."),
-  term1_perf2_grade: z.number().describe("1. Dönem 2. Performans notu önerisi (0-100 arası)."),
-  term1_perf2_reason: z.string().describe("Bu notun neden önerildiğine dair kısa gerekçe."),
-  term2_perf1_grade: z.number().describe("2. Dönem 1. Performans notu önerisi (0-100 arası)."),
-  term2_perf1_reason: z.string().describe("Bu notun neden önerildiğine dair kısa gerekçe."),
-  term2_perf2_grade: z.number().describe("2. Dönem 2. Performans notu önerisi (0-100 arası)."),
-  term2_perf2_reason: z.string().describe("Bu notun neden önerildiğine dair kısa gerekçe."),
-  finalRecommendation: z.string().describe("Öğrencinin dersi geçip geçemeyeceği ve genel durumu hakkında nihai tavsiye."),
+  perf1_grade: z.number().describe("1. Performans notu önerisi (0-100 arası)."),
+  perf1_reason: z.string().describe("Bu notun neden önerildiğine dair kısa ve öz gerekçe."),
+  perf2_grade: z.number().describe("2. Performans notu önerisi (0-100 arası)."),
+  perf2_reason: z.string().describe("Bu notun neden önerildiğine dair kısa ve öz gerekçe."),
 });
 
 export type PerformanceGradeOutput = z.infer<typeof PerformanceGradeOutputSchema>;
@@ -42,34 +34,23 @@ export async function generatePerformanceGrade(input: PerformanceGradeInput): Pr
       outputSchema: PerformanceGradeOutputSchema,
     },
     async (input) => {
-      const performanceCriteriaText = INITIAL_PERF_CRITERIA.map(c => `- ${c.name} (${c.max} Puan)`).join('\n');
-
       const prompt = `
-        Sen deneyimli bir lise öğretmenisin. Görevin, bir öğrencinin yıl içindeki verilerini analiz ederek MEB yönetmeliğine uygun, adil ve kanıta dayalı performans notları önermektir.
+        Sen deneyimli bir Türk lise öğretmenisin. Görevin, bir öğrencinin dönem içindeki verilerini analiz ederek MEB yönetmeliğine uygun, adil ve kanıta dayalı iki adet performans notu önermektir.
+
+        ### ÇOK KRİTİK KURAL ###
+        Önereceğin performans notları, öğrencinin sınav ortalamasından (${input.examAverage?.toFixed(2) ?? '50'}) KESİNLİKLE DAHA DÜŞÜK OLAMAZ. Bu ortalamayı bir taban olarak kullan ve notları bunun üzerine inşa et.
+
+        ### DEĞERLENDİRME KRİTERLERİ ###
+        1.  **Sınav Ortalaması (${input.examAverage?.toFixed(2) ?? '50'}):** Bu not, performans notları için bir başlangıç noktasıdır. Notlar bu değerin altına düşemez.
+        2.  **Davranış Puanı (${input.behaviorScore}/100):** 100'e ne kadar yakınsa o kadar iyidir. Bu puan, öğrencinin genel tutumunu yansıtır ve notu pozitif yönde etkilemelidir.
+        3.  **Olumlu Davranışlar (${input.positiveBehaviorCount} adet):** Rozetler veya pozitif kayıtlar, öğrencinin çabasını gösterir. Her bir olumlu davranış, notu bir miktar artırmalıdır.
+        4.  **Olumsuz Davranışlar (${input.negativeBehaviorCount} adet):** Küçük olumsuzluklar notu hafifçe düşürebilir ama sınav ortalamasının altına indirmemelidir.
+        5.  **Disiplin Süreçleri (${input.disciplineRecordCount} adet):** Bu en ciddi olumsuz göstergedir. Eğer disiplin süreci varsa, notu sınav ortalamasına yakın tut, ancak yine de altına düşürme.
         
-        Performans notlarını değerlendirirken şu kriterleri ve ağırlıklarını dikkate al:
-        ${performanceCriteriaText}
+        ### GÖREVİN ###
+        Bu verileri kullanarak aşağıdaki JSON formatında bir çıktı oluştur. Her performans notu için 0-100 arasında bir puan öner ve bu puanı neden verdiğini TEK CÜMLE ile gerekçelendir. İkinci performans notu, ilkine göre bir gelişim veya düşüşü yansıtabilir.
 
-        Aşağıda bilgileri verilen öğrenciyi analiz et:
-        - Öğrenci Adı: ${input.studentName}
-        - 1. Dönem Sınav Ortalaması: ${input.exam1Average?.toFixed(2) ?? 'Girilmemiş'}
-        - 2. Dönem Sınav Ortalaması: ${input.exam2Average?.toFixed(2) ?? 'Girilmemiş'}
-        - Ödev Teslim Durumu: ${input.homeworkSubmissionRate}
-        - Toplam Devamsızlık: ${input.attendanceCount} gün
-        - Davranış Puanı: ${input.behaviorScore} / 100
-        - Risk Faktörleri: ${input.riskFactors.length > 0 ? input.riskFactors.join(', ') : 'Yok'}
-        - Öğretmen Notları: ${input.teacherNotes || 'Yok'}
-
-        Bu verileri kullanarak aşağıdaki JSON formatında bir çıktı oluştur. Her performans notu için 0-100 arasında bir puan öner ve bu puanı neden verdiğini kısaca gerekçelendir.
-        
-        Örnek Gerekçe: "Ödevlerini zamanında yapması ve derse katılımı yüksek olduğu için yüksek bir not önerildi."
-        Örnek Gerekçe: "Sınav başarısı iyi olmasına rağmen devamsızlığı ve ödev eksikliği nedeniyle daha düşük bir not takdir edildi."
-
-        1.  **term1_perf1_grade / term1_perf1_reason**: 1. Dönem başındaki genel durumuna göre bir not ve gerekçe.
-        2.  **term1_perf2_grade / term1_perf2_reason**: 1. Dönem sonundaki gelişimini de dikkate alarak bir not ve gerekçe.
-        3.  **term2_perf1_grade / term2_perf1_reason**: 2. Dönemin başındaki durumunu (1. dönemden devraldığı alışkanlıklar dahil) değerlendirerek bir not ve gerekçe.
-        4.  **term2_perf2_grade / term2_perf2_reason**: Tüm yılı kapsayan genel performansını yansıtan nihai bir not ve gerekçe.
-        5.  **finalRecommendation**: Tüm bu veriler ışığında, öğrencinin bu dersten geçip geçemeyeceği hakkında bir öngörüde bulun ve öğretmene yönelik kısa bir tavsiye yaz. (Örn: "Öğrencinin genel ortalaması geçmesi için yeterli görünüyor, ancak ikinci dönemdeki motivasyon düşüklüğüne dikkat edilmeli.")
+        Öğrenci: ${input.studentName}
       `;
 
       const { output } = await ai.generate({
