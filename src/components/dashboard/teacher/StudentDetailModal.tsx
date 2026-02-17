@@ -71,7 +71,7 @@ const TermGrades = ({ termGrades, teacherProfile, student }: { termGrades?: Grad
         }
         return standard ?? null;
     }
-
+    
     const exam1 = getExamAverage(grades.writtenExam1, grades.speakingExam1, grades.listeningExam1, grades.exam1);
     const exam2 = getExamAverage(grades.writtenExam2, grades.speakingExam2, grades.listeningExam2, grades.exam2);
 
@@ -128,9 +128,12 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
     const homeworksQuery = useMemoFirebase(() => {
-        if (!db || !currentClass) return null;
-        return query(collection(db, 'classes', currentClass.id, 'homeworks'));
-    }, [db, currentClass]);
+        if (!db || !currentClass || !student.id) return null;
+        return query(
+            collection(db, 'classes', currentClass.id, 'homeworks'),
+            where('assignedStudents', 'array-contains', student.id)
+        );
+    }, [db, currentClass, student.id]);
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
@@ -197,7 +200,7 @@ const HomeworkStatusTab = ({ student, currentClass }: { student: Student, curren
                         );
                     })
                 ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfa henüz ödev atanmamış.</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">Bu öğrenciye atanmış ödev bulunmuyor.</p>
                 )}
             </CardContent>
         </Card>
@@ -422,7 +425,7 @@ export function StudentDetailModal({ student, teacherProfile, currentClass, isOp
                                     <p className="text-sm text-slate-700 whitespace-pre-line">{aiReport.strengths}</p>
                                 </div>
                                 <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                                    <h4 className="font-semibold text-indigo-800">Öğretmene Tavsiyeler</h4>
+                                    <h4 className="font-semibold text-indigo-800">Öğretmene Yönelik Tavsiyeler</h4>
                                     <p className="text-sm text-slate-700 whitespace-pre-line">{aiReport.recommendations}</p>
                                 </div>
                             </div>
