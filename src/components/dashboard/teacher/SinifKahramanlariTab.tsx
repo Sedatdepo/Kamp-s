@@ -1,8 +1,9 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Student, Class, BehaviorLog, TeacherProfile } from '@/lib/types';
+import { Student, Class, BehaviorLog, TeacherProfile, Badge, AwardedBadge } from '@/lib/types';
 import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { 
   Trophy, Star, UserPlus, X, Check, Share2, Settings
@@ -38,7 +39,8 @@ import { Loader2 } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { GradingSettingsDialog } from './GradingSettingsDialog';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_BADGES } from '@/lib/grading-defaults';
-import { Badge } from '@/components/ui/badge';
+import { Badge as UiBadge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 export function SinifKahramanlariTab({ students, currentClass, teacherProfile }: { students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null }) {
@@ -119,20 +121,55 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
     }
   };
 
-  const handleBadgeClick = async (student: Student, badge: any) => {
+   const giveBadge = async (student: Student, badge: Badge) => {
     if (!db) return;
-    const isOwned = student.badges?.includes(badge.id);
     const studentRef = doc(db, 'students', student.id);
+
+    const newBadgeAward: AwardedBadge = {
+      id: `award_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      badgeId: badge.id,
+      name: badge.name,
+      icon: badge.icon,
+      dateAwarded: new Date().toISOString(),
+    };
+
     try {
-      if (isOwned) {
-        await updateDoc(studentRef, { badges: arrayRemove(badge.id) });
-        toast({ title: "Rozet Geri Alındı!", description: `${student.name} öğrencisinden "${badge.name}" rozeti kaldırıldı.`, variant: "destructive"});
-      } else {
-        await updateDoc(studentRef, { badges: arrayUnion(badge.id) });
-        toast({ title: "Rozet Kazanıldı!", description: `${student.name}: ${badge.name}`, className: "bg-yellow-50 border-yellow-200 text-yellow-800"});
-      }
+      await updateDoc(studentRef, {
+        badges: arrayUnion(newBadgeAward)
+      });
+      toast({
+        title: "Rozet Verildi!",
+        description: `${student.name} öğrencisine "${badge.name}" rozeti verildi.`,
+        className: "bg-yellow-50 border-yellow-200 text-yellow-800"
+      });
     } catch (error) {
-      toast({ variant: "destructive", title: "Hata", description: "Rozet işlemi gerçekleştirilemedi."});
+        console.error("Rozet verme hatası:", error);
+        toast({
+            variant: "destructive",
+            title: "Hata",
+            description: "Rozet verilemedi."
+        });
+    }
+};
+
+  const deleteBadgeAward = async (student: Student, award: AwardedBadge) => {
+    if (!db || !student?.id) return;
+    try {
+        const studentRef = doc(db, 'students', student.id);
+        await updateDoc(studentRef, {
+            badges: arrayRemove(award)
+        });
+        toast({
+            title: "Rozet Kaydı Silindi",
+            description: `${student.name}: '${award.name}' rozeti geçmişten silindi.`,
+            variant: "destructive"
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Hata",
+            description: "Rozet kaydı silinemedi."
+        });
     }
   };
 
@@ -144,6 +181,27 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
 
   const safeStudents = students || [];
   const sortedStudentsByName = [...safeStudents].sort((a, b) => (a.number && b.number) ? a.number.localeCompare(b.number, undefined, { numeric: true }) : a.name.localeCompare(b.name));
+
+  const behaviorHistory = useMemo(() => (selectedStudent?.behaviorLogs || []).map(log => ({
+    id: log.id,
+    date: log.date,
+    label: `${log.label} (${log.points > 0 ? '+' : ''}${log.points}P)`,
+    type: 'behavior',
+    original: log
+  })), [selectedStudent?.behaviorLogs]);
+
+  const badgeHistory = useMemo(() => (selectedStudent?.badges || []).map(award => ({
+      id: award.id,
+      date: award.dateAwarded,
+      label: `"${award.name}" rozeti kazanıldı`,
+      type: 'badge',
+      original: award
+  })), [selectedStudent?.badges]);
+
+  const combinedHistory = useMemo(() => 
+      [...behaviorHistory, ...badgeHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      [behaviorHistory, badgeHistory]
+  );
 
   return (
     <div className="p-2">
@@ -178,26 +236,45 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedStudentsByName.map(student => (
-                  <TableRow key={student.id}>
-                    <TableCell>{student.number}</TableCell>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{student.behaviorScore || 100}</Badge>
-                    </TableCell>
-                    <TableCell className="flex gap-1 flex-wrap">
-                      {student.badges?.map(badgeId => {
-                        const badge = availableBadges.find(b => b.id === badgeId);
-                        return badge ? <span key={badgeId} className="text-lg" title={badge.name}>{badge.icon}</span> : null;
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
-                        İşlem Yap
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sortedStudentsByName.map(student => {
+                  const badgeCounts = (student.badges || []).reduce((acc, award) => {
+                    acc[award.badgeId] = (acc[award.badgeId] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>);
+
+                  return (
+                    <TableRow key={student.id}>
+                      <TableCell>{student.number}</TableCell>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>
+                        <UiBadge variant="secondary">{student.behaviorScore || 100}</UiBadge>
+                      </TableCell>
+                      <TableCell className="flex gap-1 flex-wrap items-center">
+                         <TooltipProvider>
+                          {Object.entries(badgeCounts).map(([badgeId, count]) => {
+                            const badge = availableBadges.find(b => b.id === badgeId);
+                            return badge ? (
+                              <Tooltip key={badgeId}>
+                                <TooltipTrigger>
+                                  <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-full">
+                                    <span className="text-lg" title={badge.name}>{badge.icon}</span>
+                                    {count > 1 && <span className="text-xs font-bold text-slate-600">x{count}</span>}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{badge.name}</p></TooltipContent>
+                              </Tooltip>
+                            ) : null;
+                          })}
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
+                          İşlem Yap
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -243,19 +320,39 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
               <TabsContent value="history" className="mt-4">
                 <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-2">
-                    {(selectedStudent?.behaviorLogs || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(log => (
-                        <div key={log.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50">
+                    {combinedHistory.map(item => (
+                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50">
                             <div>
-                                <p className="text-sm font-medium">{log.label} ({log.points > 0 ? '+' : ''}{log.points}P)</p>
-                                <p className="text-xs text-muted-foreground">{new Date(log.date).toLocaleString('tr-TR')}</p>
+                                <p className="text-sm font-medium">{item.label}</p>
+                                <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleString('tr-TR')}</p>
                             </div>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-red-400"><Trash2 size={16}/></Button></AlertDialogTrigger>
-                                <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu davranış kaydını silmek istediğinizden emin misiniz? Bu işlem öğrencinin puanını etkileyecektir.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => deleteBehaviorLog(selectedStudent, log)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                        <AlertDialogDescription>Bu kaydı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => {
+                                                if (item.type === 'behavior') {
+                                                    deleteBehaviorLog(selectedStudent, item.original as BehaviorLog);
+                                                } else {
+                                                    deleteBadgeAward(selectedStudent, item.original as AwardedBadge);
+                                                }
+                                            }}
+                                            className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                            Sil
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
                             </AlertDialog>
                         </div>
                     ))}
-                    {(selectedStudent?.behaviorLogs || []).length === 0 && (<p className="text-center text-sm text-muted-foreground p-4">Henüz davranış kaydı yok.</p>)}
+                    {combinedHistory.length === 0 && (<p className="text-center text-sm text-muted-foreground p-4">Henüz davranış veya rozet kaydı yok.</p>)}
                     </div>
                 </ScrollArea>
               </TabsContent>
@@ -263,14 +360,18 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
                 <ScrollArea className="h-[350px] pr-4">
                   <div className="grid grid-cols-2 gap-3">
                     {availableBadges.map((badge) => {
-                      const isOwned = selectedStudent.badges?.includes(badge.id);
+                      const count = selectedStudent.badges?.filter(b => b.badgeId === badge.id).length || 0;
                       return (
-                         <div key={badge.id} onClick={() => handleBadgeClick(selectedStudent, badge)} className={`relative p-3 rounded-xl border-2 flex flex-col items-center text-center transition-all cursor-pointer ${isOwned ? 'border-dashed border-green-400 bg-green-50' : 'bg-white border-slate-200 hover:border-indigo-400'}`}>
-                           {isOwned && <div className="absolute top-2 right-2 text-green-600 bg-white rounded-full p-0.5 shadow-sm"><Check size={14} strokeWidth={3} /></div>}
-                           <div className="text-3xl mb-2">{badge.icon}</div>
-                           <div className="font-bold text-sm text-slate-800">{badge.name}</div>
-                           <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
-                         </div>
+                         <div 
+                          key={badge.id}
+                          onClick={() => giveBadge(selectedStudent, badge)}
+                          className="relative p-3 rounded-xl border flex flex-col items-center text-center transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md"
+                        >
+                          {count > 0 && <div className="absolute top-1 left-1 text-xs font-bold bg-indigo-500 text-white rounded-full h-5 w-5 flex items-center justify-center">x{count}</div>}
+                          <div className="text-3xl mb-2">{badge.icon}</div>
+                          <div className="font-bold text-sm text-slate-800">{badge.name}</div>
+                          <div className="text-xs text-slate-500 line-clamp-1">{badge.description}</div>
+                        </div>
                       );
                     })}
                   </div>

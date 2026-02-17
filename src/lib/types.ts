@@ -13,6 +13,15 @@ export interface BehaviorLog {
   points: number;
 }
 
+export interface AwardedBadge {
+  id: string; // Unique ID for this specific award instance
+  badgeId: string; // ID of the badge type from availableBadges
+  name: string;
+  icon: string;
+  dateAwarded: string; // ISO string for when it was awarded
+}
+
+
 export interface TimetableCell {
   ders: string;
   sinif: string;
@@ -278,7 +287,7 @@ export interface Student {
   behaviorScore: number;
   behaviorLogs?: BehaviorLog[];
   xp?: number; // Gamification experience points
-  badges?: string[]; // Gamification badge IDs
+  badges?: AwardedBadge[]; // Gamification badge IDs
 
   hasProject?: boolean;
   needsPasswordChange?: boolean;
