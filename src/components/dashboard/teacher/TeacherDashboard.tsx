@@ -28,13 +28,14 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDialog } from './ProfileDialog';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
+import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
+
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 );
 
 // Dynamically import all tab components
-const StudentManagementTab = dynamic(() => import('@/components/dashboard/teacher/StudentManagementTab').then(mod => mod.StudentManagementTab), { loading: LoadingSpinner });
 const KazanımlarTab = dynamic(() => import('@/components/dashboard/teacher/KazanımlarTab').then(mod => mod.default), { loading: LoadingSpinner });
 const RiskMapTab = dynamic(() => import('@/components/dashboard/teacher/RiskMapTab').then(mod => mod.RiskMapTab), { loading: LoadingSpinner });
 const InfoFormsTab = dynamic(() => import('@/components/dashboard/teacher/InfoFormsTab').then(mod => mod.StudentInfoFormTab), { loading: LoadingSpinner });
