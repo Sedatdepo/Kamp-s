@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -151,7 +152,15 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   const [selectedBebGrade, setSelectedBebGrade] = useState('9');
 
 
-  // --- INITIALIZATION ---
+  const addToast = useCallback((msg: any, type = 'info') => {
+      const id = Date.now() + Math.random();
+      setToasts(prev => [...prev, { id, msg, type }]);
+      setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+      }, 4000);
+  }, []);
+
+  // --- INITIALIZATION & DATA LOADING ---
   useEffect(() => {
     setIsClient(true);
     const savedStudents = localStorage.getItem('students');
@@ -181,17 +190,38 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       end: future.toISOString().split('T')[0]
     });
   }, [teacherProfile]);
+  
+  // Load student's BEP data when selected
+  useEffect(() => {
+    if (!selectedStudentId || students.length === 0) {
+        setBepSelections({});
+        setSelectedPerformance({});
+        setSelectedKaba({});
+        setDynamicPerformanceItems([]);
+        return;
+    };
+    
+    const student = students.find(s => s.id === selectedStudentId);
+
+    if (student && student.bepData) {
+        const { bepData } = student;
+        setBepSelections(bepData.bepSelections || {});
+        setSelectedPerformance(bepData.selectedPerformance || {});
+        setSelectedKaba(bepData.selectedKaba || {});
+        setBepDates(bepData.bepDates || { start: new Date().toISOString().split('T')[0], end: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0] });
+        setSelectedBebSubject(bepData.selectedBebSubject || Object.keys(ALL_PLANS)[0]);
+        setSelectedBebGrade(bepData.selectedBebGrade || '9');
+        addToast('Kaydedilmiş BEP verileri yüklendi.', 'info');
+    } else {
+        setBepSelections({});
+        setSelectedPerformance({});
+        setSelectedKaba({});
+        setDynamicPerformanceItems([]);
+    }
+  }, [selectedStudentId, students, addToast]);
 
 
   // --- AUTO-FILL EFFECT ---
-    const addToast = useCallback((msg: any, type = 'info') => {
-        const id = Date.now() + Math.random();
-        setToasts(prev => [...prev, { id, msg, type }]);
-        setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-        }, 4000);
-    }, []);
-
     useEffect(() => {
         if (!isClient) return;
 
@@ -336,6 +366,31 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   }, [selectedBebGrade]);
 
   // --- BEP ACTIONS ---
+  
+    const handleSaveBepData = () => {
+    if (!currentStudent) {
+      addToast('Lütfen önce bir öğrenci seçin', 'error');
+      return;
+    }
+    const bepDataForStudent = {
+      bepSelections,
+      selectedPerformance,
+      selectedKaba,
+      bepDates,
+      selectedBebSubject,
+      selectedBebGrade
+    };
+
+    const updatedStudents = students.map(s => {
+      if (s.id === selectedStudentId) {
+        return { ...s, bepData: bepDataForStudent };
+      }
+      return s;
+    });
+    setStudents(updatedStudents);
+    localStorage.setItem('students', JSON.stringify(updatedStudents));
+    addToast('BEP verileri başarıyla öğrenciye kaydedildi.', 'success');
+  };
 
   const toggleKazanim = (id: any) => {
     setBepSelections((prev: any) => {
@@ -688,13 +743,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                         <select 
                             className="w-full p-4 border border-slate-300 rounded-xl bg-slate-50 text-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all cursor-pointer"
                             value={selectedStudentId}
-                            onChange={(e) => {
-                                setSelectedStudentId(e.target.value);
-                                setBepSelections({});
-                                setSelectedPerformance({});
-                                setSelectedKaba({});
-                                setDynamicPerformanceItems([]);
-                            }}
+                            onChange={(e) => setSelectedStudentId(e.target.value)}
                         >
                             <option value="">-- Listeden bir öğrenci seçiniz --</option>
                             {students.map((s: any) => (
@@ -896,8 +945,13 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                             </div>
 
                             {/* Export Buttons */}
-                            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-6 sticky bottom-6 z-10">
+                             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-6 sticky bottom-6 z-10">
                                 <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-200 flex flex-wrap gap-2 justify-center">
+                                    <button 
+                                        onClick={handleSaveBepData}
+                                        className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 shadow-sm flex items-center gap-2 font-bold text-sm transition-transform active:scale-95">
+                                        <Save size={18} /> BEP Verilerini Kaydet
+                                    </button>
                                     <button 
                                         onClick={() => generateRTF('bep')}
                                         className="bg-purple-600 text-white px-5 py-2.5 rounded-lg hover:bg-purple-700 shadow-sm flex items-center gap-2 font-bold text-sm transition-transform active:scale-95">
@@ -993,3 +1047,4 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     </div>
   );
 }
+
