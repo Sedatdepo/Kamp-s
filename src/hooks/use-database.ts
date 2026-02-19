@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext } from 'react';
@@ -7,7 +8,7 @@ import {
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
     InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument, ExamDocument,
-    BepStudent, MebClubData
+    BepStudent, MebClubData, ClassGuidanceData
 } from '@/lib/types';
 
 // localStorage anahtarı (artık kullanılmıyor ama referans olarak kalabilir)
@@ -44,9 +45,10 @@ export interface Database {
   edebiyatAsistanArsivi: EdebiyatAsistanDocument[];
   edebiyatKazanımlar: any | null;
   examDocuments: ExamDocument[];
-  mebClubData?: MebClubData;
-  annualPlanProgress?: { [key: string]: string[] };
-  bepStudents?: BepStudent[];
+  mebClubData: MebClubData;
+  annualPlanProgress: { [key: string]: string[] };
+  bepStudents: BepStudent[];
+  classGuidanceData: ClassGuidanceData;
 }
 
 // Varsayılan boş veritabanı
@@ -116,6 +118,35 @@ export const initialDb: Database = {
   },
   annualPlanProgress: {},
   bepStudents: [],
+  classGuidanceData: {
+    schoolDetails: {
+        schoolName: '',
+        classBranch: 'A',
+        teacherName: '',
+        counselorName: '',
+        principalName: '',
+        city: '',
+        year: '2025-2026'
+    },
+    termReportData: {
+        kazanimStatus: 'evet',
+        kazanimlar: Array(3).fill({ text: '' }).map((_, i) => ({ id: i + 1, text: '' })),
+        envanterler: [{ id: 1, name: 'Öğrenci Bilgi Formu', col1: 0, col2: 0 }, { id: 2, name: 'Sınıf Risk Haritası', col1: 0, col2: 0 }],
+        rehberlik: [{ id: 1, name: 'Bireysel Görüşme', col1: 0, col2: 0 }],
+        veli: [{ id: 1, name: 'Veli Toplantısı', col1: 0, col2: 0, col3: 0 }],
+        guclukler: '',
+        oneriler: ''
+    },
+    endYearReportData: {
+        kazanimStatus: 'evet',
+        kazanimlar: Array(3).fill({ text: '' }).map((_, i) => ({ id: i + 1, text: '' })),
+        envanterler: [{ id: 1, name: 'Öğrenci Bilgi Formu', col1: 0, col2: 0 }, { id: 2, name: 'Sınıf Risk Haritası', col1: 0, col2: 0 }],
+        rehberlik: [{ id: 1, name: 'Bireysel Görüşme', col1: 0, col2: 0 }],
+        veli: [{ id: 1, name: 'Veli Toplantısı', col1: 0, col2: 0, col3: 0 }],
+        guclukler: '',
+        oneriler: ''
+    }
+  }
 };
 
 // Create the context

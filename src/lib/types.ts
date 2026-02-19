@@ -713,7 +713,7 @@ export type SociogramAnalysisOutput = z.infer<typeof SociogramAnalysisOutput>;
 
 
 
-// NEW ARCHIVE TYPES
+// --- ARCHIVE TYPES ---
 export interface ExamAnalysisDocument extends Archivable {
     data: {
         examKey: string;
@@ -842,6 +842,41 @@ export const StudentReportOutputSchema = z.object({
   recommendations: z.string().describe("Öğretmene yönelik, bu öğrenciye özel, somut ve eyleme geçirilebilir pedagojik tavsiyelerin madde madde listesi."),
 });
 export type StudentReportOutput = z.infer<typeof StudentReportOutputSchema>;
+
+// NEW TYPES FOR GUIDANCE ASSISTANT
+export interface ReportDataItem {
+  id: number;
+  name: string;
+  col1: number;
+  col2: number;
+  col3?: number; // Sadece veli için
+}
+
+export interface ReportData {
+  kazanimStatus: 'evet' | 'kismen' | 'hayir';
+  kazanimlar: { id: number; text: string }[];
+  envanterler: ReportDataItem[];
+  rehberlik: ReportDataItem[];
+  veli: ReportDataItem[];
+  guclukler: string;
+  oneriler: string;
+}
+
+export interface SchoolDetails {
+    schoolName: string;
+    classBranch: string;
+    teacherName: string;
+    counselorName: string;
+    principalName: string;
+    city: string;
+    year: string;
+}
+
+export interface ClassGuidanceData {
+    schoolDetails: SchoolDetails;
+    termReportData: ReportData;
+    endYearReportData: ReportData;
+}
     
     
 
