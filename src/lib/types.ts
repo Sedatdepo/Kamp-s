@@ -590,8 +590,25 @@ export interface BepStudent {
     id: string;
     name: string;
     class: string;
-    diagnosis: string;
+    number: string;
+    branch: string;
+    notes: string;
+    specialNeeds: string[];
+    isSpecialNeeds: boolean;
+    bepData?: any;
 }
+
+export interface MebClubData {
+  schoolName: string;
+  academicYear: string;
+  teacherName: string;
+  clubSelection: string;
+  manualClubName: string;
+  annualPlan: string[];
+  students: { no: string; name: string; class: string; role: string }[];
+  budgetItems: { date: string; desc: string; docNo: string; income: string; expense: string }[];
+}
+
 
 export interface SavedDocument<T> {
   id: string;
@@ -826,4 +843,6 @@ export const StudentReportOutputSchema = z.object({
 });
 export type StudentReportOutput = z.infer<typeof StudentReportOutputSchema>;
     
+    
+
     

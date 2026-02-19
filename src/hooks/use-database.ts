@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext } from 'react';
@@ -5,7 +6,8 @@ import {
     AnnualPlan, DilekceDocument, DutyRosterDocument, SeatingPlanDocument, 
     ElectionDocument, GradingDocument, RiskMapDocument, CommunicationDocument, 
     HomeworkDocument, DisciplineRecord, ExamAnalysisDocument, HomeworkStatusDocument,
-    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument, ExamDocument
+    InfoFormsStatusDocument, GuidanceReferralRecord, SchoolInfo, StudentInfoFormData, ObservationRecord, Timetable, TimetableCell, AssignmentTemplate, EdebiyatAsistanDocument, SokDocument, VeliToplantisiDocument, ZumreDocument, ExamDocument,
+    BepStudent, MebClubData
 } from '@/lib/types';
 
 // localStorage anahtarı (artık kullanılmıyor ama referans olarak kalabilir)
@@ -42,6 +44,9 @@ export interface Database {
   edebiyatAsistanArsivi: EdebiyatAsistanDocument[];
   edebiyatKazanımlar: any | null;
   examDocuments: ExamDocument[];
+  mebClubData?: MebClubData;
+  annualPlanProgress?: { [key: string]: string[] };
+  bepStudents?: BepStudent[];
 }
 
 // Varsayılan boş veritabanı
@@ -99,6 +104,18 @@ export const initialDb: Database = {
   edebiyatAsistanArsivi: [],
   edebiyatKazanımlar: null,
   examDocuments: [],
+  mebClubData: {
+    schoolName: '',
+    academicYear: '2025-2026',
+    teacherName: '',
+    clubSelection: '',
+    manualClubName: '',
+    annualPlan: Array(10).fill(""),
+    students: Array(20).fill({ no: "", name: "", class: "", role: "" }),
+    budgetItems: Array(8).fill({ date: "", desc: "", docNo: "", income: "", expense: "" }),
+  },
+  annualPlanProgress: {},
+  bepStudents: [],
 };
 
 // Create the context
@@ -116,3 +133,5 @@ export const useDatabase = () => {
   }
   return context;
 };
+
+    

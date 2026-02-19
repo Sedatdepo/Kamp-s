@@ -15,6 +15,7 @@ import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-it
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useDatabase } from '@/hooks/use-database';
 
 
 // --- YARDIMCI FONKSİYONLAR ---
@@ -42,6 +43,9 @@ const turkishToRTF = (text: any) => {
 // --- BİLEŞENLER ---
 
 export function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
+  const { db, setDb } = useDatabase();
+  const { annualPlanProgress = {} } = db;
+
   const [activeSubject, setActiveSubject] = useState(Object.keys(ALL_PLANS)[0]);
   const initialGrade = useMemo(() => {
     return currentClass?.name?.match(/\d+/)?.[0] || ALL_PLANS[activeSubject]?.grades[0] || '9';
@@ -52,7 +56,8 @@ export function SubjectAnnualPlan({ teacherProfile, currentClass }: { teacherPro
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeMonth, setActiveMonth] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [completedWeeks, setCompletedWeeks] = useState<string[]>([]);
+  
+  const completedWeeks = annualPlanProgress[`${activeSubject}_${activeGrade}`] || [];
 
   const subjectData = ALL_PLANS[activeSubject];
 
@@ -178,22 +183,20 @@ ${processTextContent}\\par
     }
   }, [currentClass, activeSubject, subjectData?.grades]);
   
-  useEffect(() => {
-    const saved = localStorage.getItem(`planCompleted_${activeSubject}_${activeGrade}`);
-    if (saved) {
-      setCompletedWeeks(JSON.parse(saved));
-    } else {
-      setCompletedWeeks([]);
-    }
-  }, [activeSubject, activeGrade]);
-
   const toggleCompletion = (weekId: string) => {
-    const newCompleted = completedWeeks.includes(weekId)
-      ? completedWeeks.filter(id => id !== weekId)
-      : [...completedWeeks, weekId];
+    const key = `${activeSubject}_${activeGrade}`;
+    const currentCompleted = annualPlanProgress[key] || [];
+    const newCompleted = currentCompleted.includes(weekId)
+      ? currentCompleted.filter(id => id !== weekId)
+      : [...currentCompleted, weekId];
     
-    setCompletedWeeks(newCompleted);
-    localStorage.setItem(`planCompleted_${activeSubject}_${activeGrade}`, JSON.stringify(newCompleted));
+    setDb(prev => ({
+        ...prev,
+        annualPlanProgress: {
+            ...(prev.annualPlanProgress || {}),
+            [key]: newCompleted
+        }
+    }));
   };
 
   const calculateProgress = () => {
@@ -367,3 +370,5 @@ ${processTextContent}\\par
     </div>
   );
 }
+
+    
