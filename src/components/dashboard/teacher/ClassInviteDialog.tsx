@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Download, QrCode } from 'lucide-react';
+import { ClipboardCopy, Download, QrCode, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface ClassInviteDialogProps {
@@ -81,6 +81,11 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
     document.body.removeChild(link);
   };
 
+  const handleWhatsAppShare = () => {
+    const message = encodeURIComponent(`Merhaba, "${className}" sınıfının öğrenci portalına bu linkten katılabilirsiniz: ${inviteLink}`);
+    window.open(`https://wa.me/?text=${message}`);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-md">
@@ -112,6 +117,11 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
               <ClipboardCopy className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        <div className="pt-4 border-t">
+            <Button onClick={handleWhatsAppShare} className="w-full bg-green-500 hover:bg-green-600">
+                <Share2 className="mr-2 h-4 w-4" /> WhatsApp ile Paylaş
+            </Button>
         </div>
       </DialogContent>
     </Dialog>

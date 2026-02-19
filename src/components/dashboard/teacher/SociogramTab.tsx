@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -286,6 +287,13 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
       toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
     }
   };
+
+  const handleWhatsAppShare = () => {
+    if (!currentClass?.code) return;
+    const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
+    const message = encodeURIComponent(`Merhaba, "${currentClass.name}" sınıfı sosyogram anketini bu linkten doldurabilirsiniz: ${link}`);
+    window.open(`https://wa.me/?text=${message}`);
+  };
   
   const handleSurveyChange = async (newSurvey: SociogramSurvey) => {
       setSurvey(newSurvey);
@@ -413,14 +421,23 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
                         <Label htmlFor="sociogram-toggle">Öğrencilerle Paylaş</Label>
                     </div>
                      {currentClass?.isSociogramActive && (
-                         <Button variant="outline" size="sm" onClick={() => {
-                            if(!currentClass.code) return;
-                            const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
-                            navigator.clipboard.writeText(link);
-                            toast({ title: 'Paylaşım linki kopyalandı!' });
-                        }}>
-                            <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    if(!currentClass?.code) return;
+                                    const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
+                                    navigator.clipboard.writeText(link);
+                                    toast({ title: 'Paylaşım linki kopyalandı!' });
+                                }}
+                            >
+                                <Share2 className="mr-2 h-4 w-4" /> Oylama Linki
+                            </Button>
+                             <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                                <Share2 className="mr-2 h-4 w-4" /> WhatsApp
+                            </Button>
+                        </div>
                     )}
                 </div>
                  <div className="pt-2">

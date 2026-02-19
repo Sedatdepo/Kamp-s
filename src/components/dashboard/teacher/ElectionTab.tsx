@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -260,6 +261,13 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     toast({ title: "Silindi", description: "Seçim kaydı arşivden silindi.", variant: "destructive" });
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
   
+  const handleWhatsAppShare = () => {
+    if (!currentClass) return;
+    const link = `${window.location.origin}/view/election/${currentClass.code}`;
+    const message = encodeURIComponent(`"${currentClass.name}" sınıfı seçim sonuçları: ${link}`);
+    window.open(`https://wa.me/?text=${message}`);
+  };
+  
   if (loading) return <div>Yükleniyor...</div>;
 
   return (
@@ -362,13 +370,19 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                             <Label htmlFor="publish-election" className="text-sm font-medium">Yayınla</Label>
                         </div>
                         {currentClass?.isElectionPublished && (
-                            <Button variant="outline" size="sm" onClick={() => {
-                                const link = `${window.location.origin}/view/election/${currentClass.code}`;
-                                navigator.clipboard.writeText(link);
-                                toast({ title: 'Paylaşım linki kopyalandı!' });
-                            }}>
-                                <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    if(!currentClass.code) return;
+                                    const link = `${window.location.origin}/view/election/${currentClass.code}`;
+                                    navigator.clipboard.writeText(link);
+                                    toast({ title: 'Paylaşım linki kopyalandı!' });
+                                }}>
+                                    <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                                    <Share2 className="mr-2 h-4 w-4" /> WhatsApp
+                                </Button>
+                            </div>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

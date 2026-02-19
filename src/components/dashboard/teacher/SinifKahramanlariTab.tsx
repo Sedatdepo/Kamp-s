@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -64,6 +65,13 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
     } catch {
         toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme sırasında bir sorun oluştu.' });
     }
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!currentClass?.code) return;
+    const link = `${window.location.origin}/view/gamification/${currentClass.code}`;
+    const message = encodeURIComponent(`"${currentClass.name}" sınıfı kahramanları puan durumunu buradan görebilirsiniz: ${link}`);
+    window.open(`https://wa.me/?text=${message}`);
   };
 
   const addBehaviorLog = async (student: Student, behavior: {id: string; name: string; max: number}) => {
@@ -220,6 +228,11 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
                     <Switch id="gamification-toggle" checked={currentClass?.isGamificationActive ?? false} onCheckedChange={handleToggleGamification} />
                     <Label htmlFor="gamification-toggle">Paylaş</Label>
                 </div>
+                 {currentClass?.isGamificationActive && (
+                  <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                    <Share2 className="mr-2 h-4 w-4" /> WhatsApp
+                  </Button>
+                )}
               </div>
             </div>
         </CardHeader>

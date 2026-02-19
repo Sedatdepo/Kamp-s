@@ -1,4 +1,5 @@
 
+
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -147,6 +148,13 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
     }
   };
 
+  const handleWhatsAppShare = () => {
+    if (!currentClass) return;
+    const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
+    const message = encodeURIComponent(`"${currentClass.name}" sınıfı nöbet listesi: ${link}`);
+    window.open(`https://wa.me/?text=${message}`);
+  };
+
     if (!teacherProfile || !classes) {
         return <div className="flex items-center justify-center h-screen">Yükleniyor...</div>
     }
@@ -263,13 +271,19 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
                 />
                 <Label htmlFor="publish-roster" className="text-sm font-medium">Öğrencilerle Paylaş</Label>
                 {currentClass?.isDutyRosterPublished && (
-                     <Button variant="outline" size="sm" onClick={() => {
-                        const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
-                        navigator.clipboard.writeText(link);
-                        toast({ title: 'Paylaşım linki kopyalandı!' });
-                    }}>
-                        <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => {
+                            if (!currentClass) return;
+                            const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
+                            navigator.clipboard.writeText(link);
+                            toast({ title: 'Paylaşım linki kopyalandı!' });
+                        }}>
+                            <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                             <Share2 className="mr-2 h-4 w-4" /> WhatsApp
+                        </Button>
+                    </div>
                 )}
             </div>
             {roster.length > 0 ? (

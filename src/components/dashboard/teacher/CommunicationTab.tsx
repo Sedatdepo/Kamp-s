@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User, Users, Loader2 } from 'lucide-react';
+import { Megaphone, Clock, Trash2, Edit, Save, X, MessageSquare, Send, User, Users, Loader2, Share2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -177,6 +177,13 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
     }
   };
 
+  const handleWhatsAppShare = () => {
+    if (!currentClass?.code) return;
+    const link = `${window.location.origin}/view/announcements/${currentClass.code}`;
+    const message = encodeURIComponent(`"${currentClass.name}" sınıf duyuruları: ${link}`);
+    window.open(`https://wa.me/?text=${message}`);
+  };
+
   return (
     <Card>
         <CardHeader>
@@ -187,14 +194,21 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
               </CardTitle>
               <CardDescription>Bu sınıftaki tüm öğrencilere gönderilecek bir duyuru yazın.</CardDescription>
             </div>
-            <div className="flex items-center space-x-2">
-                <Label htmlFor="publish-announcements">Yayınla</Label>
-                <Switch
-                    id="publish-announcements"
-                    checked={currentClass?.isAnnouncementsPublished || false}
-                    onCheckedChange={handleTogglePublish}
-                    disabled={!currentClass}
-                />
+            <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                    <Label htmlFor="publish-announcements">Yayınla</Label>
+                    <Switch
+                        id="publish-announcements"
+                        checked={currentClass?.isAnnouncementsPublished || false}
+                        onCheckedChange={handleTogglePublish}
+                        disabled={!currentClass}
+                    />
+                </div>
+                {currentClass?.isAnnouncementsPublished && (
+                  <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                      <Share2 className="mr-2 h-4 w-4" /> WhatsApp
+                  </Button>
+                )}
             </div>
           </div>
         </CardHeader>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -110,6 +111,13 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
             teacherProfile,
         });
     };
+
+    const handleWhatsAppShare = () => {
+        if (!currentClass) return;
+        const link = `${window.location.origin}/view/seating-plan/${currentClass.code}`;
+        const message = encodeURIComponent(`"${currentClass.name}" sınıfı oturma planı: ${link}`);
+        window.open(`https://wa.me/?text=${message}`);
+    };
     
     if (!students) return <p>Öğrenci verisi yükleniyor...</p>;
     
@@ -138,13 +146,17 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                             <Label htmlFor="publish-plan">Öğrencilerle Paylaş</Label>
                         </div>
                         {currentClass?.isSeatingPlanPublished && (
-                            <div className="mt-2">
+                            <div className="mt-2 flex gap-2">
                                 <Button variant="outline" size="sm" onClick={() => {
+                                    if (!currentClass) return;
                                     const link = `${window.location.origin}/view/seating-plan/${currentClass.code}`;
                                     navigator.clipboard.writeText(link);
                                     toast({ title: 'Paylaşım linki kopyalandı!' });
                                 }}>
                                     <Share2 className="mr-2 h-4 w-4" /> Linki Kopyala
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handleWhatsAppShare} className="bg-green-50 text-green-700 border-green-200">
+                                    <Share2 className="mr-2 h-4 w-4" /> WhatsApp
                                 </Button>
                             </div>
                         )}
