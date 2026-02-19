@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -373,6 +374,7 @@ function ClassSelectionScreen({
             <TabsContent value="documents" className="mt-4">
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <MenuCard icon={<Sparkles />} title="İçerik Stüdyosu" description="AI ile materyal ve ödev oluşturun." onClick={() => setActiveTab('content-studio')} />
+                    <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim planları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
                     <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
                     <MenuCard icon={<Users />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu tutanakları." onClick={() => setActiveTab('sok')} />
@@ -574,7 +576,6 @@ export function TeacherDashboard() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim planları." onClick={() => setActiveTab('bep')} />
                 <MenuCard icon={<Trophy />} title="Sınıf Kahramanları" description="Puan ve rozetlerle sınıfı motive edin." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
                 <MenuCard icon={<MessagesSquare />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
@@ -649,3 +650,5 @@ export function TeacherDashboard() {
     </div>
   );
 }
+
+    
