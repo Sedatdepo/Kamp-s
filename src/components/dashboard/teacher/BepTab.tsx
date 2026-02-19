@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -20,10 +19,11 @@ import {
   ChevronDown,
   Settings
 } from 'lucide-react';
-import { TeacherProfile, Class } from '@/lib/types';
+import { TeacherProfile, Class, BepStudent } from '@/lib/types';
 import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useDatabase } from '@/hooks/use-database';
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
@@ -122,22 +122,17 @@ const downloadAsRTF = (content: any, filename: any) => {
 
 export function BepTab({ teacherProfile, currentClass }: { teacherProfile: TeacherProfile | null, currentClass: Class | null }) {
   // --- STATE YÖNETİMİ ---
+  const { db, setDb } = useDatabase();
+  const { bepStudents: students = [] } = db;
+
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
   
-  // Veri
-  const [students, setStudents] = useState<any[]>([]);
-  const [teacherInfo, setTeacherInfo] = useState({
-    branchTeacher: '',
-    guidanceTeacher: '',
-    schoolPrincipal: '',
-    schoolName: ''
-  });
   const [toasts, setToasts] = useState<any[]>([]);
 
   // Form & Seçim Stateleri
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [editingStudent, setEditingStudent] = useState<BepStudent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // BEP Modülü Stateleri
@@ -163,25 +158,6 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   // --- INITIALIZATION & DATA LOADING ---
   useEffect(() => {
     setIsClient(true);
-    const savedStudents = localStorage.getItem('students');
-    
-    if (savedStudents) {
-      try {
-        setStudents(JSON.parse(savedStudents));
-      } catch (e) {
-        console.error("Veri okuma hatası", e);
-      }
-    }
-
-    if (teacherProfile) {
-        setTeacherInfo({
-            branchTeacher: teacherProfile.name || '',
-            guidanceTeacher: teacherProfile.guidanceCounselorName || '',
-            schoolPrincipal: teacherProfile.principalName || '',
-            schoolName: teacherProfile.schoolName || ''
-        });
-    }
-
     const today = new Date();
     const future = new Date();
     future.setMonth(today.getMonth() + 6);
@@ -189,7 +165,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       start: today.toISOString().split('T')[0],
       end: future.toISOString().split('T')[0]
     });
-  }, [teacherProfile]);
+  }, []);
   
   // Load student's BEP data when selected
   useEffect(() => {
@@ -278,25 +254,20 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     }, [selectedBebSubject, selectedBebGrade]);
 
   // --- ACTIONS ---
-
-  const handleSaveTeacher = () => {
-    localStorage.setItem('teacherInfo', JSON.stringify(teacherInfo));
-    addToast('Öğretmen bilgileri başarıyla kaydedildi', 'success');
-  };
-
+  
   const handleSaveStudent = (e: any) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     
     const currentNeeds = editingStudent?.specialNeeds || [];
 
-    const newStudent = {
+    const newStudent: BepStudent = {
       id: editingStudent && editingStudent.id ? editingStudent.id : crypto.randomUUID(),
-      name: formData.get('name'),
-      class: formData.get('class'),
-      number: formData.get('number'),
-      branch: formData.get('branch'),
-      notes: formData.get('notes'),
+      name: formData.get('name') as string,
+      class: formData.get('class') as string,
+      number: formData.get('number') as string,
+      branch: formData.get('branch') as string,
+      notes: formData.get('notes') as string,
       specialNeeds: currentNeeds, 
       isSpecialNeeds: true
     };
@@ -310,8 +281,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       addToast('Yeni öğrenci eklendi', 'success');
     }
 
-    setStudents(updatedStudents);
-    localStorage.setItem('students', JSON.stringify(updatedStudents));
+    setDb(prev => ({ ...prev, bepStudents: updatedStudents }));
     setIsModalOpen(false);
     setEditingStudent(null);
   };
@@ -319,8 +289,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   const handleDeleteStudent = (id: any) => {
     if (confirm('Bu öğrenciyi ve tüm verilerini silmek istediğinize emin misiniz?')) {
       const updated = students.filter(s => s.id !== id);
-      setStudents(updated);
-      localStorage.setItem('students', JSON.stringify(updated));
+      setDb(prev => ({ ...prev, bepStudents: updated }));
       addToast('Öğrenci silindi', 'warning');
       
       if (selectedStudentId === id) {
@@ -331,6 +300,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
   };
 
   const toggleSpecialNeed = (need: any) => {
+    if (!editingStudent) return;
     const currentNeeds = editingStudent?.specialNeeds || [];
     const newNeeds = currentNeeds.includes(need)
       ? currentNeeds.filter((n: any) => n !== need)
@@ -387,8 +357,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       }
       return s;
     });
-    setStudents(updatedStudents);
-    localStorage.setItem('students', JSON.stringify(updatedStudents));
+    setDb(prev => ({ ...prev, bepStudents: updatedStudents }));
     addToast('BEP verileri başarıyla öğrenciye kaydedildi.', 'success');
   };
 
@@ -442,6 +411,14 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     if (!currentStudent) return addToast('Lütfen önce bir öğrenci seçin', 'error');
 
     let content = '';
+
+    const teacherInfo = {
+        branchTeacher: teacherProfile?.name || '',
+        guidanceTeacher: teacherProfile?.guidanceCounselorName || '',
+        schoolPrincipal: teacherProfile?.principalName || '',
+        schoolName: teacherProfile?.schoolName || ''
+    };
+
 
     if (type === 'bep') {
         const selectedIds = Object.keys(bepSelections);
@@ -621,22 +598,24 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                          <h2 className="text-lg font-bold flex items-center gap-2 text-slate-700">
                             <School size={20} className="text-blue-500"/> Okul & Öğretmen Bilgileri
                         </h2>
-                        <button onClick={handleSaveTeacher} className="text-sm bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center gap-2 font-medium">
-                            <Save size={16} /> Değişiklikleri Kaydet
-                        </button>
                     </div>
                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                        {(['branchTeacher', 'guidanceTeacher', 'schoolPrincipal', 'schoolName'] as const).map((field, idx) => (
+                         {(['branchTeacher', 'guidanceTeacher', 'schoolPrincipal', 'schoolName'] as const).map((field, idx) => (
                              <div key={field} className="relative group">
                                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide group-focus-within:text-blue-500 transition-colors">
                                     {['Branş Öğretmeni', 'Rehber Öğretmen', 'Okul Müdürü', 'Okul Adı'][idx]}
                                 </label>
                                 <input 
-                                    type="text" 
+                                    type="text"
+                                    readOnly 
                                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all" 
-                                    value={teacherInfo[field]} 
-                                    onChange={(e: any) => setTeacherInfo({...teacherInfo, [field]: e.target.value})} 
+                                    value={
+                                        field === 'branchTeacher' ? teacherProfile?.name || '' :
+                                        field === 'guidanceTeacher' ? teacherProfile?.guidanceCounselorName || '' :
+                                        field === 'schoolPrincipal' ? teacherProfile?.principalName || '' :
+                                        teacherProfile?.schoolName || ''
+                                    } 
                                 />
                             </div>
                         ))}
@@ -1047,4 +1026,3 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     </div>
   );
 }
-
