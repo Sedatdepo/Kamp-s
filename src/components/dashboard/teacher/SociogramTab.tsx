@@ -290,7 +290,8 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
 
   const handleWhatsAppShare = () => {
     if (!currentClass?.code) return;
-    const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const link = `${publicUrl}/sosyogram/${currentClass.code}`;
     const message = encodeURIComponent(`Merhaba, "${currentClass.name}" sınıfı sosyogram anketini bu linkten doldurabilirsiniz: ${link}`);
     window.open(`https://wa.me/?text=${message}`);
   };
@@ -427,9 +428,10 @@ export function SociogramTab({ students, currentClass }: SociogramTabProps) {
                                 size="sm"
                                 onClick={() => {
                                     if(!currentClass?.code) return;
-                                    const link = `${window.location.origin}/sosyogram/${currentClass.code}`;
+                                    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                                    const link = `${publicUrl}/sosyogram/${currentClass.code}`;
                                     navigator.clipboard.writeText(link);
-                                    toast({ title: 'Paylaşım linki kopyalandı!' });
+                                    toast({ title: 'Oylama linki kopyalandı!' });
                                 }}
                             >
                                 <Share2 className="mr-2 h-4 w-4" /> Oylama Linki

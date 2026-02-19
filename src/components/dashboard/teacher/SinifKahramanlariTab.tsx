@@ -69,7 +69,8 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
 
   const handleWhatsAppShare = () => {
     if (!currentClass?.code) return;
-    const link = `${window.location.origin}/view/gamification/${currentClass.code}`;
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const link = `${publicUrl}/view/gamification/${currentClass.code}`;
     const message = encodeURIComponent(`"${currentClass.name}" sınıfı kahramanları puan durumunu buradan görebilirsiniz: ${link}`);
     window.open(`https://wa.me/?text=${message}`);
   };

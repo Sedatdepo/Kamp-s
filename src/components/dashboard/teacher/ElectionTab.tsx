@@ -262,8 +262,9 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   }, [selectedRecordId, setLocalDb, handleNewRecord, toast]);
   
   const handleWhatsAppShare = () => {
-    if (!currentClass) return;
-    const link = `${window.location.origin}/view/election/${currentClass.code}`;
+    if (!currentClass?.code) return;
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const link = `${publicUrl}/view/election/${currentClass.code}`;
     const message = encodeURIComponent(`"${currentClass.name}" sınıfı seçim sonuçları: ${link}`);
     window.open(`https://wa.me/?text=${message}`);
   };
@@ -296,7 +297,8 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                                     size="sm"
                                     onClick={() => {
                                         if(!currentClass?.code) return;
-                                        const link = `${window.location.origin}/oylama/${currentClass.code}`;
+                                        const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                                        const link = `${publicUrl}/oylama/${currentClass.code}`;
                                         navigator.clipboard.writeText(link);
                                         toast({ title: 'Oylama linki kopyalandı!' });
                                     }}
@@ -373,7 +375,8 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => {
                                     if(!currentClass.code) return;
-                                    const link = `${window.location.origin}/view/election/${currentClass.code}`;
+                                    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                                    const link = `${publicUrl}/view/election/${currentClass.code}`;
                                     navigator.clipboard.writeText(link);
                                     toast({ title: 'Paylaşım linki kopyalandı!' });
                                 }}>

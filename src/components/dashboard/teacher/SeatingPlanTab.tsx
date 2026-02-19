@@ -113,8 +113,9 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
     };
 
     const handleWhatsAppShare = () => {
-        if (!currentClass) return;
-        const link = `${window.location.origin}/view/seating-plan/${currentClass.code}`;
+        if (!currentClass?.code) return;
+        const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+        const link = `${publicUrl}/view/seating-plan/${currentClass.code}`;
         const message = encodeURIComponent(`"${currentClass.name}" sınıfı oturma planı: ${link}`);
         window.open(`https://wa.me/?text=${message}`);
     };
@@ -148,8 +149,9 @@ export function SeatingPlanTab({ students, currentClass, teacherProfile }: Seati
                         {currentClass?.isSeatingPlanPublished && (
                             <div className="mt-2 flex gap-2">
                                 <Button variant="outline" size="sm" onClick={() => {
-                                    if (!currentClass) return;
-                                    const link = `${window.location.origin}/view/seating-plan/${currentClass.code}`;
+                                    if (!currentClass?.code) return;
+                                    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                                    const link = `${publicUrl}/view/seating-plan/${currentClass.code}`;
                                     navigator.clipboard.writeText(link);
                                     toast({ title: 'Paylaşım linki kopyalandı!' });
                                 }}>

@@ -149,8 +149,9 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
   };
 
   const handleWhatsAppShare = () => {
-    if (!currentClass) return;
-    const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
+    if (!currentClass?.code) return;
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const link = `${publicUrl}/view/duty-roster/${currentClass.code}`;
     const message = encodeURIComponent(`"${currentClass.name}" sınıfı nöbet listesi: ${link}`);
     window.open(`https://wa.me/?text=${message}`);
   };
@@ -273,8 +274,9 @@ export function DutyRosterTab({ classes, students: allStudents, teacherProfile }
                 {currentClass?.isDutyRosterPublished && (
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => {
-                            if (!currentClass) return;
-                            const link = `${window.location.origin}/view/duty-roster/${currentClass.code}`;
+                            if (!currentClass?.code) return;
+                            const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                            const link = `${publicUrl}/view/duty-roster/${currentClass.code}`;
                             navigator.clipboard.writeText(link);
                             toast({ title: 'Paylaşım linki kopyalandı!' });
                         }}>

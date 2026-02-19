@@ -179,7 +179,8 @@ function AnnouncementsPanel({ classId, currentClass }: CommunicationTabProps) {
 
   const handleWhatsAppShare = () => {
     if (!currentClass?.code) return;
-    const link = `${window.location.origin}/view/announcements/${currentClass.code}`;
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const link = `${publicUrl}/view/announcements/${currentClass.code}`;
     const message = encodeURIComponent(`"${currentClass.name}" sınıf duyuruları: ${link}`);
     window.open(`https://wa.me/?text=${message}`);
   };

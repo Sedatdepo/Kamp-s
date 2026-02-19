@@ -21,8 +21,8 @@ export function ClassInviteDialog({ isOpen, setIsOpen, classCode, className }: C
   const { toast } = useToast();
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
-  // The invite link now points to the new student portal entry page
-  const inviteLink = `${window.location.origin}/giris/${classCode}`;
+  const publicUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const inviteLink = `${publicUrl}/giris/${classCode}`;
 
   useEffect(() => {
     if (isOpen && inviteLink) {
