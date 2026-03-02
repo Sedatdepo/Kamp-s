@@ -1,19 +1,54 @@
-
 'use client';
+export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Calendar, Search, BookOpen, Clock, Filter, ArrowRight, Download, CheckCircle, Circle, FolderHeart, FileText, Users, ClipboardCheck, BarChart, Scale, Banknote, Handshake, Bus, Wand2, Save, Settings, Plus, Trash2, Home, List, Mic, Paperclip, Pencil, Video, LayoutTemplate, CaseUpper, KeySquare, FileQuestion, Sparkles, Binary, Shuffle, AlignLeft, ChevronDown, Star, GripVertical, Archive, BookmarkPlus, Library, AlertCircle, X, CheckSquare, ArrowDownCircle } from 'lucide-react';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { 
+  Users, 
+  FileText, 
+  Save, 
+  Trash2, 
+  Edit, 
+  Download, 
+  Plus, 
+  CheckSquare, 
+  Square,
+  School,
+  X,
+  Calendar,
+  Search,
+  PlusCircle,
+  Eye,
+  FileDown,
+  ToggleLeft,
+  ToggleRight,
+  FileSignature,
+  Users2,
+  BarChart,
+  Scale,
+  Banknote,
+  Handshake,
+  Bus,
+  ClipboardList
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDatabase } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { useDatabase } from '@/hooks/use-database';
+import { TeacherProfile, DilekceDocument, Class } from '@/lib/types';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
+import { exportDilekceToRtf } from '@/lib/word-export';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Student } from '@/lib/types';
 
 
 // --- MOCK DATA & UTILS ---
