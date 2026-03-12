@@ -9,15 +9,6 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    function isOnlyChangingAuthUid() {
-      // This function checks if the only field being modified is 'authUid'.
-      // It compares the keys of the document before and after the request.
-      // This allows a new anonymous user to link themselves to a student account
-      // without being able to change other data.
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys;
-      return changedKeys.size() == 1 && changedKeys.has('authUid');
-    }
-    
     // --- CORE TEACHER RULE ---
     // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
     match /teachers/{teacherId} {
@@ -49,15 +40,12 @@ service cloud.firestore {
     match /students/{studentId} {
       // Allow any user to read student list for login dropdown. 
       allow read: if true; 
-      // Allow update if:
-      // 1. The user is authenticated AND
-      // 2. (The student record has no authUid yet OR
-      //     The logged-in user is the owner of the student record OR
-      //     The only change being made is updating the authUid for a new device login)
-      allow update: if request.auth != null && 
-                      (resource.data.authUid == null || 
-                       request.auth.uid == resource.data.authUid || 
-                       isOnlyChangingAuthUid());
+      // Allow update if the user is the owner, OR if the document has no owner yet.
+      // This allows the initial login to "claim" the document by writing their authUid.
+      allow update: if request.auth != null && (
+          request.auth.uid == resource.data.authUid || 
+          !('authUid' in resource.data)
+        );
     }
 
     match /infoForms/{formId} {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -96,9 +96,8 @@ export default function StudentLoginPage() {
                 if (user) {
                     const studentRef = doc(firestore, 'students', student.id);
                     
-                    // Only update the student document to link the authUid.
-                    // The infoForm document will be created/updated when the student visits the form page itself.
-                    await setDoc(studentRef, { authUid: user.uid }, { merge: true });
+                    // Use updateDoc to only change the authUid, which is safer and clearer for security rules.
+                    await updateDoc(studentRef, { authUid: user.uid });
                     
                     const updatedStudent = { ...student, authUid: user.uid };
 
