@@ -81,10 +81,10 @@ export default function StudentPortalPage() {
         return () => unsubscribe();
     }, [student?.id, db]);
 
-    const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student]);
+    const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student?.classId]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
     
-    const teacherDocRef = useMemoFirebase(() => (student ? doc(db, 'teachers', student.teacherId) : null), [db, student]);
+    const teacherDocRef = useMemoFirebase(() => (student ? doc(db, 'teachers', student.teacherId) : null), [db, student?.teacherId]);
     const { data: teacherProfile } = useDoc<TeacherProfile>(teacherDocRef);
     
     const homeworksQuery = useMemoFirebase(() => {
