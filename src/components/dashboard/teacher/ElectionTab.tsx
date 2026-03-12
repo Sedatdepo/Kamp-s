@@ -15,7 +15,8 @@ import {
   FileText,
   Save,
   MoreVertical,
-  Share2
+  Share2,
+  Trophy,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -367,7 +368,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                                 id="publish-election"
                                 checked={currentClass?.isElectionPublished || false}
                                 onCheckedChange={handleTogglePublish}
-                                disabled={!currentClass || !winner}
+                                disabled={!currentClass || electionData.votedStudentIds.length === 0}
                             />
                             <Label htmlFor="publish-election" className="text-sm font-medium">Yayınla</Label>
                         </div>
@@ -409,35 +410,59 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                 </div>
              </CardHeader>
              <CardContent className="space-y-6">
-                {!winner && (
-                     <div className="text-center py-10 text-muted-foreground">
-                        {currentClass?.isElectionActive ? "Oylama devam ediyor. Sonuçları görmek için oylamayı bitirin." : "Görüntülenecek seçim sonucu yok." }
-                    </div>
-                )}
-                {winner && (
+                {(electionData.votedStudentIds || []).length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                       <p>Henüz oy kullanılmadı.</p>
+                       <p className="text-xs">Sonuçlar oylama tamamlandıktan sonra burada görünecektir.</p>
+                   </div>
+                ) : (
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
-                            {electionType === 'class_president' && (
-                                <>
-                                    <Card className="bg-green-100 dark:bg-green-900/50 border-green-500">
-                                        <CardHeader><Crown className="mx-auto text-yellow-500 w-10 h-10"/><CardTitle>{electionInfo.winnerLabel}</CardTitle><CardDescription>{winner.name}</CardDescription><p className="font-bold text-2xl">{winner.votes} Oy</p></CardHeader>
+                             {/* Winner */}
+                            {sortedCandidates[0] && (
+                                <Card className="bg-green-100 dark:bg-green-900/50 border-green-500">
+                                    <CardHeader>
+                                        <Crown className="mx-auto text-yellow-500 w-10 h-10"/>
+                                        <CardTitle>{electionInfo.winnerLabel}</CardTitle>
+                                        <CardDescription>{sortedCandidates[0].name}</CardDescription>
+                                        <p className="font-bold text-2xl">{sortedCandidates[0].votes} Oy</p>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                            {/* Runner Up (only for class president) */}
+                            {electionType === 'class_president' && sortedCandidates[1] && (
+                                <Card className="bg-blue-100 dark:bg-blue-900/50 border-blue-500">
+                                    <CardHeader>
+                                        <UserCheck className="mx-auto text-blue-500 w-10 h-10"/>
+                                        <CardTitle>{electionInfo.runnerUpLabel}</CardTitle>
+                                        <CardDescription>{sortedCandidates[1].name}</CardDescription>
+                                        <p className="font-bold text-2xl">{sortedCandidates[1].votes} Oy</p>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                             {/* Third Place (for fun, can be removed) */}
+                            {electionType === 'class_president' && sortedCandidates[2] && (
+                                <Card className="bg-orange-100 dark:bg-orange-900/50 border-orange-500">
+                                    <CardHeader>
+                                        <Trophy className="mx-auto text-orange-500 w-9 h-9"/>
+                                        <CardTitle>Üçüncü</CardTitle>
+                                        <CardDescription>{sortedCandidates[2].name}</CardDescription>
+                                        <p className="font-bold text-2xl">{sortedCandidates[2].votes} Oy</p>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                             {/* Single winner display for other types */}
+                            {(electionType === 'school_representative' || electionType === 'honor_board') && sortedCandidates[0] && !sortedCandidates[1] && (
+                                <div className="lg:col-span-3 flex justify-center">
+                                     <Card className={`max-w-sm w-full ${electionType === 'school_representative' ? 'bg-purple-100 border-purple-500' : 'bg-indigo-100 border-indigo-500'}`}>
+                                        <CardHeader>
+                                            {electionType === 'school_representative' ? <Building className="mx-auto text-purple-500 w-10 h-10"/> : <HonorIcon className="mx-auto text-indigo-500 w-10 h-10"/>}
+                                            <CardTitle>{electionInfo.winnerLabel}</CardTitle>
+                                            <CardDescription>{sortedCandidates[0].name}</CardDescription>
+                                            <p className="font-bold text-2xl">{sortedCandidates[0].votes} Oy</p>
+                                        </CardHeader>
                                     </Card>
-                                    {runnerUp && (
-                                        <Card className="bg-blue-100 dark:bg-blue-900/50 border-blue-500">
-                                            <CardHeader><UserCheck className="mx-auto text-blue-500 w-10 h-10"/><CardTitle>{electionInfo.runnerUpLabel}</CardTitle><CardDescription>{runnerUp.name}</CardDescription><p className="font-bold text-2xl">{runnerUp.votes} Oy</p></CardHeader>
-                                        </Card>
-                                    )}
-                                </>
-                            )}
-                             {electionType === 'school_representative' && (
-                                <Card className="bg-purple-100 dark:bg-purple-900/50 border-purple-500 col-span-full max-w-sm mx-auto">
-                                    <CardHeader><Building className="mx-auto text-purple-500 w-10 h-10"/><CardTitle>{electionInfo.winnerLabel}</CardTitle><CardDescription>{winner.name}</CardDescription><p className="font-bold text-2xl">{winner.votes} Oy</p></CardHeader>
-                                </Card>
-                            )}
-                            {electionType === 'honor_board' && (
-                                <Card className="bg-indigo-100 dark:bg-indigo-900/50 border-indigo-500 col-span-full max-w-sm mx-auto">
-                                    <CardHeader><HonorIcon className="mx-auto text-indigo-500 w-10 h-10"/><CardTitle>{electionInfo.winnerLabel}</CardTitle><CardDescription>{winner.name}</CardDescription><p className="font-bold text-2xl">{winner.votes} Oy</p></CardHeader>
-                                </Card>
+                                </div>
                             )}
                         </div>
 
