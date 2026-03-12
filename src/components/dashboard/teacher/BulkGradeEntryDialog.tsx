@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Student, GradingScores, Criterion, DisciplineRecord } from '@/lib/types';
+import { Student, GradingScores, Criterion, DisciplineRecord, Homework, Submission } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { doc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, collection, query, where, getDocs, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -193,15 +193,41 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   };
   
   const handleAiFill = async () => {
+    if (!db) return;
     setIsGenerating(true);
     try {
         const updatedStudentsPromises = sortedStudents.map(async (student) => {
-            const termGrades = student[termGradesKey];
+            // 1. Fetch performance homeworks for the student's class
+            const homeworksColRef = collection(db, 'classes', student.classId, 'homeworks');
+            const q = query(homeworksColRef, where('assignmentType', '==', 'performance'));
+            const homeworksSnapshot = await getDocs(q);
+            const performanceHomeworks = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
 
+            // 2. Fetch submissions for this student for those homeworks
+            let performanceGrades: number[] = [];
+            for (const hw of performanceHomeworks) {
+                const submissionsColRef = collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`);
+                const subQuery = query(submissionsColRef, where('studentId', '==', student.id));
+                const subSnapshot = await getDocs(subQuery);
+                if (!subSnapshot.empty) {
+                const submission = subSnapshot.docs[0].data() as Submission;
+                if (submission.grade !== undefined && submission.grade !== null) {
+                    performanceGrades.push(submission.grade);
+                }
+                }
+            }
+
+            // 3. Calculate average
+            const performanceHomeworkAverage = performanceGrades.length > 0 
+                ? performanceGrades.reduce((a, b) => a + b, 0) / performanceGrades.length 
+                : undefined;
+
+            // Existing logic
+            const termGrades = student[termGradesKey];
             const exams = [termGrades?.exam1, termGrades?.exam2].filter(g => g !== undefined && g !== null && g >= 0) as number[];
             const examAverage = exams.length > 0 ? exams.reduce((a, b) => a + b, 0) / exams.length : 50;
 
-            const positiveBehaviorCount = (student.badges || []).length;
+            const badgeCount = (student.badges || []).length;
             const negativeBehaviorCount = (student.behaviorLogs || []).filter(log => log.points < 0).length;
             const disciplineRecordCount = (disciplineRecords || []).filter(r => r.formData?.studentInfo?.studentId === student.id).length;
 
@@ -209,9 +235,10 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
                 studentName: student.name,
                 examAverage: examAverage,
                 behaviorScore: student.behaviorScore || 100,
-                positiveBehaviorCount,
+                badgeCount: badgeCount,
                 negativeBehaviorCount,
                 disciplineRecordCount,
+                performanceHomeworkAverage,
             };
 
             const result = await generatePerformanceGrade(aiInput);

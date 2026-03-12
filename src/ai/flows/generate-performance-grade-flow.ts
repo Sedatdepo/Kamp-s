@@ -9,8 +9,9 @@ import { z } from 'genkit';
 const PerformanceGradeInputSchema = z.object({
   studentName: z.string().describe('Öğrencinin adı.'),
   examAverage: z.number().optional().describe('Aktif dönemdeki sınav ortalaması. Performans notları için taban çizgisi olarak kullanılmalıdır.'),
+  performanceHomeworkAverage: z.number().optional().describe('Öğrencinin aldığı tüm performans ödevlerinden aldığı notların ortalaması. Bu, performansı değerlendirmede önemli bir göstergedir.'),
   behaviorScore: z.number().describe('Davranış puanı (100 üzerinden). Yüksek puan olumlu bir göstergedir.'),
-  positiveBehaviorCount: z.number().describe('Kazanılan olumlu davranış/rozet sayısı. Notu olumlu etkiler.'),
+  badgeCount: z.number().describe('Kazanılan toplam rozet sayısı. Öğrencinin genel çabasını ve başarısını gösterir.'),
   negativeBehaviorCount: z.number().describe('Alınan olumsuz davranış kaydı sayısı. Notu olumsuz etkileyebilir.'),
   disciplineRecordCount: z.number().describe('Hakkında açılmış disiplin süreci sayısı. Bu, not üzerinde ciddi bir olumsuz etken olabilir.'),
 });
@@ -35,22 +36,30 @@ export async function generatePerformanceGrade(input: PerformanceGradeInput): Pr
     },
     async (input) => {
       const prompt = `
-        Sen deneyimli bir Türk lise öğretmenisin. Görevin, bir öğrencinin dönem içindeki verilerini analiz ederek MEB yönetmeliğine uygun, adil ve kanıta dayalı iki adet performans notu önermektir.
+        Sen deneyimli ve adil bir Türk lise öğretmenisin. Görevin, bir öğrencinin dönem içindeki verilerini bütünsel olarak analiz ederek MEB yönetmeliğine uygun, adil ve kanıta dayalı iki adet performans notu önermektir.
 
         ### ÇOK KRİTİK KURAL ###
-        Önereceğin performans notları, öğrencinin sınav ortalamasından (${input.examAverage?.toFixed(2) ?? '50'}) KESİNLİKLE DAHA DÜŞÜK OLAMAZ. Bu ortalamayı bir taban olarak kullan ve notları bunun üzerine inşa et.
+        Önereceğin performans notları, öğrencinin sınav ortalamasından (${input.examAverage?.toFixed(2) ?? '50'}) KESİNLİKLE DAHA DÜŞÜK OLAMAZ. Bu ortalamayı bir taban çizgisi olarak kullanmalı ve notları bunun üzerine inşa etmelisin. Eğer öğrencinin diğer verileri çok olumsuz ise, notu sınav ortalamasına çok yakın tutabilirsin ama asla altına düşürme.
 
         ### DEĞERLENDİRME KRİTERLERİ ###
-        1.  **Sınav Ortalaması (${input.examAverage?.toFixed(2) ?? '50'}):** Bu not, performans notları için bir başlangıç noktasıdır. Notlar bu değerin altına düşemez.
-        2.  **Davranış Puanı (${input.behaviorScore}/100):** 100'e ne kadar yakınsa o kadar iyidir. Bu puan, öğrencinin genel tutumunu yansıtır ve notu pozitif yönde etkilemelidir.
-        3.  **Olumlu Davranışlar (${input.positiveBehaviorCount} adet):** Rozetler veya pozitif kayıtlar, öğrencinin çabasını gösterir. Her bir olumlu davranış, notu bir miktar artırmalıdır.
-        4.  **Olumsuz Davranışlar (${input.negativeBehaviorCount} adet):** Küçük olumsuzluklar notu hafifçe düşürebilir ama sınav ortalamasının altına indirmemelidir.
-        5.  **Disiplin Süreçleri (${input.disciplineRecordCount} adet):** Bu en ciddi olumsuz göstergedir. Eğer disiplin süreci varsa, notu sınav ortalamasına yakın tut, ancak yine de altına düşürme.
+        Aşağıdaki verileri bir bütün olarak değerlendirerek mantıklı ve adil notlar öner.
+
+        1.  **Sınav Ortalaması (${input.examAverage?.toFixed(2) ?? '50'}):** Performans notu için taban değer budur. 
+        
+        2.  **Performans Ödevi Ortalaması (${input.performanceHomeworkAverage?.toFixed(2) ?? 'Veri Yok'}):** Bu, öğrencinin proje ve performans görevlerindeki başarısını gösteren en önemli verilerden biridir. Bu ortalama, sınav ortalaması ile birlikte performans notunu belirlemede anahtar rol oynamalıdır. Yüksek bir ödev ortalaması, sınavları düşük olsa bile notu yukarı çekmelidir.
+
+        3.  **Davranış Puanı (${input.behaviorScore}/100):** Öğrencinin genel tutumunu yansıtır. 100'e yakın olması notu olumlu, 70'in altına düşmesi ise olumsuz etkiler.
+
+        4.  **Kazanılan Rozet Sayısı (${input.badgeCount} adet):** Bu, öğrencinin yıl boyunca gösterdiği genel çabayı ve ders dışı başarılarını gösterir. Yüksek rozet sayısı, notu bir miktar pozitif yönde etkilemelidir.
+
+        5.  **Olumsuz Davranış Sayısı (${input.negativeBehaviorCount} adet):** Dersteki küçük olumsuzlukları ifade eder. Her 2-3 olumsuz davranış, notu bir miktar düşürebilir ama sınav ortalamasının altına indirmemelidir.
+        
+        6.  **Disiplin Süreçleri (${input.disciplineRecordCount} adet):** Bu en ciddi olumsuz göstergedir. Eğer disiplin süreci varsa, performans notunu sınav ortalamasına çok yakın tut, ancak yine de altına düşürme. Bu durum, notun yükselmesini büyük ölçüde engeller.
         
         ### GÖREVİN ###
-        Bu verileri kullanarak aşağıdaki JSON formatında bir çıktı oluştur. Her performans notu için 0-100 arasında bir puan öner ve bu puanı neden verdiğini TEK CÜMLE ile gerekçelendir. İkinci performans notu, ilkine göre bir gelişim veya düşüşü yansıtabilir.
+        Bu bütüncül verileri kullanarak ${input.studentName} adlı öğrenci için aşağıdaki JSON formatında bir çıktı oluştur. Her performans notu için 0-100 arasında bir puan öner ve bu puanı neden verdiğini TEK CÜMLE ile, yukarıdaki kriterlere atıfta bulunarak gerekçelendir. (Örn: "Sınav ortalamasına yakın olsa da, yüksek performans ödevi ortalaması ve davranış puanı notunu yükseltmiştir.").
 
-        Öğrenci: ${input.studentName}
+        İkinci performans notunu, ilkine göre bir gelişim veya düşüşü yansıtacak şekilde belirle. Örneğin, öğrencinin ödevleri iyileşmişse ikinci not daha yüksek olabilir.
       `;
 
       const { output } = await ai.generate({
