@@ -28,7 +28,7 @@ function getInitials(name: string = '') {
 }
 
 
-export function Header() {
+export function Header({ notificationCount }: { notificationCount?: number }) {
   const { appUser, signOut } = useAuth();
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -53,7 +53,13 @@ export function Header() {
           {isClient && appUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="relative rounded-full">
+                     {notificationCount && notificationCount > 0 && (
+                      <span className="absolute top-0 right-0 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                      </span>
+                    )}
                     <Avatar>
                       <AvatarImage src={`https://api.dicebear.com/8.x/initials/svg?seed=${userName}`} />
                       <AvatarFallback>{getInitials(userName)}</AvatarFallback>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club } from '@/lib/types';
+import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club, Message } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -60,12 +60,17 @@ const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teache
 
 type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
 
-const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
+const MenuCard = ({ icon, title, description, onClick, isDisabled, notificationCount }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean, notificationCount?: number }) => {
   return (
     <Card 
       onClick={!isDisabled ? onClick : undefined} 
       className={`cursor-pointer hover:shadow-md hover:border-primary/50 transition-all group relative ${isDisabled ? 'opacity-50 cursor-not-allowed bg-muted/50' : ''}`}
     >
+       {notificationCount && notificationCount > 0 && (
+        <div className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-white">
+          {notificationCount > 9 ? '9+' : notificationCount}
+        </div>
+      )}
       <CardHeader className="flex flex-row items-center gap-4">
         <div className="bg-primary/10 text-primary p-3 rounded-lg">
           {icon}
@@ -444,6 +449,18 @@ export function TeacherDashboard() {
 
   const riskFactorsQuery = useMemoFirebase(() => (teacherId && db ? query(collection(db, 'riskFactors'), where('teacherId', '==', teacherId)) : null), [db, teacherId]);
   const { data: riskFactors, isLoading: factorsLoading } = useCollection<RiskFactor>(riskFactorsQuery);
+  
+  const unreadMessagesQuery = useMemoFirebase(() => {
+    if (!db || !teacherId) return null;
+    return query(
+      collection(db, 'messages'),
+      where('receiverId', '==', teacherId),
+      where('isRead', '==', false)
+    );
+  }, [db, teacherId]);
+
+  const { data: unreadMessages } = useCollection<Message>(unreadMessagesQuery);
+  const unreadMessagesCount = unreadMessages?.length || 0;
 
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
 
@@ -574,7 +591,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
                 <MenuCard icon={<Trophy />} title="Sınıf Kahramanları" description="Puan ve rozetlerle sınıfı motive edin." onClick={() => setActiveTab('gamification')} />
                 <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
-                <MenuCard icon={<MessagesSquare />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} />
+                <MenuCard icon={<MessagesSquare />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} notificationCount={unreadMessagesCount} />
                 <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
                 <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımlarını analiz et." onClick={() => setActiveTab('exam-analysis')} />
                 <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
@@ -629,7 +646,7 @@ export function TeacherDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-muted/40">
-      <Header />
+      <Header notificationCount={unreadMessagesCount} />
       <main className="flex-1 p-4 sm:p-6">
         {centralDataLoading && !appUser ? (
           <div className="flex justify-center items-center h-full p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
