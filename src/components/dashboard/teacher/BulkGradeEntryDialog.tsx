@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, AlertCircle } from 'lucide-react';
 import { generatePerformanceGrade } from '@/ai/flows/generate-performance-grade-flow';
 
 interface BulkGradeEntryDialogProps {
@@ -31,6 +31,34 @@ export type GradeType =
     | 'writtenExam1' | 'speakingExam1' | 'listeningExam1'
     | 'writtenExam2' | 'speakingExam2' | 'listeningExam2';
 
+const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+    if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
+    const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+    if (totalMax === 0) return 0;
+    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    return (totalScore / totalMax) * 100;
+};
+
+const calculateTermAverage = (student: Student, termKey: 'term1Grades' | 'term2Grades', perfCriteria: Criterion[], projCriteria: Criterion[], newPerf1?: number, newPerf2?: number) => {
+    const termGrades = student[termKey];
+    if (!termGrades) return 0;
+    
+    const perf1 = newPerf1 ?? (termGrades.perf1 ?? calculateAverage(termGrades.scores1, perfCriteria));
+    const perf2 = newPerf2 ?? (termGrades.perf2 ?? calculateAverage(termGrades.scores2, perfCriteria));
+
+    const exams = [termGrades.exam1, termGrades.exam2].filter(g => g !== undefined && g !== null && g >= 0) as number[];
+    const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverage(termGrades.projectScores, projCriteria)) : null;
+
+    const allScores = [...exams, perf1, perf2, projAvg].filter(
+      (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
+    );
+
+    if (allScores.length === 0) return 0;
+    
+    const sum = allScores.reduce((acc, score) => acc + score, 0);
+    return sum / allScores.length;
+};
+
 export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranch, activeTerm, onBulkUpdate, perfCriteria, projCriteria, disciplineRecords }: BulkGradeEntryDialogProps) {
   const { toast } = useToast();
   const { db } = useAuth();
@@ -39,6 +67,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
 
   const [editableStudents, setEditableStudents] = useState<Student[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [criticalStudentIds, setCriticalStudentIds] = useState<string[]>([]);
 
   useEffect(() => {
     setEditableStudents(JSON.parse(JSON.stringify(students)));
@@ -195,34 +224,29 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
   const handleAiFill = async () => {
     if (!db) return;
     setIsGenerating(true);
+    setCriticalStudentIds([]);
+
     try {
-        const updatedStudentsPromises = sortedStudents.map(async (student) => {
-            // 1. Fetch performance homeworks for the student's class
+        const studentDataPromises = sortedStudents.map(async (student) => {
             const homeworksColRef = collection(db, 'classes', student.classId, 'homeworks');
             const q = query(homeworksColRef, where('assignmentType', '==', 'performance'));
             const homeworksSnapshot = await getDocs(q);
             const performanceHomeworks = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
 
-            // 2. Fetch submissions for this student for those homeworks
             let performanceGrades: number[] = [];
             for (const hw of performanceHomeworks) {
                 const submissionsColRef = collection(db, `classes/${student.classId}/homeworks/${hw.id}/submissions`);
                 const subQuery = query(submissionsColRef, where('studentId', '==', student.id));
                 const subSnapshot = await getDocs(subQuery);
                 if (!subSnapshot.empty) {
-                const submission = subSnapshot.docs[0].data() as Submission;
-                if (submission.grade !== undefined && submission.grade !== null) {
-                    performanceGrades.push(submission.grade);
-                }
+                    const submission = subSnapshot.docs[0].data() as Submission;
+                    if (submission.grade !== undefined && submission.grade !== null) {
+                        performanceGrades.push(submission.grade);
+                    }
                 }
             }
+            const performanceHomeworkAverage = performanceGrades.length > 0 ? performanceGrades.reduce((a, b) => a + b, 0) / performanceGrades.length : undefined;
 
-            // 3. Calculate average
-            const performanceHomeworkAverage = performanceGrades.length > 0 
-                ? performanceGrades.reduce((a, b) => a + b, 0) / performanceGrades.length 
-                : undefined;
-
-            // Existing logic
             const termGrades = student[termGradesKey];
             const exams = [termGrades?.exam1, termGrades?.exam2].filter(g => g !== undefined && g !== null && g >= 0) as number[];
             const examAverage = exams.length > 0 ? exams.reduce((a, b) => a + b, 0) / exams.length : 50;
@@ -233,9 +257,9 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
 
             const aiInput = {
                 studentName: student.name,
-                examAverage: examAverage,
+                examAverage,
                 behaviorScore: student.behaviorScore || 100,
-                badgeCount: badgeCount,
+                badgeCount,
                 negativeBehaviorCount,
                 disciplineRecordCount,
                 performanceHomeworkAverage,
@@ -244,19 +268,49 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             const result = await generatePerformanceGrade(aiInput);
             
             const updatedStudent = JSON.parse(JSON.stringify(student));
-            if (!updatedStudent[termGradesKey]) {
-                updatedStudent[termGradesKey] = {};
-            }
-
+            if (!updatedStudent[termGradesKey]) updatedStudent[termGradesKey] = {};
             updatedStudent[termGradesKey].perf1 = result.perf1_grade;
             updatedStudent[termGradesKey].perf2 = result.perf2_grade;
 
-            return updatedStudent;
+            return { student: updatedStudent, aiInput }; 
         });
 
-        const updatedStudents = await Promise.all(updatedStudentsPromises);
+        const firstPassResults = await Promise.all(studentDataPromises);
+        const firstPassStudents = firstPassResults.map(r => r.student);
 
-        setEditableStudents(updatedStudents);
+        const studentsToAdjust = firstPassResults.filter(({ student }) => {
+            const newAverage = calculateTermAverage(student, termGradesKey, perfCriteria, projCriteria, student[termGradesKey]?.perf1, student[termGradesKey]?.perf2);
+            return newAverage >= 45 && newAverage < 50;
+        });
+        
+        if (studentsToAdjust.length > 0) {
+            toast({
+                title: "Kritik Eşik Tespiti",
+                description: `${studentsToAdjust.length} öğrencinin ortalaması 45-50 aralığında. Notlar otomatik olarak ayarlanıyor...`
+            });
+
+            const adjustmentPromises = studentsToAdjust.map(async ({ student, aiInput }) => {
+                const adjustmentInput = { ...aiInput, adjustmentGoal: 'bring_below_45' };
+                const result = await generatePerformanceGrade(adjustmentInput);
+                const adjustedStudent = JSON.parse(JSON.stringify(student));
+                adjustedStudent[termGradesKey].perf1 = result.perf1_grade;
+                adjustedStudent[termGradesKey].perf2 = result.perf2_grade;
+                return adjustedStudent;
+            });
+
+            const adjustedStudents = await Promise.all(adjustmentPromises);
+
+            adjustedStudents.forEach(adjStudent => {
+                const index = firstPassStudents.findIndex(s => s.id === adjStudent.id);
+                if (index !== -1) {
+                    firstPassStudents[index] = adjStudent;
+                }
+            });
+
+            setCriticalStudentIds(studentsToAdjust.map(s => s.student.id));
+        }
+
+        setEditableStudents(firstPassStudents);
         toast({
             title: "Yapay Zeka Tamamladı!",
             description: "Tüm öğrenciler için performans notları başarıyla oluşturuldu. Kaydetmeyi unutmayın.",
@@ -273,6 +327,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         setIsGenerating(false);
     }
   };
+
 
   const GradeInput = ({ studentId, gradeType }: { studentId: string; gradeType: GradeType }) => {
     const student = editableStudents.find(s => s.id === studentId);
@@ -392,7 +447,10 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
               {sortedStudents.map((student) => (
                     <TableRow key={student.id}>
                         <TableCell>{student.number}</TableCell>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell className="font-medium flex items-center gap-2">
+                           {student.name}
+                           {criticalStudentIds.includes(student.id) && <AlertCircle className="h-4 w-4 text-orange-500" title="Bu öğrencinin notu, 45-50 aralığında kaldığı için ortalamayı düşürecek şekilde AI tarafından otomatik olarak ayarlandı."/>}
+                        </TableCell>
                         {renderStudentGradeCells(student)}
                     </TableRow>
               ))}
