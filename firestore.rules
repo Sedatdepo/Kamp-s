@@ -1,11 +1,70 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow all reads and writes for simplicity as requested.
+    function isTeacher() {
+      // It's safe to check existence because of the specific rule on /teachers/{teacherId}
+      return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    // --- CORE TEACHER RULE ---
+    // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
+    match /teachers/{teacherId} {
+      allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
+      allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
+    }
+    
+    // --- GENERAL RULE FOR TEACHERS ---
+    // This gives teachers god-mode access to everything EXCEPT the /teachers collection,
+    // which is handled by the more specific rule above.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isTeacher();
+    }
+
+    // --- STUDENT & PUBLIC RULES (Evaluated if not a teacher) ---
+
+    match /publicViews/{viewId} { allow get: if true; }
+    match /classCodes/{code} { allow get: if true; }
+    
+    match /lessons/{lessonId} { allow get: if request.auth != null; }
+    match /clubs/{clubId} { allow get: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    
+    // Allow anyone to read basic class info for the login page to work
+    match /classes/{classId} { 
+      allow get: if true; 
+    }
+    
+    match /students/{studentId} {
+      // Allow any user to read student list for login dropdown. 
+      // NOTE: For higher security, this could be changed to an authenticated-only read.
+      allow read: if true; 
+      // Allow update if user is authenticated AND (the student's authUid is not set yet OR it matches the user's uid)
+      allow update: if request.auth != null && (resource.data.authUid == null || resource.data.authUid == request.auth.uid);
+    }
+
+    match /infoForms/{formId} {
+        // Allow read/write if the user's authUid matches the one on the student document
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
+    }
+    
+    match /classes/{classId}/homeworks/{homeworkId} {
+        allow get: if request.auth != null;
+    }
+    
+    match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
+      allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
+      allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
+    }
+    
+    match /messages/{messageId} {
+      // Teacher access is covered by the wildcard. This is for students.
+      allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      // Allow only the receiver to mark a message as read.
+      allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.isRead == true;
     }
   }
 }
