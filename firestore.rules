@@ -72,8 +72,8 @@ service cloud.firestore {
     
     match /messages/{messageId} {
       // Teacher access is covered by the wildcard. This is for students.
-      allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      allow read, list: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
       // Allow only the receiver to mark a message as read.
       allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.isRead == true;
     }
