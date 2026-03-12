@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, updateDoc, setDoc } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -95,17 +95,10 @@ export default function StudentLoginPage() {
                 
                 if (user) {
                     const studentRef = doc(firestore, 'students', student.id);
-                    const infoFormRef = doc(firestore, 'infoForms', student.id);
                     
-                    const batch = writeBatch(firestore);
-
-                    // Use set with merge to ensure the document is created or updated safely.
-                    batch.set(studentRef, { authUid: user.uid }, { merge: true });
-                    
-                    // Also update/create infoForm doc with the authUid to ensure rule consistency
-                    batch.set(infoFormRef, { authUid: user.uid }, { merge: true });
-
-                    await batch.commit();
+                    // Only update the student document to link the authUid.
+                    // The infoForm document will be created/updated when the student visits the form page itself.
+                    await setDoc(studentRef, { authUid: user.uid }, { merge: true });
                     
                     const updatedStudent = { ...student, authUid: user.uid };
 
