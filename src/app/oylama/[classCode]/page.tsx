@@ -137,6 +137,9 @@ export default function OylamaPage() {
             });
             toast({ title: 'Oyunuz başarıyla kaydedildi!' });
             setStep('voted');
+            setTimeout(() => {
+                router.push(`/portal/${classCode}`);
+            }, 2000);
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Hata', description: 'Oyunuz kaydedilirken bir sorun oluştu.' });
@@ -144,7 +147,7 @@ export default function OylamaPage() {
             setIsProcessing(false);
         }
     };
-
+    
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
@@ -212,7 +215,7 @@ export default function OylamaPage() {
                     <Card className="text-center p-8">
                         <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
                         <CardTitle>Teşekkürler!</CardTitle>
-                        <CardDescription>Oyunuz başarıyla kaydedildi. Sonuçlar öğretmeniniz tarafından paylaşılacaktır.</CardDescription>
+                        <CardDescription>Oyunuz başarıyla kaydedildi. Öğrenci portalına yönlendiriliyorsunuz...</CardDescription>
                     </Card>
                 )}
 
@@ -221,10 +224,10 @@ export default function OylamaPage() {
                         <Frown className="mx-auto h-16 w-16 text-red-500 mb-4" />
                         <CardTitle className="text-red-800">Bir Sorun Oluştu</CardTitle>
                         <CardDescription className="text-red-700">{error}</CardDescription>
+                         <Button variant="outline" onClick={() => router.back()} className="mt-4">Geri Dön</Button>
                     </Card>
                 )}
             </div>
         </div>
     );
 }
-    
