@@ -55,11 +55,10 @@ const SociogramTab = dynamic(() => import('@/components/dashboard/teacher/Sociog
 const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab').then(mod => mod.default), { loading: LoadingSpinner });
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
-const ContentStudioTab = dynamic(() => import('@/components/dashboard/teacher/ContentStudioTab').then(mod => mod.ContentStudioTab), { loading: LoadingSpinner });
 const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "content-studio" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable" | "material-creator";
+type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean }) => {
   return (
@@ -373,7 +372,6 @@ function ClassSelectionScreen({
             </TabsContent>
             <TabsContent value="documents" className="mt-4">
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <MenuCard icon={<Sparkles />} title="İçerik Stüdyosu" description="AI ile materyal ve ödev oluşturun." onClick={() => setActiveTab('content-studio')} />
                     <MenuCard icon={<FileHeart />} title="BEP Modülü" description="Bireyselleştirilmiş eğitim planları." onClick={() => setActiveTab('bep')} />
                     <MenuCard icon={<FileSignature />} title="Dilekçe Sihirbazı" description="Resmi dilekçeler ve tutanaklar oluşturun." onClick={() => setActiveTab('dilekce')} />
                     <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
@@ -405,7 +403,6 @@ const TABS_CONFIG = {
   "veli-toplantisi": { label: "Veli Toplantısı", icon: Users },
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
   "kazanimlar": { label: "Kazanımlar", icon: Target },
-  "content-studio": { label: "İçerik Stüdyosu", icon: Sparkles },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
   "meb-club": { label: "Kulüp Evrak", icon: Trophy },
   "social-club": { label: "Sosyal Kulüpler", icon: Drama },
@@ -503,7 +500,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     let tabContent;
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'content-studio', 'meb-club', 'timetable', 'bep'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'meb-club', 'timetable', 'bep'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
@@ -511,7 +508,6 @@ export function TeacherDashboard() {
           case 'veli-toplantisi': tabContent = <VeliToplantisiTab teacherProfile={teacherProfile} />; break;
           case 'sok': tabContent = <SokTab teacherProfile={teacherProfile} />; break;
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
-          case 'content-studio': tabContent = <ContentStudioTab teacherProfile={teacherProfile} classes={classes || []} students={allStudents || []} />; break;
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
@@ -649,4 +645,3 @@ export function TeacherDashboard() {
     </div>
   );
 }
-
