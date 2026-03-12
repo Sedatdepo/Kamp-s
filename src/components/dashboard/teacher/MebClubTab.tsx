@@ -47,10 +47,11 @@ import { cn } from '@/lib/utils';
 import { useDatabase } from '@/hooks/use-database';
 import { TeacherProfile, DilekceDocument, Class } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RecordManager } from '@/components/dashboard/teacher/RecordManager';
+import { RecordManager } from './RecordManager';
 import { exportDilekceToRtf } from '@/lib/word-export';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Student } from '@/lib/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // --- MOCK DATA & UTILS ---
