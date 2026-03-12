@@ -334,8 +334,8 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
               <TabsContent value="history" className="mt-4">
                 <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-2">
-                    {combinedHistory.map(item => (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50">
+                    {combinedHistory.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-lg border bg-slate-50">
                             <div>
                                 <p className="text-sm font-medium">{item.label}</p>
                                 <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleString('tr-TR')}</p>
@@ -405,4 +405,3 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
     </div>
   );
 }
-    
