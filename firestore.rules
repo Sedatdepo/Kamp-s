@@ -28,9 +28,9 @@ service cloud.firestore {
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    match /lessons/{lessonId} { allow get: if request.auth != null; }
-    match /clubs/{clubId} { allow get: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    match /lessons/{lessonId} { allow read: if request.auth != null; }
+    match /clubs/{clubId} { allow read: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
     // Allow anyone to read basic class info for the login page to work
     match /classes/{classId} { 
@@ -72,11 +72,11 @@ service cloud.firestore {
     
     match /messages/{messageId} {
       // Teacher access is covered by the wildcard. This is for students.
-      allow read, list: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
       // Allow only the receiver to mark a message as read.
       allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.isRead == true;
     }
   }
 }
-    
