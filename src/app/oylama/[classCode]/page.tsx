@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { Class, Student, Candidate } from '@/lib/types';
@@ -13,11 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { signInAnonymously, type User } from 'firebase/auth';
+
 
 export default function OylamaPage() {
     const params = useParams();
+    const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore, auth } = useFirebase();
     const { toast } = useToast();
     
     const [classId, setClassId] = useState<string | null>(null);
@@ -67,24 +70,53 @@ export default function OylamaPage() {
         }
     }, [classLoading, studentsLoading, currentClass]);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
+        if (!auth || !firestore) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
+            return;
+        }
         if (!selectedStudentId || !enteredSchoolNumber) {
             toast({ variant: 'destructive', title: 'Lütfen adınızı seçip okul numaranızı girin.' });
             return;
         }
+        
+        setIsProcessing(true);
+
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
-            if (currentClass?.election?.votedStudentIds?.includes(student.id)) {
-                setError('Bu seçim için zaten oy kullandınız.');
-                setStep('error');
-                return;
+             try {
+                if (currentClass?.election?.votedStudentIds?.includes(student.id)) {
+                    setError('Bu seçim için zaten oy kullandınız.');
+                    setStep('error');
+                    return;
+                }
+
+                let user: User | null = auth.currentUser;
+                if (!user || !user.isAnonymous) {
+                    const userCredential = await signInAnonymously(auth);
+                    user = userCredential.user;
+                }
+                
+                if (user) {
+                    const studentRef = doc(firestore, 'students', student.id);
+                    await updateDoc(studentRef, { authUid: user.uid });
+                    
+                    const updatedStudent = { ...student, authUid: user.uid };
+                    setLoggedInStudent(updatedStudent);
+                    setStep('vote');
+                    setError('');
+                } else {
+                    throw new Error("Kullanıcı oturumu oluşturulamadı.");
+                }
+            } catch (e) {
+                console.error("Anonymous sign-in or student update failed:", e);
+                toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
             }
-            setLoggedInStudent(student);
-            setStep('vote');
-            setError('');
         } else {
             toast({ variant: 'destructive', title: 'Okul numarası yanlış.' });
         }
+        
+        setIsProcessing(false);
     };
     
     const handleVote = async (candidate: Candidate) => {
@@ -151,7 +183,10 @@ export default function OylamaPage() {
                                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                                 />
                             </div>
-                            <Button onClick={handleLogin} className="w-full">Giriş Yap ve Oy Kullan</Button>
+                            <Button onClick={handleLogin} disabled={isProcessing} className="w-full">
+                                {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                                Giriş Yap ve Oy Kullan
+                            </Button>
                         </CardContent>
                     </Card>
                 )}

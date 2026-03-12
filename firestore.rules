@@ -35,6 +35,8 @@ service cloud.firestore {
     // Allow anyone to read basic class info for the login page to work
     match /classes/{classId} { 
       allow get: if true; 
+      allow update: if request.auth != null &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['election']);
     }
     
     match /students/{studentId} {

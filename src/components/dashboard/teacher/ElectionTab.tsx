@@ -417,52 +417,28 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                    </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
-                             {/* Winner */}
-                            {sortedCandidates[0] && (
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                            {/* Winner */}
+                            {winner && (
                                 <Card className="bg-green-100 dark:bg-green-900/50 border-green-500">
                                     <CardHeader>
                                         <Crown className="mx-auto text-yellow-500 w-10 h-10"/>
                                         <CardTitle>{electionInfo.winnerLabel}</CardTitle>
-                                        <CardDescription>{sortedCandidates[0].name}</CardDescription>
-                                        <p className="font-bold text-2xl">{sortedCandidates[0].votes} Oy</p>
+                                        <CardDescription>{winner.name}</CardDescription>
+                                        <p className="font-bold text-2xl">{winner.votes} Oy</p>
                                     </CardHeader>
                                 </Card>
                             )}
                             {/* Runner Up (only for class president) */}
-                            {electionType === 'class_president' && sortedCandidates[1] && (
+                            {runnerUp && (
                                 <Card className="bg-blue-100 dark:bg-blue-900/50 border-blue-500">
                                     <CardHeader>
                                         <UserCheck className="mx-auto text-blue-500 w-10 h-10"/>
                                         <CardTitle>{electionInfo.runnerUpLabel}</CardTitle>
-                                        <CardDescription>{sortedCandidates[1].name}</CardDescription>
-                                        <p className="font-bold text-2xl">{sortedCandidates[1].votes} Oy</p>
+                                        <CardDescription>{runnerUp.name}</CardDescription>
+                                        <p className="font-bold text-2xl">{runnerUp.votes} Oy</p>
                                     </CardHeader>
                                 </Card>
-                            )}
-                             {/* Third Place (for fun, can be removed) */}
-                            {electionType === 'class_president' && sortedCandidates[2] && (
-                                <Card className="bg-orange-100 dark:bg-orange-900/50 border-orange-500">
-                                    <CardHeader>
-                                        <Trophy className="mx-auto text-orange-500 w-9 h-9"/>
-                                        <CardTitle>Üçüncü</CardTitle>
-                                        <CardDescription>{sortedCandidates[2].name}</CardDescription>
-                                        <p className="font-bold text-2xl">{sortedCandidates[2].votes} Oy</p>
-                                    </CardHeader>
-                                </Card>
-                            )}
-                             {/* Single winner display for other types */}
-                            {(electionType === 'school_representative' || electionType === 'honor_board') && sortedCandidates[0] && !sortedCandidates[1] && (
-                                <div className="lg:col-span-3 flex justify-center">
-                                     <Card className={`max-w-sm w-full ${electionType === 'school_representative' ? 'bg-purple-100 border-purple-500' : 'bg-indigo-100 border-indigo-500'}`}>
-                                        <CardHeader>
-                                            {electionType === 'school_representative' ? <Building className="mx-auto text-purple-500 w-10 h-10"/> : <HonorIcon className="mx-auto text-indigo-500 w-10 h-10"/>}
-                                            <CardTitle>{electionInfo.winnerLabel}</CardTitle>
-                                            <CardDescription>{sortedCandidates[0].name}</CardDescription>
-                                            <p className="font-bold text-2xl">{sortedCandidates[0].votes} Oy</p>
-                                        </CardHeader>
-                                    </Card>
-                                </div>
                             )}
                         </div>
 
