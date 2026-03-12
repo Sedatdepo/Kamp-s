@@ -104,7 +104,7 @@ export default function PublicAnnouncementsPage() {
         return <div className="flex h-screen items-center justify-center text-red-500 font-semibold p-8 text-center">{error}</div>;
     }
 
-    const portalLink = `/giris/${classCode}`;
+    const portalLink = `/portal/${classCode}`;
 
     return (
         <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
@@ -112,7 +112,7 @@ export default function PublicAnnouncementsPage() {
                 <Button asChild variant="outline">
                     <Link href={portalLink}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Giriş Sayfasına Geri Dön
+                        Portala Geri Dön
                     </Link>
                 </Button>
             </div>
