@@ -1837,3 +1837,73 @@ export function exportStudentDevelopmentReportToRtf_manual({ student, infoForm, 
 
     downloadRtf(generateHtmlShell(content, title), `${title.replace(/ /g, '_')}.rtf`);
 }
+
+// --- HOMEWORK DETAIL EXPORT (NEW) ---
+interface ExportHomeworkDetailArgs {
+    homework: Homework;
+    teacherProfile: TeacherProfile | null;
+    currentClass: Class | null;
+}
+
+export function exportHomeworkDetailToRtf({ homework, teacherProfile, currentClass }: ExportHomeworkDetailArgs) {
+    if (!teacherProfile || !currentClass) {
+        console.error("Missing teacherProfile or currentClass for RTF export");
+        return;
+    }
+    const reportTitle = "ÖDEV DETAYLARI";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${homework.text.substring(0, 20)}`;
+
+    const questionsHtml = homework.questions && homework.questions.length > 0 ? `
+        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Sorular</h2>
+        <ol>
+            ${homework.questions.map((q: any) => `<li><p>${q.text}</p></li>`).join('')}
+        </ol>
+    ` : '';
+    
+    const rubricHtml = homework.rubric ? `
+        <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">Değerlendirme Kriterleri</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" border="1">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 8px; font-weight: bold;">Kriter</th>
+                    <th style="padding: 8px; font-weight: bold;">Açıklama</th>
+                    <th style="padding: 8px; font-weight: bold; width: 15%;">Puan</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(homework.rubric || []).map((item: any) => `
+                    <tr>
+                        <td style="padding: 8px;">${item.label}</td>
+                        <td style="padding: 8px;">${item.desc}</td>
+                        <td style="padding: 8px; text-align: center;">${item.score}</td>
+                    </tr>
+                `).join('')}
+                <tr>
+                    <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">TOPLAM</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold;">${(homework.rubric || []).reduce((sum: number, item: any) => sum + parseInt(item.score || '0', 10), 0)}</td>
+                </tr>
+            </tbody>
+        </table>
+    ` : '';
+
+    const content = `
+      ${header}
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 1cm;">
+        <div>
+          <h2 style="font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 5px;">1. Ödev Konusu</h2>
+          <div style="background-color: #f7f7f7; padding: 15px; border-left: 4px solid #4a90e2; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; font-size: 13pt;">${homework.text}</h3>
+            ${homework.instructions ? `<p>${homework.instructions}</p>` : ''}
+          </div>
+        </div>
+        ${questionsHtml}
+        ${rubricHtml}
+      </div>
+      ${footer}
+    `;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}
