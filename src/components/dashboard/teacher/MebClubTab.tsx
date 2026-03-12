@@ -413,8 +413,96 @@ export default function MebClubTab({ classes, allStudents, teacherProfile }: { c
                                 {mod.isNew && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">YENİ</span>}
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                            {/* ... OMITTED FOR BREVITY ... */}
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="p-6 pb-4 border-b">
+                                <DialogTitle>{mod.title}</DialogTitle>
+                            </DialogHeader>
+                            <div className="p-6 overflow-y-auto flex-grow">
+                                {mod.id === 'modal1' && (
+                                     <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex gap-2">
+                                                <Select onValueChange={setClassToImport}><SelectTrigger className="w-[200px]"><SelectValue placeholder="Sınıf Seç..." /></SelectTrigger><SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
+                                                <Button onClick={importStudentsFromClass}><Users size={16} /> Sınıftan Aktar</Button>
+                                            </div>
+                                        </div>
+                                        <Table>
+                                            <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Adı Soyadı</TableHead><TableHead>Sınıfı</TableHead><TableHead>Görevi</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                            {clubData.students.slice(0, 20).map((s, i) => (
+                                                <TableRow key={i}>
+                                                    <TableCell><Input value={s.no} onChange={e => handleStudentChange(i, 'no', e.target.value)} /></TableCell>
+                                                    <TableCell><Input value={s.name} onChange={e => handleStudentChange(i, 'name', e.target.value)} /></TableCell>
+                                                    <TableCell><Input value={s.class} onChange={e => handleStudentChange(i, 'class', e.target.value)} /></TableCell>
+                                                    <TableCell><Input value={s.role} onChange={e => handleStudentChange(i, 'role', e.target.value)} /></TableCell>
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                                {mod.id === 'modal2' && (
+                                    <div className="space-y-4">
+                                        <Button onClick={fillAnnualPlan} variant="outline" className="mb-4">Taslak Planı Doldur</Button>
+                                        <Table>
+                                            <TableHeader><TableRow><TableHead>Ay</TableHead><TableHead>Yapılacak Etkinlik</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                            {MONTHS.map((month, index) => (
+                                                <TableRow key={month}>
+                                                    <TableCell className="font-semibold">{month}</TableCell>
+                                                    <TableCell><Textarea value={clubData.annualPlan[index]} onChange={(e) => handleAnnualPlanChange(index, e.target.value)} rows={2} /></TableCell>
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                                {mod.id === 'modal3' && (
+                                    <div>
+                                        <Button onClick={importStudentsToParticipation} className="mb-4">Öğrenci Listesinden Aktar</Button>
+                                        <Table>
+                                            <TableHeader><TableRow><TableHead>Sıra No</TableHead><TableHead>Adı Soyadı</TableHead><TableHead>Sınıfı/No</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                            {participationList.map((s, i) => (
+                                                <TableRow key={i}>
+                                                <TableCell>{i + 1}</TableCell>
+                                                <TableCell><Input value={s.name} onChange={(e) => { const newList = [...participationList]; newList[i].name = e.target.value; setParticipationList(newList); }}/></TableCell>
+                                                <TableCell><Input value={s.classNo} onChange={(e) => { const newList = [...participationList]; newList[i].classNo = e.target.value; setParticipationList(newList); }}/></TableCell>
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                                {mod.id === 'modal10' && (
+                                    <div>
+                                        <Table>
+                                            <TableHeader><TableRow><TableHead>Tarih</TableHead><TableHead>Açıklama</TableHead><TableHead>Belge No</TableHead><TableHead>Gelir (TL)</TableHead><TableHead>Gider (TL)</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                            {clubData.budgetItems.map((item, index) => (
+                                                <TableRow key={index}>
+                                                <TableCell><Input type="date" value={item.date} onChange={e => handleBudgetChange(index, 'date', e.target.value)} /></TableCell>
+                                                <TableCell><Input value={item.desc} onChange={e => handleBudgetChange(index, 'desc', e.target.value)} /></TableCell>
+                                                <TableCell><Input value={item.docNo} onChange={e => handleBudgetChange(index, 'docNo', e.target.value)} /></TableCell>
+                                                <TableCell><Input type="number" value={item.income} onChange={e => handleBudgetChange(index, 'income', e.target.value)} /></TableCell>
+                                                <TableCell><Input type="number" value={item.expense} onChange={e => handleBudgetChange(index, 'expense', e.target.value)} /></TableCell>
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                        <div className="text-right font-bold mt-4">Bakiye: {(parseFloat(calculateBudget.income) - parseFloat(calculateBudget.expense)).toFixed(2)} TL</div>
+                                    </div>
+                                )}
+                                 {['modal4', 'modal5', 'modal6', 'modal7', 'modal8', 'modal9', 'modal11', 'modal12'].includes(mod.id) && (
+                                    <div className="text-center text-gray-500">
+                                        <p>Bu belge için standart bir şablon bulunmaktadır.</p>
+                                        <p>"Word Olarak İndir" butonuna tıklayarak bilgisayarınıza indirebilirsiniz.</p>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter className="p-6 pt-4 border-t bg-gray-50">
+                                <Button onClick={() => downloadRTF(mod.id, mod.title)}><FileDown size={16} /> Word Olarak İndir</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
                  ))}
