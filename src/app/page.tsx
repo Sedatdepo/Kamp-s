@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuth } from '@/hooks/useAuth';
@@ -18,7 +19,7 @@ export default function HomePage() {
     }
   }, [appUser, loading, router]);
 
-  if (loading || appUser) {
+  if (loading || appUser?.type === 'teacher') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />

@@ -10,7 +10,7 @@ import type { TeacherProfile } from '@/lib/types';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BADGES } from '@/lib/grading-defaults';
 import { useFirebase } from '@/firebase';
 
-export type AppUser = { type: 'teacher'; data: User; profile: TeacherProfile };
+export type AppUser = { type: 'teacher'; data: User; profile: TeacherProfile } | { type: 'student_session'; data: User };
 
 interface AuthContextType {
   appUser: AppUser | null;
@@ -100,15 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await seedDatabase(db, firebaseUser.uid);
               const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
               setAppUser({ type: 'teacher', data: firebaseUser, profile });
+              setLoading(false);
             } else {
-              // Not a teacher (or doc deleted), or could be anonymous user
-              if (!firebaseUser.isAnonymous) {
-                await signOut();
-              } else {
-                  setAppUser(null);
-              }
+              // Not a teacher. Treat as an anonymous/student session.
+              // This keeps the user authenticated to satisfy security rules.
+              setAppUser({ type: 'student_session', data: firebaseUser });
+              setLoading(false);
             }
-            setLoading(false); // Stop loading after profile fetch/check is complete
           },
           (error) => {
             console.error("Error fetching teacher profile:", error);
