@@ -3,67 +3,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isTeacher() {
-      // It's safe to check existence because of the specific rule on /teachers/{teacherId}
-      return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    // --- CORE TEACHER RULE ---
-    // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
-    match /teachers/{teacherId} {
-      allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
-      allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
-    }
-
-    // --- STUDENT & PUBLIC RULES (Must come BEFORE the teacher wildcard) ---
-
-    match /publicViews/{viewId} { allow get: if true; }
-    match /classCodes/{code} { allow get: if true; }
-    
-    match /lessons/{lessonId} { allow read: if request.auth != null; }
-    match /clubs/{clubId} { allow read: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
-    match /classes/{classId} { 
-      allow read: if request.auth != null; 
-    }
-    
-    match /students/{studentId} {
-      allow read: if true; 
-      allow update: if request.auth != null && request.auth.uid == resource.data.authUid;
-    }
-
-    match /infoForms/{formId} {
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
-    }
-    
-    match /classes/{classId}/homeworks/{homeworkId} {
-        allow read: if request.auth != null;
-    }
-    
-    match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
-      allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
-      allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
-    }
-    
-    match /messages/{messageId} {
-      // Get a single message if the user is a participant
-      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
-      
-      // List messages based on the 'participants' field in the query
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-
-      // Create a message if the user is in the new document's participants list
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
-      
-      // Update a message (e.g., mark as read) if the user is a participant
-      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
-    }
-
-    // --- GENERAL RULE FOR TEACHERS (Catch-all, comes LAST) ---
-    // This gives teachers god-mode access to everything else.
-    match /{path=**} {
-      allow read, write: if isTeacher();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
