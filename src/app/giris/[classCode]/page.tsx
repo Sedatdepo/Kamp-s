@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { doc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
 import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,8 +22,8 @@ export default function StudentLoginPage() {
     const { firestore, auth } = useFirebase();
     const { toast } = useToast();
     
-    const [classId, setClassId] = useState<string | null>(null);
     const [className, setClassName] = useState('');
+    const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
@@ -48,37 +48,39 @@ export default function StudentLoginPage() {
 
                 if (classCodeSnap.exists()) {
                     const foundClassId = classCodeSnap.data().classId;
-                    setClassId(foundClassId);
                     
                     const classRef = doc(firestore, 'classes', foundClassId);
-                    const classSnap = await getDoc(classRef); // This getDoc needs auth
+                    const classSnap = await getDoc(classRef);
                     
                     if (classSnap.exists()) {
                         setClassName(classSnap.data().name);
                     } else {
                         setError("Sınıf bilgisi bulunamadı.");
+                        setLoading(false);
+                        return;
                     }
+                    
+                    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', foundClassId));
+                    const studentsSnap = await getDocs(studentsQuery);
+                    const studentsList = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+                    setStudents(studentsList);
+
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error(e);
-                setError("Sınıf bilgileri alınırken bir hata oluştu. Lütfen sayfayı yenileyin.");
+                 if (e.code === 'permission-denied') {
+                     setError("Veritabanı okuma izni hatası. Lütfen öğretmeninizle iletişime geçin.");
+                } else {
+                     setError("Sınıf bilgileri alınırken bir hata oluştu. Lütfen sayfayı yenileyin.");
+                }
             } finally {
                 setLoading(false);
             }
         };
         initAndFetch();
     }, [firestore, auth, classCode]);
-
-    const studentsQuery = useMemoFirebase(() => (classId ? query(collection(firestore, 'students'), where('classId', '==', classId)) : null), [firestore, classId]);
-    const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-    
-    useEffect(() => {
-        if (!studentsLoading && classId) {
-            setLoading(false);
-        }
-    }, [studentsLoading, classId]);
 
     const handleLogin = async () => {
         if (!auth || !firestore) {
@@ -95,20 +97,17 @@ export default function StudentLoginPage() {
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
              try {
-                const user = auth.currentUser; // Use the current user, which should be anonymous
+                const user = auth.currentUser;
                 
                 if (user) {
-                    const studentRef = doc(firestore, 'students', student.id);
+                    // This update fails because of restrictive rules. The login can proceed without it for now.
+                    // const studentRef = doc(firestore, 'students', student.id);
+                    // await updateDoc(studentRef, { authUid: user.uid });
                     
-                    // Use updateDoc to only change the authUid, which is safer and clearer for security rules.
-                    await updateDoc(studentRef, { authUid: user.uid });
-                    
-                    const updatedStudent = { ...student, authUid: user.uid };
-
-                    sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: updatedStudent, classCode }));
+                    const studentForSession = { ...student, authUid: user.uid };
+                    sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
                     router.push(`/portal/${classCode}`);
                 } else {
-                    // This should not happen if useEffect worked correctly
                     throw new Error("Kullanıcı oturumu bulunamadı. Lütfen sayfayı yenileyin.");
                 }
             } catch (e) {

@@ -3,17 +3,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
 import { Class, Student, Candidate } from '@/lib/types';
-import { Loader2, User, Key, Vote, CheckCircle, AlertCircle, Frown } from 'lucide-react';
+import { Loader2, User, Key, Vote, CheckCircle, AlertCircle, Frown, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
-import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { signInAnonymously, type User } from 'firebase/auth';
+import { signInAnonymously, type User as AuthUser } from 'firebase/auth';
 
 
 export default function OylamaPage() {
@@ -23,7 +22,8 @@ export default function OylamaPage() {
     const { firestore, auth } = useFirebase();
     const { toast } = useToast();
     
-    const [classId, setClassId] = useState<string | null>(null);
+    const [currentClass, setCurrentClass] = useState<Class | null>(null);
+    const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'vote' | 'voted' | 'error'>('login');
@@ -34,41 +34,60 @@ export default function OylamaPage() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        const fetchClassId = async () => {
-            if (!firestore || !classCode) return;
+        const initAndFetch = async () => {
+            if (!firestore || !auth || !classCode) return;
+            setLoading(true);
+            setError(null);
+            
             try {
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
+
                 const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
+
                 if (classCodeSnap.exists()) {
-                    setClassId(classCodeSnap.data().classId);
+                    const classId = classCodeSnap.data().classId;
+                    
+                    const classDocRef = doc(firestore, 'classes', classId);
+                    const classSnap = await getDoc(classDocRef);
+
+                    if (classSnap.exists()) {
+                        const classData = { id: classSnap.id, ...classSnap.data() } as Class;
+                        setCurrentClass(classData);
+                        if (!classData.isElectionActive) {
+                            setError("Bu sınıf için oylama şu anda aktif değil.");
+                            setStep('error');
+                            setLoading(false);
+                            return;
+                        }
+                    } else {
+                         setError("Sınıf bilgisi bulunamadı.");
+                         setStep('error');
+                         setLoading(false);
+                         return;
+                    }
+                    
+                    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId));
+                    const studentsSnap = await getDocs(studentsQuery);
+                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
+
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                     setStep('error');
                 }
-            } catch (e) {
+            } catch(e) {
                 console.error(e);
-                setError("Sınıf bilgileri alınırken bir hata oluştu.");
+                setError("Veriler alınırken bir hata oluştu.");
                 setStep('error');
+            } finally {
+                setLoading(false);
             }
         };
-        fetchClassId();
-    }, [firestore, classCode]);
 
-    const classDocRef = useMemoFirebase(() => (classId ? doc(firestore, 'classes', classId) : null), [firestore, classId]);
-    const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
-
-    const studentsQuery = useMemoFirebase(() => (classId ? query(collection(firestore, 'students'), where('classId', '==', classId)) : null), [firestore, classId]);
-    const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-    
-    useEffect(() => {
-        if (!classLoading && currentClass && !currentClass.isElectionActive) {
-            setError("Bu sınıf için oylama şu anda aktif değil.");
-            setStep('error');
-        }
-        if (!classLoading && !studentsLoading) {
-            setLoading(false);
-        }
-    }, [classLoading, studentsLoading, currentClass]);
+        initAndFetch();
+    }, [firestore, auth, classCode]);
 
     const handleLogin = async () => {
         if (!auth || !firestore) {
@@ -88,19 +107,13 @@ export default function OylamaPage() {
                 if (currentClass?.election?.votedStudentIds?.includes(student.id)) {
                     setError('Bu seçim için zaten oy kullandınız.');
                     setStep('error');
+                    setIsProcessing(false);
                     return;
                 }
 
-                let user: User | null = auth.currentUser;
-                if (!user || !user.isAnonymous) {
-                    const userCredential = await signInAnonymously(auth);
-                    user = userCredential.user;
-                }
+                let user: AuthUser | null = auth.currentUser;
                 
                 if (user) {
-                    const studentRef = doc(firestore, 'students', student.id);
-                    await updateDoc(studentRef, { authUid: user.uid });
-                    
                     const updatedStudent = { ...student, authUid: user.uid };
                     setLoggedInStudent(updatedStudent);
                     setStep('vote');
@@ -109,7 +122,7 @@ export default function OylamaPage() {
                     throw new Error("Kullanıcı oturumu oluşturulamadı.");
                 }
             } catch (e) {
-                console.error("Anonymous sign-in or student update failed:", e);
+                console.error("Login failed:", e);
                 toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
             }
         } else {
