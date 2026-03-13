@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { User } from 'firebase/auth';
 
-export const HomeworkItem = ({ homework, student, authUser, classId, submission, onMarkAsSubmitted }: { homework: Homework, student: Student, authUser: User | null, classId: string, submission?: Submission, onMarkAsSubmitted: (studentId: string, homeworkId: string) => void }) => {
+export const HomeworkItem = ({ homework, student, authUser, classId }: { homework: Homework, student: Student, authUser: User | null, classId: string }) => {
     const { firestore: db } = useFirebase();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +29,19 @@ export const HomeworkItem = ({ homework, student, authUser, classId, submission,
     const [submissionText, setSubmissionText] = useState('');
     const [submissionFile, setSubmissionFile] = useState<{dataUrl: string, name: string, type: string} | null>(null);
 
-    const existingSubmission = submission;
+    const submissionsQuery = useMemoFirebase(() => {
+        if (!db || !classId) return null;
+        return query(
+            collection(db, 'classes', classId, 'homeworks', homework.id, 'submissions'),
+            where('studentId', '==', student.id)
+        );
+    }, [db, classId, homework.id, student.id]);
+
+    const { data: submissions } = useCollection<Submission>(submissionsQuery);
+
+    const existingSubmission = useMemo(() => {
+        return submissions?.[0];
+    }, [submissions]);
 
     const handleAnswerChange = (questionId: string | number, answer: string, isMulti: boolean = false) => {
       setAnswers(prev => {
@@ -291,25 +303,12 @@ export default function StudentRegularHomeworkPage() {
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
     
-    const submissionsQuery = useMemoFirebase(() => {
-        if (!db || !authUser?.uid) return null;
-        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
-    }, [db, authUser]);
-
-    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
-
-    const submissionsForThisClass = useMemo(() => {
-        if (!allSubmissions || !homeworks) return [];
-        const homeworkIds = new Set(homeworks.map(hw => hw.id));
-        return allSubmissions.filter(sub => sub.homeworkId && homeworkIds.has(sub.homeworkId));
-    }, [allSubmissions, homeworks]);
-    
     const regularHomeworks = useMemo(() => {
         if (!homeworks) return [];
         return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [homeworks]);
     
-    if (authLoading || !student || homeworksLoading || submissionsLoading) {
+    if (authLoading || !student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -343,20 +342,15 @@ export default function StudentRegularHomeworkPage() {
                         <ScrollArea className="h-[60vh] pr-2">
                             <div className="space-y-4">
                             {regularHomeworks.length > 0 ? (
-                                regularHomeworks.map((hw) => {
-                                    const submissionForHw = submissionsForThisClass?.find(s => s.homeworkId === hw.id);
-                                    return (
-                                        <HomeworkItem 
-                                            key={hw.id} 
-                                            homework={hw} 
-                                            student={student!} 
-                                            authUser={authUser}
-                                            classId={student!.classId} 
-                                            submission={submissionForHw}
-                                            onMarkAsSubmitted={() => {}}
-                                        />
-                                    )
-                                })
+                                regularHomeworks.map((hw) => (
+                                    <HomeworkItem 
+                                        key={hw.id} 
+                                        homework={hw} 
+                                        student={student!} 
+                                        authUser={authUser}
+                                        classId={student!.classId} 
+                                    />
+                                ))
                             ) : (
                                 <div className="text-center py-10 bg-muted/50 rounded-lg">
                                     <p className="text-sm text-muted-foreground">Henüz verilmiş bir günlük ödev yok.</p>
