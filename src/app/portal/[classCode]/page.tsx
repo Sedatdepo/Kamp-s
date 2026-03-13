@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Badge, Homework } from '@/lib/types';
-import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, User, Key, LogOut, Vote, Trophy, Users, Grid, ListChecks, Calendar, MessageCircle, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/Logo';
@@ -39,6 +39,11 @@ export default function StudentPortalPage() {
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
+    const [dismissedNotifications, setDismissedNotifications] = useState<string[]>([]);
+
+    const handleDismiss = (notificationId: string) => {
+        setDismissedNotifications(prev => [...prev, notificationId]);
+    };
 
     // Initial load from sessionStorage
     useEffect(() => {
@@ -154,83 +159,117 @@ export default function StudentPortalPage() {
                         <CardDescription>Sana özel son gelişmeler ve görevler.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {latestBehaviorLog && (
-                            <Link href={`/portal/${classCode}/kahramanlar`} passHref>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-yellow-100 text-yellow-600 p-2 rounded-full mt-1">
-                                        <Award className="h-5 w-5" />
+                        {latestBehaviorLog && !dismissedNotifications.includes(`behavior_${latestBehaviorLog.id}`) && (
+                             <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                <Link href={`/portal/${classCode}/kahramanlar`} passHref className="flex-grow">
+                                    <div className="flex items-start gap-4 cursor-pointer">
+                                        <div className="bg-yellow-100 text-yellow-600 p-2 rounded-full mt-1">
+                                            <Award className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">Yeni Davranış Notu</p>
+                                            <p className="text-xs text-muted-foreground">{latestBehaviorLog.label} ({latestBehaviorLog.points > 0 ? '+' : ''}{latestBehaviorLog.points} Puan)</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Yeni Davranış Notu</p>
-                                        <p className="text-xs text-muted-foreground">{latestBehaviorLog.label} ({latestBehaviorLog.points > 0 ? '+' : ''}{latestBehaviorLog.points} Puan)</p>
-                                    </div>
-                                </div>
-                            </Link>
+                                </Link>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss(`behavior_${latestBehaviorLog.id}`); }}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
                         {currentClass.isRegularHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'regular' || !hw.assignmentType).slice(0, 1).map(hw => (
-                            <Link href={`/portal/${classCode}/regular-homeworks`} passHref key={hw.id}>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-orange-100 text-orange-600 p-2 rounded-full mt-1">
-                                        <BookText className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Yeni Günlük Ödev</p>
-                                        <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
-                                    </div>
+                            !dismissedNotifications.includes(`regular_hw_${hw.id}`) && (
+                                <div key={hw.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                    <Link href={`/portal/${classCode}/regular-homeworks`} passHref className="flex-grow">
+                                        <div className="flex items-start gap-4 cursor-pointer">
+                                            <div className="bg-orange-100 text-orange-600 p-2 rounded-full mt-1">
+                                                <BookText className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm">Yeni Günlük Ödev</p>
+                                                <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss(`regular_hw_${hw.id}`); }}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            </Link>
+                            )
                         ))}
                          {currentClass.isPerformanceHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'performance').slice(0, 1).map(hw => (
-                            <Link href={`/portal/${classCode}/performance-homeworks`} passHref key={hw.id}>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
-                                        <Trophy className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Yeni Performans Ödevi</p>
-                                        <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
-                                    </div>
+                            !dismissedNotifications.includes(`performance_hw_${hw.id}`) && (
+                                <div key={hw.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                    <Link href={`/portal/${classCode}/performance-homeworks`} passHref className="flex-grow">
+                                        <div className="flex items-start gap-4 cursor-pointer">
+                                            <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
+                                                <Trophy className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm">Yeni Performans Ödevi</p>
+                                                <p className="text-xs text-muted-foreground line-clamp-1">{hw.text}</p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss(`performance_hw_${hw.id}`); }}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            </Link>
+                            )
                         ))}
-                        {currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && (
-                            <Link href={`/view/announcements/${classCode}`} passHref>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-blue-100 text-blue-600 p-2 rounded-full mt-1">
-                                        <Megaphone className="h-5 w-5" />
+                        {currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && !dismissedNotifications.includes(`announcement_${currentClass.announcements[0].id}`) && (
+                             <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                <Link href={`/view/announcements/${classCode}`} passHref className="flex-grow">
+                                    <div className="flex items-start gap-4 cursor-pointer">
+                                        <div className="bg-blue-100 text-blue-600 p-2 rounded-full mt-1">
+                                            <Megaphone className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">Yeni Duyuru</p>
+                                            <p className="text-xs text-muted-foreground line-clamp-1">{currentClass.announcements[0].text}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Yeni Duyuru</p>
-                                        <p className="text-xs text-muted-foreground line-clamp-1">{currentClass.announcements[0].text}</p>
-                                    </div>
-                                </div>
-                            </Link>
+                                </Link>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss(`announcement_${currentClass.announcements[0].id}`); }}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
-                        {currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson && (
-                            <Link href={`/portal/${classCode}/project-homework`} passHref>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
-                                        <ClipboardList className="h-5 w-5" />
+                        {currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson && !dismissedNotifications.includes('project_hw_assigned') && (
+                             <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                <Link href={`/portal/${classCode}/project-homework`} passHref className="flex-grow">
+                                    <div className="flex items-start gap-4 cursor-pointer">
+                                        <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
+                                            <ClipboardList className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">Proje Ödevin Atandı</p>
+                                            <p className="text-xs text-muted-foreground">Proje ödevi konunu görmek için tıkla.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Proje Ödevin Atandı</p>
-                                        <p className="text-xs text-muted-foreground">Proje ödevi konunu görmek için tıkla.</p>
-                                    </div>
-                                </div>
-                            </Link>
+                                </Link>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss('project_hw_assigned'); }}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
-                        {currentClass.isSociogramActive && (
-                            <Link href={`/sosyogram/${classCode}`} passHref>
-                                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                                    <div className="bg-teal-100 text-teal-600 p-2 rounded-full mt-1">
-                                        <Users className="h-5 w-5" />
+                        {currentClass.isSociogramActive && !dismissedNotifications.includes('sociogram_active') && (
+                            <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                <Link href={`/sosyogram/${classCode}`} passHref className="flex-grow">
+                                    <div className="flex items-start gap-4 cursor-pointer">
+                                        <div className="bg-teal-100 text-teal-600 p-2 rounded-full mt-1">
+                                            <Users className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">Sosyogram Anketi Aktif</p>
+                                            <p className="text-xs text-muted-foreground">Sınıf arkadaşlarınla ilgili anket seni bekliyor.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-sm">Sosyogram Anketi Aktif</p>
-                                        <p className="text-xs text-muted-foreground">Sınıf arkadaşlarınla ilgili anket seni bekliyor.</p>
-                                    </div>
-                                </div>
-                            </Link>
+                                </Link>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleDismiss('sociogram_active'); }}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
                         {currentClass.isGradesPublished && (
                             <Link href={`/portal/${classCode}/notlarim`} passHref>
