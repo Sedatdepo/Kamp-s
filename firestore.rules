@@ -38,9 +38,9 @@ service cloud.firestore {
     
     // Classes
     match /classes/{classId} { 
-      allow get: if true; // Allow students to read their class for login/portal
+      allow get: if request.auth != null; // Allow students to read their class for login/portal
       allow write: if isTeacher();
-      allow list, update: if isTeacher();
+      allow list: if isTeacher();
     }
     
     // Students
