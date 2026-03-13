@@ -17,11 +17,11 @@ export default function OylamaPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore, auth } = useFirebase();
+    const { firestore, auth, user, isUserLoading } = useFirebase();
     const { toast } = useToast();
     
     const [currentClass, setCurrentClass] = useState<Class | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'vote' | 'voted' | 'error'>('login');
 
@@ -32,15 +32,17 @@ export default function OylamaPage() {
 
     useEffect(() => {
         const initAndFetch = async () => {
-            if (!firestore || !auth || !classCode) return;
-            setLoading(true);
-            setError(null);
+            if (isUserLoading || !auth || !firestore) {
+                setPageLoading(true);
+                return;
+            }
+        
+            if (!user) {
+                await signInAnonymously(auth);
+                return; // Let re-render handle the next step
+            }
             
             try {
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-
                 const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
@@ -56,14 +58,10 @@ export default function OylamaPage() {
                         if (!classData.isElectionActive) {
                             setError("Bu sınıf için oylama şu anda aktif değil.");
                             setStep('error');
-                            setLoading(false);
-                            return;
                         }
                     } else {
                          setError("Sınıf bilgisi bulunamadı.");
                          setStep('error');
-                         setLoading(false);
-                         return;
                     }
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
@@ -74,15 +72,15 @@ export default function OylamaPage() {
                 setError("Veriler alınırken bir hata oluştu.");
                 setStep('error');
             } finally {
-                setLoading(false);
+                setPageLoading(false);
             }
         };
 
         initAndFetch();
-    }, [firestore, auth, classCode]);
+    }, [isUserLoading, user, firestore, auth, classCode]);
 
     const handleLogin = async () => {
-        if (!auth || !firestore || !currentClass) {
+        if (!auth || !firestore || !currentClass || !user) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
@@ -118,15 +116,10 @@ export default function OylamaPage() {
                 return;
             }
 
-            let user: AuthUser | null = auth.currentUser;
-            if (user) {
-                const updatedStudent = { ...student, authUid: user.uid };
-                setLoggedInStudent(updatedStudent);
-                setStep('vote');
-                setError('');
-            } else {
-                throw new Error("Kullanıcı oturumu oluşturulamadı.");
-            }
+            const updatedStudent = { ...student, authUid: user.uid };
+            setLoggedInStudent(updatedStudent);
+            setStep('vote');
+            setError('');
         } catch (e) {
             console.error("Login failed:", e);
             toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
@@ -169,7 +162,7 @@ export default function OylamaPage() {
         }
     };
     
-    if (loading) {
+    if (pageLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -255,3 +248,4 @@ export default function OylamaPage() {
         </div>
     );
 }
+    

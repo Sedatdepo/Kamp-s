@@ -25,12 +25,12 @@ export default function SociogramPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db, auth } = useFirebase();
+    const { firestore: db, auth, user, isUserLoading } = useFirebase();
     const { toast } = useToast();
     
     const [currentClass, setCurrentClass] = useState<Class | null>(null);
     const [students, setStudents] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
 
@@ -43,15 +43,17 @@ export default function SociogramPage() {
 
     useEffect(() => {
         const initAndFetch = async () => {
-            if (!db || !auth || !classCode) return;
-            setLoading(true);
-            setError(null);
+            if (isUserLoading || !auth || !db) {
+                setPageLoading(true);
+                return;
+            }
+            
+            if (!user) {
+                await signInAnonymously(auth);
+                return;
+            }
             
             try {
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-
                 const classCodeRef = doc(db, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
@@ -67,14 +69,10 @@ export default function SociogramPage() {
                         if (!classData.isSociogramActive) {
                             setError("Bu sınıf için sosyogram anketi şu anda aktif değil.");
                             setStep('error');
-                            setLoading(false);
-                            return;
                         }
                     } else {
                         setError("Sınıf bilgisi bulunamadı.");
                         setStep('error');
-                        setLoading(false);
-                        return;
                     }
 
                     const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
@@ -90,11 +88,11 @@ export default function SociogramPage() {
                 setError("Veriler alınırken bir hata oluştu.");
                 setStep('error');
             } finally {
-                setLoading(false);
+                setPageLoading(false);
             }
         };
         initAndFetch();
-    }, [db, auth, classCode]);
+    }, [isUserLoading, user, db, auth, classCode]);
 
     const handleLogin = async () => {
         if (!currentClass || !db) {
@@ -127,6 +125,7 @@ export default function SociogramPage() {
             if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
                 setError('Bu anketi daha önce doldurdunuz.');
                 setStep('error');
+                setIsProcessing(false);
                 return;
             }
             setLoggedInStudent(student);
@@ -185,7 +184,7 @@ export default function SociogramPage() {
         }
     };
 
-    if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (pageLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
     const survey = currentClass?.sociogramSurvey;
     
@@ -271,3 +270,4 @@ export default function SociogramPage() {
         </div>
     );
 }
+    

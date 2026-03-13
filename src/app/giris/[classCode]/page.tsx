@@ -17,11 +17,11 @@ export default function StudentLoginPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore, auth } = useFirebase();
+    const { firestore, auth, user, isUserLoading } = useFirebase();
     const { toast } = useToast();
     
     const [className, setClassName] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
     const [enteredName, setEnteredName] = useState('');
@@ -29,16 +29,21 @@ export default function StudentLoginPage() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        const initAndFetchClass = async () => {
-            if (!auth || !firestore || !classCode) return;
-            setLoading(true);
-            setError(null);
+        const initAndFetch = async () => {
+            if (isUserLoading || !auth || !firestore) {
+                setPageLoading(true);
+                return;
+            }
 
+            if (!user) {
+                await signInAnonymously(auth);
+                // The onAuthStateChanged listener will trigger a re-render.
+                // We return here and let the next effect run handle the data fetching.
+                return;
+            }
+            
+            // User is now authenticated (at least anonymously). Proceed with data fetching.
             try {
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-
                 const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
@@ -59,14 +64,15 @@ export default function StudentLoginPage() {
                 console.error(e);
                 setError("Sınıf bilgileri alınırken bir hata oluştu.");
             } finally {
-                setLoading(false);
+                setPageLoading(false);
             }
         };
-        initAndFetchClass();
-    }, [firestore, auth, classCode]);
+
+        initAndFetch();
+    }, [isUserLoading, user, auth, firestore, classCode]);
 
     const handleLogin = async () => {
-        if (!auth || !firestore) {
+        if (!auth || !firestore || !user) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
@@ -104,18 +110,13 @@ export default function StudentLoginPage() {
             }
             
             const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
-            const user = auth.currentUser;
 
-            if (user) {
-                const studentRef = doc(firestore, 'students', student.id);
-                await updateDoc(studentRef, { authUid: user.uid });
-                
-                const studentForSession = { ...student, authUid: user.uid };
-                sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
-                router.push(`/portal/${classCode}`);
-            } else {
-                throw new Error("Kullanıcı oturumu bulunamadı. Lütfen sayfayı yenileyin.");
-            }
+            const studentRef = doc(firestore, 'students', student.id);
+            await updateDoc(studentRef, { authUid: user.uid });
+            
+            const studentForSession = { ...student, authUid: user.uid };
+            sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
+            router.push(`/portal/${classCode}`);
 
         } catch (e) {
             console.error("Login or student query failed:", e);
@@ -125,7 +126,7 @@ export default function StudentLoginPage() {
         }
     };
     
-    if (loading) {
+    if (pageLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
      if (error) {
@@ -177,3 +178,4 @@ export default function StudentLoginPage() {
         </div>
     );
 }
+    
