@@ -12,9 +12,7 @@ service cloud.firestore {
     
     // --- CORE TEACHER DEFINITION ---
     match /teachers/{teacherId} {
-      // Allow any authenticated user to check if a user is a teacher. This is necessary for the isTeacher() function to work.
       allow get: if request.auth != null;
-      // Only a teacher can modify their own teacher document.
       allow write: if isTeacher() && request.auth.uid == teacherId;
     }
 
@@ -44,7 +42,7 @@ service cloud.firestore {
     
     // --- STUDENT DATA ---
     match /students/{studentId} {
-      allow read: if true; // Risky but needed for current login flow
+      allow read: if isTeacher() || (request.auth != null && request.auth.uid == resource.data.authUid);
       allow update: if isTeacher() || 
                     (request.auth != null && (
                       (resource.data.authUid == request.auth.uid) ||
@@ -73,19 +71,10 @@ service cloud.firestore {
     
     // --- MESSAGING RULES ---
     match /messages/{messageId} {
-      // LIST: Any authenticated user can run a query. The client code is responsible for filtering correctly.
       allow list: if request.auth != null;
-      
-      // GET: A teacher can get any message. A student can only get messages they are a participant in.
       allow get: if isTeacher() || (request.auth != null && request.auth.uid in resource.data.participants);
-      
-      // CREATE: Any authenticated user can create a message as long as they include themselves in the participants.
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
-      
-      // UPDATE: A teacher can update anything. A student can only update the 'isRead' flag on messages sent to them.
       allow update: if isTeacher() || (request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
-
-      // DELETE: Only teachers can delete messages.
       allow delete: if isTeacher();
     }
   }
