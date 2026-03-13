@@ -45,9 +45,9 @@ service cloud.firestore {
     // This includes their own class, their teacher's profile, and lists of things like lessons.
     match /classes/{classId} { allow get: if request.auth != null; }
     match /teachers/{teacherId} { allow get: if request.auth != null; }
-    match /lessons/{lessonId} { allow get: if request.auth != null; }
-    match /clubs/{clubId} { allow get: if request.auth != null; }
-    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    match /lessons/{lessonId} { allow read: if request.auth != null; }
+    match /clubs/{clubId} { allow read: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
     
     // STUDENT: Homework and Submissions
     match /classes/{classId}/homeworks/{homeworkId} {
