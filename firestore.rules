@@ -15,20 +15,12 @@ service cloud.firestore {
       allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
       allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
     }
-    
-    // --- GENERAL RULE FOR TEACHERS ---
-    // This gives teachers god-mode access to everything EXCEPT the /teachers collection,
-    // which is handled by the more specific rule above.
-    match /{document=**} {
-      allow read, write: if isTeacher();
-    }
 
-    // --- STUDENT & PUBLIC RULES (Evaluated if not a teacher) ---
+    // --- STUDENT & PUBLIC RULES (Must come BEFORE the teacher wildcard) ---
 
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    // UPDATED: Changed 'get' to 'read' to allow listing for authenticated users.
     match /lessons/{lessonId} { allow read: if request.auth != null; }
     match /clubs/{clubId} { allow read: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow read: if request.auth != null; }
@@ -45,7 +37,6 @@ service cloud.firestore {
         allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     
-    // UPDATED: Changed 'get' to 'read' to allow listing homeworks.
     match /classes/{classId}/homeworks/{homeworkId} {
         allow read: if request.auth != null;
     }
@@ -56,10 +47,23 @@ service cloud.firestore {
     }
     
     match /messages/{messageId} {
-      // Teacher access is covered by the wildcard. This is for students.
-      allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
+      // Get a single message if the user is a participant
+      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+      
+      // List messages based on the 'participants' field in the query
       allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
-      allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && resource.data.isRead == true;
+
+      // Create a message if the user is in the new document's participants list
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
+      
+      // Update a message (e.g., mark as read) if the user is a participant
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+    }
+
+    // --- GENERAL RULE FOR TEACHERS (Catch-all, comes LAST) ---
+    // This gives teachers god-mode access to everything else.
+    match /{path=**} {
+      allow read, write: if isTeacher();
     }
   }
 }
