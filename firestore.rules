@@ -12,15 +12,15 @@ service cloud.firestore {
     // --- CORE TEACHER RULE ---
     // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
     match /teachers/{teacherId} {
-      allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
-      allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
+      allow get: if request.auth != null;
+      allow write: if isTeacher() && request.auth.uid == teacherId;
     }
     
     // --- PUBLIC/LOGIN RULES ---
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    // --- STUDENT & TEACHER RULES (PER COLLECTION) ---
+    // --- PER-COLLECTION RULES ---
 
     // Lessons, Clubs, and Risk Factors
     match /lessons/{lessonId} { 
