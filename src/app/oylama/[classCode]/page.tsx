@@ -9,6 +9,7 @@ import { Loader2, User, Key, Vote, CheckCircle, AlertCircle, Frown, Users } from
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { signInAnonymously, type User as AuthUser } from 'firebase/auth';
@@ -21,11 +22,12 @@ export default function OylamaPage() {
     const { toast } = useToast();
     
     const [currentClass, setCurrentClass] = useState<Class | null>(null);
+    const [students, setStudents] = useState<Student[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'vote' | 'voted' | 'error'>('login');
 
-    const [enteredName, setEnteredName] = useState('');
+    const [selectedStudentId, setSelectedStudentId] = useState('');
     const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -63,6 +65,11 @@ export default function OylamaPage() {
                          setError("Sınıf bilgisi bulunamadı.");
                          setStep('error');
                     }
+
+                    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId));
+                    const studentsSnap = await getDocs(studentsQuery);
+                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)).sort((a,b) => a.name.localeCompare(b.name, 'tr')));
+
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                     setStep('error');
@@ -84,30 +91,24 @@ export default function OylamaPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!enteredName.trim() || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı ve okul numaranızı girin.' });
+        if (!selectedStudentId || !enteredSchoolNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
             return;
         }
         
         setIsProcessing(true);
 
         try {
-            const studentQuery = query(
-                collection(firestore, 'students'),
-                where('classId', '==', currentClass.id),
-                where('name', '==', enteredName.trim()),
-                where('number', '==', enteredSchoolNumber.trim())
-            );
-            
-            const studentSnap = await getDocs(studentQuery);
+            const studentRef = doc(firestore, 'students', selectedStudentId);
+            const studentSnap = await getDoc(studentRef);
 
-            if (studentSnap.empty) {
+            if (!studentSnap.exists() || studentSnap.data().number !== enteredSchoolNumber.trim()) {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı.' });
                 setIsProcessing(false);
                 return;
             }
 
-            const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
+            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
             
             if (currentClass.election?.votedStudentIds?.includes(student.id)) {
                 setError('Bu seçim için zaten oy kullandınız.');
@@ -184,13 +185,17 @@ export default function OylamaPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                              <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="Adın Soyadın" 
-                                    className="pl-9"
-                                    value={enteredName}
-                                    onChange={(e) => setEnteredName(e.target.value)}
-                                />
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger className="pl-9">
+                                        <SelectValue placeholder="Adını listeden seç..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {students.map(student => (
+                                            <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -248,4 +253,3 @@ export default function OylamaPage() {
         </div>
     );
 }
-    

@@ -14,6 +14,7 @@ import { Logo } from '@/components/icons/Logo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { signInAnonymously } from 'firebase/auth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const getIconComponent = (iconName: SociogramQuestion['icon']) => {
     const icons = { Users, UserX, Star, BookOpen, Coffee };
@@ -34,12 +35,15 @@ export default function SociogramPage() {
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
 
-    const [enteredName, setEnteredName] = useState('');
+    const [selectedStudentId, setSelectedStudentId] = useState('');
     const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selections, setSelections] = useState<{[questionId: number]: string[]}>({});
 
+    const sortedStudents = useMemo(() => {
+        return [...students].sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+    }, [students]);
 
     useEffect(() => {
         const initAndFetch = async () => {
@@ -99,28 +103,23 @@ export default function SociogramPage() {
              toast({ variant: 'destructive', title: 'Sistem hazır değil.' });
              return;
         }
-        if (!enteredName.trim() || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı ve okul numaranızı girin.' });
+        if (!selectedStudentId || !enteredSchoolNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
             return;
         }
 
         setIsProcessing(true);
         try {
-            const studentQuery = query(
-                collection(db, 'students'),
-                where('classId', '==', currentClass.id),
-                where('name', '==', enteredName.trim()),
-                where('number', '==', enteredSchoolNumber.trim())
-            );
+            const studentRef = doc(db, 'students', selectedStudentId);
+            const studentSnap = await getDoc(studentRef);
             
-            const studentSnap = await getDocs(studentQuery);
-            if(studentSnap.empty) {
+            if(!studentSnap.exists() || studentSnap.data().number !== enteredSchoolNumber.trim()) {
                  toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle öğrenci bulunamadı.' });
                  setIsProcessing(false);
                  return;
             }
             
-            const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
+            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
 
             if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
                 setError('Bu anketi daha önce doldurdunuz.');
@@ -202,12 +201,21 @@ export default function SociogramPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
-                            <CardDescription>Anketi doldurmak için lütfen adınızı ve okul numaranızı girin.</CardDescription>
+                            <CardDescription>Anketi doldurmak için lütfen bilgilerinizi girin.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Adın Soyadın" className="pl-9" value={enteredName} onChange={(e) => setEnteredName(e.target.value)} />
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger className="pl-9">
+                                        <SelectValue placeholder="Adını listeden seç..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sortedStudents.map(student => (
+                                            <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -270,4 +278,3 @@ export default function SociogramPage() {
         </div>
     );
 }
-    

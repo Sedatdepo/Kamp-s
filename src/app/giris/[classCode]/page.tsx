@@ -9,6 +9,7 @@ import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { signInAnonymously, type User } from 'firebase/auth';
@@ -21,10 +22,11 @@ export default function StudentLoginPage() {
     const { toast } = useToast();
     
     const [className, setClassName] = useState('');
+    const [students, setStudents] = useState<Student[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const [enteredName, setEnteredName] = useState('');
+    const [selectedStudentId, setSelectedStudentId] = useState('');
     const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -37,12 +39,9 @@ export default function StudentLoginPage() {
 
             if (!user) {
                 await signInAnonymously(auth);
-                // The onAuthStateChanged listener will trigger a re-render.
-                // We return here and let the next effect run handle the data fetching.
                 return;
             }
             
-            // User is now authenticated (at least anonymously). Proceed with data fetching.
             try {
                 const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
@@ -57,6 +56,13 @@ export default function StudentLoginPage() {
                     } else {
                         setError("Sınıf bilgisi bulunamadı.");
                     }
+                    
+                    // Fetch students
+                    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', foundClassId));
+                    const studentsSnap = await getDocs(studentsQuery);
+                    const studentsList = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+                    setStudents(studentsList);
+
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                 }
@@ -76,42 +82,25 @@ export default function StudentLoginPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!enteredName.trim() || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı ve okul numaranızı girin.' });
+        if (!selectedStudentId || !enteredSchoolNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
             return;
         }
         
         setIsProcessing(true);
 
         try {
-            const classCodeRef = doc(firestore, 'classCodes', classCode);
-            const classCodeSnap = await getDoc(classCodeRef);
+            const studentRef = doc(firestore, 'students', selectedStudentId);
+            const studentSnap = await getDoc(studentRef);
 
-            if (!classCodeSnap.exists()) {
-                toast({ variant: 'destructive', title: 'Geçersiz Sınıf Kodu' });
-                setIsProcessing(false);
-                return;
-            }
-            const foundClassId = classCodeSnap.data().classId;
-
-            const studentQuery = query(
-                collection(firestore, 'students'),
-                where('classId', '==', foundClassId),
-                where('name', '==', enteredName.trim()),
-                where('number', '==', enteredSchoolNumber.trim())
-            );
-            
-            const studentSnap = await getDocs(studentQuery);
-
-            if (studentSnap.empty) {
+            if (!studentSnap.exists() || studentSnap.data().number !== enteredSchoolNumber.trim()) {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı.' });
                 setIsProcessing(false);
                 return;
             }
             
-            const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
+            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
 
-            const studentRef = doc(firestore, 'students', student.id);
             await updateDoc(studentRef, { authUid: user.uid });
             
             const studentForSession = { ...student, authUid: user.uid };
@@ -150,13 +139,17 @@ export default function StudentLoginPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="relative">
-                            <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Adın Soyadın" 
-                                className="pl-9"
-                                value={enteredName}
-                                onChange={(e) => setEnteredName(e.target.value)}
-                            />
+                            <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                             <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                <SelectTrigger className="pl-9">
+                                    <SelectValue placeholder="Adını listeden seç..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {students.map(student => (
+                                        <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="relative">
                             <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -178,4 +171,3 @@ export default function StudentLoginPage() {
         </div>
     );
 }
-    
