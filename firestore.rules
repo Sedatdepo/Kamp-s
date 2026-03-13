@@ -4,56 +4,76 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- GENEL OKUMA KURALI (HERKESE AÇIK) ---
-    // UYARI: Bu kural veritabanınızdaki tüm verileri herkes tarafından okunabilir yapar.
-    match /{document=**} {
-      allow read: if true;
-    }
-
-    // --- YAZMA KURALI (DAHA KISITLI) ---
+    // --- HELPER FUNCTIONS ---
     function isTeacher() {
-      // Öğretmen olup olmadığını kontrol eden fonksiyon.
+      // A user is a teacher if a document with their UID exists in the /teachers collection.
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
-    // Öğretmenler kendi profillerini yazabilir.
-    match /teachers/{teacherId} {
-      allow write: if isTeacher() && request.auth.uid == teacherId;
+    function isStudentOwner(studentAuthUid) {
+      // The user making the request is the student associated with the document.
+      return request.auth != null && request.auth.uid == studentAuthUid;
+    }
+    
+    // --- GLOBAL TEACHER ACCESS ---
+    // Allow teachers to read and write to ANY document path.
+    // This is a broad but simple rule that fulfills the user's request.
+    match /{path=**} {
+      allow read, write: if isTeacher();
+    }
+    
+    // --- PUBLIC & STUDENT RULES ---
+    // These rules are evaluated if the user is NOT a teacher.
+
+    // Anyone can see class codes to get to the login page.
+    match /classCodes/{code} {
+      allow get: if true;
     }
 
-    // Öğrencilerin ve öğretmenlerin yazma kuralları
+    // Student login page needs to read the list of students for a class.
+    // This allows any authenticated user (including anonymous) to list students.
     match /students/{studentId} {
-      allow update: if isTeacher() || 
-                    (request.auth != null && request.auth.uid == resource.data.authUid) ||
-                    // Öğrencinin ilk girişte kendi kimliğini kaydetmesine izin ver
-                    (request.auth != null && (!('authUid' in resource.data) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid'])));
-      allow create, delete: if isTeacher();
-    }
-
-    // Bilgi formlarını sadece öğrencinin kendisi veya öğretmen yazabilir
-    match /infoForms/{formId} {
-        allow write: if isTeacher() || (request.auth != null && request.resource.data.authUid == request.auth.uid);
+      allow read: if request.auth != null;
+      // Allow a student to update their own document (e.g., set their authUid, submit forms)
+      allow update: if isStudentOwner(resource.data.authUid);
     }
     
-    // Ödev teslimatını sadece öğrenci yapabilir, öğretmen not verebilir (güncelleyebilir)
+    // Students can read their class document, and any public views.
+    match /classes/{classId} {
+      allow get: if request.auth != null;
+    }
+    match /publicViews/{viewId} {
+      allow get: if true;
+    }
+    
+    // Students can see lessons, clubs, and risk factors.
+    match /lessons/{lessonId} { allow get: if request.auth != null; }
+    match /clubs/{clubId} { allow get: if request.auth != null; }
+    match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    
+    // Students can read homework assignments for their class.
+    match /classes/{classId}/homeworks/{homeworkId} {
+        allow get: if request.auth != null;
+    }
+    
+    // Students can only create and read their own submissions.
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
-      allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
-      allow write: if isTeacher();
+      allow create: if isStudentOwner(request.resource.data.studentAuthUid);
+      allow read: if isStudentOwner(resource.data.studentAuthUid);
     }
     
-    // Mesajlaşma kuralları
+    // Students can only access their own info form.
+    match /infoForms/{studentId} {
+        allow read, write: if isStudentOwner(get(/databases/$(database)/documents/students/$(studentId)).data.authUid);
+    }
+    
+    // Students can only participate in conversations they are a part of.
     match /messages/{messageId} {
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
-      // Sadece öğretmen veya mesajı alan öğrenci (okundu bilgisi için) güncelleyebilir
-      allow update: if isTeacher() || (request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
-      allow delete: if isTeacher();
+        allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+        allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+        allow create: if isStudentOwner(request.resource.data.senderId);
+        // Allow a user to mark a message as read if they are the receiver
+        allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
     }
-    
-    // Bu koleksiyonlara sadece öğretmenler yazabilir
-    match /lessons/{lessonId} { allow write: if isTeacher(); }
-    match /clubs/{clubId} { allow write: if isTeacher(); }
-    match /riskFactors/{riskFactorId} { allow write: if isTeacher(); }
-    match /classes/{classId} { allow write: if isTeacher(); }
-    match /classes/{classId}/homeworks/{homeworkId} { allow write: if isTeacher(); }
   }
 }
