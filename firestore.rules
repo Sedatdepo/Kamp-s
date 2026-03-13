@@ -24,15 +24,15 @@ service cloud.firestore {
 
     // Lessons, Clubs, and Risk Factors
     match /lessons/{lessonId} { 
-      allow read: if request.auth != null;
+      allow get, list: if request.auth != null;
       allow write: if isTeacher();
     }
     match /clubs/{clubId} { 
-      allow read: if request.auth != null;
+      allow get, list: if request.auth != null;
       allow write: if isTeacher();
     }
     match /riskFactors/{riskFactorId} { 
-      allow read: if request.auth != null;
+      allow get, list: if request.auth != null;
       allow write: if isTeacher();
     }
     
