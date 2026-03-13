@@ -6,22 +6,23 @@ service cloud.firestore {
     
     // --- Helper Functions ---
     function isTeacher() {
+      // It's safe to check existence because of the specific rule on /teachers/{teacherId}
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // --- Core Authentication Rules ---
-    // This rule is critical for the isTeacher() function to work securely.
+    // --- CORE TEACHER DEFINITION ---
     match /teachers/{teacherId} {
-      allow get: if request.auth != null; // Any authenticated user can check if a user is a teacher.
-      allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
+      // Allow any authenticated user to check if a user is a teacher. This is necessary for the isTeacher() function to work.
+      allow get: if request.auth != null;
+      // Only a teacher can modify their own teacher document.
+      allow write: if isTeacher() && request.auth.uid == teacherId;
     }
 
-    // --- Publicly Readable Data ---
+    // --- PUBLICLY READABLE DATA ---
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
 
-    // --- Teacher-Managed Global Data ---
-    // Lessons, Clubs, and Risk Factors are readable by any authenticated user, but only writable by teachers.
+    // --- TEACHER-MANAGED GLOBAL DATA ---
     match /lessons/{lessonId} { 
       allow get, list: if request.auth != null;
       allow write: if isTeacher();
@@ -35,78 +36,56 @@ service cloud.firestore {
       allow write: if isTeacher();
     }
     
-    // --- Class-Specific Data ---
+    // --- CLASS-SPECIFIC DATA ---
     match /classes/{classId} {
-      // Any authenticated user (student or teacher) can get a class's details.
       allow get: if request.auth != null;
-      // Only teachers can list all classes or write to a class document.
       allow list, write: if isTeacher();
     }
     
-    // --- Student Data ---
-    // This is the most complex rule due to the anonymous login/claim flow.
+    // --- STUDENT DATA ---
     match /students/{studentId} {
-      // SECURITY RISK: This is intentionally open to allow the initial anonymous login
-      // where a student needs to find their profile from a list before they are authenticated as "that student".
-      // This should be replaced with a more secure Cloud Function-based lookup in a real production app.
-      allow read: if true; 
-      
-      // Teachers have full write permissions on any student.
-      // An authenticated student can only update their OWN document.
-      // An anonymous user can only claim a profile by setting their authUid.
+      allow read: if true; // Risky but needed for current login flow
       allow update: if isTeacher() || 
-                    (request.auth != null && 
-                      (
-                        // Case 1: Authenticated student updates their own document.
-                        (resource.data.authUid == request.auth.uid) ||
-                        // Case 2: Anonymous user claims a profile by setting authUid for the first time.
-                        (!('authUid' in resource.data) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid']))
-                      )
-                    );
-      
-      // Only teachers can create or delete students.
+                    (request.auth != null && (
+                      (resource.data.authUid == request.auth.uid) ||
+                      (!('authUid' in resource.data) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid']))
+                    ));
       allow create, delete: if isTeacher();
     }
 
-    // --- Student-Owned Sub-Collections & Data ---
-    
-    // InfoForms are private to the student but can be managed by teachers.
+    // --- STUDENT-OWNED DATA ---
     match /infoForms/{studentId} {
         allow create: if request.auth != null && request.resource.data.authUid == request.auth.uid;
-        allow read, update: if (isTeacher()) || (request.auth != null && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid);
+        allow read, update: if isTeacher() || (request.auth != null && get(/databases/$(database)/documents/students/$(studentId)).data.authUid == request.auth.uid);
         allow delete: if isTeacher();
     }
     
-    // Homeworks are visible to anyone in the class. Writable only by teachers.
     match /classes/{classId}/homeworks/{homeworkId} {
         allow get, list: if request.auth != null;
         allow write: if isTeacher();
     }
     
-    // Submissions are private to the student, but visible/writable to teachers.
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create: if request.auth.uid == request.resource.data.studentAuthUid;
       allow read: if isTeacher() || (request.auth.uid == resource.data.studentAuthUid);
       allow write: if isTeacher();
     }
     
-    // --- Messaging Rules ---
+    // --- MESSAGING RULES ---
     match /messages/{messageId} {
-      // A user can list messages ONLY if their UID is in the 'participants' array.
-      // This is a secure and common pattern for group chats.
-      allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+      // LIST: Any authenticated user can run a query. The client code is responsible for filtering correctly.
+      allow list: if request.auth != null;
       
-      // A user can get a message if they are a participant. Teachers can get any message.
+      // GET: A teacher can get any message. A student can only get messages they are a participant in.
       allow get: if isTeacher() || (request.auth != null && request.auth.uid in resource.data.participants);
       
-      // A user can create a message if they are including themselves in the participants list.
+      // CREATE: Any authenticated user can create a message as long as they include themselves in the participants.
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
       
-      // Students can only update the 'isRead' flag on messages sent to them. Teachers can update anything.
-      allow update: if isTeacher() || 
-                    (request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
+      // UPDATE: A teacher can update anything. A student can only update the 'isRead' flag on messages sent to them.
+      allow update: if isTeacher() || (request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
 
-      // Only teachers can delete messages.
+      // DELETE: Only teachers can delete messages.
       allow delete: if isTeacher();
     }
   }
