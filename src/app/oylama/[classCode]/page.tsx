@@ -9,11 +9,9 @@ import { Loader2, User, Key, Vote, CheckCircle, AlertCircle, Frown, Users } from
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { signInAnonymously, type User as AuthUser } from 'firebase/auth';
-
 
 export default function OylamaPage() {
     const params = useParams();
@@ -23,12 +21,11 @@ export default function OylamaPage() {
     const { toast } = useToast();
     
     const [currentClass, setCurrentClass] = useState<Class | null>(null);
-    const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'vote' | 'voted' | 'error'>('login');
 
-    const [selectedStudentId, setSelectedStudentId] = useState('');
+    const [enteredName, setEnteredName] = useState('');
     const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -68,11 +65,6 @@ export default function OylamaPage() {
                          setLoading(false);
                          return;
                     }
-                    
-                    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId));
-                    const studentsSnap = await getDocs(studentsQuery);
-                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
-
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                     setStep('error');
@@ -90,46 +82,57 @@ export default function OylamaPage() {
     }, [firestore, auth, classCode]);
 
     const handleLogin = async () => {
-        if (!auth || !firestore) {
+        if (!auth || !firestore || !currentClass) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!selectedStudentId || !enteredSchoolNumber) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı seçip okul numaranızı girin.' });
+        if (!enteredName.trim() || !enteredSchoolNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Lütfen adınızı ve okul numaranızı girin.' });
             return;
         }
         
         setIsProcessing(true);
 
-        const student = students?.find(s => s.id === selectedStudentId);
-        if (student && student.number === enteredSchoolNumber) {
-             try {
-                if (currentClass?.election?.votedStudentIds?.includes(student.id)) {
-                    setError('Bu seçim için zaten oy kullandınız.');
-                    setStep('error');
-                    setIsProcessing(false);
-                    return;
-                }
+        try {
+            const studentQuery = query(
+                collection(firestore, 'students'),
+                where('classId', '==', currentClass.id),
+                where('name', '==', enteredName.trim()),
+                where('number', '==', enteredSchoolNumber.trim())
+            );
+            
+            const studentSnap = await getDocs(studentQuery);
 
-                let user: AuthUser | null = auth.currentUser;
-                
-                if (user) {
-                    const updatedStudent = { ...student, authUid: user.uid };
-                    setLoggedInStudent(updatedStudent);
-                    setStep('vote');
-                    setError('');
-                } else {
-                    throw new Error("Kullanıcı oturumu oluşturulamadı.");
-                }
-            } catch (e) {
-                console.error("Login failed:", e);
-                toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
+            if (studentSnap.empty) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı.' });
+                setIsProcessing(false);
+                return;
             }
-        } else {
-            toast({ variant: 'destructive', title: 'Okul numarası yanlış.' });
+
+            const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
+            
+            if (currentClass.election?.votedStudentIds?.includes(student.id)) {
+                setError('Bu seçim için zaten oy kullandınız.');
+                setStep('error');
+                setIsProcessing(false);
+                return;
+            }
+
+            let user: AuthUser | null = auth.currentUser;
+            if (user) {
+                const updatedStudent = { ...student, authUid: user.uid };
+                setLoggedInStudent(updatedStudent);
+                setStep('vote');
+                setError('');
+            } else {
+                throw new Error("Kullanıcı oturumu oluşturulamadı.");
+            }
+        } catch (e) {
+            console.error("Login failed:", e);
+            toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
+        } finally {
+            setIsProcessing(false);
         }
-        
-        setIsProcessing(false);
     };
     
     const handleVote = async (candidate: Candidate) => {
@@ -150,9 +153,14 @@ export default function OylamaPage() {
             });
             toast({ title: 'Oyunuz başarıyla kaydedildi!' });
             setStep('voted');
+            
+            // Redirect to portal after a short delay
             setTimeout(() => {
+                const studentForSession = { ...loggedInStudent };
+                sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
                 router.push(`/portal/${classCode}`);
             }, 2000);
+
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Hata', description: 'Oyunuz kaydedilirken bir sorun oluştu.' });
@@ -179,15 +187,18 @@ export default function OylamaPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
-                            <CardDescription>Oy kullanmak için lütfen adınızı seçin ve okul numaranızı girin.</CardDescription>
+                            <CardDescription>Oy kullanmak için lütfen bilgilerinizi girin.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                <SelectTrigger><SelectValue placeholder="Adını seç..." /></SelectTrigger>
-                                <SelectContent>
-                                    {students?.sort((a, b) => a.name.localeCompare(b.name)).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                             <div className="relative">
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Adın Soyadın" 
+                                    className="pl-9"
+                                    value={enteredName}
+                                    onChange={(e) => setEnteredName(e.target.value)}
+                                />
+                            </div>
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input 

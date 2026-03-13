@@ -9,7 +9,6 @@ import { Loader2, User, Key, Send, CheckCircle, Frown, Users, UserX, Star, BookO
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,7 +34,7 @@ export default function SociogramPage() {
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
 
-    const [selectedStudentId, setSelectedStudentId] = useState('');
+    const [enteredName, setEnteredName] = useState('');
     const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -97,14 +96,35 @@ export default function SociogramPage() {
         initAndFetch();
     }, [db, auth, classCode]);
 
-    const handleLogin = () => {
-        if (!selectedStudentId || !enteredSchoolNumber) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı seçip okul numaranızı girin.' });
+    const handleLogin = async () => {
+        if (!currentClass || !db) {
+             toast({ variant: 'destructive', title: 'Sistem hazır değil.' });
+             return;
+        }
+        if (!enteredName.trim() || !enteredSchoolNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Lütfen adınızı ve okul numaranızı girin.' });
             return;
         }
-        const student = students?.find(s => s.id === selectedStudentId);
-        if (student && student.number === enteredSchoolNumber) {
-             if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
+
+        setIsProcessing(true);
+        try {
+            const studentQuery = query(
+                collection(db, 'students'),
+                where('classId', '==', currentClass.id),
+                where('name', '==', enteredName.trim()),
+                where('number', '==', enteredSchoolNumber.trim())
+            );
+            
+            const studentSnap = await getDocs(studentQuery);
+            if(studentSnap.empty) {
+                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle öğrenci bulunamadı.' });
+                 setIsProcessing(false);
+                 return;
+            }
+            
+            const student = { id: studentSnap.docs[0].id, ...studentSnap.docs[0].data() } as Student;
+
+            if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
                 setError('Bu anketi daha önce doldurdunuz.');
                 setStep('error');
                 return;
@@ -112,8 +132,11 @@ export default function SociogramPage() {
             setLoggedInStudent(student);
             setStep('survey');
             setError('');
-        } else {
-            toast({ variant: 'destructive', title: 'Okul numarası yanlış.' });
+        } catch (e) {
+             console.error("Login failed:", e);
+             toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı.' });
+        } finally {
+            setIsProcessing(false);
         }
     };
     
@@ -180,15 +203,13 @@ export default function SociogramPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
-                            <CardDescription>Anketi doldurmak için lütfen adınızı seçin ve okul numaranızı girin.</CardDescription>
+                            <CardDescription>Anketi doldurmak için lütfen adınızı ve okul numaranızı girin.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                <SelectTrigger><SelectValue placeholder="Adını seç..." /></SelectTrigger>
-                                <SelectContent>
-                                    {students?.sort((a, b) => a.name.localeCompare(b.name)).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Adın Soyadın" className="pl-9" value={enteredName} onChange={(e) => setEnteredName(e.target.value)} />
+                            </div>
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input type="password" placeholder="Okul Numaran" className="pl-9" value={enteredSchoolNumber} onChange={(e) => setEnteredSchoolNumber(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
