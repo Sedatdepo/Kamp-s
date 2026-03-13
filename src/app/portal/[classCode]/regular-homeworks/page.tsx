@@ -130,13 +130,20 @@ export const HomeworkItem = ({ homework, student, authUser, classId, submission,
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
-                const currentBadges: string[] = student.badges || [];
+                const currentBadges: string[] = student.badges?.map(b => b.badgeId) || [];
                 
                 const updates: any = { behaviorScore: increment(10) };
                 
                 let toastDescription = "+10 Davranış Puanı kazanıldı!";
                 if (!currentBadges.includes('2')) { // Badge ID for 'Ödev Canavarı'
-                    updates.badges = arrayUnion('2');
+                    const newBadge = {
+                        id: `badge_${Date.now()}`,
+                        badgeId: '2',
+                        name: 'Ödev Canavarı',
+                        icon: '⚡',
+                        dateAwarded: new Date().toISOString()
+                    };
+                    updates.badges = arrayUnion(newBadge);
                     toastDescription = "+10 Davranış Puanı ve 'Ödev Canavarı' rozeti kazanıldı!"
                 }
 
@@ -243,8 +250,6 @@ export default function StudentRegularHomeworkPage() {
     const { firestore: db, user: authUser, isUserLoading: authLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
-    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
-    const [submissionsLoading, setSubmissionsLoading] = useState(true);
     
     useEffect(() => {
         try {
@@ -286,42 +291,18 @@ export default function StudentRegularHomeworkPage() {
 
     const { data: homeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
     
-    useEffect(() => {
-        const fetchSubmissions = async () => {
-            if (!db || !authUser?.uid || !homeworks || homeworks.length === 0 || !student?.classId) {
-                setSubmissionsLoading(false);
-                return;
-            }
-            setSubmissionsLoading(true);
-            try {
-                 const submissionPromises = homeworks.map(hw => {
-                    const submissionsColRef = collection(db, 'classes', student.classId!, 'homeworks', hw.id, 'submissions');
-                    return getDocs(submissionsColRef);
-                });
+    const submissionsQuery = useMemoFirebase(() => {
+        if (!db || !authUser?.uid) return null;
+        return query(collectionGroup(db, 'submissions'), where('studentAuthUid', '==', authUser.uid));
+    }, [db, authUser]);
 
-                const querySnapshots = await Promise.all(submissionPromises);
-                const allSubs = querySnapshots.flatMap(snapshot => 
-                    snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission))
-                );
-                
-                setAllSubmissions(allSubs);
-            } catch (error) {
-                console.error("Failed to fetch submissions:", error);
-            } finally {
-                setSubmissionsLoading(false);
-            }
-        };
-
-        if (!homeworksLoading) {
-            fetchSubmissions();
-        }
-    }, [db, authUser, homeworks, homeworksLoading, student?.classId]);
+    const { data: allSubmissions, isLoading: submissionsLoading } = useCollection<Submission>(submissionsQuery);
 
     const submissionsForThisClass = useMemo(() => {
         if (!allSubmissions || !homeworks) return [];
         const homeworkIds = new Set(homeworks.map(hw => hw.id));
-        return allSubmissions.filter(sub => sub.studentAuthUid === authUser?.uid && sub.homeworkId && homeworkIds.has(sub.homeworkId));
-    }, [allSubmissions, homeworks, authUser]);
+        return allSubmissions.filter(sub => sub.homeworkId && homeworkIds.has(sub.homeworkId));
+    }, [allSubmissions, homeworks]);
     
     const regularHomeworks = useMemo(() => {
         if (!homeworks) return [];

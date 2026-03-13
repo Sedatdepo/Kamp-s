@@ -130,12 +130,11 @@ export default function StudentPortalPage() {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
     
-    const noNotifications = !(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0) &&
-                         !(currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson) &&
-                         !currentClass.isSociogramActive &&
-                         !currentClass.isGradesPublished &&
-                         !latestBehaviorLog &&
-                         (!recentHomeworks || recentHomeworks.length === 0);
+    const noNotifications = !(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && !dismissedNotifications.includes(`announcement_${currentClass.announcements[0].id}`)) &&
+                         !(currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson && !dismissedNotifications.includes('project_hw_assigned')) &&
+                         !(!dismissedNotifications.includes('sociogram_active') && currentClass.isSociogramActive) &&
+                         !(!dismissedNotifications.includes(`behavior_${latestBehaviorLog?.id}`) && latestBehaviorLog) &&
+                         (!recentHomeworks || recentHomeworks.filter(hw => !dismissedNotifications.includes(`regular_hw_${hw.id}`) || !dismissedNotifications.includes(`performance_hw_${hw.id}`)).length === 0);
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -161,7 +160,7 @@ export default function StudentPortalPage() {
                     <CardContent className="space-y-2">
                         {latestBehaviorLog && !dismissedNotifications.includes(`behavior_${latestBehaviorLog.id}`) && (
                              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                <Link href={`/portal/${classCode}/kahramanlar`} passHref className="flex-grow">
+                                <Link href={`/portal/${classCode}/kahramanlar`} passHref className="flex-grow" onClick={() => handleDismiss(`behavior_${latestBehaviorLog.id}`)}>
                                     <div className="flex items-start gap-4 cursor-pointer">
                                         <div className="bg-yellow-100 text-yellow-600 p-2 rounded-full mt-1">
                                             <Award className="h-5 w-5" />
@@ -180,7 +179,7 @@ export default function StudentPortalPage() {
                         {currentClass.isRegularHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'regular' || !hw.assignmentType).slice(0, 1).map(hw => (
                             !dismissedNotifications.includes(`regular_hw_${hw.id}`) && (
                                 <div key={hw.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                    <Link href={`/portal/${classCode}/regular-homeworks`} passHref className="flex-grow">
+                                    <Link href={`/portal/${classCode}/regular-homeworks`} passHref className="flex-grow" onClick={() => handleDismiss(`regular_hw_${hw.id}`)}>
                                         <div className="flex items-start gap-4 cursor-pointer">
                                             <div className="bg-orange-100 text-orange-600 p-2 rounded-full mt-1">
                                                 <BookText className="h-5 w-5" />
@@ -200,7 +199,7 @@ export default function StudentPortalPage() {
                          {currentClass.isPerformanceHomeworkPublished && recentHomeworks?.filter(hw => hw.assignmentType === 'performance').slice(0, 1).map(hw => (
                             !dismissedNotifications.includes(`performance_hw_${hw.id}`) && (
                                 <div key={hw.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                    <Link href={`/portal/${classCode}/performance-homeworks`} passHref className="flex-grow">
+                                    <Link href={`/portal/${classCode}/performance-homeworks`} passHref className="flex-grow" onClick={() => handleDismiss(`performance_hw_${hw.id}`)}>
                                         <div className="flex items-start gap-4 cursor-pointer">
                                             <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
                                                 <Trophy className="h-5 w-5" />
@@ -219,7 +218,7 @@ export default function StudentPortalPage() {
                         ))}
                         {currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && !dismissedNotifications.includes(`announcement_${currentClass.announcements[0].id}`) && (
                              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                <Link href={`/view/announcements/${classCode}`} passHref className="flex-grow">
+                                <Link href={`/view/announcements/${classCode}`} passHref className="flex-grow" onClick={() => handleDismiss(`announcement_${currentClass.announcements[0].id}`)}>
                                     <div className="flex items-start gap-4 cursor-pointer">
                                         <div className="bg-blue-100 text-blue-600 p-2 rounded-full mt-1">
                                             <Megaphone className="h-5 w-5" />
@@ -237,7 +236,7 @@ export default function StudentPortalPage() {
                         )}
                         {currentClass.isProjectHomeworkPublished && student.hasProject && student.assignedLesson && !dismissedNotifications.includes('project_hw_assigned') && (
                              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                <Link href={`/portal/${classCode}/project-homework`} passHref className="flex-grow">
+                                <Link href={`/portal/${classCode}/project-homework`} passHref className="flex-grow" onClick={() => handleDismiss('project_hw_assigned')}>
                                     <div className="flex items-start gap-4 cursor-pointer">
                                         <div className="bg-purple-100 text-purple-600 p-2 rounded-full mt-1">
                                             <ClipboardList className="h-5 w-5" />
@@ -255,7 +254,7 @@ export default function StudentPortalPage() {
                         )}
                         {currentClass.isSociogramActive && !dismissedNotifications.includes('sociogram_active') && (
                             <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                <Link href={`/sosyogram/${classCode}`} passHref className="flex-grow">
+                                <Link href={`/sosyogram/${classCode}`} passHref className="flex-grow" onClick={() => handleDismiss('sociogram_active')}>
                                     <div className="flex items-start gap-4 cursor-pointer">
                                         <div className="bg-teal-100 text-teal-600 p-2 rounded-full mt-1">
                                             <Users className="h-5 w-5" />
@@ -271,11 +270,7 @@ export default function StudentPortalPage() {
                                 </Button>
                             </div>
                         )}
-                        {currentClass.isGradesPublished && (
-                            <Link href={`/portal/${classCode}/notlarim`} passHref>
-                                <div className="flex items-center justify-center text-green-600 font-medium"><CheckCircle className="mr-2 h-4 w-4"/> Dolduruldu</div>
-                            </Link>
-                        )}
+                        
                         {noNotifications && (
                             <div className="text-center py-6 text-muted-foreground text-sm">
                                 <p>Henüz yeni bir bildirim yok.</p>

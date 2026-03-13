@@ -72,7 +72,8 @@ export default function StudentMessagingPage() {
         if (!db || !authUser?.uid) return null;
         return query(
             collection(db, 'messages'),
-            where('participants', 'array-contains', authUser.uid)
+            where('participants', 'array-contains', authUser.uid),
+            orderBy('timestamp')
         );
     }, [db, authUser?.uid]);
 
