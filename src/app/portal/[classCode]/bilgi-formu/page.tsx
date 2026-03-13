@@ -61,7 +61,7 @@ export default function StudentInfoFormPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
@@ -88,7 +88,7 @@ export default function StudentInfoFormPage() {
 
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
 
         const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
@@ -106,7 +106,7 @@ export default function StudentInfoFormPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
     const infoFormRef = useMemoFirebase(() => (db && student?.id ? doc(db, 'infoForms', student.id) : null), [db, student?.id]);
     const { data: existingForm, isLoading: formLoading } = useDoc<InfoForm>(infoFormRef);
@@ -150,7 +150,7 @@ export default function StudentInfoFormPage() {
         }
     };
     
-    const loading = !student || formLoading;
+    const loading = !student || formLoading || isUserLoading;
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;

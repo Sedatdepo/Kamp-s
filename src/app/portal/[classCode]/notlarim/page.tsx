@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -109,7 +108,7 @@ export default function StudentGradesPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore, isUserLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
@@ -131,7 +130,7 @@ export default function StudentGradesPage() {
     }, [classCode, router]);
 
     useEffect(() => {
-        if (!student?.id || !firestore) return;
+        if (isUserLoading || !student?.id || !firestore) return;
         const unsubscribe = onSnapshot(doc(firestore, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
@@ -146,16 +145,16 @@ export default function StudentGradesPage() {
             }
         });
         return () => unsubscribe();
-    }, [student?.id, firestore]);
+    }, [student?.id, firestore, isUserLoading]);
     
     const teacherDocRef = useMemoFirebase(() => (student ? doc(firestore, 'teachers', student.teacherId) : null), [firestore, student]);
     const { data: teacherProfile, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherDocRef);
     
     useEffect(() => {
-        if (student && !teacherLoading) {
+        if (!isUserLoading && student && !teacherLoading) {
             setLoading(false);
         }
-    }, [student, teacherLoading]);
+    }, [isUserLoading, student, teacherLoading]);
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;

@@ -259,7 +259,7 @@ export default function StudentRegularHomeworkPage() {
     }, [classCode, router]);
 
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (authLoading || !student?.id || !db) return;
 
         const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
@@ -277,7 +277,7 @@ export default function StudentRegularHomeworkPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, authLoading]);
 
     const homeworksQuery = useMemoFirebase(() => {
         if (!db || !student?.classId) return null;

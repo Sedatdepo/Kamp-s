@@ -87,7 +87,7 @@ export default function StudentPerformanceHomeworkPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
@@ -106,7 +106,7 @@ export default function StudentPerformanceHomeworkPage() {
 
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
         const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -122,7 +122,7 @@ export default function StudentPerformanceHomeworkPage() {
             }
         });
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
 
     const homeworksQuery = useMemoFirebase(() => {
@@ -141,7 +141,7 @@ export default function StudentPerformanceHomeworkPage() {
         return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [homeworks]);
 
-    if (!student || homeworksLoading) {
+    if (isUserLoading || !student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 

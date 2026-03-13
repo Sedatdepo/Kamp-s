@@ -19,7 +19,7 @@ export default function StudentProjectSelectionPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
@@ -54,7 +54,7 @@ export default function StudentProjectSelectionPage() {
 
     // 2. Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
 
         const unsubscribe = onSnapshot(doc(db, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
@@ -79,7 +79,7 @@ export default function StudentProjectSelectionPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
     // 3. Fetch available lessons for the teacher
     const lessonsQuery = useMemoFirebase(() => {
@@ -143,10 +143,10 @@ export default function StudentProjectSelectionPage() {
     };
     
     useEffect(() => {
-        if (student && !lessonsLoading) {
+        if (!isUserLoading && student && !lessonsLoading) {
             setLoading(false);
         }
-    }, [student, lessonsLoading]);
+    }, [isUserLoading, student, lessonsLoading]);
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;

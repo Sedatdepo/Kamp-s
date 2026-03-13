@@ -17,7 +17,7 @@ export default function StudentProjectPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
     const [student, setStudent] = useState<Student | null>(null);
 
     useEffect(() => {
@@ -40,7 +40,7 @@ export default function StudentProjectPage() {
 
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
 
         const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
@@ -58,7 +58,7 @@ export default function StudentProjectPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
 
     const projectHomeworkQuery = useMemoFirebase(() => {
@@ -75,7 +75,7 @@ export default function StudentProjectPage() {
     const assignedHomework = useMemo(() => projectHomeworks?.[0], [projectHomeworks]);
 
 
-    if (!student || homeworksLoading) {
+    if (isUserLoading || !student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 

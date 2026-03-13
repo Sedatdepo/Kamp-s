@@ -19,7 +19,7 @@ export default function StudentClubSelectionPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
     const { toast } = useToast();
 
     const [student, setStudent] = useState<Student | null>(null);
@@ -53,7 +53,7 @@ export default function StudentClubSelectionPage() {
 
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
 
         const unsubscribe = onSnapshot(doc(db, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
@@ -78,7 +78,7 @@ export default function StudentClubSelectionPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
     const clubsQuery = useMemoFirebase(() => {
         if (!db || !student?.teacherId) return null;
@@ -138,10 +138,10 @@ export default function StudentClubSelectionPage() {
     };
     
      useEffect(() => {
-        if (student && !clubsLoading) {
+        if (!isUserLoading && student && !clubsLoading) {
             setLoading(false);
         }
-    }, [student, clubsLoading]);
+    }, [isUserLoading, student, clubsLoading]);
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;

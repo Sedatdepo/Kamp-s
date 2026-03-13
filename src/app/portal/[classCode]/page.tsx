@@ -35,7 +35,7 @@ export default function StudentPortalPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, isUserLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
@@ -66,7 +66,7 @@ export default function StudentPortalPage() {
     
     // Real-time listener for student data
     useEffect(() => {
-        if (!student?.id || !db) return;
+        if (isUserLoading || !student?.id || !db) return;
 
         const studentRef = doc(db, 'students', student.id);
         const unsubscribe = onSnapshot(studentRef, (docSnap) => {
@@ -84,7 +84,7 @@ export default function StudentPortalPage() {
         });
 
         return () => unsubscribe();
-    }, [student?.id, db]);
+    }, [student?.id, db, isUserLoading]);
 
     const classDocRef = useMemoFirebase(() => (student ? doc(db, 'classes', student.classId) : null), [db, student?.classId]);
     const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
@@ -115,10 +115,10 @@ export default function StudentPortalPage() {
     const availableBadges = teacherProfile?.badgeCriteria || INITIAL_BADGES;
 
     useEffect(() => {
-        if (student && !classLoading && !homeworksLoading) {
+        if (!isUserLoading && student && !classLoading && !homeworksLoading) {
             setLoading(false);
         }
-    }, [student, classLoading, homeworksLoading]);
+    }, [isUserLoading, student, classLoading, homeworksLoading]);
 
 
     const handleLogout = () => {

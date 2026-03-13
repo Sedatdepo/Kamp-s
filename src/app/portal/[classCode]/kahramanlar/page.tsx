@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -19,7 +18,7 @@ export default function StudentGamificationPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore } = useFirebase();
+    const { firestore, isUserLoading } = useFirebase();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
@@ -41,7 +40,7 @@ export default function StudentGamificationPage() {
     }, [classCode, router]);
 
     useEffect(() => {
-        if (!student?.id || !firestore) return;
+        if (isUserLoading || !student?.id || !firestore) return;
         const unsubscribe = onSnapshot(doc(firestore, 'students', student.id), (docSnap) => {
             if (docSnap.exists()) {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
@@ -56,7 +55,7 @@ export default function StudentGamificationPage() {
             }
         });
         return () => unsubscribe();
-    }, [student?.id, firestore]);
+    }, [student?.id, firestore, isUserLoading]);
     
     const teacherDocRef = useMemoFirebase(() => (student ? doc(firestore, 'teachers', student.teacherId) : null), [firestore, student]);
     const { data: teacherProfile, isLoading: teacherLoading } = useDoc<TeacherProfile>(teacherDocRef);
@@ -64,10 +63,10 @@ export default function StudentGamificationPage() {
     const availableBadges = useMemo(() => teacherProfile?.badgeCriteria || INITIAL_BADGES, [teacherProfile]);
     
     useEffect(() => {
-        if (student && !teacherLoading) {
+        if (!isUserLoading && student && !teacherLoading) {
             setLoading(false);
         }
-    }, [student, teacherLoading]);
+    }, [isUserLoading, student, teacherLoading]);
 
     if (loading || !student) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -110,10 +109,10 @@ export default function StudentGamificationPage() {
                         <CardContent>
                             {(student.badges && student.badges.length > 0) ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                    {student.badges.map(badgeId => {
-                                        const badge = availableBadges.find(b => b.id === badgeId);
+                                    {student.badges.map(badgeAward => {
+                                        const badge = availableBadges.find(b => b.id === badgeAward.badgeId);
                                         return badge ? (
-                                            <Card key={badge.id} className="p-4 flex flex-col items-center justify-center text-center">
+                                            <Card key={badgeAward.id} className="p-4 flex flex-col items-center justify-center text-center">
                                                 <div className="text-6xl mb-2">{badge.icon}</div>
                                                 <p className="font-bold">{badge.name}</p>
                                                 <p className="text-xs text-muted-foreground">{badge.description}</p>
