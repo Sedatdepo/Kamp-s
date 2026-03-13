@@ -16,61 +16,65 @@ service cloud.firestore {
     }
     
     // --- GLOBAL TEACHER ACCESS ---
-    // Allow teachers to read and write to ANY document path.
-    // This is a broad but simple rule that fulfills the user's request.
+    // If the user is a teacher, grant them full read/write access to EVERYTHING.
+    // This is the simplest, most direct way to fulfill the user's primary requirement.
     match /{path=**} {
       allow read, write: if isTeacher();
     }
     
-    // --- PUBLIC & STUDENT RULES ---
-    // These rules are evaluated if the user is NOT a teacher.
-
-    // Anyone can see class codes to get to the login page.
+    // --- STUDENT & PUBLIC ACCESS RULES ---
+    // The following rules apply ONLY if a user is NOT a teacher.
+    
+    // PUBLIC: Allow anyone to get class codes for the login page.
     match /classCodes/{code} {
       allow get: if true;
-    }
-
-    // Student login page needs to read the list of students for a class.
-    // This allows any authenticated user (including anonymous) to list students.
-    match /students/{studentId} {
-      allow read: if request.auth != null;
-      // Allow a student to update their own document (e.g., set their authUid, submit forms)
-      allow update: if isStudentOwner(resource.data.authUid);
-    }
-    
-    // Students can read their class document, and any public views.
-    match /classes/{classId} {
-      allow get: if request.auth != null;
     }
     match /publicViews/{viewId} {
       allow get: if true;
     }
+
+    // STUDENT: Allow any logged-in user to read the list of students for a class.
+    // This is needed for the student login page dropdown.
+    match /students/{studentId} {
+      allow read: if request.auth != null;
+      // Allow a student to update their OWN document (e.g., set their authUid, submit forms)
+      allow update: if isStudentOwner(resource.data.authUid);
+    }
     
-    // Students can see lessons, clubs, and risk factors.
+    // STUDENT: Allow students to read documents needed for their portal's context.
+    // This includes their own class, their teacher's profile, and lists of things like lessons.
+    match /classes/{classId} { allow get: if request.auth != null; }
+    match /teachers/{teacherId} { allow get: if request.auth != null; }
     match /lessons/{lessonId} { allow get: if request.auth != null; }
     match /clubs/{clubId} { allow get: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
     
-    // Students can read homework assignments for their class.
+    // STUDENT: Homework and Submissions
     match /classes/{classId}/homeworks/{homeworkId} {
+        // Students can read (get) and list all homework for their class.
         allow get, list: if request.auth != null;
     }
     
-    // Students can only create and read their own submissions.
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
+      // A student can ONLY create and read their own submissions.
       allow create: if isStudentOwner(request.resource.data.studentAuthUid);
       allow read: if isStudentOwner(resource.data.studentAuthUid);
     }
     
-    // Students can only access their own info form.
+    // STUDENT: Info Form
     match /infoForms/{studentId} {
+        // A student can read and write to their OWN info form.
+        // We check ownership by getting the authUid from the main /students/{studentId} document.
         allow read, write: if isStudentOwner(get(/databases/$(database)/documents/students/$(studentId)).data.authUid);
     }
     
-    // Students can only participate in conversations they are a part of.
+    // STUDENT: Messaging
     match /messages/{messageId} {
+        // Allow a student to list conversations they are part of.
         allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
+        // Allow a student to get a specific message if they are a participant.
         allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+        // Allow a student to create a message if they are the sender.
         allow create: if isStudentOwner(request.resource.data.senderId);
         // Allow a user to mark a message as read if they are the receiver
         allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
