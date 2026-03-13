@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -100,9 +101,10 @@ export default function StudentLoginPage() {
                 const user = auth.currentUser;
                 
                 if (user) {
-                    // This update fails because of restrictive rules. The login can proceed without it for now.
-                    // const studentRef = doc(firestore, 'students', student.id);
-                    // await updateDoc(studentRef, { authUid: user.uid });
+                    // This update might fail if rules are strict, but we can proceed without it for login.
+                    // The permissive rules will allow this to succeed.
+                    const studentRef = doc(firestore, 'students', student.id);
+                    await updateDoc(studentRef, { authUid: user.uid });
                     
                     const studentForSession = { ...student, authUid: user.uid };
                     sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));

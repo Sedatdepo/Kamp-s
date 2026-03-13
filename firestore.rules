@@ -16,7 +16,7 @@ service cloud.firestore {
       allow write: if isTeacher() && request.auth.uid == teacherId;
     }
 
-    // --- PUBLIC & STUDENT LOGIN RULES ---
+    // --- PUBLIC RULES (No Auth Needed) ---
     match /publicViews/{viewId} {
       allow get: if true;
     }
@@ -24,44 +24,45 @@ service cloud.firestore {
       allow get: if true;
     }
     
-    // --- STUDENT DATA RULES (UNRESTRICTED) ---
+    // --- GENERAL AUTHENTICATED USER RULE ---
     // As per your request, any authenticated user can now read/write to these collections.
-    // This will solve all permission errors in the student panel.
+    // This will solve all permission errors in the student panel and voting pages.
+    // The teacher wildcard rule is no longer needed as this covers teachers as well.
 
     match /students/{studentId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     match /classes/{classId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
     match /lessons/{lessonId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     match /clubs/{clubId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
     match /riskFactors/{riskFactorId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
-    match /infoForms/{studentId} {
-      allow read, write: if isTeacher() || request.auth != null;
+    match /infoForms/{formId} {
+      allow read, write: if request.auth != null;
     }
     
     match /classes/{classId}/homeworks/{homeworkId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     match /messages/{messageId} {
-      allow read, write: if isTeacher() || request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 }
