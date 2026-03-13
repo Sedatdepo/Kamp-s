@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { doc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { doc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
 import { Student, Class, SociogramQuestion } from '@/lib/types';
 import { Loader2, User, Key, Send, CheckCircle, Frown, Users, UserX, Star, BookOpen, Coffee } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { signInAnonymously } from 'firebase/auth';
 
 const getIconComponent = (iconName: SociogramQuestion['icon']) => {
     const icons = { Users, UserX, Star, BookOpen, Coffee };
@@ -21,15 +22,15 @@ const getIconComponent = (iconName: SociogramQuestion['icon']) => {
     return <Icon className="mr-2 h-5 w-5" />;
 };
 
-
 export default function SociogramPage() {
     const params = useParams();
     const router = useRouter();
     const classCode = params.classCode as string;
-    const { firestore: db } = useFirebase();
+    const { firestore: db, auth } = useFirebase();
     const { toast } = useToast();
     
-    const [classId, setClassId] = useState<string | null>(null);
+    const [currentClass, setCurrentClass] = useState<Class | null>(null);
+    const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
@@ -42,41 +43,59 @@ export default function SociogramPage() {
 
 
     useEffect(() => {
-        const fetchClassId = async () => {
-            if (!db || !classCode) return;
+        const initAndFetch = async () => {
+            if (!db || !auth || !classCode) return;
+            setLoading(true);
+            setError(null);
+            
             try {
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
+
                 const classCodeRef = doc(db, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
+
                 if (classCodeSnap.exists()) {
-                    setClassId(classCodeSnap.data().classId);
+                    const classId = classCodeSnap.data().classId;
+                    
+                    const classDocRef = doc(db, 'classes', classId);
+                    const classSnap = await getDoc(classDocRef);
+                    
+                    if (classSnap.exists()) {
+                        const classData = { id: classSnap.id, ...classSnap.data() } as Class;
+                        setCurrentClass(classData);
+                        if (!classData.isSociogramActive) {
+                            setError("Bu sınıf için sosyogram anketi şu anda aktif değil.");
+                            setStep('error');
+                            setLoading(false);
+                            return;
+                        }
+                    } else {
+                        setError("Sınıf bilgisi bulunamadı.");
+                        setStep('error');
+                        setLoading(false);
+                        return;
+                    }
+
+                    const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
+                    const studentsSnap = await getDocs(studentsQuery);
+                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
+
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
                     setStep('error');
                 }
             } catch (e) {
                 console.error(e);
-                setError("Sınıf bilgileri alınırken bir hata oluştu.");
+                setError("Veriler alınırken bir hata oluştu.");
                 setStep('error');
+            } finally {
+                setLoading(false);
             }
         };
-        fetchClassId();
-    }, [db, classCode]);
-
-    const classDocRef = useMemoFirebase(() => (classId ? doc(db, 'classes', classId) : null), [db, classId]);
-    const { data: currentClass, isLoading: classLoading } = useDoc<Class>(classDocRef);
-
-    const studentsQuery = useMemoFirebase(() => (classId ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [db, classId]);
-    const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-    
-    useEffect(() => {
-        if (!classLoading && currentClass && !currentClass.isSociogramActive) {
-            setError("Bu sınıf için sosyogram anketi şu anda aktif değil.");
-            setStep('error');
-        }
-        if (!classLoading && !studentsLoading) {
-            setLoading(false);
-        }
-    }, [classLoading, studentsLoading, currentClass]);
+        initAndFetch();
+    }, [db, auth, classCode]);
 
     const handleLogin = () => {
         if (!selectedStudentId || !enteredSchoolNumber) {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -101,8 +100,6 @@ export default function StudentLoginPage() {
                 const user = auth.currentUser;
                 
                 if (user) {
-                    // This update might fail if rules are strict, but we can proceed without it for login.
-                    // The permissive rules will allow this to succeed.
                     const studentRef = doc(firestore, 'students', student.id);
                     await updateDoc(studentRef, { authUid: user.uid });
                     
