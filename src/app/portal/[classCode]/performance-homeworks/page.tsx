@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Homework, Submission } from '@/lib/types';
-import { Loader2, ArrowLeft, BookText, Clock, CalendarIcon, ClipboardList } from 'lucide-react';
+import { Loader2, ArrowLeft, BookText, Clock, CalendarIcon, ClipboardList, Paperclip, ExternalLink } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,6 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { saveAs } from 'file-saver';
+
+const handleDownload = (file: { dataUrl: string, name: string }) => {
+    saveAs(file.dataUrl, file.name);
+};
 
 const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: () => void }) => {
     return (
@@ -29,6 +34,25 @@ const HomeworkDetailView = ({ homework, onBack }: { homework: Homework, onBack: 
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
+                 {(homework.file || homework.link) && (
+                    <div>
+                        <h3 className="font-bold mb-2 text-lg">Ekler</h3>
+                        <div className="flex flex-col space-y-2">
+                           {homework.file && (
+                               <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="justify-start">
+                                   <Paperclip className="h-4 w-4 mr-2" />
+                                   {homework.file.name}
+                               </Button>
+                           )}
+                           {homework.link && (
+                               <a href={homework.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline p-2 rounded-md hover:bg-blue-50">
+                                   <ExternalLink className="h-4 w-4" />
+                                   <span>{homework.linkText || homework.link}</span>
+                               </a>
+                           )}
+                        </div>
+                    </div>
+                )}
                 {homework.instructions && (
                     <div>
                         <h3 className="font-bold mb-2 text-lg">Yönerge</h3>

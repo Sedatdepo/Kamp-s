@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Homework, Submission, Question, Badge } from '@/lib/types';
-import { Loader2, ArrowLeft, BookText, Send, Paperclip, Download, Clock, CalendarIcon, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, BookText, Send, Paperclip, Download, Clock, CalendarIcon, CheckCircle, ExternalLink } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -193,12 +193,22 @@ export const HomeworkItem = ({ homework, student, authUser, classId }: { homewor
              
              <div>
                 <p className="text-sm font-semibold">{homework.text}</p>
-                {homework.file && (
-                    <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 mt-2">
-                        <Paperclip className="h-4 w-4" />
-                        <span className="truncate">{homework.file.name}</span>
-                        <Download className="h-4 w-4 ml-auto" />
-                    </Button>
+                {(homework.file || homework.link) && (
+                    <div className="flex flex-col space-y-2 mt-2">
+                        {homework.file && (
+                            <Button variant="outline" onClick={() => handleDownload(homework.file!)} className="flex items-center gap-2 justify-start w-full">
+                                <Paperclip className="h-4 w-4" />
+                                <span className="truncate">{homework.file.name}</span>
+                                <Download className="h-4 w-4 ml-auto" />
+                            </Button>
+                        )}
+                        {homework.link && (
+                            <a href={homework.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline p-2 rounded-md hover:bg-blue-50">
+                                <ExternalLink className="h-4 w-4" />
+                                <span>{homework.linkText || homework.link}</span>
+                            </a>
+                        )}
+                    </div>
                 )}
             </div>
 
