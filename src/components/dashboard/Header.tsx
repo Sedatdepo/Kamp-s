@@ -47,7 +47,7 @@ export function Header({ notificationCount }: { notificationCount?: number }) {
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <div className="flex items-center gap-2">
             <Logo className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline">KAMPÜS</span>
+            <span className="font-bold font-headline">Kampüs Online</span>
         </div>
         <div className="ml-auto">
           {isClient && appUser ? (

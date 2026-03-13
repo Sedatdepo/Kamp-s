@@ -72,20 +72,12 @@ export default function StudentMessagingPage() {
         if (!db || !authUser?.uid) return null;
         return query(
             collection(db, 'messages'),
-            where('participants', 'array-contains', authUser.uid)
+            where('participants', 'array-contains', authUser.uid),
+            orderBy('timestamp')
         );
     }, [db, authUser?.uid]);
 
-    const { data: unsortedMessages } = useCollection<Message>(messagesQuery);
-
-    const messages = useMemo(() => {
-        if (!unsortedMessages) return [];
-        return [...unsortedMessages].sort((a, b) => {
-            const timeA = a.timestamp?.toMillis() || 0;
-            const timeB = b.timestamp?.toMillis() || 0;
-            return timeA - timeB;
-        });
-    }, [unsortedMessages]);
+    const { data: messages } = useCollection<Message>(messagesQuery);
     
     // Mark messages as read
     useEffect(() => {
@@ -143,7 +135,7 @@ export default function StudentMessagingPage() {
                 <div className="flex items-center gap-4">
                     <Logo className="h-10 w-10 text-primary" />
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Öğretmene Mesaj</h1>
+                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Öğretmene Mesaj</h1>
                         <p className="text-sm text-muted-foreground">{student?.name}</p>
                     </div>
                 </div>

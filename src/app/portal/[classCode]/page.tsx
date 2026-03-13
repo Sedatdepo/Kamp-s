@@ -142,8 +142,8 @@ export default function StudentPortalPage() {
                 <div className="flex items-center gap-4">
                     <Logo className="h-10 w-10 text-primary"/>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Hoş Geldin, {student.name}</h1>
-                        <p className="text-sm text-muted-foreground">{currentClass.name} Sınıf Portalı</p>
+                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online</h1>
+                        <p className="text-sm text-muted-foreground">{currentClass.name} | Hoş Geldin, {student.name}</p>
                     </div>
                 </div>
                  <Button onClick={handleLogout} variant="ghost" className="gap-2">

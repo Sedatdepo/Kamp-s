@@ -185,7 +185,7 @@ export default function StudentInfoFormPage() {
                 <div className="flex items-center gap-4">
                     <Logo className="h-10 w-10 text-primary"/>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Öğrenci Bilgi Formu</h1>
+                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Öğrenci Bilgi Formu</h1>
                         <p className="text-sm text-muted-foreground">{student?.name}</p>
                     </div>
                 </div>

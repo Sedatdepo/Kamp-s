@@ -6,23 +6,23 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 64 64"
       {...props}
-      >
-      <g fill="none" stroke="currentColor" strokeWidth="3">
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="2">
         {/* Book */}
-        <path d="M16,52 L16,12 C16,8 20,6 24,6 L48,6" stroke="#22c55e" />
-        <path d="M48,6 L48,52 C48,56 44,58 40,58 L16,58" stroke="#16a34a" />
+        <path d="M16,52 L16,12 C16,8 20,6 24,6 L48,6" />
+        <path d="M48,6 L48,52 C48,56 44,58 40,58 L16,58" />
+        <path d="M32 6 L 32 58" />
         
-        {/* Pencil / K-stem */}
-        <path d="M28,15 L28,50" stroke="#3b82f6" strokeWidth="6" />
-        <path d="M28,50 L25,58 L31,58 L28,50 Z" fill="#3b82f6" stroke="none" />
+        {/* Crescent and Star on Left Page */}
+        <g transform="translate(22, 26)" fill="currentColor">
+            <path d="M5,0 A5,5 0 0,0 5,10 A4,4 0 0,1 5,0 Z" stroke="none" />
+            <polygon points="6,3.5 7,5.5 9,6 7.5,7.5 8,9.5 6,8.5 4,9.5 4.5,7.5 3,6 5,5.5" transform="translate(0, 2) scale(0.5)" stroke="none"/>
+        </g>
 
-        {/* K-arms */}
-        <path d="M28,32 L44,18" stroke="#fb923c" strokeWidth="6" />
-        <path d="M28,32 L44,46" stroke="#f97316" strokeWidth="6" />
-
-        {/* Graduation cap */}
-        <path d="M12,18 L32,10 L52,18 L32,26 Z" fill="#1e3a8a" stroke="none" />
-        <path d="M50,18 L54,18 L54,22" stroke="#f59e0b" strokeWidth="2" fill="none"/>
+        {/* Cursor on Right Page */}
+        <g transform="translate(38, 30)" fill="currentColor" stroke="none">
+            <polygon points="0,0 0,10 3,8 5,13 7,12 5,7 9,7" />
+        </g>
       </g>
     </svg>
   );

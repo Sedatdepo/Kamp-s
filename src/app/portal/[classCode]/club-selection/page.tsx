@@ -153,7 +153,7 @@ export default function StudentClubSelectionPage() {
                  <div className="flex items-center gap-4">
                     <Logo className="h-10 w-10 text-primary"/>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Sosyal Kulüp Tercihi</h1>
+                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Sosyal Kulüp Tercihi</h1>
                         <p className="text-sm text-muted-foreground">{student.name}</p>
                     </div>
                 </div>
