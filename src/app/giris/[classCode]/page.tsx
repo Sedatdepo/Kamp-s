@@ -32,35 +32,44 @@ export default function StudentLoginPage() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        const fetchClassId = async () => {
-            if (!firestore || !classCode) return;
+        const initAndFetch = async () => {
+            if (!auth || !firestore || !classCode) return;
             setLoading(true);
+            setError(null);
+
             try {
+                // Ensure user is authenticated (anonymously is fine) before fetching data
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
+
                 const classCodeRef = doc(firestore, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
+
                 if (classCodeSnap.exists()) {
                     const foundClassId = classCodeSnap.data().classId;
                     setClassId(foundClassId);
+                    
                     const classRef = doc(firestore, 'classes', foundClassId);
-                    const classSnap = await getDoc(classRef);
+                    const classSnap = await getDoc(classRef); // This getDoc needs auth
+                    
                     if (classSnap.exists()) {
                         setClassName(classSnap.data().name);
                     } else {
                         setError("Sınıf bilgisi bulunamadı.");
-                        setLoading(false);
                     }
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
-                    setLoading(false);
                 }
             } catch (e) {
                 console.error(e);
-                setError("Sınıf bilgileri alınırken bir hata oluştu.");
+                setError("Sınıf bilgileri alınırken bir hata oluştu. Lütfen sayfayı yenileyin.");
+            } finally {
                 setLoading(false);
             }
         };
-        fetchClassId();
-    }, [firestore, classCode]);
+        initAndFetch();
+    }, [firestore, auth, classCode]);
 
     const studentsQuery = useMemoFirebase(() => (classId ? query(collection(firestore, 'students'), where('classId', '==', classId)) : null), [firestore, classId]);
     const { data: students, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
@@ -86,12 +95,7 @@ export default function StudentLoginPage() {
         const student = students?.find(s => s.id === selectedStudentId);
         if (student && student.number === enteredSchoolNumber) {
              try {
-                let user: User | null = auth.currentUser;
-                // If there's no user, or the user is not anonymous (e.g. a teacher is logged in), sign in anonymously.
-                if (!user || !user.isAnonymous) {
-                    const userCredential = await signInAnonymously(auth);
-                    user = userCredential.user;
-                }
+                const user = auth.currentUser; // Use the current user, which should be anonymous
                 
                 if (user) {
                     const studentRef = doc(firestore, 'students', student.id);
@@ -104,10 +108,11 @@ export default function StudentLoginPage() {
                     sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: updatedStudent, classCode }));
                     router.push(`/portal/${classCode}`);
                 } else {
-                    throw new Error("Kullanıcı oturumu oluşturulamadı.");
+                    // This should not happen if useEffect worked correctly
+                    throw new Error("Kullanıcı oturumu bulunamadı. Lütfen sayfayı yenileyin.");
                 }
             } catch (e) {
-                console.error("Anonymous sign-in or student update failed:", e);
+                console.error("Login or student update failed:", e);
                 toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Lütfen tekrar deneyin.' });
             }
         } else {
