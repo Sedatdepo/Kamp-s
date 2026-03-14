@@ -114,7 +114,7 @@ const CriteriaGradingTable = ({
 
                                 return (
                                 <TableRow key={student.id}>
-                                    <TableCell className="font-medium sticky left-0 bg-background z-10">{student.name}</TableCell>
+                                    <TableCell className="font-medium sticky left-0 bg-background z-10">({student.number}) {student.name}</TableCell>
                                     {criteria.map(c => (
                                         <TableCell key={c.id} className="text-center">
                                             <Input

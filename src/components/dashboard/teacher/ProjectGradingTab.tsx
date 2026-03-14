@@ -207,7 +207,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
               {projectStudents.map(student => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium sticky left-0 bg-background group-hover:bg-muted z-10">
-                    {student.name}
+                    ({student.number}) {student.name}
                   </TableCell>
                   {projCriteria.map(c => (
                     <TableCell key={c.id} className="text-center">
