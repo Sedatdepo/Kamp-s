@@ -157,6 +157,8 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
       exportStudentInfoFormToRtf({ record: form, studentName: selectedStudentName, teacherProfile });
   }
 
+  const sortedStudents = useMemo(() => [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true })), [students]);
+
   return (
     <>
         <Card>
@@ -185,7 +187,7 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {students.map(student => {
+                            {sortedStudents.map(student => {
                                 const form = infoForms?.find(f => f.studentId === student.id);
                                 const riskScore = getRiskScore(student.risks || []);
                                 const isSubmitted = form?.submitted === true;
