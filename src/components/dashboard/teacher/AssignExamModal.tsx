@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -116,7 +115,9 @@ export const AssignExamModal = ({ isOpen, onClose, exam, onConfirm, classes, stu
                 <ScrollArea className="h-64 border rounded-lg p-2 bg-gray-50">
                 {selectedClassIds.length > 0 ? (
                     (classes || []).filter((c:Class) => selectedClassIds.includes(c.id)).map((cls:Class) => {
-                         const studentsInThisClass = students.filter((s: Student) => s.classId === cls.id);
+                         const studentsInThisClass = students
+                            .filter((s: Student) => s.classId === cls.id)
+                            .sort((a: Student, b: Student) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
                          const areAllInClassSelected = studentsInThisClass.every((s: Student) => selectedStudentIds.includes(s.id));
                          return (
                             <div key={cls.id} className="mb-4">
@@ -128,7 +129,7 @@ export const AssignExamModal = ({ isOpen, onClose, exam, onConfirm, classes, stu
                                     />
                                     <label htmlFor={`select-all-${cls.id}`} className="font-bold text-sm cursor-pointer">{cls.name} (Tümünü Seç)</label>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 p-2">
+                                <div className="grid grid-cols-1 gap-2 p-2">
                                 {studentsInThisClass.map((student: Student) => (
                                     <div key={student.id} className="flex items-center gap-2 p-1.5 rounded bg-white">
                                         <Checkbox
@@ -136,7 +137,7 @@ export const AssignExamModal = ({ isOpen, onClose, exam, onConfirm, classes, stu
                                             checked={selectedStudentIds.includes(student.id)}
                                             onCheckedChange={() => handleStudentToggle(student.id)}
                                         />
-                                        <label htmlFor={`student-${student.id}`} className="text-sm cursor-pointer">{student.name} ({student.number})</label>
+                                        <label htmlFor={`student-${student.id}`} className="text-sm cursor-pointer">{student.number} - {student.name}</label>
                                     </div>
                                 ))}
                                 </div>
