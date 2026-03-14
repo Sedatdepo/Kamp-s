@@ -232,6 +232,16 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
+
+    const sortedStudents = useMemo(() => {
+        if (!students) return [];
+        return [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+    }, [students]);
+    
     const fetchSubmissions = useCallback(async () => {
         if (isLoading || !db || !classId || !homeworks || homeworks.length === 0) {
             setSubmissionsLoading(false);
@@ -280,9 +290,6 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
 
     if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin"/>;
     
-    const sortedHomeworks = [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
-
     return (
         <div className="space-y-4">
             {sortedHomeworks.length > 0 ? (
