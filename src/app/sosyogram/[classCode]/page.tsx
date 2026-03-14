@@ -42,7 +42,7 @@ export default function SociogramPage() {
     const [selections, setSelections] = useState<{[questionId: number]: string[]}>({});
 
     const sortedStudents = useMemo(() => {
-        return [...students].sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+        return [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
     }, [students]);
 
     useEffect(() => {
@@ -212,7 +212,7 @@ export default function SociogramPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sortedStudents.map(student => (
-                                            <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                            <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -237,14 +237,14 @@ export default function SociogramPage() {
                                 <div key={q.id}>
                                     <h3 className="font-semibold mb-2 flex items-center">{getIconComponent(q.icon)} {q.text} <span className="ml-2 text-xs text-muted-foreground">(En fazla {q.maxSelections} kişi)</span></h3>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {students?.filter(s => s.id !== loggedInStudent.id).map(student => (
+                                        {sortedStudents?.filter(s => s.id !== loggedInStudent.id).map(student => (
                                             <div key={student.id} className="flex items-center space-x-2 p-2 border rounded-md has-[:checked]:bg-primary/10 has-[:checked]:border-primary transition-colors">
                                                 <Checkbox 
                                                     id={`${q.id}-${student.id}`} 
                                                     checked={(selections[q.id] || []).includes(student.id)}
                                                     onCheckedChange={() => handleSelectionChange(q.id, student.id, q.maxSelections)}
                                                 />
-                                                <Label htmlFor={`${q.id}-${student.id}`} className="text-sm font-medium w-full cursor-pointer">{student.name}</Label>
+                                                <Label htmlFor={`${q.id}-${student.id}`} className="text-sm font-medium w-full cursor-pointer">({student.number}) {student.name}</Label>
                                             </div>
                                         ))}
                                     </div>

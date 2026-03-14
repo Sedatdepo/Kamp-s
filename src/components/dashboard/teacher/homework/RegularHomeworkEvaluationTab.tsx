@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, Submission, Homework } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -109,7 +109,7 @@ const RegularHomeworkCard = ({ homework, students, submissions, classId, onScore
                                     
                                     return (
                                         <TableRow key={student.id}>
-                                            <TableCell className="font-medium">{student.name}</TableCell>
+                                            <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
                                             <TableCell className="text-xs">
                                                  {submission.text && <p className="whitespace-pre-wrap">{submission.text}</p>}
                                                  {submission.file && (
@@ -191,6 +191,7 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
     if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
     
     const sortedHomeworks = [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
 
     return (
         <div className="space-y-4">
@@ -199,7 +200,7 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
                     <RegularHomeworkCard
                         key={hw.id}
                         homework={hw}
-                        students={students}
+                        students={sortedStudents}
                         submissions={submissions[hw.id] || []}
                         classId={classId}
                         onScoresUpdated={fetchSubmissions}

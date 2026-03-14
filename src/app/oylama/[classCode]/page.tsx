@@ -68,7 +68,7 @@ export default function OylamaPage() {
 
                     const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId));
                     const studentsSnap = await getDocs(studentsQuery);
-                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)).sort((a,b) => a.name.localeCompare(b.name, 'tr')));
+                    setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)).sort((a,b) => a.number.localeCompare(b.number, 'tr', { numeric: true })));
 
                 } else {
                     setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
@@ -192,7 +192,7 @@ export default function OylamaPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {students.map(student => (
-                                            <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                            <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

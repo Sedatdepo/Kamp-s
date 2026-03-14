@@ -60,7 +60,7 @@ export default function StudentLoginPage() {
                     // Fetch students
                     const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', foundClassId));
                     const studentsSnap = await getDocs(studentsQuery);
-                    const studentsList = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+                    const studentsList = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)).sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
                     setStudents(studentsList);
 
                 } else {
@@ -147,7 +147,7 @@ export default function StudentLoginPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {students.map(student => (
-                                        <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                        <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

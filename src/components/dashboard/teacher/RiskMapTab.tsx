@@ -430,7 +430,7 @@ export function RiskMapTab({ classId, teacherProfile, currentClass, students, ri
                     const riskScore = getRiskScore(student.risks);
                     return (
                       <TableRow key={student.id} className={getRiskColor(riskScore)}>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {student.risks && student.risks.length > 0 ? student.risks.map(riskId => {
