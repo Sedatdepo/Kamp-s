@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -186,16 +185,13 @@ export function StudentGradesDetailTab({ students, teacherProfile, currentClass 
                             const proj1 = calculateAverageForCriteria(term1.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);
                             
                             const perf2_1 = calculateAverageForCriteria(term2.scores1, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
-                            const perf2_2 = calculateAverageForCriteria(term2.scores2, teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA);
+                            const perf2_2 = calculateAverageForCriteria(term2.scores2, teacherProfile.perfCriteria || INITIAL_PROJ_CRITERIA);
                             const proj2 = calculateAverageForCriteria(term2.projectScores, teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA);
 
                             return (
                                 <TableRow key={student.id}>
                                     <TableCell className="sticky left-0 bg-background z-20 font-medium">
-                                        <div className="flex flex-col">
-                                            <span>{student.name}</span>
-                                            <span className="text-xs text-muted-foreground">No: {student.number}</span>
-                                        </div>
+                                        ({student.number}) {student.name}
                                     </TableCell>
                                     
                                     {/* Term 1 Grades */}

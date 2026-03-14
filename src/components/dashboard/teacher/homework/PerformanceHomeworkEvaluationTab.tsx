@@ -162,7 +162,7 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
                                     
                                     return (
                                         <TableRow key={student.id} className={!submission ? 'bg-yellow-50/50' : ''}>
-                                            <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
+                                            <TableCell className="font-medium">({student.number}) {student.name}</TableCell>
                                             <TableCell className="text-xs">
                                                 {submission ? (
                                                     <>
@@ -232,16 +232,12 @@ export const PerformanceHomeworkEvaluationTab = ({ classId, students, teacherPro
     const [allSubmissions, setAllSubmissions] = useState<{ [homeworkId: string]: Submission[] }>({});
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
+    const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
     const sortedHomeworks = useMemo(() => {
         if (!homeworks) return [];
         return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     }, [homeworks]);
 
-    const sortedStudents = useMemo(() => {
-        if (!students) return [];
-        return [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
-    }, [students]);
-    
     const fetchSubmissions = useCallback(async () => {
         if (isLoading || !db || !classId || !homeworks || homeworks.length === 0) {
             setSubmissionsLoading(false);

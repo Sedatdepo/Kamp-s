@@ -236,7 +236,7 @@ export default function SociogramPage() {
                             {survey.questions.filter(q => q.active).map(q => (
                                 <div key={q.id}>
                                     <h3 className="font-semibold mb-2 flex items-center">{getIconComponent(q.icon)} {q.text} <span className="ml-2 text-xs text-muted-foreground">(En fazla {q.maxSelections} kişi)</span></h3>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-1 gap-2">
                                         {sortedStudents?.filter(s => s.id !== loggedInStudent.id).map(student => (
                                             <div key={student.id} className="flex items-center space-x-2 p-2 border rounded-md has-[:checked]:bg-primary/10 has-[:checked]:border-primary transition-colors">
                                                 <Checkbox 

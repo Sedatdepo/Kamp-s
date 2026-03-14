@@ -109,7 +109,7 @@ const RegularHomeworkCard = ({ homework, students, submissions, classId, onScore
                                     
                                     return (
                                         <TableRow key={student.id}>
-                                            <TableCell className="font-medium">{student.name} ({student.number})</TableCell>
+                                            <TableCell className="font-medium">({student.number}) {student.name}</TableCell>
                                             <TableCell className="text-xs">
                                                  {submission.text && <p className="whitespace-pre-wrap">{submission.text}</p>}
                                                  {submission.file && (
