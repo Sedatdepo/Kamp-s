@@ -201,6 +201,9 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   const winner = sortedCandidates[0] || null;
   const runnerUp = electionType === 'class_president' && sortedCandidates.length > 1 ? sortedCandidates[1] : null;
 
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true}));
+  }, [students]);
 
   const resetLiveElection = () => {
     updateLiveElection({ candidates: [], votedStudentIds: [] });
@@ -319,7 +322,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
                         <Table>
                             <TableHeader><TableRow><TableHead>Aday</TableHead><TableHead>Öğrenci No</TableHead><TableHead>Adı Soyadı</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {students.map(student => (
+                                {sortedStudents.map(student => (
                                 <TableRow key={student.id} onClick={() => toggleCandidate(student.id)} className="cursor-pointer">
                                     <TableCell><Checkbox checked={electionData.candidates.some(c => c.id === student.id)} /></TableCell>
                                     <TableCell>{student.number}</TableCell>
