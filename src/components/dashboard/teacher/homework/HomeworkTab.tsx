@@ -15,11 +15,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { LessonManager } from '../LessonManager';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 export function ProjectAssignmentView({
@@ -61,9 +63,24 @@ export function ProjectAssignmentView({
         return localStudents.filter(s => (s.projectPreferences || [])[0] === filterLessonId);
     }, [localStudents, filterLessonId]);
 
-    const handleAssignmentChange = (studentId: string, lessonId: string | null) => {
+    const handleToggleAssignment = (studentId: string, lessonId: string) => {
         setLocalStudents(prev =>
-            prev.map(s => (s.id === studentId ? { ...s, assignedLesson: lessonId } : s))
+            prev.map(s => {
+                if (s.id !== studentId) return s;
+                
+                const currentIds = s.assignedLessonIds || [];
+                const isSelected = currentIds.includes(lessonId);
+                
+                const nextIds = isSelected 
+                    ? currentIds.filter(id => id !== lessonId)
+                    : [...currentIds, lessonId];
+                
+                return { 
+                    ...s, 
+                    assignedLessonIds: nextIds,
+                    assignedLesson: nextIds.length > 0 ? nextIds[0] : null // Backward compatibility
+                };
+            })
         );
     };
     
@@ -72,9 +89,17 @@ export function ProjectAssignmentView({
         const batch = writeBatch(db);
         localStudents.forEach(student => {
             const originalStudent = students.find(s => s.id === student.id);
-            if (student.assignedLesson !== originalStudent?.assignedLesson) {
+            // Check if assignedLessonIds changed
+            const currentIds = student.assignedLessonIds || [];
+            const originalIds = originalStudent?.assignedLessonIds || [];
+            
+            if (JSON.stringify(currentIds) !== JSON.stringify(originalIds)) {
                 const studentRef = doc(db, 'students', student.id);
-                batch.update(studentRef, { assignedLesson: student.assignedLesson, hasProject: !!student.assignedLesson });
+                batch.update(studentRef, { 
+                    assignedLessonIds: currentIds, 
+                    assignedLesson: currentIds.length > 0 ? currentIds[0] : null,
+                    hasProject: currentIds.length > 0 
+                });
             }
         });
         try {
@@ -121,7 +146,7 @@ export function ProjectAssignmentView({
                                 <TableRow>
                                     <TableHead>Öğrenci</TableHead>
                                     <TableHead>Tercihleri</TableHead>
-                                    <TableHead className="w-[200px]">Atanan Proje</TableHead>
+                                    <TableHead className="w-[200px]">Atanan Projeler</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -137,16 +162,48 @@ export function ProjectAssignmentView({
                                             </ol>
                                         </TableCell>
                                         <TableCell>
-                                            <select
-                                                value={student.assignedLesson || ''}
-                                                onChange={(e) => handleAssignmentChange(student.id, e.target.value || null)}
-                                                className="w-full p-2 border rounded-md text-sm"
-                                            >
-                                                <option value="">Proje Ata</option>
-                                                {lessons.map(lesson => (
-                                                    <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
-                                                ))}
-                                            </select>
+                                            <div className="space-y-2">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(student.assignedLessonIds || []).map(id => {
+                                                        const lesson = lessons.find(l => l.id === id);
+                                                        return lesson ? (
+                                                            <Badge key={id} variant="secondary" className="text-[10px] py-0 px-1">
+                                                                {lesson.name}
+                                                                <button onClick={() => handleToggleAssignment(student.id, id)} className="ml-1 hover:text-red-500">
+                                                                    <X size={10} />
+                                                                </button>
+                                                            </Badge>
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" size="sm" className="w-full h-8 text-xs justify-between">
+                                                            Proje Ekle/Çıkar
+                                                            <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[200px] p-0">
+                                                        <ScrollArea className="h-72">
+                                                            <div className="p-2 space-y-1">
+                                                                {lessons.map(lesson => (
+                                                                    <div 
+                                                                        key={lesson.id} 
+                                                                        className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md cursor-pointer"
+                                                                        onClick={() => handleToggleAssignment(student.id, lesson.id)}
+                                                                    >
+                                                                        <Checkbox 
+                                                                            checked={(student.assignedLessonIds || []).includes(lesson.id)}
+                                                                            onCheckedChange={() => handleToggleAssignment(student.id, lesson.id)}
+                                                                        />
+                                                                        <label className="text-sm cursor-pointer">{lesson.name}</label>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

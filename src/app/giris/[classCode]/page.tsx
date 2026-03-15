@@ -83,7 +83,7 @@ export default function StudentLoginPage() {
             return;
         }
         if (!selectedStudentId || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
+            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
             return;
         }
         
@@ -116,58 +116,66 @@ export default function StudentLoginPage() {
     };
     
     if (pageLoading) {
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+        return <div className="flex h-screen items-center justify-center bg-[#0a0f14] text-white"><Loader2 className="h-8 w-8 animate-spin text-cyan-500" /></div>;
     }
      if (error) {
-        return <div className="flex h-screen items-center justify-center text-red-500 font-bold">{error}</div>;
+        return <div className="flex h-screen items-center justify-center bg-[#0a0f14] text-red-500 font-bold">{error}</div>;
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
-            <div className="w-full max-w-md">
-                 <div className="flex flex-col items-center text-center mb-6">
-                    <Logo className="h-24 w-24 text-primary" />
-                    <h1 className="mt-4 text-4xl font-headline font-bold tracking-tight text-foreground">
-                        Kampüs Online
-                    </h1>
-                     <p className="text-muted-foreground text-xl mt-2">{className || 'Öğrenci Portalı'}</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0f14] p-4 font-sans text-white">
+            <div className="w-full max-w-md flex flex-col items-center">
+                 {/* Logo - Kartın tam üstünde */}
+                <div className="mb-4 transform scale-110">
+                    <Logo />
                 </div>
 
-                <Card>
+                <div className="text-center mb-6">
+                     <p className="text-xl font-medium text-slate-300 italic">{className || 'Öğrenci Portalı'}</p>
+                </div>
+
+                <Card className="w-full shadow-2xl border-white/10 bg-slate-900/50 backdrop-blur-sm text-white">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><UserIcon /> Öğrenci Girişi</CardTitle>
-                        <CardDescription>Portala erişmek için bilgilerinizi girin.</CardDescription>
+                        <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline text-white"><UserIcon /> Öğrenci Girişi</CardTitle>
+                        <CardDescription className="text-center text-slate-400">Portala erişmek için bilgilerinizi girin.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="relative">
-                            <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                            <UserIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 z-10" />
                              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                <SelectTrigger className="pl-9">
+                                <SelectTrigger className="pl-9 bg-slate-800 border-slate-700 text-white focus:ring-cyan-500">
                                     <SelectValue placeholder="Adını listeden seç..." />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
                                     {students.map(student => (
-                                        <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
+                                        <SelectItem key={student.id} value={student.id} className="focus:bg-slate-700 focus:text-white">({student.number}) {student.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="relative">
-                            <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <Input 
                                 type="password" 
                                 placeholder="Okul Numaran" 
-                                className="pl-9"
+                                className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
                                 value={enteredSchoolNumber}
                                 onChange={(e) => setEnteredSchoolNumber(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                             />
                         </div>
-                        <Button onClick={handleLogin} disabled={isProcessing} className="w-full gap-2">
-                             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogIn size={16}/>} Giriş Yap
+                        <Button 
+                            onClick={handleLogin} 
+                            disabled={isProcessing} 
+                            className="w-full h-12 gap-2 text-lg font-semibold bg-cyan-600 hover:bg-cyan-700 text-white border-none shadow-lg shadow-cyan-900/20 transition-all"
+                        >
+                             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogIn size={20}/>} Giriş Yap
                         </Button>
                     </CardContent>
                 </Card>
+                <p className="text-center text-xs text-slate-500 mt-8">
+                    Sedat İleri tarafından geliştirildi.
+                </p>
             </div>
         </div>
     );

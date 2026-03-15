@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Header } from '@/components/dashboard/Header';
 
 
 const formSchema = z.object({
@@ -180,22 +181,20 @@ export default function StudentInfoFormPage() {
     }
 
     return (
-         <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-            <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-                <div className="flex items-center gap-4">
-                    <Logo className="h-10 w-10 text-primary"/>
+         <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Header studentMode={true} studentData={student} />
+            <main className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full">
+                <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Öğrenci Bilgi Formu</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">Öğrenci Bilgi Formu</h1>
                         <p className="text-sm text-muted-foreground">{student?.name}</p>
                     </div>
+                    <Button asChild variant="outline">
+                        <Link href={`/portal/${classCode}`}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
+                        </Link>
+                    </Button>
                 </div>
-                 <Button asChild variant="outline">
-                    <Link href={`/portal/${classCode}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
-                    </Link>
-                </Button>
-            </header>
-            <main className="max-w-4xl mx-auto">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full space-y-4">

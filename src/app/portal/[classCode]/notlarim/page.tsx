@@ -8,10 +8,10 @@ import { Student, TeacherProfile, Criterion, GradingScores } from '@/lib/types';
 import { Loader2, ArrowLeft, BookOpen, Edit, GraduationCap, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Logo } from '@/components/icons/Logo';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA, INITIAL_BEHAVIOR_CRITERIA } from '@/lib/grading-defaults';
+import { Header } from '@/components/dashboard/Header';
 
 
 const calculateAverage = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
@@ -161,23 +161,20 @@ export default function StudentGradesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-            <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-                <div className="flex items-center gap-4">
-                    <Logo className="h-10 w-10 text-primary"/>
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Header studentMode={true} studentData={student} />
+            <main className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full">
+                <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Notlarım</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">Notlarım</h1>
                         <p className="text-sm text-muted-foreground">{student.name}</p>
                     </div>
+                    <Button asChild variant="outline">
+                        <Link href={`/portal/${classCode}`}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
+                        </Link>
+                    </Button>
                 </div>
-                <Button asChild variant="outline">
-                    <Link href={`/portal/${classCode}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
-                    </Link>
-                </Button>
-            </header>
-
-            <main className="max-w-4xl mx-auto">
                  <Tabs defaultValue="term1">
                     <TabsList className="grid w-full grid-cols-2 mb-6">
                         <TabsTrigger value="term1">1. Dönem</TabsTrigger>

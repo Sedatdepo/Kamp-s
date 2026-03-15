@@ -4,7 +4,7 @@ import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'KAMPÜS',
+  title: 'Luminodo',
   description: 'Lise öğretmenleri için dijital bir asistan ve öğrenciler için bir portal.',
 };
 

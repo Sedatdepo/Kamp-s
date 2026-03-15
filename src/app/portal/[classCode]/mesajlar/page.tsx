@@ -6,7 +6,6 @@ import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase'
 import { doc, collection, addDoc, query, where, Timestamp, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { Student, TeacherProfile, Message, Class } from '@/lib/types';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
-import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,7 @@ import { tr } from 'date-fns/locale';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Header } from '@/components/dashboard/Header';
 
 const getInitials = (name: string = '') => name.split(' ').map(n => n[0]).slice(0, 2).join('');
 
@@ -130,22 +130,20 @@ export default function StudentMessagingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-            <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-                <div className="flex items-center gap-4">
-                    <Logo className="h-10 w-10 text-primary" />
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Header studentMode={true} studentData={student} />
+            <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full">
+                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Öğretmene Mesaj</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">Öğretmene Mesaj</h1>
                         <p className="text-sm text-muted-foreground">{student?.name}</p>
                     </div>
+                    <Button asChild variant="outline">
+                        <Link href={`/portal/${classCode}`}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
+                        </Link>
+                    </Button>
                 </div>
-                <Button asChild variant="outline">
-                    <Link href={`/portal/${classCode}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
-                    </Link>
-                </Button>
-            </header>
-            <main className="max-w-2xl mx-auto">
                 <Card className="flex flex-col h-[70vh]">
                     <CardHeader className="flex-row items-center gap-3">
                         <Avatar><AvatarFallback>{teacherProfile ? getInitials(teacherProfile.name) : 'Ö'}</AvatarFallback></Avatar>

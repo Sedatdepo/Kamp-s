@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -144,10 +143,11 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
 
     try {
       await updateDoc(studentRef, {
+        behaviorScore: increment(10), // Rozet ödülü 10 puan
         badges: arrayUnion(newBadgeAward)
       });
       toast({
-        title: "Rozet Verildi!",
+        title: "Rozet Verildi! (+10 Puan)",
         description: `${student.name} öğrencisine "${badge.name}" rozeti verildi.`,
         className: "bg-yellow-50 border-yellow-200 text-yellow-800"
       });
@@ -166,10 +166,11 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
     try {
         const studentRef = doc(db, 'students', student.id);
         await updateDoc(studentRef, {
+            behaviorScore: increment(-10), // Rozet silindiğinde puan geri alınır
             badges: arrayRemove(award)
         });
         toast({
-            title: "Rozet Kaydı Silindi",
+            title: "Rozet Kaydı Silindi (-10 Puan)",
             description: `${student.name}: '${award.name}' rozeti geçmişten silindi.`,
             variant: "destructive"
         });
@@ -202,7 +203,7 @@ export function SinifKahramanlariTab({ students, currentClass, teacherProfile }:
   const badgeHistory = useMemo(() => (selectedStudent?.badges || []).map(award => ({
       id: award.id,
       date: award.dateAwarded,
-      label: `"${award.name}" rozeti kazanıldı`,
+      label: `"${award.name}" rozeti kazanıldı (+10P)`,
       type: 'badge',
       original: award
   })), [selectedStudent?.badges]);

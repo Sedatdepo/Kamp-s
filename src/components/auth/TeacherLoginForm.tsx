@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Lütfen geçerli bir e-posta girin.' }),
@@ -82,16 +81,10 @@ export function TeacherLoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full h-11 text-lg font-semibold bg-[#0a0f14] hover:bg-slate-800 transition-colors" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Giriş Yap
         </Button>
-         <p className="text-center text-sm text-muted-foreground">
-          Hesabınız yok mu?{' '}
-          <Link href="/auth/register" className="font-medium text-primary hover:underline">
-            Kayıt Olun
-          </Link>
-        </p>
       </form>
     </Form>
   );

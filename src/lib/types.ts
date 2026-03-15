@@ -276,7 +276,8 @@ export interface Student {
   riskFormSubmitted?: boolean;
   projectPreferences: string[]; // Array of lesson IDs
   clubPreferences?: string[]; // NEW: Array of club IDs
-  assignedLesson: string | null; // lesson ID
+  assignedLesson: string | null; // Keep for backward compatibility
+  assignedLessonIds?: string[]; // NEW: Multiple project lessons
   assignedClubIds?: string[]; // NEW: Array of club IDs
   fcmTokens?: string[]; // For Push Notifications
   
@@ -499,7 +500,6 @@ export interface SokDocument extends Archivable {
         yer: string;
         mudurYardimcisi: string;
         sinifRehberOgretmeni: string;
-        katilimcilar: { brans: string; adSoyad: string }[];
         gundemMaddeleri: { madde: string; keywords?: string }[];
         gorusmeler: { detay: string }[];
         kararlar: string;
@@ -813,6 +813,7 @@ fatherName: string;
   birthOrder: string;
   familyLivesWith: string;
   familyMemberWithDisability: string;
+  familyMemberWithChronicIllness: string;
   familyFinancialIssues: string;
 }
 

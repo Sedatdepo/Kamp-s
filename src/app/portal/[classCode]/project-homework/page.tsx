@@ -3,15 +3,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Lesson, Homework } from '@/lib/types';
-import { Loader2, ArrowLeft, ClipboardList } from 'lucide-react';
-import { Logo } from '@/components/icons/Logo';
+import { Loader2, ArrowLeft, ClipboardList, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirebase, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, onSnapshot, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Header } from '@/components/dashboard/Header';
 
 export default function StudentProjectPage() {
     const params = useParams();
@@ -19,6 +19,7 @@ export default function StudentProjectPage() {
     const classCode = params.classCode as string;
     const { firestore: db, isUserLoading } = useFirebase();
     const [student, setStudent] = useState<Student | null>(null);
+    const [openHomeworks, setOpenHomeworks] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         try {
@@ -72,85 +73,106 @@ export default function StudentProjectPage() {
 
     const { data: projectHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(projectHomeworkQuery);
     
-    const assignedHomework = useMemo(() => projectHomeworks?.[0], [projectHomeworks]);
-
+    const toggleHomework = (id: string) => {
+        setOpenHomeworks(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     if (isUserLoading || !student || homeworksLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-            <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-                 <div className="flex items-center gap-4">
-                    <Logo className="h-10 w-10 text-primary"/>
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Header studentMode={true} studentData={student} />
+            <main className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full">
+                <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Proje Ödevim</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">Proje Ödevlerim</h1>
                         <p className="text-sm text-muted-foreground">{student.name}</p>
                     </div>
+                     <Button asChild variant="outline">
+                        <Link href={`/portal/${classCode}`}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Portala Geri Dön
+                        </Link>
+                    </Button>
                 </div>
-                 <Button asChild variant="outline">
-                    <Link href={`/portal/${classCode}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Portala Geri Dön
-                    </Link>
-                </Button>
-            </header>
-            <main className="max-w-4xl mx-auto">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2">
-                            <ClipboardList className="h-6 w-6"/>
-                            {assignedHomework ? assignedHomework.text : "Proje Ödevi Bilgileri"}
-                        </CardTitle>
-                        <CardDescription>Aşağıda, öğretmeniniz tarafından size atanmış olan proje ödevi detaylarını görebilirsiniz.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {assignedHomework ? (
-                            <div className="space-y-6">
-                                {assignedHomework.instructions && (
-                                    <div>
-                                        <h3 className="font-bold mb-2 text-lg">Proje Yönergesi</h3>
-                                        <div className="p-4 bg-muted/50 rounded-lg text-sm prose">
-                                            <p>{assignedHomework.instructions}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {assignedHomework.rubric && (
-                                    <div>
-                                        <h3 className="font-bold mb-2 text-lg flex items-center gap-2"><ClipboardList/> Değerlendirme Kriterleri</h3>
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Kriter</TableHead>
-                                                        <TableHead className="text-right">Puan</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {assignedHomework.rubric.map((item: any, index: number) => (
-                                                        <TableRow key={index}>
-                                                            <TableCell>
-                                                                <p className="font-medium">{item.label}</p>
-                                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-bold text-lg">{item.score}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                             <div className="text-center py-10 bg-muted/50 rounded-lg">
-                               <p className="text-sm text-muted-foreground">Size henüz bir proje ödevi atanmamış.</p>
-                               <p className="text-xs text-muted-foreground mt-1">Proje tercihi yaptıysanız, öğretmeninizin atama yapmasını bekleyin.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <div className="space-y-6">
+                    {projectHomeworks && projectHomeworks.length > 0 ? (
+                        projectHomeworks.map((hw, idx) => (
+                            <Card key={hw.id} className="overflow-hidden border-l-4 border-l-purple-500">
+                                <Collapsible open={openHomeworks[hw.id] ?? (idx === 0)} onOpenChange={() => toggleHomework(hw.id)}>
+                                    <CollapsibleTrigger asChild>
+                                        <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors flex flex-row items-center justify-between space-y-0">
+                                            <div className="space-y-1">
+                                                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                                    <BookOpen className="h-5 w-5 text-purple-600" />
+                                                    {hw.text}
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    Veriliş Tarihi: {new Date(hw.assignedDate).toLocaleDateString('tr-TR')}
+                                                </CardDescription>
+                                            </div>
+                                            {openHomeworks[hw.id] ?? (idx === 0) ? <ChevronUp /> : <ChevronDown />}
+                                        </CardHeader>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <CardContent className="pt-4 border-t">
+                                            <div className="space-y-6">
+                                                {hw.instructions && (
+                                                    <div>
+                                                        <h3 className="font-bold mb-2 text-md text-purple-800">Proje Yönergesi</h3>
+                                                        <div className="p-4 bg-purple-50/50 rounded-lg text-sm border border-purple-100 whitespace-pre-wrap">
+                                                            {hw.instructions}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {hw.rubric && (
+                                                    <div>
+                                                        <h3 className="font-bold mb-2 text-md flex items-center gap-2 text-purple-800">
+                                                            <ClipboardList className="h-4 w-4"/> Değerlendirme Kriterleri
+                                                        </h3>
+                                                        <div className="border rounded-lg overflow-hidden bg-white">
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow className="bg-muted/50">
+                                                                        <TableHead>Kriter</TableHead>
+                                                                        <TableHead className="text-right w-[100px]">Puan</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {hw.rubric.map((item: any, index: number) => (
+                                                                        <TableRow key={index}>
+                                                                            <TableCell>
+                                                                                <p className="font-medium text-sm">{item.label}</p>
+                                                                                <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right font-bold text-md">{item.score}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            </Card>
+                        ))
+                    ) : (
+                        <Card>
+                            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                                <div className="bg-slate-100 p-4 rounded-full mb-4">
+                                    <ClipboardList className="h-8 w-8 text-slate-400" />
+                                </div>
+                                <p className="text-slate-600 font-medium">Henüz bir proje ödevi atanmamış.</p>
+                                <p className="text-sm text-slate-400 mt-1">Öğretmeniniz bir proje atadığında burada görünecektir.</p>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             </main>
         </div>
     );

@@ -1907,3 +1907,47 @@ export function exportHomeworkDetailToRtf({ homework, teacherProfile, currentCla
     const finalHtml = generateHtmlShell(content, title);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
+
+export function exportHomeworkStatusToRtf({ students, homeworks, submissions, currentClass, teacherProfile }: any) {
+    const reportTitle = "Canlı Ödev Teslim Durumu";
+    const header = generateReportHeader(reportTitle, currentClass, teacherProfile);
+    const footer = generateReportFooter(teacherProfile);
+    const title = `${currentClass.name} - ${reportTitle}`;
+
+    const tableHeader = `
+        <tr>
+            <th class="horizontal" style="width:10%;">S.No</th>
+            <th class="horizontal" style="width:20%;">Okul No</th>
+            <th class="horizontal" style="width:40%;">Adı Soyadı</th>
+            <th class="horizontal" style="width:30%;">Teslim Durumu</th>
+        </tr>
+    `;
+
+    let content = header;
+
+    homeworks.forEach((hw: any) => {
+        content += `<h3>Ödev: ${hw.text}</h3>`;
+        content += `<table><thead>${tableHeader}</thead><tbody>`;
+        
+        students.forEach((s: any, index: number) => {
+            const hasSubmitted = submissions.some((sub: any) => sub.homeworkId === hw.id && sub.studentId === s.id);
+            const statusText = hasSubmitted ? 'Teslim Edildi' : 'Bekleniyor';
+            
+            content += `
+                <tr>
+                    <td class="center">${index + 1}</td>
+                    <td class="center">${s.number}</td>
+                    <td>${s.name}</td>
+                    <td class="center bold">${statusText}</td>
+                </tr>
+            `;
+        });
+        
+        content += `</tbody></table><br/><br/>`;
+    });
+
+    content += footer;
+
+    const finalHtml = generateHtmlShell(content, title);
+    downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
+}

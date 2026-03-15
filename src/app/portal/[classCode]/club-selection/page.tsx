@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Student, Club } from '@/lib/types';
 import { Loader2, ArrowLeft, Save, Drama, CheckCircle } from 'lucide-react';
-import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
@@ -14,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { Header } from '@/components/dashboard/Header';
 
 export default function StudentClubSelectionPage() {
     const params = useParams();
@@ -148,23 +148,21 @@ export default function StudentClubSelectionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-            <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-                 <div className="flex items-center gap-4">
-                    <Logo className="h-10 w-10 text-primary"/>
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Header studentMode={true} studentData={student} />
+            <main className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full">
+                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Kampüs Online | Sosyal Kulüp Tercihi</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">Sosyal Kulüp Tercihi</h1>
                         <p className="text-sm text-muted-foreground">{student.name}</p>
                     </div>
+                     <Button asChild variant="outline">
+                        <Link href={`/portal/${classCode}`}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Portala Geri Dön
+                        </Link>
+                    </Button>
                 </div>
-                 <Button asChild variant="outline">
-                    <Link href={`/portal/${classCode}`}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Portala Geri Dön
-                    </Link>
-                </Button>
-            </header>
-            <main className="max-w-4xl mx-auto">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Drama /> Kulüp Seçimi</CardTitle>

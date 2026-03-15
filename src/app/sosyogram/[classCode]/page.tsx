@@ -16,10 +16,14 @@ import { Label } from '@/components/ui/label';
 import { signInAnonymously } from 'firebase/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const getIconComponent = (iconName: SociogramQuestion['icon']) => {
-    const icons = { Users, UserX, Star, BookOpen, Coffee };
-    const Icon = icons[iconName] || Users;
-    return <Icon className="mr-2 h-5 w-5" />;
+const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+        case 'UserX': return <UserX className="mr-2 h-5 w-5" />;
+        case 'Star': return <Star className="mr-2 h-5 w-5" />;
+        case 'BookOpen': return <BookOpen className="mr-2 h-5 w-5" />;
+        case 'Coffee': return <Coffee className="mr-2 h-5 w-5" />;
+        default: return <Users className="mr-2 h-5 w-5" />;
+    }
 };
 
 export default function SociogramPage() {
@@ -47,26 +51,19 @@ export default function SociogramPage() {
 
     useEffect(() => {
         const initAndFetch = async () => {
-            if (isUserLoading || !auth || !db) {
-                setPageLoading(true);
-                return;
-            }
-            
+            if (isUserLoading || !auth || !db) return;
             if (!user) {
                 await signInAnonymously(auth);
                 return;
             }
-            
             try {
                 const classCodeRef = doc(db, 'classCodes', classCode);
                 const classCodeSnap = await getDoc(classCodeRef);
 
                 if (classCodeSnap.exists()) {
                     const classId = classCodeSnap.data().classId;
-                    
                     const classDocRef = doc(db, 'classes', classId);
                     const classSnap = await getDoc(classDocRef);
-                    
                     if (classSnap.exists()) {
                         const classData = { id: classSnap.id, ...classSnap.data() } as Class;
                         setCurrentClass(classData);
@@ -78,13 +75,11 @@ export default function SociogramPage() {
                         setError("Sınıf bilgisi bulunamadı.");
                         setStep('error');
                     }
-
                     const studentsQuery = query(collection(db, 'students'), where('classId', '==', classId));
                     const studentsSnap = await getDocs(studentsQuery);
                     setStudents(studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
-
                 } else {
-                    setError("Geçersiz sınıf kodu. Lütfen linki kontrol edin.");
+                    setError("Geçersiz sınıf kodu.");
                     setStep('error');
                 }
             } catch (e) {
@@ -99,40 +94,25 @@ export default function SociogramPage() {
     }, [isUserLoading, user, db, auth, classCode]);
 
     const handleLogin = async () => {
-        if (!currentClass || !db) {
-             toast({ variant: 'destructive', title: 'Sistem hazır değil.' });
-             return;
-        }
-        if (!selectedStudentId || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
-            return;
-        }
-
+        if (!currentClass || !db || !selectedStudentId) return;
         setIsProcessing(true);
         try {
             const studentRef = doc(db, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
-            
-            if(!studentSnap.exists() || studentSnap.data().number !== enteredSchoolNumber.trim()) {
-                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle öğrenci bulunamadı.' });
-                 setIsProcessing(false);
-                 return;
+            if(studentSnap.exists() && studentSnap.data().number === enteredSchoolNumber.trim()) {
+                const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
+                if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
+                    setError('Bu anketi daha önce doldurdunuz.');
+                    setStep('error');
+                } else {
+                    setLoggedInStudent(student);
+                    setStep('survey');
+                }
+            } else {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Bilgiler uyuşmuyor.' });
             }
-            
-            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
-
-            if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
-                setError('Bu anketi daha önce doldurdunuz.');
-                setStep('error');
-                setIsProcessing(false);
-                return;
-            }
-            setLoggedInStudent(student);
-            setStep('survey');
-            setError('');
         } catch (e) {
-             console.error("Login failed:", e);
-             toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı.' });
+            toast({ variant: 'destructive', title: 'Hata', description: 'Giriş yapılamadı.' });
         } finally {
             setIsProcessing(false);
         }
@@ -140,140 +120,84 @@ export default function SociogramPage() {
     
     const handleSelectionChange = (questionId: number, studentId: string, maxSelections: number) => {
         setSelections(prev => {
-            const currentSelections = prev[questionId] || [];
-            if (currentSelections.includes(studentId)) {
-                return { ...prev, [questionId]: currentSelections.filter(id => id !== studentId) };
-            } else {
-                if (currentSelections.length < maxSelections) {
-                    return { ...prev, [questionId]: [...currentSelections, studentId] };
-                } else {
-                    toast({ variant: 'destructive', title: `En fazla ${maxSelections} kişi seçebilirsiniz.` });
-                    return prev;
-                }
-            }
+            const current = prev[questionId] || [];
+            if (current.includes(studentId)) return { ...prev, [questionId]: current.filter(id => id !== studentId) };
+            if (current.length < maxSelections) return { ...prev, [questionId]: [...current, studentId] };
+            toast({ variant: 'destructive', title: `Maksimum ${maxSelections} seçim yapabilirsiniz.` });
+            return prev;
         });
     };
-    
+
     const handleSubmit = async () => {
         if (!loggedInStudent || !db) return;
-        
         setIsProcessing(true);
-        
-        const updates: Partial<Student> = {};
-        const survey = currentClass?.sociogramSurvey;
-        survey?.questions.forEach(q => {
+        const updates: any = {};
+        currentClass?.sociogramSurvey?.questions.forEach(q => {
             if(selections[q.id]) {
                 if(q.type === 'positive') updates.positiveSelections = selections[q.id];
                 if(q.type === 'negative') updates.negativeSelections = selections[q.id];
                 if(q.type === 'leadership') updates.leadershipSelections = selections[q.id];
             }
         });
-
-        const studentRef = doc(db, 'students', loggedInStudent.id);
-        
         try {
-            await updateDoc(studentRef, updates);
-            toast({ title: 'Cevaplarınız başarıyla kaydedildi!' });
+            await updateDoc(doc(db, 'students', loggedInStudent.id), updates);
             setStep('voted');
         } catch (e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Hata', description: 'Cevaplarınız kaydedilirken bir sorun oluştu.' });
+            toast({ variant: 'destructive', title: 'Hata', description: 'Kaydedilemedi.' });
         } finally {
             setIsProcessing(false);
         }
     };
 
-    if (pageLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (pageLoading) return <div className="flex h-screen items-center justify-center bg-[#0a0f14]"><Loader2 className="h-8 w-8 animate-spin text-cyan-500" /></div>;
 
-    const survey = currentClass?.sociogramSurvey;
-    
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-[#0a0f14] p-4 text-white">
             <div className="w-full max-w-lg">
-                <div className="flex flex-col items-center text-center mb-6">
-                    <Logo className="h-12 w-12 text-primary" />
-                    <h1 className="mt-4 text-3xl font-headline font-bold tracking-tight text-foreground">
-                        {survey?.title || 'Sosyogram Anketi'}
-                    </h1>
-                </div>
-
+                <div className="flex flex-col items-center mb-8"><Logo /></div>
+                
                 {step === 'login' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
-                            <CardDescription>Anketi doldurmak için lütfen bilgilerinizi girin.</CardDescription>
-                        </CardHeader>
+                    <Card className="bg-slate-900/50 border-white/10 text-white">
+                        <CardHeader><CardTitle>Sosyogram Girişi</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                    <SelectTrigger className="pl-9">
-                                        <SelectValue placeholder="Adını listeden seç..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sortedStudents.map(student => (
-                                            <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="relative">
-                                <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input type="password" placeholder="Okul Numaran" className="pl-9" value={enteredSchoolNumber} onChange={(e) => setEnteredSchoolNumber(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
-                            </div>
-                            <Button onClick={handleLogin} className="w-full">Giriş Yap ve Ankete Başla</Button>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {step === 'survey' && loggedInStudent && survey && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Merhaba, {loggedInStudent.name}!</CardTitle>
-                            <CardDescription>Aşağıdaki soruları dürüstçe cevaplaman sınıfımızın sosyal dinamiklerini anlamamız için önemlidir.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {survey.questions.filter(q => q.active).map(q => (
-                                <div key={q.id}>
-                                    <h3 className="font-semibold mb-2 flex items-center">{getIconComponent(q.icon)} {q.text} <span className="ml-2 text-xs text-muted-foreground">(En fazla {q.maxSelections} kişi)</span></h3>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {sortedStudents?.filter(s => s.id !== loggedInStudent.id).map(student => (
-                                            <div key={student.id} className="flex items-center space-x-2 p-2 border rounded-md has-[:checked]:bg-primary/10 has-[:checked]:border-primary transition-colors">
-                                                <Checkbox 
-                                                    id={`${q.id}-${student.id}`} 
-                                                    checked={(selections[q.id] || []).includes(student.id)}
-                                                    onCheckedChange={() => handleSelectionChange(q.id, student.id, q.maxSelections)}
-                                                />
-                                                <Label htmlFor={`${q.id}-${student.id}`} className="text-sm font-medium w-full cursor-pointer">({student.number}) {student.name}</Label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                            <Button onClick={handleSubmit} disabled={isProcessing} className="w-full">
-                                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                <Send className="mr-2 h-4 w-4" /> Cevaplarımı Gönder
+                            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white"><SelectValue placeholder="İsmini seç..." /></SelectTrigger>
+                                <SelectContent className="bg-slate-800 text-white border-slate-700">
+                                    {sortedStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Input type="password" placeholder="Okul Numarası" className="bg-slate-800 border-slate-700 text-white" value={enteredSchoolNumber} onChange={e => setEnteredSchoolNumber(e.target.value)} />
+                            <Button onClick={handleLogin} disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">
+                                {isProcessing ? <Loader2 className="animate-spin mr-2" /> : null} Giriş Yap
                             </Button>
                         </CardContent>
                     </Card>
                 )}
 
-                {step === 'voted' && (
-                    <Card className="text-center p-8">
-                        <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
-                        <CardTitle>Teşekkürler!</CardTitle>
-                        <CardDescription>Ankete katıldığın için teşekkür ederiz. Cevapların kaydedildi.</CardDescription>
+                {step === 'survey' && (
+                    <Card className="bg-slate-900/50 border-white/10 text-white">
+                        <CardHeader><CardTitle>Anket Formu</CardTitle></CardHeader>
+                        <CardContent className="space-y-6">
+                            {currentClass?.sociogramSurvey?.questions.filter(q => q.active).map(q => (
+                                <div key={q.id} className="space-y-3">
+                                    <h3 className="font-medium flex items-center">{getIconComponent(q.icon)} {q.text}</h3>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {sortedStudents.filter(s => s.id !== loggedInStudent?.id).map(s => (
+                                            <div key={s.id} className="flex items-center space-x-2 p-2 rounded border border-white/5 hover:bg-white/5">
+                                                <Checkbox id={`${q.id}-${s.id}`} checked={(selections[q.id] || []).includes(s.id)} onCheckedChange={() => handleSelectionChange(q.id, s.id, q.maxSelections)} />
+                                                <Label htmlFor={`${q.id}-${s.id}`} className="flex-1 cursor-pointer">{s.name}</Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                            <Button onClick={handleSubmit} disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">Gönder</Button>
+                        </CardContent>
                     </Card>
                 )}
-                
-                {step === 'error' && (
-                    <Card className="text-center p-8 border-red-500 bg-red-50">
-                        <Frown className="mx-auto h-16 w-16 text-red-500 mb-4" />
-                        <CardTitle className="text-red-800">Bir Sorun Oluştu</CardTitle>
-                        <CardDescription className="text-red-700">{error}</CardDescription>
-                         <Button variant="outline" onClick={() => router.back()} className="mt-4">Geri Dön</Button>
-                    </Card>
-                )}
+
+                {step === 'voted' && <div className="text-center"><CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" /><h3>Anket tamamlandı!</h3></div>}
+                {step === 'error' && <div className="text-center text-red-400"><h3>{error}</h3><Button variant="link" onClick={() => window.location.reload()}>Tekrar Dene</Button></div>}
             </div>
         </div>
     );
