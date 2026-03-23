@@ -6,7 +6,7 @@ import { Student, Submission, Homework } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save, Paperclip } from 'lucide-react';
-import { collection, doc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, query, updateDoc, where, writeBatch, addDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useCollection, useMemoFirebase } from '@/firebase';
+
 
 const RegularHomeworkCard = ({ homework, students, submissions, classId, onScoresUpdated }: { homework: Homework, students: Student[], submissions: Submission[], classId: string, onScoresUpdated: () => void }) => {
     const { db } = useAuth();
@@ -188,11 +189,15 @@ export const RegularHomeworkEvaluationTab = ({ classId, students }: RegularHomew
         fetchSubmissions();
     }, [fetchSubmissions]);
 
-    if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
     
-    const sortedHomeworks = [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
     const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
 
+    if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
+    
     return (
         <div className="space-y-4">
             {sortedHomeworks.length > 0 ? (
