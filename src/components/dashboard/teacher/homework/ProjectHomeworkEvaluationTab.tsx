@@ -58,7 +58,7 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
             const submission = submissions.find((s: Submission) => s.studentId === student.id);
             const studentScores = scores[student.id];
             const studentFeedback = feedback[student.id];
-
+            
             const hasDataToSave = (studentScores && Object.keys(studentScores).length > 0) || (studentFeedback && studentFeedback.trim() !== '');
 
             const totalScore = homework.rubric?.reduce((sum: number, c: any) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
@@ -102,7 +102,7 @@ const ProjectHomeworkCard = ({ homework, students, submissions, classId, onScore
             });
         }
     };
-
+    
     return (
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value={homework.id}>
@@ -239,7 +239,7 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
         setSubmissionsLoading(true);
         const subsByHomework: { [homeworkId: string]: Submission[] } = {};
         for (const hw of homeworks) {
-            const subsQuery = query(collection(db, 'classes', classId, 'homeworks', hw.id, 'submissions'));
+            const subsQuery = query(collection(db, `classes/${classId}/homeworks/${hw.id}/submissions`));
             const querySnapshot = await getDocs(subsQuery);
             const subs: Submission[] = [];
             querySnapshot.forEach(doc => subs.push({ id: doc.id, ...doc.data() } as Submission));
@@ -276,11 +276,14 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
             toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
         }
     };
+    
+    const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
 
     if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin" />;
-
-    const sortedHomeworks = [...(homeworks || [])].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
 
     return (
         <div className="space-y-4">
