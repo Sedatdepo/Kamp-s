@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { BulkGradeEntryDialog } from './BulkGradeEntryDialog';
 import { exportGradingToRtf } from '@/lib/word-export';
 import { useDatabase } from '@/hooks/use-database';
+import { ProjectGradingTab } from './ProjectGradingTab';
 
 
 interface GradingToolTabProps {
@@ -329,19 +330,21 @@ export function GradingToolTab({
             <TabsTrigger value="performance">Performans</TabsTrigger>
             <TabsTrigger value="project">Proje</TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center space-x-2">
-                <Label>Dönem:</Label>
-                <Select value={String(activeTerm)} onValueChange={(val) => setActiveTerm(Number(val) as 1 | 2)}>
-                    <SelectTrigger className="w-[120px] h-9">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="1">1. Dönem</SelectItem>
-                        <SelectItem value="2">2. Dönem</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+          <div className="flex items-center gap-2 ml-4">
+            {activeTab !== 3 && (
+                 <div className="flex items-center space-x-2">
+                    <Label>Dönem:</Label>
+                    <Select value={String(activeTerm)} onValueChange={(val) => setActiveTerm(Number(val) as 1 | 2)}>
+                        <SelectTrigger className="w-[120px] h-9">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">1. Dönem</SelectItem>
+                            <SelectItem value="2">2. Dönem</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
             <Button variant="outline" onClick={() => setBulkEntryOpen(true)}>
                 <Sheet className="mr-2 h-4 w-4" /> Toplu Not Girişi
             </Button>
@@ -382,16 +385,11 @@ export function GradingToolTab({
                </TabsContent>
           </Tabs>
         </TabsContent>
-        <TabsContent value="project">
-             <CriteriaGradingTable 
-                students={sortedStudents.filter(s => s.hasProject)} 
-                criteria={projCriteria} 
-                scoreKey="projectScores"
-                termKey={activeTerm === 1 ? 'term1Grades' : 'term2Grades'}
-                onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
-                onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'projectScores', projCriteria)}
-                onSave={() => handleSaveScores('projectScores', projCriteria)}
-                onExport={() => handleExport(3)}
+        <TabsContent value="project" className="mt-4">
+            <ProjectGradingTab
+              students={students}
+              teacherProfile={teacherProfile}
+              currentClass={currentClass}
             />
         </TabsContent>
       </Tabs>

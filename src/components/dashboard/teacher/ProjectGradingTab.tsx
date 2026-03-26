@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, TeacherProfile, Class, Criterion, ActiveTerm } from '@/lib/types';
+import { Student, TeacherProfile, Class, Criterion } from '@/lib/types';
 import { INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,9 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { exportGradingToRtf } from '@/lib/word-export'; // Corrected import
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { exportGradingToRtf } from '@/lib/word-export';
 
 interface ProjectGradingTabProps {
   students: Student[];
@@ -37,9 +35,8 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
   const { db } = useAuth();
   const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
 
-  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
   const [scores, setScores] = useState<{ [studentId: string]: { [criteriaId: string]: number } }>({});
-
+  
   const projectStudents = useMemo(() => {
     return students.filter(s => s.hasProject);
   }, [students]);
@@ -47,7 +44,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
   // Load existing scores when component mounts or students/term change
   useEffect(() => {
     const initialScores: { [studentId: string]: { [criteriaId: string]: number } } = {};
-    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+    const termKey = 'term2Grades'; // Hardcoded to 2nd term
     projectStudents.forEach(student => {
       const termGrades = student[termKey];
       if (termGrades && termGrades.projectScores) {
@@ -55,11 +52,11 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
       }
     });
     setScores(initialScores);
-  }, [projectStudents, activeTerm]);
+  }, [projectStudents]);
 
   const handleScoreChange = (studentId: string, criteriaId: string, value: string) => {
     const newScore = parseInt(value, 10);
-    if (isNaN(newScore) && value !== '') return; // Allow clearing but not invalid chars
+    if (isNaN(newScore) && value !== '') return;
 
     setScores(prev => ({
       ...prev,
@@ -75,7 +72,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
       toast({ variant: 'destructive', title: 'Veritabanı bağlantısı yok.' });
       return;
     }
-    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+    const termKey = 'term2Grades'; // Hardcoded
     const batch = writeBatch(db);
     projectStudents.forEach(student => {
       const studentScores = scores[student.id];
@@ -109,6 +106,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
         await writeBatch(db)
             .update(studentRef, {
                 assignedLesson: null,
+                assignedLessonIds: [], // Clear new field as well
                 hasProject: false,
                 'term1Grades.projectScores': {},
                 'term2Grades.projectScores': {}
@@ -126,7 +124,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
         toast({ title: 'Hata', description: 'Rapor oluşturmak için gerekli veriler eksik.', variant: 'destructive' });
         return;
     }
-    const termKey = activeTerm === 1 ? 'term1Grades' : 'term2Grades';
+    const termKey = 'term2Grades';
     const studentsWithScores = projectStudents.map(student => {
         const studentScores = scores[student.id];
         if (studentScores) {
@@ -143,7 +141,7 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
 
     exportGradingToRtf({
         activeTab: 3, // 3 for project
-        activeTerm,
+        activeTerm: 2, // Hardcoded to 2nd term
         students: studentsWithScores,
         currentCriteria: projCriteria,
         currentClass,
@@ -167,22 +165,10 @@ export function ProjectGradingTab({ students, teacherProfile, currentClass }: Pr
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>Proje Ödevi Değerlendirmesi</CardTitle>
+            <CardTitle>Proje Ödevi Değerlendirmesi (2. Dönem)</CardTitle>
             <CardDescription>Atanan projeleri, belirlenen kriterlere göre notlandırın.</CardDescription>
           </div>
            <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                    <Label>Dönem:</Label>
-                    <Select value={String(activeTerm)} onValueChange={(val) => setActiveTerm(Number(val) as 1 | 2)}>
-                        <SelectTrigger className="w-[120px] h-9">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="1">1. Dönem</SelectItem>
-                            <SelectItem value="2">2. Dönem</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
               <Button onClick={handleExport} variant="outline"><FileDown className="mr-2 h-4 w-4" /> Değerlendirme Çıktısı</Button>
               <Button onClick={handleSaveAll}>
                 <Save className="mr-2 h-4 w-4" /> Tümünü Kaydet

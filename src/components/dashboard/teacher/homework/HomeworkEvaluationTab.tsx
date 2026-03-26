@@ -37,7 +37,6 @@ export function HomeworkEvaluationTab({
       </TabsContent>
       <TabsContent value="project" className="mt-4">
          <ProjectHomeworkEvaluationTab
-            classId={classId}
             students={students}
             teacherProfile={teacherProfile}
             currentClass={currentClass}
