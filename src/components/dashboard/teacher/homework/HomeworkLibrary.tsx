@@ -336,16 +336,17 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
         setRubrics(prev => ({ ...prev, [key]: rubric }));
         toast({title: 'Kriterler Güncellendi'});
     };
+    
     const handleAssignConfirm = async (details: { studentIds: string[], date: string, type: 'performance' | 'project' }) => {
         if (!db || !selectedAssignment || !students || !teacherProfile) {
             toast({ title: 'Hata', description: 'Gerekli bilgiler yüklenemedi.', variant: 'destructive' });
             return;
         }
-
+    
         const { studentIds, date, type } = details;
         const rubricType = getRubricType(selectedAssignment.formats);
         const assignedRubric = rubrics[rubricType] || null;
-
+    
         try {
             const batch = writeBatch(db);
             const studentsByClass: { [key: string]: string[] } = {};
@@ -357,7 +358,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     studentsByClass[student.classId].push(studentId);
                 }
             });
-
+    
             for (const classId in studentsByClass) {
                 const homeworkDocData = {
                     classId: classId,
@@ -368,7 +369,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                     teacherName: teacherProfile.name,
                     lessonName: teacherProfile.branch,
                     rubric: assignedRubric ? assignedRubric.items : null,
-                    assignmentType: type, // This is crucial
+                    assignmentType: type,
                     assignedStudents: studentsByClass[classId],
                     seenBy: [],
                     questions: selectedAssignment.questions || [],
@@ -378,18 +379,26 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
                 const cleanDoc = JSON.parse(JSON.stringify(homeworkDocData));
                 
                 const homeworksColRef = collection(db, 'classes', classId, 'homeworks');
-                const newDocRef = doc(homeworksColRef); // Auto-generate ID
+                const newDocRef = doc(homeworksColRef);
                 batch.set(newDocRef, cleanDoc);
             }
-
+    
+            // If the assignment is a project, update the 'hasProject' flag on the students
+            if (type === 'project') {
+                studentIds.forEach(studentId => {
+                    const studentRef = doc(db, 'students', studentId);
+                    batch.update(studentRef, { hasProject: true });
+                });
+            }
+    
             await batch.commit();
-            setAssignSettingsModalOpen(false); // Close the modal
-            setSuccessModalOpen(true); // Open success modal
+            setAssignSettingsModalOpen(false);
+            setSuccessModalOpen(true);
             setAssignDetails({
                 assignedTo: `${studentIds.length} öğrenci`,
                 date: date ? format(new Date(date), 'dd MMMM yyyy', { locale: tr }) : 'Tarih yok'
             });
-
+    
         } catch (error) {
             console.error("Assignment error:", error);
             toast({ variant: 'destructive', title: 'Hata', description: 'Ödev atanamadı.' });
