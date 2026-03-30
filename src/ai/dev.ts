@@ -9,6 +9,6 @@ import './flows/generate-assignment-scenario-flow';
 import './flows/generate-edebiyat-materyal-flow';
 import './flows/extract-outcomes-from-pdf-flow';
 import './flows/generate-meeting-decisions-flow';
-import './flows/generate-performance-grade-flow';
+import './flows/predict-activity-completion-flow';
 
     

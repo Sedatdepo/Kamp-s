@@ -25,13 +25,19 @@ import {
   Compass,
   Rocket,
   Droplets,
-  Flame
+  Flame,
+  Wand2,
+  Loader2
 } from 'lucide-react';
-import { TeacherProfile, Class, BepStudent } from '@/lib/types';
+import { TeacherProfile, Class, BepStudent, Student, Criterion, GradingScores } from '@/lib/types';
 import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useDatabase } from '@/hooks/use-database';
+import { useToast } from '@/hooks/use-toast';
+import { predictActivityCompletion } from '@/ai/flows/predict-activity-completion-flow';
+import { INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from '@/lib/grading-defaults';
+
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
@@ -171,9 +177,11 @@ const unitsData = [
   }
 ];
 
-export function ActivityTrackingTab({ students, currentClass }: {students: Student[], currentClass: Class | null}) {
+export function ActivityTrackingTab({ students, currentClass, teacherProfile }: {students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null}) {
   const [activeTab, setActiveTab] = useState(unitsData[0].id);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Öğrenci listesini prop'lardan alıyoruz
   const classStudents = students || [];
@@ -264,6 +272,99 @@ export function ActivityTrackingTab({ students, currentClass }: {students: Stude
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+  
+    const calculateAverageForCriteria = (scores: { [key: string]: number } | undefined, criteria: Criterion[]): number | null => {
+        if (!scores || !criteria.length || Object.keys(scores).length === 0) return null;
+        const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+        if (totalMax === 0) return 0;
+        const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+        return (totalScore / totalMax) * 100;
+    };
+
+    const calculateTermAverage = (student: Student, termKey: 'term1Grades' | 'term2Grades', perfCriteria: Criterion[], projCriteria: Criterion[]) => {
+        const termGrades = student[termKey];
+        if (!termGrades || !teacherProfile) return 0;
+        
+        const isLiteratureTeacher = teacherProfile.branch === 'Edebiyat' || teacherProfile.branch === 'Türk Dili ve Edebiyatı';
+        const getExamAvg = (written?: number, speaking?: number, listening?: number, standard?: number) => {
+            if(isLiteratureTeacher) {
+                if (written === undefined && speaking === undefined && listening === undefined) return null;
+                const w = written !== undefined && written >= 0 ? written : 0;
+                const s = speaking !== undefined && speaking >= 0 ? speaking : 0;
+                const l = listening !== undefined && listening >= 0 ? listening : 0;
+                return (w * 0.7) + (s * 0.15) + (l * 0.15);
+            }
+            return standard;
+        }
+        
+        const exam1 = getExamAvg(termGrades.writtenExam1, termGrades.speakingExam1, termGrades.listeningExam1, termGrades.exam1);
+        const exam2 = getExamAvg(termGrades.writtenExam2, termGrades.speakingExam2, termGrades.listeningExam2, termGrades.exam2);
+
+        const perf1 = termGrades.perf1 ?? calculateAverageForCriteria(termGrades.scores1, perfCriteria);
+        const perf2 = termGrades.perf2 ?? calculateAverageForCriteria(termGrades.scores2, perfCriteria);
+        const projAvg = student.hasProject ? (termGrades.projectGrade ?? calculateAverageForCriteria(termGrades.projectScores, projCriteria)) : null;
+
+        const allScores = [exam1, exam2, perf1, perf2, projAvg].filter(
+          (score): score is number => score !== null && score !== undefined && !isNaN(score) && score >= 0
+        );
+        
+        if (allScores.length === 0) return 0;
+        
+        const sum = allScores.reduce((acc, score) => acc + score, 0);
+        return sum / allScores.length;
+    };
+
+    const handleAiFill = async () => {
+        if (!teacherProfile || !activeUnit) {
+            toast({ title: 'Hata', description: 'Öğretmen profili veya aktif ünite yüklenemedi.', variant: 'destructive'});
+            return;
+        }
+        setIsGenerating(true);
+        const perfCriteria = teacherProfile.perfCriteria || INITIAL_PERF_CRITERIA;
+        const projCriteria = teacherProfile.projCriteria || INITIAL_PROJ_CRITERIA;
+    
+        const studentProfiles = classStudents.map(student => ({
+            id: student.id,
+            name: student.name,
+            term1Average: calculateTermAverage(student, 'term1Grades', perfCriteria, projCriteria),
+            term2Average: calculateTermAverage(student, 'term2Grades', perfCriteria, projCriteria),
+            behaviorScore: student.behaviorScore || 100
+        }));
+    
+        const activityList = activeUnit.columns;
+    
+        try {
+            const predictions = await predictActivityCompletion({
+                students: studentProfiles,
+                activities: activityList,
+            });
+            
+            setChecks(prev => {
+                const newChecks = { ...prev };
+                for (const studentId in predictions) {
+                    if (predictions.hasOwnProperty(studentId)) {
+                        const activityIndexes = predictions[studentId];
+                        if (Array.isArray(activityIndexes)) {
+                            for (const activityIndex of activityIndexes) {
+                                const key = `${activeUnit.id}_${studentId}_${activityIndex}`;
+                                newChecks[key] = true;
+                            }
+                        }
+                    }
+                }
+                return newChecks;
+            });
+    
+            toast({ title: 'AI Otomatik Doldurma Tamamlandı!', description: `${Object.keys(predictions).length} öğrenci için tahminler işaretlendi.` });
+    
+        } catch (error) {
+            console.error("AI Fill Error:", error);
+            toast({ title: 'Hata', description: 'Yapay zeka ile doldurma işlemi başarısız oldu.', variant: 'destructive' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
 
   const activeUnit = unitsData.find(u => u.id === activeTab);
 
@@ -279,6 +380,10 @@ export function ActivityTrackingTab({ students, currentClass }: {students: Stude
           <p className="text-sm text-gray-500">{currentClass.name} Sınıfı Öğrenci Etkinlik Takibi</p>
         </div>
         <div className="flex gap-3">
+          <button onClick={handleAiFill} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium" disabled={isGenerating}>
+             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+             AI ile Doldur
+          </button>
           <button onClick={exportToWord} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium">
             <Download className="w-4 h-4" />
             Word'e Aktar
@@ -349,9 +454,10 @@ export function ActivityTrackingTab({ students, currentClass }: {students: Stude
                       {student.name}
                     </td>
                     {activeUnit!.columns.map((_, colIdx) => {
-                      const isChecked = checks[`${activeUnit!.id}_${student.id}_${colIdx}`] || false;
+                      const key = `${activeUnit!.id}_${student.id}_${colIdx}`;
+                      const isChecked = checks[key] || false;
                       return (
-                        <td key={`${activeUnit!.id}_${student.id}_${colIdx}`} className="p-0 border-r text-center cursor-pointer hover:bg-indigo-100/50" onClick={() => toggleCheck(activeUnit!.id, student.id, colIdx)}>
+                        <td key={key} className="p-0 border-r text-center cursor-pointer hover:bg-indigo-100/50" onClick={() => toggleCheck(activeUnit!.id, student.id, colIdx)}>
                           <div className="flex items-center justify-center w-full h-12">
                             <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-gray-300'}`}>
                               {isChecked && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
