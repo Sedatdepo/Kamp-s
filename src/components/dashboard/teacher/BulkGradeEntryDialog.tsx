@@ -1,18 +1,34 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Student, GradingScores, Criterion, DisciplineRecord, Homework, Submission } from '@/lib/types';
+import { doc, collection, query, where, addDoc, writeBatch } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar, Users, Clock, CheckCircle, Send, X, Wand2, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Loader2 } from 'lucide-react';
+import { generatePerformanceGrade } from '@/ai/flows/generate-performance-grade-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { doc, writeBatch, collection, query, where, getDocs, updateDoc, increment, arrayUnion } from 'firebase/firestore';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/hooks/useAuth';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Loader2, Wand2, AlertCircle } from 'lucide-react';
-import { generatePerformanceGrade } from '@/ai/flows/generate-performance-grade-flow';
+
+const MemoizedGradeInput = React.memo(({ value, onChange }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => {
+    return (
+      <Input
+        value={value}
+        onChange={onChange}
+        className="h-9 w-20 text-center"
+        placeholder="-"
+      />
+    );
+});
+MemoizedGradeInput.displayName = 'MemoizedGradeInput';
 
 interface BulkGradeEntryDialogProps {
   isOpen: boolean;
@@ -79,6 +95,33 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
      });
   }, [editableStudents]);
 
+  const handleGradeChange = useCallback((studentId: string, gradeType: GradeType, value: string) => {
+    const grade = value.toUpperCase() === 'G' ? -1 : (value === '' ? null : parseFloat(value.replace(',', '.')));
+
+    if (value !== '' && value.toUpperCase() !== 'G' && isNaN(grade as number)) {
+        toast({ variant: 'destructive', title: 'Geçersiz Not', description: 'Lütfen sayı veya "G" girin.'});
+        return;
+    }
+
+    setEditableStudents(prev => 
+        prev.map(s => {
+            if (s.id === studentId) {
+                const updatedStudent = {...s};
+                const termGrades = { ...updatedStudent[termGradesKey] } as GradingScores;
+
+                if (grade === null) {
+                    delete (termGrades as any)[gradeType];
+                } else {
+                    (termGrades as any)[gradeType] = grade;
+                }
+                (updatedStudent as any)[termGradesKey] = termGrades;
+                return updatedStudent;
+            }
+            return s;
+        })
+    );
+  }, [termGradesKey, toast]);
+
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>, gradeType: GradeType) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
@@ -95,93 +138,59 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
         return;
     }
     
-    const updatedStudents = [...editableStudents];
+    setEditableStudents(currentStudents => {
+        const updatedStudents = [...currentStudents];
+        sortedStudents.forEach((student, index) => {
+             const studentIndexToUpdate = updatedStudents.findIndex(s => s.id === student.id);
+             if (studentIndexToUpdate === -1) return;
 
-    sortedStudents.forEach((student, index) => {
-        if (index < lines.length) {
-            const lineValue = lines[index].toUpperCase();
-            let grade: number | null = null;
-            
-            if(lineValue === 'G') {
-                grade = -1;
-            } else {
-                const parsedGrade = parseFloat(lineValue.replace(',', '.'));
-                if (!isNaN(parsedGrade)) {
-                    grade = parsedGrade;
-                }
-            }
-            
-            const studentIndex = updatedStudents.findIndex(s => s.id === student.id);
-            if (grade !== null && studentIndex !== -1) {
-                const studentToUpdate = updatedStudents[studentIndex];
-                if (!studentToUpdate[termGradesKey]) {
-                    (studentToUpdate as any)[termGradesKey] = {};
-                }
-                const termGrades = studentToUpdate[termGradesKey] as GradingScores;
+             if (index < lines.length) {
+                const lineValue = lines[index].toUpperCase();
+                let grade: number | null = null;
                 
-                (termGrades as any)[gradeType] = grade;
-
-                let criteriaToUse: Criterion[] | null = null;
-                let scoreKey: keyof GradingScores | null = null;
-
-                if (gradeType === 'perf1') {
-                    criteriaToUse = perfCriteria;
-                    scoreKey = 'scores1';
-                } else if (gradeType === 'perf2') {
-                    criteriaToUse = perfCriteria;
-                    scoreKey = 'scores2';
-                } else if (gradeType === 'projectGrade') {
-                    criteriaToUse = projCriteria;
-                    scoreKey = 'projectScores';
-                }
-
-                if (criteriaToUse && scoreKey && grade >= 0) {
-                    const totalMax = criteriaToUse.reduce((sum, c) => sum + (c.max || 0), 0);
-                    const newScores: { [key: string]: number } = {};
-                    if (totalMax > 0) {
-                        criteriaToUse.forEach(c => {
-                            const proportion = (c.max || 0) / totalMax;
-                            newScores[c.id] = Math.round(grade! * proportion);
-                        });
+                if(lineValue === 'G') {
+                    grade = -1;
+                } else {
+                    const parsedGrade = parseFloat(lineValue.replace(',', '.'));
+                    if (!isNaN(parsedGrade)) {
+                        grade = parsedGrade;
                     }
-                    termGrades[scoreKey] = newScores;
+                }
+                
+                if (grade !== null) {
+                    const studentToUpdate = updatedStudents[studentIndexToUpdate];
+                    const termGrades = { ...(studentToUpdate[termGradesKey] || {}) } as GradingScores;
+                    (termGrades as any)[gradeType] = grade;
+                    (studentToUpdate as any)[termGradesKey] = termGrades;
+
+                    let criteriaToUse: Criterion[] | null = null;
+                    let scoreKey: keyof GradingScores | null = null;
+
+                    if (gradeType === 'perf1') { criteriaToUse = perfCriteria; scoreKey = 'scores1'; } 
+                    else if (gradeType === 'perf2') { criteriaToUse = perfCriteria; scoreKey = 'scores2'; } 
+                    else if (gradeType === 'projectGrade') { criteriaToUse = projCriteria; scoreKey = 'projectScores';}
+
+                    if (criteriaToUse && scoreKey && grade >= 0) {
+                        const totalMax = criteriaToUse.reduce((sum, c) => sum + (c.max || 0), 0);
+                        const newScores: { [key: string]: number } = {};
+                        if (totalMax > 0) {
+                            criteriaToUse.forEach(c => {
+                                const proportion = (c.max || 0) / totalMax;
+                                newScores[c.id] = Math.round(grade! * proportion);
+                            });
+                        }
+                        termGrades[scoreKey] = newScores;
+                    }
                 }
             }
-        }
+        });
+        return updatedStudents;
     });
 
-    setEditableStudents(updatedStudents);
     toast({
         title: 'Notlar Yapıştırıldı',
         description: 'Lütfen kontrol edin ve kaydetmek için "Kaydet ve Kapat" butonuna tıklayın.'
     });
-  };
-  
-  const handleGradeChange = (studentId: string, gradeType: GradeType, value: string) => {
-    const grade = value.toUpperCase() === 'G' ? -1 : (value === '' ? null : parseFloat(value.replace(',', '.')));
-
-    if (value !== '' && value.toUpperCase() !== 'G' && isNaN(grade as number)) {
-        toast({ variant: 'destructive', title: 'Geçersiz Not', description: 'Lütfen sayı veya "G" girin.'});
-        return;
-    }
-
-    setEditableStudents(prev => 
-        prev.map(s => {
-            if (s.id === studentId) {
-                const updatedStudent = JSON.parse(JSON.stringify(s)); 
-                if (!updatedStudent[termGradesKey]) {
-                    updatedStudent[termGradesKey] = {};
-                }
-                if (grade === null) {
-                    delete updatedStudent[termGradesKey][gradeType];
-                } else {
-                    updatedStudent[termGradesKey][gradeType] = grade;
-                }
-                return updatedStudent;
-            }
-            return s;
-        })
-    );
   };
   
   const handleSave = async () => {
@@ -267,10 +276,10 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
 
             const result = await generatePerformanceGrade(aiInput);
             
-            const updatedStudent = JSON.parse(JSON.stringify(student));
-            if (!updatedStudent[termGradesKey]) updatedStudent[termGradesKey] = {};
-            updatedStudent[termGradesKey].perf1 = result.perf1_grade;
-            updatedStudent[termGradesKey].perf2 = result.perf2_grade;
+            const updatedStudent = { ...student };
+            if (!updatedStudent[termGradesKey]) (updatedStudent as any)[termGradesKey] = {};
+            (updatedStudent as any)[termGradesKey].perf1 = result.perf1_grade;
+            (updatedStudent as any)[termGradesKey].perf2 = result.perf2_grade;
 
             return { student: updatedStudent, aiInput }; 
         });
@@ -292,9 +301,9 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             const adjustmentPromises = studentsToAdjust.map(async ({ student, aiInput }) => {
                 const adjustmentInput = { ...aiInput, adjustmentGoal: 'bring_below_45' };
                 const result = await generatePerformanceGrade(adjustmentInput);
-                const adjustedStudent = JSON.parse(JSON.stringify(student));
-                adjustedStudent[termGradesKey].perf1 = result.perf1_grade;
-                adjustedStudent[termGradesKey].perf2 = result.perf2_grade;
+                const adjustedStudent = { ...student };
+                (adjustedStudent as any)[termGradesKey].perf1 = result.perf1_grade;
+                (adjustedStudent as any)[termGradesKey].perf2 = result.perf2_grade;
                 return adjustedStudent;
             });
 
@@ -328,46 +337,38 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
     }
   };
 
-
-  const GradeInput = ({ studentId, gradeType }: { studentId: string; gradeType: GradeType }) => {
-    const student = editableStudents.find(s => s.id === studentId);
-    const value = student?.[termGradesKey]?.[gradeType];
-    let displayValue = '';
-    if (value === -1) displayValue = 'G';
-    else if (value !== null && value !== undefined) displayValue = String(value);
-
-    return (
-        <Input
-            value={displayValue}
-            onChange={e => handleGradeChange(studentId, gradeType, e.target.value)}
-            className="h-9 w-20 text-center"
-            placeholder="-"
-        />
-    );
-  };
-
   const renderStudentGradeCells = (student: Student) => {
-    if (isLiteratureTeacher) {
-        return (
-            <>
-                <TableCell><GradeInput studentId={student.id} gradeType="writtenExam1" /></TableCell>
-                <TableCell><GradeInput studentId={student.id} gradeType="speakingExam1" /></TableCell>
-                <TableCell><GradeInput studentId={student.id} gradeType="listeningExam1" /></TableCell>
-                <TableCell><GradeInput studentId={student.id} gradeType="writtenExam2" /></TableCell>
-                <TableCell><GradeInput studentId={student.id} gradeType="speakingExam2" /></TableCell>
-                <TableCell><GradeInput studentId={student.id} gradeType="listeningExam2" /></TableCell>
-            </>
-        )
+    const grades = [
+        isLiteratureTeacher ? 'writtenExam1' : 'exam1',
+        isLiteratureTeacher ? 'speakingExam1' : 'exam2',
+        isLiteratureTeacher ? 'listeningExam1' : 'perf1',
+        isLiteratureTeacher ? 'writtenExam2' : 'perf2',
+        'speakingExam2',
+        'listeningExam2'
+    ];
+    let activeGrades = isLiteratureTeacher
+      ? ['writtenExam1', 'speakingExam1', 'listeningExam1', 'writtenExam2', 'speakingExam2', 'listeningExam2']
+      : ['exam1', 'exam2', 'perf1', 'perf2'];
+    
+    if (activeTerm === 2 && !isLiteratureTeacher) {
+        activeGrades.push('projectGrade');
     }
-    return (
-        <>
-            <TableCell><GradeInput studentId={student.id} gradeType="exam1" /></TableCell>
-            <TableCell><GradeInput studentId={student.id} gradeType="exam2" /></TableCell>
-            <TableCell><GradeInput studentId={student.id} gradeType="perf1" /></TableCell>
-            <TableCell><GradeInput studentId={student.id} gradeType="perf2" /></TableCell>
-            {activeTerm === 2 && <TableCell><GradeInput studentId={student.id} gradeType="projectGrade" /></TableCell>}
-        </>
-    )
+
+    return activeGrades.map(gradeType => {
+        const value = student?.[termGradesKey]?.[gradeType as keyof GradingScores];
+        let displayValue = '';
+        if (value === -1) displayValue = 'G';
+        else if (value !== null && value !== undefined) displayValue = String(value);
+
+        return (
+            <TableCell key={gradeType}>
+                <MemoizedGradeInput 
+                    value={displayValue}
+                    onChange={(e) => handleGradeChange(student.id, gradeType as GradeType, e.target.value)}
+                />
+            </TableCell>
+        );
+    });
   }
 
   const renderPasteAreas = () => {
