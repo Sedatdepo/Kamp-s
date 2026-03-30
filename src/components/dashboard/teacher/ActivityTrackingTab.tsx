@@ -1,7 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Printer, BookOpen, Zap, Waves, Activity, ChevronDown, Compass, Rocket, Droplets, Flame, Download } from 'lucide-react';
+'use client';
 
-// Tüm 9. ve 10. sınıf ünitelerinin birleştirilmiş veri yapısı
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { 
+  Users, 
+  FileText, 
+  Save, 
+  Trash2, 
+  Edit, 
+  Download, 
+  Plus, 
+  CheckSquare, 
+  Square,
+  School,
+  X,
+  Calendar,
+  Search,
+  AlertCircle,
+  ChevronDown,
+  Settings,
+  BookOpen,
+  Zap,
+  Waves,
+  Activity,
+  Compass,
+  Rocket,
+  Droplets,
+  Flame
+} from 'lucide-react';
+import { TeacherProfile, Class, BepStudent } from '@/lib/types';
+import { ALL_PLANS } from '@/lib/plans';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { useDatabase } from '@/hooks/use-database';
+
+// --- SABİT VERİLER (CONSTANTS) ---
+
 const unitsData = [
   // --- 9. SINIF ÜNİTELERİ ---
   {
@@ -138,7 +171,7 @@ const unitsData = [
   }
 ];
 
-export function ActivityTrackingTab({ students, currentClass }) {
+export function ActivityTrackingTab({ students, currentClass }: {students: Student[], currentClass: Class | null}) {
   const [activeTab, setActiveTab] = useState(unitsData[0].id);
   const [showSaveToast, setShowSaveToast] = useState(false);
   
@@ -147,6 +180,9 @@ export function ActivityTrackingTab({ students, currentClass }) {
 
   // Tikleri (checkbox verilerini) state'te tut (Sınıf ID'ye özgü)
   const [checks, setChecks] = useState(() => {
+    if (typeof window === 'undefined') {
+        return {};
+    }
     const saved = localStorage.getItem(`fizik_checks_${currentClass?.id}`);
     return saved ? JSON.parse(saved) : {};
   });
@@ -158,9 +194,9 @@ export function ActivityTrackingTab({ students, currentClass }) {
     }
   }, [checks, currentClass?.id]);
 
-  const toggleCheck = (unitId, studentId, colIdx) => {
+  const toggleCheck = (unitId: string, studentId: string, colIdx: number) => {
     const key = `${unitId}_${studentId}_${colIdx}`;
-    setChecks(prev => ({
+    setChecks((prev: any) => ({
       ...prev,
       [key]: !prev[key]
     }));
@@ -195,20 +231,23 @@ export function ActivityTrackingTab({ students, currentClass }) {
             <tr>
               <th>SIRA</th>
               <th class="name-col">ÖĞRENCİ ADI SOYADI</th>
-              ${activeUnit.columns.map(col => \`<th>\${col}</th>\`).join('')}
+              ${
+                activeUnit.columns.map(col => `<th>${col}</th>`).join('')
+              }
             </tr>
           </thead>
           <tbody>
-            ${classStudents.map((student, index) => \`
+            ${classStudents.map((student, index) => `
               <tr>
-                <td>\${index + 1}</td>
-                <td class="name-col">\${student.firstName} \${student.lastName || ''}</td>
-                \${activeUnit.columns.map((_, colIdx) => {
-                  const isChecked = checks[activeUnit.id + '_' + student.id + '_' + colIdx];
+                <td>${index + 1}</td>
+                <td class="name-col">${student.name}</td>
+                ${activeUnit.columns.map((_, colIdx) => {
+                  const key = activeUnit.id + '_' + student.id + '_' + colIdx;
+                  const isChecked = checks[key];
                   return '<td>' + (isChecked ? 'X' : '') + '</td>';
                 }).join('')}
               </tr>
-            \`).join('')}
+            `).join('')}
           </tbody>
         </table>
       </body>
@@ -281,9 +320,9 @@ export function ActivityTrackingTab({ students, currentClass }) {
       <div className="space-y-8 pb-20">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="bg-indigo-50 p-4 border-b border-gray-200">
-            <h2 className="font-bold text-indigo-900 text-center mb-2">{activeUnit.header}</h2>
+            <h2 className="font-bold text-indigo-900 text-center mb-2">{activeUnit!.header}</h2>
             <div className="text-sm text-indigo-700 bg-indigo-100/50 p-2 rounded border border-indigo-200">
-              <strong>ÇIKTILAR (İÇERİK+BECERİ):</strong> {activeUnit.outcomes}
+              <strong>ÇIKTILAR (İÇERİK+BECERİ):</strong> {activeUnit!.outcomes}
             </div>
           </div>
 
@@ -293,7 +332,7 @@ export function ActivityTrackingTab({ students, currentClass }) {
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="p-3 border-r w-12 text-center font-semibold text-gray-600">SIRA</th>
                   <th className="p-3 border-r w-64 font-semibold text-gray-600">ÖĞRENCİ ADI SOYADI</th>
-                  {activeUnit.columns.map((col, colIdx) => (
+                  {activeUnit!.columns.map((col, colIdx) => (
                     <th key={colIdx} className="border-r p-2 align-bottom h-48 w-12 bg-gray-50">
                        <div className="writing-vertical text-xs font-medium text-gray-600 tracking-wider flex items-center justify-start space-x-1" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                          <span>{col}</span>
@@ -307,14 +346,14 @@ export function ActivityTrackingTab({ students, currentClass }) {
                   <tr key={student.id} className="border-b border-gray-100 hover:bg-indigo-50/30 transition">
                     <td className="p-2 border-r text-center text-gray-500 font-medium">{index + 1}</td>
                     <td className="p-3 border-r font-medium">
-                      {student.firstName} {student.lastName}
+                      {student.name}
                     </td>
-                    {activeUnit.columns.map((_, colIdx) => {
-                      const isChecked = checks[\`\${activeUnit.id}_\${student.id}_\${colIdx}\`] || false;
+                    {activeUnit!.columns.map((_, colIdx) => {
+                      const isChecked = checks[`${activeUnit!.id}_${student.id}_${colIdx}`] || false;
                       return (
-                        <td key={colIdx} className="p-0 border-r text-center cursor-pointer hover:bg-indigo-100/50" onClick={() => toggleCheck(activeUnit.id, student.id, colIdx)}>
+                        <td key={`${activeUnit!.id}_${student.id}_${colIdx}`} className="p-0 border-r text-center cursor-pointer hover:bg-indigo-100/50" onClick={() => toggleCheck(activeUnit!.id, student.id, colIdx)}>
                           <div className="flex items-center justify-center w-full h-12">
-                            <div className={\`w-5 h-5 rounded border flex items-center justify-center transition-colors \${isChecked ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-gray-300'}\`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-gray-300'}`}>
                               {isChecked && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </div>
                           </div>
@@ -325,7 +364,7 @@ export function ActivityTrackingTab({ students, currentClass }) {
                 ))}
                 {classStudents.length === 0 && (
                   <tr>
-                    <td colSpan={activeUnit.columns.length + 2} className="p-4 text-center text-gray-500">
+                    <td colSpan={activeUnit!.columns.length + 2} className="p-4 text-center text-gray-500">
                       Bu sınıfta henüz öğrenci bulunmuyor.
                     </td>
                   </tr>
@@ -343,7 +382,7 @@ export function ActivityTrackingTab({ students, currentClass }) {
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{__html: \`
+      <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body { background: white; padding: 0; }
           .max-w-7xl { max-width: 100%; margin: 0; }
@@ -353,7 +392,7 @@ export function ActivityTrackingTab({ students, currentClass }) {
         }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      \`}} />
+      `}} />
     </div>
   );
 }
