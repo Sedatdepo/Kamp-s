@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club, Message } from '@/lib/types';
@@ -58,7 +58,7 @@ const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/Timeta
 const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
 
 
-type ActiveTab = "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
+type ActiveTab = "activity-tracking" | "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled, notificationCount }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean, notificationCount?: number }) => {
   return (
@@ -414,8 +414,11 @@ const TABS_CONFIG = {
   "gamification": { label: "Sınıf Kahramanları", icon: Trophy },
   "sociogram": { label: "Sosyogram", icon: Share2 },
   "timetable": { label: "Ders Programı", icon: Clock },
+  "activity-tracking": { label: "Etkinlik Takip", icon: Activity },
 } as const;
 
+
+const ActivityTrackingTab = dynamic(() => import("@/components/dashboard/teacher/ActivityTrackingTab").then(mod => mod.ActivityTrackingTab), { loading: LoadingSpinner });
 
 export function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -600,6 +603,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<Drama />} title="Sosyal Kulüpler" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
+                <MenuCard icon={<Activity />} title="Etkinlik Takip Çizelgesi" description="Ünite ve etkinlik öğrenci takibi." onClick={() => setActiveTab('activity-tracking')} />
             </div>
         </div>
       );
@@ -619,6 +623,7 @@ export function TeacherDashboard() {
         case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
         case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
         case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
+        case 'activity-tracking': tabContent = <ActivityTrackingTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 
