@@ -5,26 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-
-const StudentProfileSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    term1Average: z.number().optional().describe("1. Dönem not ortalaması."),
-    term2Average: z.number().optional().describe("2. Dönem not ortalaması."),
-    behaviorScore: z.number().optional().describe("Davranış puanı (100 üzerinden).")
-});
-
-const PredictActivityCompletionInputSchema = z.object({
-  students: z.array(StudentProfileSchema).describe("Analiz edilecek öğrenci profilleri listesi."),
-  activities: z.array(z.string()).describe("Değerlendirilecek etkinliklerin listesi."),
-});
-export type PredictActivityCompletionInput = z.infer<typeof PredictActivityCompletionInputSchema>;
-
-export const PredictActivityCompletionOutputSchema = z.record(
-    z.string(), 
-    z.array(z.number()).describe("Öğrencinin tamamlayacağı tahmin edilen etkinliklerin indeks numaraları (0'dan başlayan).")
-).describe("Her öğrenci ID'si için tamamlanması öngörülen etkinlik indekslerinin bir listesi.");
-export type PredictActivityCompletionOutput = z.infer<typeof PredictActivityCompletionOutputSchema>;
+import { PredictActivityCompletionInputSchema, PredictActivityCompletionOutputSchema, PredictActivityCompletionInput, PredictActivityCompletionOutput } from '@/lib/types';
 
 
 export async function predictActivityCompletion(input: PredictActivityCompletionInput): Promise<PredictActivityCompletionOutput> {
