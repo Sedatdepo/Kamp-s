@@ -328,58 +328,65 @@ export interface RiskFactor {
   teacherId: string;
 }
 
+export interface Sibling {
+    name: string;
+    age: string;
+    relationship: 'oz' | 'uvey';
+}
+
 export interface InfoForm {
-  id: string; // Should be the same as studentId
+  id: string;
   studentId: string;
   submitted: boolean;
   authUid?: string;
-  
-  // Öğrenci Bilgileri
+
+  // ÖĞRENCİ BİLGİLERİ
+  tcKimlikNo?: string;
   birthDate?: string;
   birthPlace?: string;
+  talentArea?: ('genel' | 'resim' | 'muzik')[];
+  program?: ('destek1' | 'destek2' | 'destek3' | 'byf1' | 'byf2' | 'oyg' | 'proje')[];
+  educationType?: 'tam' | 'sabah' | 'ogle';
+  address?: string;
   studentPhone?: string;
   studentEmail?: string;
-  address?: string;
-  bloodType?: string;
+  
+  // VELİ BİLGİLERİ - BABA
+  fatherName?: string;
+  fatherStatus?: 'alive' | 'deceased';
+  fatherRelationship?: 'oz' | 'uvey';
+  fatherFamilyStatus?: 'birlikte' | 'ayri' | 'bosanmis';
+  fatherJob?: string;
+  fatherEducation?: string;
+  fatherWorkplace?: string;
+  fatherPhone?: string;
+  fatherIncome?: string;
+  fatherEmail?: string;
+
+  // VELİ BİLGİLERİ - ANNE
+  motherName?: string;
+  motherStatus?: 'alive' | 'deceased';
+  motherRelationship?: 'oz' | 'uvey';
+  motherFamilyStatus?: 'birlikte' | 'ayri' | 'bosanmis';
+  motherJob?: string;
+  motherEducation?: string;
+  motherWorkplace?: string;
+  motherPhone?: string;
+  motherIncome?: string;
+  motherEmail?: string;
+
+  // KARDEŞ BİLGİLERİ
+  siblings?: Sibling[];
+  hasDeceasedSibling?: 'yes' | 'no';
+
+  // SAĞLIK DURUMU
   height?: string;
   weight?: string;
-  foreignLanguage?: string;
-
-  // Sağlık Bilgileri
-  healthIssues?: string; // Sürekli Hastalık
-  pastIllnesses?: string; // Geçirdiği Hastalık/Ameliyat
-  healthDevice?: string; // Kullandığı Cihaz/Protez
-  
-  // Sosyo-Ekonomik Durum
-  hobbies?: string;
-  isWorking?: 'yes' | 'no';
-  commutesToSchoolBy?: 'walking' | 'service' | 'public' | 'private' | 'other';
-  economicStatus?: 'iyi' | 'orta' | 'kotu';
-  isHomeRented?: 'yes' | 'no';
-  hasOwnRoom?: 'yes' | 'no';
-
-  // Veli Bilgileri
-  guardianPhone?: string;
-
-  // Anne Bilgileri
-  motherStatus?: 'alive' | 'deceased' | 'unknown';
-  motherEducation?: string;
-  motherJob?: string;
-  
-  // Baba Bilgileri
-  fatherStatus?: 'alive' | 'deceased' | 'unknown';
-  fatherEducation?: string;
-  fatherJob?: string;
-
-  // Aile Bilgileri
-  familyLivesWith?: string; // Kiminle oturuyor
-  siblingsInfo?: string;
-  hasStepSibling?: 'yes' | 'no';
-  parentalAttitude?: string;
-  
-  // Özel Durum
-  hasDisability?: 'yes' | 'no';
-  isMartyrVeteranChild?: 'yes' | 'no';
+  bloodType?: string;
+  pastIllnesses?: string; // Hastalık, kaza vs.
+  healthIssues?: string; // Süreğen hastalık
+  medication?: string; // Sürekli ilaç
+  disabilityInfo?: string; // Herhangi bir engel
 }
 
 // --- ARCHIVABLE DOCUMENT TYPES ---
@@ -903,4 +910,3 @@ export type PredictActivityCompletionOutput = z.infer<typeof PredictActivityComp
 
     
     
-
