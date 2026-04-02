@@ -111,29 +111,6 @@ export default function StudentRiskFormPage() {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
-    if (student.riskFormSubmitted) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-8 flex items-center justify-center">
-                <main className="max-w-md w-full">
-                    <Card className="text-center p-8">
-                        <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
-                        <CardHeader>
-                            <CardTitle>Bildiriminiz Alındı</CardTitle>
-                            <CardDescription>Risk bildirim formunu daha önce doldurdunuz. Gerekli durumlarda öğretmeniniz sizinle iletişime geçecektir.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button asChild variant="outline">
-                                <Link href={`/portal/${classCode}`}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <Header studentMode={true} studentData={student} />

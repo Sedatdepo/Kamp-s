@@ -142,7 +142,7 @@ export default function StudentInfoFormPage() {
             await setDoc(infoFormRef, infoFormData, { merge: true });
 
             toast({ title: 'Başarıyla Kaydedildi!', description: 'Bilgi formunuz güncellendi.' });
-            // No longer need router.push, as useDoc will update the UI automatically.
+            router.push(`/portal/${classCode}`);
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Hata', description: 'Form kaydedilemedi.' });
@@ -155,29 +155,6 @@ export default function StudentInfoFormPage() {
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-    }
-
-    if (existingForm?.submitted) {
-        return (
-             <div className="min-h-screen bg-gray-50 p-4 sm:p-8 flex items-center justify-center">
-                <main className="max-w-md w-full">
-                    <Card className="text-center p-8">
-                        <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
-                        <CardHeader>
-                            <CardTitle>Bilgileriniz Alındı</CardTitle>
-                            <CardDescription>Bilgi formunu daha önce doldurdunuz. Verdiğiniz bilgiler için teşekkür ederiz.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button asChild variant="outline">
-                                <Link href={`/portal/${classCode}`}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Portala Geri Dön
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
-        );
     }
 
     return (
