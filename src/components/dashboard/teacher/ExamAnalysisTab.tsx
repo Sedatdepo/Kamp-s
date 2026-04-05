@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -44,6 +43,7 @@ interface ExamAnalysisTabProps {
   students: Student[];
   currentClass: Class | null;
   teacherProfile: TeacherProfile | null;
+  classes: Class[];
 }
 
 type ExamKey = 'exam1' | 'exam2';
@@ -165,12 +165,13 @@ function KazanımSelector({ onSelect }: { onSelect: (kazanim: string) => void })
     );
 }
 
-function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, selectedExam }: { 
+function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, selectedExam, classes }: { 
     teacherProfile: TeacherProfile | null, 
     currentClass: Class | null,
     examData: { student: Student; grade: number }[],
     selectedTerm: TermKey,
-    selectedExam: ExamKey
+    selectedExam: ExamKey,
+    classes: Class[]
 }) {
   const [formData, setFormData] = useState({
     il: "İstanbul",
@@ -250,6 +251,10 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({...prev, [name]: value}));
   };
 
   const handleKazanimChange = (index: number, field: string, value: string) => {
@@ -432,7 +437,16 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <input type="text" name="ders" value={formData.ders} onChange={handleInputChange} placeholder="Ders" className="p-2 border rounded" readOnly/>
               <input type="date" name="sinavTarihi" value={formData.sinavTarihi} onChange={handleInputChange} className="p-2 border rounded" />
-              <input type="text" name="sinif" value={formData.sinif} onChange={handleInputChange} placeholder="Sınıf" className="p-2 border rounded" readOnly/>
+              <Select value={formData.sinif} onValueChange={(value) => handleSelectChange('sinif', value)}>
+                <SelectTrigger className="p-2 border rounded">
+                  <SelectValue placeholder="Sınıf seçin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(classes || []).map((cls) => (
+                    <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <input type="text" name="sinavAdi" value={formData.sinavAdi} onChange={handleInputChange} placeholder="Sınav Adı" className="p-2 border rounded" readOnly/>
             </div>
           </div>
@@ -522,8 +536,7 @@ function ExamReportForm({ teacherProfile, currentClass, examData, selectedTerm, 
 }
 
 
-
-export function ExamAnalysisTab({ students, currentClass, teacherProfile }: ExamAnalysisTabProps) {
+export function ExamAnalysisTab({ students, currentClass, teacherProfile, classes }: ExamAnalysisTabProps) {
     const [selectedExamKey, setSelectedExamKey] = useState<string>('term1-exam1');
     const { db: localDb, setDb: setLocalDb, loading } = useDatabase();
     const { examAnalysisDocuments = [] } = localDb;
@@ -671,9 +684,9 @@ export function ExamAnalysisTab({ students, currentClass, teacherProfile }: Exam
             examData={examData}
             selectedTerm={term}
             selectedExam={exam}
+            classes={classes}
         />
       </div>
     </div>
   );
 }
-
