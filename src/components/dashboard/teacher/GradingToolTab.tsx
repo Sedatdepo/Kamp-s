@@ -40,8 +40,20 @@ export function GradingToolTab({
 }) {
   const { toast } = useToast();
   const { db } = useAuth();
+  
+  const getCurrentTerm = (): ActiveTerm => {
+    const today = new Date();
+    const month = today.getMonth(); // 0 = Jan, 8 = Sep
+    // Term 1: September (8) to January (0)
+    if (month >= 8 || month === 0) {
+      return 1;
+    }
+    // Term 2: February (1) to August (7)
+    return 2;
+  };
+
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(1);
+  const [activeTerm, setActiveTerm] = useState<ActiveTerm>(getCurrentTerm());
   const [activeTab, setActiveTab] = useState<ActiveGradingTab>(1);
   
   const [isGradingSettingsOpen, setGradingSettingsOpen] = useState(false);
