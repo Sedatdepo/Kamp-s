@@ -220,6 +220,7 @@ interface ProjectHomeworkEvaluationTabProps {
 
 export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile, currentClass }: ProjectHomeworkEvaluationTabProps) => {
     const { db } = useAuth();
+    const { toast } = useToast();
     
     const projectHomeworksQuery = useMemoFirebase(() => {
         if (!db || !classId) return null;
@@ -232,6 +233,10 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
     const [submissionsLoading, setSubmissionsLoading] = useState(true);
 
     const sortedStudents = useMemo(() => [...students].sort((a,b) => a.number.localeCompare(b.number, 'tr', {numeric: true})), [students]);
+    const sortedHomeworks = useMemo(() => {
+        if (!homeworks) return [];
+        return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    }, [homeworks]);
 
     const fetchSubmissions = useCallback(async () => {
         if (isLoading || !db || !classId || !homeworks || homeworks.length === 0) {
@@ -255,13 +260,28 @@ export const ProjectHomeworkEvaluationTab = ({ classId, students, teacherProfile
         fetchSubmissions();
     }, [fetchSubmissions]);
 
-    const sortedHomeworks = useMemo(() => {
-        if (!homeworks) return [];
-        return [...homeworks].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
-    }, [homeworks]);
-
     const handleDeleteHomework = async (homeworkId: string) => {
-        // ... (implementation is correct and doesn't need to change for this bug fix)
+        if (!db || !classId) return;
+        try {
+            const batch = writeBatch(db);
+            const homeworkRef = doc(db, 'classes', classId, 'homeworks', homeworkId);
+
+            const submissionsQuery = query(collection(db, 'classes', classId, 'homeworks', homeworkId, 'submissions'));
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            submissionsSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            
+            batch.delete(homeworkRef);
+            await batch.commit();
+            
+            toast({ 
+                title: "Ödev ve tüm teslimler silindi.",
+                description: "Ödevleri düzenlemek için 'Canlı Ödev Yönetimi' sekmesini kullanabilirsiniz."
+            });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Hata", description: "Ödev silinemedi." });
+        }
     };
 
     if (isLoading || submissionsLoading) return <Loader2 className="mx-auto my-8 h-8 w-8 animate-spin"/>;
