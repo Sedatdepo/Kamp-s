@@ -24,6 +24,7 @@ import { ALL_PLANS } from '@/lib/plans';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useDatabase } from '@/hooks/use-database';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // --- SABİT VERİLER (CONSTANTS) ---
 
@@ -334,6 +335,37 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
     if (isNaN(grade)) return [];
     return KABA_ITEMS.filter(k => k.grade === grade);
   }, [selectedBebGrade]);
+  
+  const areAllFilteredKazanimsSelected = useMemo(() => {
+      if (filteredKazanims.length === 0) return false;
+      return filteredKazanims.every(k => k && bepSelections.hasOwnProperty(k.id));
+  }, [filteredKazanims, bepSelections]);
+
+  const handleToggleAllKazanims = () => {
+      const allIds = filteredKazanims.map(k => k!.id);
+      if (areAllFilteredKazanimsSelected) {
+          // Deselect all visible
+          setBepSelections(prev => {
+              const newState = { ...prev };
+              allIds.forEach(id => delete newState[id]);
+              return newState;
+          });
+      } else {
+          // Select all visible
+          const newSelections: { [key: string]: any } = {};
+          filteredKazanims.forEach(k => {
+              if (k) {
+                newSelections[k.id] = {
+                    method: "Anlatım, Soru-Cevap",
+                    material: "Ders Kitabı, Akıllı Tahta",
+                    evaluation: "%60 Başarı"
+                };
+              }
+          });
+          setBepSelections(prev => ({ ...prev, ...newSelections }));
+      }
+  };
+
 
   // --- BEP ACTIONS ---
   
@@ -757,7 +789,12 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                             {/* 1. Kazanım Seçimi ve Detaylandırma */}
                             <div>
                                 <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><CheckSquare size={18} /> Kazanım Listesi ve Planlama</h3>
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox id="select-all-kazanim" checked={areAllFilteredKazanimsSelected} onCheckedChange={handleToggleAllKazanims} />
+                                      <label htmlFor="select-all-kazanim" className="font-bold text-slate-700 flex items-center gap-2 cursor-pointer">
+                                        <CheckSquare size={18} /> Kazanım Listesi ve Planlama
+                                      </label>
+                                    </div>
                                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">{Object.keys(bepSelections).length} Seçili</span>
                                 </div>
                                 <div className="space-y-3">
