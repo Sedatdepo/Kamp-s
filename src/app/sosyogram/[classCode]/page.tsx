@@ -40,7 +40,7 @@ export default function SociogramPage() {
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
 
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
+    const [enteredPassword, setEnteredPassword] = useState(''); // Renamed
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selections, setSelections] = useState<{[questionId: number]: string[]}>({});
@@ -99,7 +99,9 @@ export default function SociogramPage() {
         try {
             const studentRef = doc(db, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
-            if(studentSnap.exists() && studentSnap.data().number === enteredSchoolNumber.trim()) {
+            
+            // LOGIC CHANGE: Check password
+            if(studentSnap.exists() && studentSnap.data().password === enteredPassword.trim()) {
                 const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
                 if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
                     setError('Bu anketi daha önce doldurdunuz.');
@@ -166,7 +168,8 @@ export default function SociogramPage() {
                                     {sortedStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Input type="text" inputMode="numeric" placeholder="Okul Numarası" className="bg-slate-800 border-slate-700 text-white" value={enteredSchoolNumber} onChange={e => setEnteredSchoolNumber(e.target.value)} />
+                            {/* UI CHANGE: type="password" and placeholder */}
+                            <Input type="password" placeholder="Şifre (Genellikle okul numaranız)" className="bg-slate-800 border-slate-700 text-white" value={enteredPassword} onChange={e => setEnteredPassword(e.target.value)} />
                             <Button onClick={handleLogin} disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">
                                 {isProcessing ? <Loader2 className="animate-spin mr-2" /> : null} Giriş Yap
                             </Button>

@@ -27,7 +27,7 @@ export default function StudentLoginPage() {
     const [error, setError] = useState<string | null>(null);
     
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredSchoolNumber, setEnteredSchoolNumber] = useState('');
+    const [enteredPassword, setEnteredPassword] = useState(''); // Renamed from enteredSchoolNumber
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
@@ -82,8 +82,8 @@ export default function StudentLoginPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!selectedStudentId || !enteredSchoolNumber.trim()) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
+        if (!selectedStudentId || !enteredPassword.trim()) { // Changed from enteredSchoolNumber
+            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve şifrenizi girin.' });
             return;
         }
         
@@ -93,8 +93,9 @@ export default function StudentLoginPage() {
             const studentRef = doc(firestore, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
 
-            if (!studentSnap.exists() || studentSnap.data().number !== enteredSchoolNumber.trim()) {
-                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı.' });
+            // LOGIC CHANGE: Check password, not school number
+            if (!studentSnap.exists() || studentSnap.data().password !== enteredPassword.trim()) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı veya şifre yanlış.' });
                 setIsProcessing(false);
                 return;
             }
@@ -155,13 +156,13 @@ export default function StudentLoginPage() {
                         </div>
                         <div className="relative">
                             <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                            {/* UI CHANGE: type="password" and placeholder */}
                             <Input 
-                                type="text"
-                                inputMode="numeric" 
-                                placeholder="Okul Numaran" 
+                                type="password"
+                                placeholder="Şifre (Genellikle okul numaranız)" 
                                 className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
-                                value={enteredSchoolNumber}
-                                onChange={(e) => setEnteredSchoolNumber(e.target.value)}
+                                value={enteredPassword}
+                                onChange={(e) => setEnteredPassword(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                             />
                         </div>
