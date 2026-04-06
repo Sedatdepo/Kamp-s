@@ -166,7 +166,7 @@ export default function SociogramPage() {
                                     {sortedStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Input type="password" placeholder="Okul Numarası" className="bg-slate-800 border-slate-700 text-white" value={enteredSchoolNumber} onChange={e => setEnteredSchoolNumber(e.target.value)} />
+                            <Input type="text" inputMode="numeric" placeholder="Okul Numarası" className="bg-slate-800 border-slate-700 text-white" value={enteredSchoolNumber} onChange={e => setEnteredSchoolNumber(e.target.value)} />
                             <Button onClick={handleLogin} disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">
                                 {isProcessing ? <Loader2 className="animate-spin mr-2" /> : null} Giriş Yap
                             </Button>

@@ -156,7 +156,8 @@ export default function StudentLoginPage() {
                         <div className="relative">
                             <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <Input 
-                                type="password" 
+                                type="text"
+                                inputMode="numeric" 
                                 placeholder="Okul Numaran" 
                                 className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
                                 value={enteredSchoolNumber}

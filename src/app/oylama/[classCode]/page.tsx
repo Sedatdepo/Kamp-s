@@ -200,7 +200,8 @@ export default function OylamaPage() {
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input 
-                                    type="password" 
+                                    type="text"
+                                    inputMode="numeric"
                                     placeholder="Okul Numaran" 
                                     className="pl-9"
                                     value={enteredSchoolNumber}
