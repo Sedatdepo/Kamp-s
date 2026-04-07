@@ -843,7 +843,7 @@ export const StudentReportInputSchema = z.object({
   behaviorScore: z.number().describe('Öğrencinin davranış puanı (100 üzerinden).'),
   riskFactors: z.array(z.string()).describe('Öğrencinin kendisi için işaretlediği risk faktörlerinin listesi.'),
   infoFormData: z.string().describe('Öğrencinin doldurduğu bilgi formundan elde edilen kişisel ve ailevi bilgileri içeren metin.'),
-  teacherNotes: z.string().optional().describe('Öğretmenin öğrenci hakkındaki ek gözlem notları.'),
+  teacherNotes: z.string().optional().describe('Öğretmenin öğrenci hakkındaki ek gözlemleriniz.'),
 });
 export type StudentReportInput = z.infer<typeof StudentReportInputSchema>;
 
