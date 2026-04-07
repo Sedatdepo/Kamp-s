@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { Student, Class, TeacherProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch } from 'firebase/firestore';
+import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -133,6 +133,7 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
       const newStudentData: Omit<Student, 'id'> = {
         name: newStudentName,
         number: newStudentNumber,
+        password: newStudentNumber,
         classId: classId,
         teacherId: teacherId,
         risks: [],
@@ -167,7 +168,20 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
         const batch = writeBatch(db);
         studentsToAdd.forEach(student => {
             const newStudentRef = doc(collection(db, 'students'));
-            const newStudentData: Omit<Student, 'id'> = { ...student, classId: classId, teacherId: teacherId, risks: [], projectPreferences: [], assignedLesson: null, term1Grades: {}, term2Grades: {}, behaviorScore: 100, hasProject: false, needsPasswordChange: true };
+            const newStudentData: Omit<Student, 'id'> = { 
+                ...student,
+                password: student.number,
+                classId: classId,
+                teacherId: teacherId, 
+                risks: [], 
+                projectPreferences: [], 
+                assignedLesson: null, 
+                term1Grades: {}, 
+                term2Grades: {}, 
+                behaviorScore: 100, 
+                hasProject: false, 
+                needsPasswordChange: true 
+            };
             batch.set(newStudentRef, newStudentData);
         });
 
@@ -404,3 +418,5 @@ export function StudentListTab({ classId, students, currentClass, teacherProfile
     </div>
   );
 }
+
+    
