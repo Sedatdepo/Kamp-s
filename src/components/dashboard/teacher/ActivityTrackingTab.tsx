@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { 
   Download, 
   Save, 
@@ -12,7 +12,6 @@ import {
   Share2
 } from 'lucide-react';
 import { TeacherProfile, Class, Student, Criterion } from '@/lib/types';
-import { unitsData } from '@/components/dashboard/teacher/ActivityTrackingTab';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { predictActivityCompletion } from '@/ai/flows/predict-activity-completion-flow';
@@ -24,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 export function ActivityTrackingTab({ students, currentClass, teacherProfile }: {students: Student[], currentClass: Class | null, teacherProfile: TeacherProfile | null}) {
   const [activeTab, setActiveTab] = useState(unitsData[0].id);
   const [isGenerating, setIsGenerating] = useState(false);
-  const { db } = useAuth();
+  const { db, appUser } = useAuth();
   const { toast } = useToast();
 
   const classStudents = useMemo(() => {
