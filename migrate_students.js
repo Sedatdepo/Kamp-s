@@ -1,19 +1,29 @@
+// Bu komut dosyası, Firestore veritabanınızdaki 'students' koleksiyonunu tarar.
+// 'password' alanı boş olan veya hiç olmayan öğrencileri bulur.
+// Bu öğrencilerin şifresini, kendi okul numaraları olarak ayarlar ve
+// bir sonraki girişlerinde şifrelerini değiştirmeleri için bir işaret koyar.
+// Bu işlem, sadece şifresi olmayan öğrencileri etkiler, mevcut şifreleri değiştirmez.
 
-// Bu komut dosyası, Firestore veritabanınızdaki mevcut 'students' koleksiyonunu okur
-// ve her öğrenci için 'publicStudentInfos' adlı yeni bir koleksiyona
-// herkese açık bir kayıt oluşturur. Bu, öğrenci giriş sayfasının
-// güvenli bir şekilde çalışması için gereklidir.
+// --- NASIL KULLANILIR ---
+// 1. Firebase Admin SDK'sını yükleyin:
+//    Terminalde projenizin ana dizininde `npm install firebase-admin` komutunu çalıştırın.
+//
+// 2. Hizmet Hesabı Anahtarınızı İndirin:
+//    - Firebase projenizin ayarlarına gidin (sağ üstteki çark > Proje Ayarları).
+//    - "Hizmet Hesapları" sekmesine tıklayın.
+//    - "Yeni özel anahtar oluştur" butonuna tıklayın ve indirilen JSON dosyasını alın.
+//
+// 3. Anahtarı Projenize Ekleyin:
+//    - İndirdiğiniz JSON dosyasının adını `serviceAccountKey.json` olarak değiştirin.
+//    - Bu dosyayı, projenizin ana dizinine (bu dosyanın olduğu yere) taşıyın.
+//    - DİKKAT: Bu anahtar dosyasını ASLA herkese açık bir yere (örn: GitHub) yüklemeyin.
+//
+// 4. Komut Dosyasını Çalıştırın:
+//    - Terminalde `node migrate_students.js` komutunu çalıştırın.
 
-// Terminalden çalıştırmadan önce Firebase Admin SDK'sını yükleyin:
-// npm install firebase-admin
-
-// Gerekli Firebase Admin SDK modüllerini içe aktar
 const admin = require('firebase-admin');
 
-// Firebase projenizin hizmet hesabı anahtarını buraya ekleyin.
-// BU DOSYAYI GITHUB'A VEYA HERKESE AÇIK BİR YERE YÜKLEMEYİN!
-// Firebase konsolundan yeni bir anahtar oluşturabilirsiniz:
-// Proje Ayarları -> Hizmet Hesapları -> Yeni Özel Anahtar Oluştur
+// 2. Adımda indirdiğiniz hizmet hesabı anahtarını referans gösterin.
 const serviceAccount = require('./serviceAccountKey.json');
 
 // Firebase Admin SDK'sını başlat
@@ -23,44 +33,55 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-async function migrateStudents() {
-  console.log('Mevcut öğrenciler okunuyor...');
+async function migrateStudentPasswords() {
+  console.log('Veritabanındaki öğrenciler okunuyor...');
   
   const studentsSnapshot = await db.collection('students').get();
   
   if (studentsSnapshot.empty) {
-    console.log('Taşınacak öğrenci bulunamadı.');
+    console.log('Şifresi güncellenecek öğrenci bulunamadı.');
     return;
   }
 
-  console.log(`${studentsSnapshot.size} öğrenci bulundu. Veriler 'publicStudentInfos' koleksiyonuna kopyalanıyor...`);
-
   const batch = db.batch();
+  let updatedCount = 0;
 
   studentsSnapshot.forEach(doc => {
     const studentData = doc.data();
     
-    // Sadece gerekli ve hassas olmayan verileri al
-    const publicInfo = {
-      name: studentData.name,
-      classId: studentData.classId
-    };
-
-    // Yeni koleksiyonda, aynı öğrenci ID'si ile bir belge referansı oluştur
-    const publicInfoRef = db.collection('publicStudentInfos').doc(doc.id);
-    
-    batch.set(publicInfoRef, publicInfo);
+    // 'password' alanı yoksa, null ise veya boş bir string ise...
+    if (!studentData.password) {
+      const studentRef = db.collection('students').doc(doc.id);
+      
+      console.log(`Öğrenci güncelleniyor: ${studentData.name} (ID: ${doc.id}). Şifre, okul numarası olarak ayarlanıyor: ${studentData.number}`);
+      
+      // Şifreyi okul numarası olarak ayarla ve bir sonraki girişte şifre değişimini zorunlu kıl.
+      batch.update(studentRef, { 
+        password: studentData.number,
+        needsPasswordChange: true
+      });
+      
+      updatedCount++;
+    }
   });
+
+  if (updatedCount === 0) {
+    console.log('Tüm öğrencilerin şifresi zaten mevcut. Herhangi bir değişiklik yapılmadı.');
+    return;
+  }
 
   try {
     await batch.commit();
-    console.log('Veri taşıma başarıyla tamamlandı!');
-    console.log(`${studentsSnapshot.size} öğrenci bilgisi 'publicStudentInfos' koleksiyonuna eklendi.`);
+    console.log(`\nVeri taşıma başarıyla tamamlandı!`);
+    console.log(`${updatedCount} öğrencinin şifresi güncellendi.`);
+    console.log("Şifreleri artık okul numaraları olarak ayarlandı ve bir sonraki girişlerinde yeni şifre oluşturmaları istenecek.");
   } catch (error) {
-    console.error('Veri taşıma sırasında bir hata oluştu:', error);
+    console.error('Toplu güncelleme sırasında bir hata oluştu:', error);
   }
 }
 
-migrateStudents().catch(error => {
+migrateStudentPasswords().catch(error => {
   console.error('Komut dosyası çalıştırılırken beklenmedik bir hata oluştu:', error);
 });
+
+    
