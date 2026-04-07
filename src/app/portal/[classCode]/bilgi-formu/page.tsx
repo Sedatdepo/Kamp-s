@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -155,20 +154,16 @@ export default function StudentInfoFormPage() {
     const watchEvSahipligi = form.watch("evSahipligi");
 
     useEffect(() => {
-        try {
-            const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) {
-                router.replace(`/giris/${classCode}`); return;
+        const authData = sessionStorage.getItem('student_portal_auth');
+        if (authData) {
+            try {
+                const { student: storedStudent } = JSON.parse(authData);
+                setStudent(storedStudent);
+            } catch (e) {
+                console.error("Failed to parse student auth data", e);
             }
-            const { student: storedStudent, classCode: storedClassCode } = JSON.parse(authData);
-            if (storedClassCode !== classCode || !storedStudent) {
-                router.replace(`/giris/${classCode}`); return;
-            }
-            setStudent(storedStudent);
-        } catch (error) {
-            router.replace(`/giris/${classCode}`);
         }
-    }, [classCode, router]);
+    }, []);
 
     useEffect(() => {
         if (isUserLoading || !student?.id || !db) return;

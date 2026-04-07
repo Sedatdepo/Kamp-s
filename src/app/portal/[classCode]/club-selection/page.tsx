@@ -28,28 +28,22 @@ export default function StudentClubSelectionPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        try {
-            const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) {
-                router.replace(`/giris/${classCode}`);
-                return;
+        const authData = sessionStorage.getItem('student_portal_auth');
+        if (authData) {
+            try {
+                const { student: storedStudent } = JSON.parse(authData);
+                setStudent(storedStudent);
+                const currentPrefs = storedStudent.clubPreferences || [];
+                const initialPrefs = Array(5).fill('');
+                currentPrefs.forEach((p: string, i: number) => {
+                    if (i < 5) initialPrefs[i] = p;
+                });
+                setSelectedPreferences(initialPrefs);
+            } catch (e) {
+                console.error("Failed to parse student auth data", e);
             }
-            const { student: storedStudent, classCode: storedClassCode } = JSON.parse(authData);
-            if (storedClassCode !== classCode || !storedStudent) {
-                router.replace(`/giris/${classCode}`);
-                return;
-            }
-            setStudent(storedStudent);
-            const currentPrefs = storedStudent.clubPreferences || [];
-            const initialPrefs = Array(5).fill('');
-            currentPrefs.forEach((p: string, i: number) => {
-                if (i < 5) initialPrefs[i] = p;
-            });
-            setSelectedPreferences(initialPrefs);
-        } catch (error) {
-            router.replace(`/giris/${classCode}`);
         }
-    }, [classCode, router]);
+    }, []);
 
     // Real-time listener for student data
     useEffect(() => {

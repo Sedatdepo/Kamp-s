@@ -117,16 +117,16 @@ export default function StudentPerformanceHomeworkPage() {
     const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
     useEffect(() => {
-        try {
-            const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) throw new Error("Auth data not found");
-            const { student: storedStudent } = JSON.parse(authData);
-            if (!storedStudent) throw new Error("Student data not found in auth");
-            setStudent(storedStudent);
-        } catch (error) {
-            router.replace(`/giris/${classCode}`);
+        const authData = sessionStorage.getItem('student_portal_auth');
+        if (authData) {
+            try {
+                const { student: storedStudent } = JSON.parse(authData);
+                setStudent(storedStudent);
+            } catch (e) {
+                console.error("Failed to parse student auth data", e);
+            }
         }
-    }, [classCode, router]);
+    }, []);
 
     // Real-time listener for student data
     useEffect(() => {

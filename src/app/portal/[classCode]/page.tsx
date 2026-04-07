@@ -45,20 +45,15 @@ export default function StudentPortalPage() {
 
     // Initial load from sessionStorage
     useEffect(() => {
-        try {
-            const authData = sessionStorage.getItem('student_portal_auth');
-            if (!authData) {
+        const authData = sessionStorage.getItem('student_portal_auth');
+        if (authData) {
+            try {
+                const { student: storedStudent } = JSON.parse(authData);
+                setStudent(storedStudent);
+            } catch (e) {
+                console.error("Failed to parse student auth data from sessionStorage", e);
                 router.replace(`/giris/${classCode}`);
-                return;
             }
-            const { student: storedStudent, classCode: storedClassCode } = JSON.parse(authData);
-            if (storedClassCode !== classCode || !storedStudent) {
-                router.replace(`/giris/${classCode}`);
-                return;
-            }
-            setStudent(storedStudent);
-        } catch (error) {
-            router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
     
