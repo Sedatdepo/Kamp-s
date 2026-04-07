@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -602,7 +603,7 @@ export function TeacherDashboard() {
                 <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
                 <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
                 <MenuCard icon={<Drama />} title="Sosyal Kulüpler" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
-                <MenuCard icon={<Activity />} title="Etkinlik Takip Çizelgesi" description="Ünite ve etkinlik öğrenci takibi." onClick={() => setActiveTab('activity-tracking')} />
+                <MenuCard icon={<Activity />} title="Etkinlik Takip" description="Öğrenci etkinliklerini takip edin." onClick={() => setActiveTab('activity-tracking')} />
             </div>
         </div>
       );

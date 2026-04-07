@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase'
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Student, Class, TeacherProfile, Homework } from '@/lib/types';
 // EKSİK OLAN TÜM İKONLAR EKLENDİ (Users, AlertTriangle dahil)
-import { Loader2, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, X, Star, Grid, ListChecks, MessageCircle, Trophy, Vote, Users, AlertTriangle } from 'lucide-react';
+import { Loader2, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, X, Star, Grid, ListChecks, MessageCircle, Trophy, Vote, Users, AlertTriangle, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/dashboard/Header';
@@ -162,7 +163,7 @@ export default function StudentPortalPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <ModuleCard title="Notlarım" icon={<GraduationCap className="text-emerald-500" />} href={`/portal/${classCode}/notlarim`} isPublished={currentClass.isGradesPublished} />
-                    <ModuleCard title="Öğretmene Mesaj" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
+                    <ModuleCard title="Mesajlar" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
                     <ModuleCard title="Oturma Planı" icon={<Grid className="text-blue-500" />} href={`/view/seating-plan/${classCode}`} isPublished={currentClass.isSeatingPlanPublished} />
                     <ModuleCard title="Nöbet Listesi" icon={<ListChecks className="text-green-500" />} href={`/view/duty-roster/${classCode}`} isPublished={currentClass.isDutyRosterPublished} />
                     <ModuleCard title="Günlük Ödevler" icon={<BookText className="text-orange-500" />} href={`/portal/${classCode}/regular-homeworks`} isPublished={currentClass.isRegularHomeworkPublished} />
@@ -177,6 +178,7 @@ export default function StudentPortalPage() {
                     <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                     <ModuleCard title="Sınıf Seçimi Oylaması" icon={<Vote className="text-red-500" />} href={`/oylama/${classCode}`} isPublished={currentClass.isElectionActive} />
                     <ModuleCard title="Duyurular" icon={<MessageCircle className="text-cyan-500" />} href={`/view/announcements/${classCode}`} isPublished={currentClass.isAnnouncementsPublished} />
+                    <ModuleCard title="Etkinlik Takip" icon={<Activity className="text-lime-500" />} href={`/portal/${classCode}/etkinlik-takip`} isPublished={currentClass.isActivityTrackingPublished} />
                 </div>
             </main>
             <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-10">

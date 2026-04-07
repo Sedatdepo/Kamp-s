@@ -235,6 +235,8 @@ export interface Class {
   seatingPlanRows?: number;
   seatingPlanCols?: number;
   sociogramSurvey?: SociogramSurvey;
+  isActivityTrackingPublished?: boolean;
+  canStudentEditActivityTracking?: boolean;
 }
 
 export type GradingScores = {
@@ -291,6 +293,7 @@ export interface Student {
   badges?: AwardedBadge[]; // Gamification badge IDs
 
   hasProject?: boolean;
+  password?: string;
   needsPasswordChange?: boolean;
   
   // New Attendance Field
@@ -303,6 +306,9 @@ export interface Student {
   positiveSelections?: string[]; 
   negativeSelections?: string[];
   leadershipSelections?: string[];
+
+  // Activity Tracking
+  activityChecks?: { [key: string]: boolean };
 }
 
 export interface Lesson {
