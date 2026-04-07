@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -113,8 +112,8 @@ export default function OylamaPage() {
             let passwordMatches = false;
 
             if (studentData.password) {
-                passwordMatches = studentData.password === enteredPassword.trim();
-            } else if (studentData.number === enteredPassword.trim()) {
+                passwordMatches = String(studentData.password) === enteredPassword.trim();
+            } else if (String(studentData.number) === enteredPassword.trim()) {
                 passwordMatches = true;
                 // No need to set password here, as voting is a one-time action
             }
@@ -271,3 +270,4 @@ export default function OylamaPage() {
         </div>
     );
 }
+    

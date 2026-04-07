@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -106,10 +105,10 @@ export default function StudentLoginPage() {
 
             // Check if password field exists and matches
             if (studentData.password) {
-                passwordMatches = studentData.password === enteredPassword.trim();
+                passwordMatches = String(studentData.password) === enteredPassword.trim();
             } 
             // If password field doesn't exist, fall back to checking the school number
-            else if (studentData.number === enteredPassword.trim()) {
+            else if (String(studentData.number) === enteredPassword.trim()) {
                 passwordMatches = true;
                 shouldSetInitialPassword = true;
             }
@@ -208,3 +207,4 @@ export default function StudentLoginPage() {
         </div>
     );
 }
+    
