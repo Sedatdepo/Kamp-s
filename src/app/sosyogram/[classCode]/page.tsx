@@ -40,7 +40,7 @@ export default function SociogramPage() {
     const [step, setStep] = useState<'login' | 'survey' | 'voted' | 'error'>('login');
 
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredPassword, setEnteredPassword] = useState(''); // Renamed
+    const [enteredPassword, setEnteredPassword] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selections, setSelections] = useState<{[questionId: number]: string[]}>({});
@@ -100,7 +100,6 @@ export default function SociogramPage() {
             const studentRef = doc(db, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
             
-            // LOGIC CHANGE: Check password
             if(studentSnap.exists() && studentSnap.data().password === enteredPassword.trim()) {
                 const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
                 if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
@@ -161,18 +160,19 @@ export default function SociogramPage() {
                 {step === 'login' && (
                     <Card className="bg-slate-900/50 border-white/10 text-white">
                         <CardHeader><CardTitle>Sosyogram Girişi</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white"><SelectValue placeholder="İsmini seç..." /></SelectTrigger>
-                                <SelectContent className="bg-slate-800 text-white border-slate-700">
-                                    {sortedStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            {/* UI CHANGE: type="password" and placeholder */}
-                            <Input type="password" placeholder="Şifre (Genellikle okul numaranız)" className="bg-slate-800 border-slate-700 text-white" value={enteredPassword} onChange={e => setEnteredPassword(e.target.value)} />
-                            <Button onClick={handleLogin} disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">
-                                {isProcessing ? <Loader2 className="animate-spin mr-2" /> : null} Giriş Yap
-                            </Button>
+                        <CardContent>
+                            <form onSubmit={(e) => { e.preventDefault(); handleLogin();}} className="space-y-4">
+                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white"><SelectValue placeholder="İsmini seç..." /></SelectTrigger>
+                                    <SelectContent className="bg-slate-800 text-white border-slate-700">
+                                        {sortedStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Input type="password" placeholder="Şifre (Genellikle okul numaranız)" className="bg-slate-800 border-slate-700 text-white" value={enteredPassword} onChange={e => setEnteredPassword(e.target.value)} />
+                                <Button type="submit" disabled={isProcessing} className="w-full bg-cyan-600 hover:bg-cyan-700">
+                                    {isProcessing ? <Loader2 className="animate-spin mr-2" /> : null} Giriş Yap
+                                </Button>
+                            </form>
                         </CardContent>
                     </Card>
                 )}
@@ -205,3 +205,4 @@ export default function SociogramPage() {
         </div>
     );
 }
+    

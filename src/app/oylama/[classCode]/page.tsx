@@ -28,7 +28,7 @@ export default function OylamaPage() {
     const [step, setStep] = useState<'login' | 'vote' | 'voted' | 'error'>('login');
 
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredPassword, setEnteredPassword] = useState(''); // Renamed from enteredSchoolNumber
+    const [enteredPassword, setEnteredPassword] = useState('');
     const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -91,7 +91,7 @@ export default function OylamaPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!selectedStudentId || !enteredPassword.trim()) { // Changed from enteredSchoolNumber
+        if (!selectedStudentId || !enteredPassword.trim()) {
             toast({ variant: 'destructive', title: 'Lütfen adınızı seçin ve şifrenizi girin.' });
             return;
         }
@@ -102,7 +102,6 @@ export default function OylamaPage() {
             const studentRef = doc(firestore, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
 
-            // LOGIC CHANGE: Check password
             if (!studentSnap.exists() || studentSnap.data().password !== enteredPassword.trim()) {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgiler yanlış.' });
                 setIsProcessing(false);
@@ -184,36 +183,36 @@ export default function OylamaPage() {
                             <CardTitle className="flex items-center gap-2"><User /> Öğrenci Girişi</CardTitle>
                             <CardDescription>Oy kullanmak için lütfen bilgilerinizi girin.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                    <SelectTrigger className="pl-9">
-                                        <SelectValue placeholder="Adını listeden seç..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {students.map(student => (
-                                            <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="relative">
-                                <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                {/* UI CHANGE: type="password" and placeholder */}
-                                <Input 
-                                    type="password"
-                                    placeholder="Şifre (Genellikle okul numaranız)" 
-                                    className="pl-9"
-                                    value={enteredPassword}
-                                    onChange={(e) => setEnteredPassword(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                                />
-                            </div>
-                            <Button onClick={handleLogin} disabled={isProcessing} className="w-full">
-                                {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
-                                Giriş Yap ve Oy Kullan
-                            </Button>
+                        <CardContent>
+                            <form onSubmit={(e) => {e.preventDefault(); handleLogin();}} className="space-y-4">
+                                <div className="relative">
+                                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                                    <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                        <SelectTrigger className="pl-9">
+                                            <SelectValue placeholder="Adını listeden seç..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {students.map(student => (
+                                                <SelectItem key={student.id} value={student.id}>({student.number}) {student.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="relative">
+                                    <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        type="password"
+                                        placeholder="Şifre (Genellikle okul numaranız)" 
+                                        className="pl-9"
+                                        value={enteredPassword}
+                                        onChange={(e) => setEnteredPassword(e.target.value)}
+                                    />
+                                </div>
+                                <Button type="submit" disabled={isProcessing} className="w-full">
+                                    {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                                    Giriş Yap ve Oy Kullan
+                                </Button>
+                            </form>
                         </CardContent>
                     </Card>
                 )}
@@ -255,3 +254,4 @@ export default function OylamaPage() {
         </div>
     );
 }
+    

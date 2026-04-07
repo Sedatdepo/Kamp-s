@@ -27,7 +27,7 @@ export default function StudentLoginPage() {
     const [error, setError] = useState<string | null>(null);
     
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredPassword, setEnteredPassword] = useState(''); // Renamed from enteredSchoolNumber
+    const [enteredPassword, setEnteredPassword] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
@@ -82,7 +82,7 @@ export default function StudentLoginPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!selectedStudentId || !enteredPassword.trim()) { // Changed from enteredSchoolNumber
+        if (!selectedStudentId || !enteredPassword.trim()) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve şifrenizi girin.' });
             return;
         }
@@ -93,7 +93,6 @@ export default function StudentLoginPage() {
             const studentRef = doc(firestore, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
 
-            // LOGIC CHANGE: Check password, not school number
             if (!studentSnap.exists() || studentSnap.data().password !== enteredPassword.trim()) {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı veya şifre yanlış.' });
                 setIsProcessing(false);
@@ -140,39 +139,39 @@ export default function StudentLoginPage() {
                         <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline text-white"><UserIcon /> Öğrenci Girişi</CardTitle>
                         <CardDescription className="text-center text-slate-400">Portala erişmek için bilgilerinizi girin.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="relative">
-                            <UserIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 z-10" />
-                             <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                                <SelectTrigger className="pl-9 bg-slate-800 border-slate-700 text-white focus:ring-cyan-500">
-                                    <SelectValue placeholder="Adını listeden seç..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                                    {students.map(student => (
-                                        <SelectItem key={student.id} value={student.id} className="focus:bg-slate-700 focus:text-white">({student.number}) {student.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="relative">
-                            <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                            {/* UI CHANGE: type="password" and placeholder */}
-                            <Input 
-                                type="password"
-                                placeholder="Şifre (Genellikle okul numaranız)" 
-                                className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
-                                value={enteredPassword}
-                                onChange={(e) => setEnteredPassword(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                            />
-                        </div>
-                        <Button 
-                            onClick={handleLogin} 
-                            disabled={isProcessing} 
-                            className="w-full h-12 gap-2 text-lg font-semibold bg-cyan-600 hover:bg-cyan-700 text-white border-none shadow-lg shadow-cyan-900/20 transition-all"
-                        >
-                             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogIn size={20}/>} Giriş Yap
-                        </Button>
+                    <CardContent>
+                        <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-4">
+                            <div className="relative">
+                                <UserIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400 z-10" />
+                                 <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                                    <SelectTrigger className="pl-9 bg-slate-800 border-slate-700 text-white focus:ring-cyan-500">
+                                        <SelectValue placeholder="Adını listeden seç..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                                        {students.map(student => (
+                                            <SelectItem key={student.id} value={student.id} className="focus:bg-slate-700 focus:text-white">({student.number}) {student.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="relative">
+                                <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                <Input 
+                                    type="password"
+                                    placeholder="Şifre (Genellikle okul numaranız)" 
+                                    className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
+                                    value={enteredPassword}
+                                    onChange={(e) => setEnteredPassword(e.target.value)}
+                                />
+                            </div>
+                            <Button 
+                                type="submit"
+                                disabled={isProcessing} 
+                                className="w-full h-12 gap-2 text-lg font-semibold bg-cyan-600 hover:bg-cyan-700 text-white border-none shadow-lg shadow-cyan-900/20 transition-all"
+                            >
+                                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogIn size={20}/>} Giriş Yap
+                            </Button>
+                        </form>
                     </CardContent>
                 </Card>
                 <p className="text-center text-xs text-slate-500 mt-8">
@@ -182,3 +181,4 @@ export default function StudentLoginPage() {
         </div>
     );
 }
+    
