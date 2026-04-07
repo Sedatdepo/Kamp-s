@@ -103,14 +103,15 @@ export default function StudentLoginPage() {
             let passwordMatches = false;
             let shouldSetInitialPassword = false;
 
-            // Check if password field exists and matches
+            // Önce kayıtlı şifreyi kontrol et
             if (studentData.password) {
                 passwordMatches = String(studentData.password) === enteredPassword.trim();
-            } 
-            // If password field doesn't exist, fall back to checking the school number
-            else if (String(studentData.number) === enteredPassword.trim()) {
+            }
+            
+            // Eğer kayıtlı şifre eşleşmezse veya yoksa, okul numarasını dene
+            if (!passwordMatches && String(studentData.number) === enteredPassword.trim()) {
                 passwordMatches = true;
-                shouldSetInitialPassword = true;
+                shouldSetInitialPassword = true; // Şifreyi okul numarası olarak kaydet
             }
 
             if (!passwordMatches) {

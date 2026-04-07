@@ -113,9 +113,9 @@ export default function OylamaPage() {
 
             if (studentData.password) {
                 passwordMatches = String(studentData.password) === enteredPassword.trim();
-            } else if (String(studentData.number) === enteredPassword.trim()) {
+            }
+            if (!passwordMatches && String(studentData.number) === enteredPassword.trim()) {
                 passwordMatches = true;
-                // No need to set password here, as voting is a one-time action
             }
 
             if (!passwordMatches) {

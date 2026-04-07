@@ -114,7 +114,8 @@ export default function SociogramPage() {
 
             if (studentData.password) {
                 passwordMatches = String(studentData.password) === enteredPassword.trim();
-            } else if (String(studentData.number) === enteredPassword.trim()) {
+            }
+            if (!passwordMatches && String(studentData.number) === enteredPassword.trim()) {
                 passwordMatches = true;
             }
 
