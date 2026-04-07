@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -102,13 +103,29 @@ export default function OylamaPage() {
             const studentRef = doc(firestore, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
 
-            if (!studentSnap.exists() || studentSnap.data().password !== enteredPassword.trim()) {
+            if (!studentSnap.exists()) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci bulunamadı.' });
+                setIsProcessing(false);
+                return;
+            }
+
+            const studentData = studentSnap.data();
+            let passwordMatches = false;
+
+            if (studentData.password) {
+                passwordMatches = studentData.password === enteredPassword.trim();
+            } else if (studentData.number === enteredPassword.trim()) {
+                passwordMatches = true;
+                // No need to set password here, as voting is a one-time action
+            }
+
+            if (!passwordMatches) {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgiler yanlış.' });
                 setIsProcessing(false);
                 return;
             }
 
-            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
+            const student = { id: studentSnap.id, ...studentData } as Student;
             
             if (currentClass.election?.votedStudentIds?.includes(student.id)) {
                 setError('Bu seçim için zaten oy kullandınız.');
@@ -254,4 +271,3 @@ export default function OylamaPage() {
         </div>
     );
 }
-    

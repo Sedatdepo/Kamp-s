@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -93,17 +94,43 @@ export default function StudentLoginPage() {
             const studentRef = doc(firestore, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
 
-            if (!studentSnap.exists() || studentSnap.data().password !== enteredPassword.trim()) {
-                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen bilgilerle eşleşen öğrenci bulunamadı veya şifre yanlış.' });
+            if (!studentSnap.exists()) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci bulunamadı.' });
+                setIsProcessing(false);
+                return;
+            }
+
+            const studentData = studentSnap.data();
+            let passwordMatches = false;
+            let shouldSetInitialPassword = false;
+
+            // Check if password field exists and matches
+            if (studentData.password) {
+                passwordMatches = studentData.password === enteredPassword.trim();
+            } 
+            // If password field doesn't exist, fall back to checking the school number
+            else if (studentData.number === enteredPassword.trim()) {
+                passwordMatches = true;
+                shouldSetInitialPassword = true;
+            }
+
+            if (!passwordMatches) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen şifre yanlış.' });
                 setIsProcessing(false);
                 return;
             }
             
-            const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
+            const student = { id: studentSnap.id, ...studentData } as Student;
 
-            await updateDoc(studentRef, { authUid: user.uid });
+            const updates: { [key: string]: any } = { authUid: user.uid };
+            if (shouldSetInitialPassword) {
+                updates.password = studentData.number;
+                updates.needsPasswordChange = true;
+            }
+
+            await updateDoc(studentRef, updates);
             
-            const studentForSession = { ...student, authUid: user.uid };
+            const studentForSession = { ...student, ...updates };
             sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
             router.push(`/portal/${classCode}`);
 
@@ -181,4 +208,3 @@ export default function StudentLoginPage() {
         </div>
     );
 }
-    

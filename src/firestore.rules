@@ -38,10 +38,13 @@ service cloud.firestore {
     
     match /students/{studentId} {
       allow read: if true; 
-      allow update: if request.auth != null && request.auth.uid == resource.data.authUid;
+      // Allow update if the authUid is not set yet, or if it matches the current user.
+      // This allows a student to "claim" their document on first login.
+      allow update: if request.auth != null && (resource.data.authUid == null || request.auth.uid == resource.data.authUid);
     }
 
     match /infoForms/{formId} {
+        // The studentId is the same as the formId
         allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     

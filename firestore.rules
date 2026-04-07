@@ -4,67 +4,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Function to check if the user has a 'teacher' document.
     function isTeacher() {
       // It's safe to check existence because of the specific rule on /teachers/{teacherId}
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
-    // This rule is CRITICAL for the isTeacher() function to work.
-    // It allows any authenticated user to check for the existence of a teacher document.
+    // --- CORE TEACHER RULE ---
+    // This rule is CRITICAL. It allows the isTeacher() function to work without recursion.
     match /teachers/{teacherId} {
-      allow get: if request.auth != null;
-      // Only the teacher themselves can write to their own profile.
-      allow write: if isTeacher() && request.auth.uid == teacherId;
+      allow get: if request.auth != null; // ANY authenticated user can check if a user is a teacher.
+      allow write: if isTeacher() && request.auth.uid == teacherId; // Only a teacher can write to their own profile.
     }
     
     // --- GENERAL RULE FOR TEACHERS ---
-    // This single rule grants teachers full read and write access to the entire database,
-    // except for the /teachers collection which is handled by the more specific rule above.
+    // This gives teachers god-mode access to everything EXCEPT the /teachers collection,
+    // which is handled by the more specific rule above.
     match /{document=**} {
       allow read, write: if isTeacher();
     }
 
-    // --- STUDENT & PUBLIC-ONLY RULES ---
-    // The rules below are now ONLY for non-teacher users. 
-    // The `isTeacher()` check is now completely handled by the wildcard rule above.
+    // --- STUDENT & PUBLIC RULES (Evaluated if not a teacher) ---
 
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
-    // Students can read general course info
     match /lessons/{lessonId} { allow get: if request.auth != null; }
     match /clubs/{clubId} { allow get: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
+    
     match /classes/{classId} { 
       allow get: if request.auth != null; 
     }
     
-    // Students can read any student profile (for sociogram, etc.) but only update their own
     match /students/{studentId} {
-      allow read: if request.auth != null; 
-      allow update: if request.auth != null && request.auth.uid == resource.data.authUid;
+      allow read: if true; 
+      // Allow update if the authUid is not set yet, or if it matches the current user.
+      // This allows a student to "claim" their document on first login.
+      allow update: if request.auth != null && (resource.data.authUid == null || request.auth.uid == resource.data.authUid);
     }
 
-    // Students can read and write their own info form
     match /infoForms/{formId} {
         // The studentId is the same as the formId
         allow read, write: if request.auth != null && get(/databases/$(database)/documents/students/$(formId)).data.authUid == request.auth.uid;
     }
     
-    // Students can get homeworks assigned to their class
     match /classes/{classId}/homeworks/{homeworkId} {
         allow get: if request.auth != null;
     }
     
-    // Students can create submissions for themselves and read their own submissions
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create: if request.auth != null && request.resource.data.studentAuthUid == request.auth.uid;
       allow read: if request.auth != null && resource.data.studentAuthUid == request.auth.uid;
     }
     
-    // Students can interact with messages they are a part of
     match /messages/{messageId} {
+      // Teacher access is covered by the wildcard. This is for students.
       allow read, create: if request.auth != null && request.auth.uid in resource.data.participants;
       allow list: if request.auth != null && request.query.where['participants']['array-contains'] == request.auth.uid;
       allow update: if request.auth != null && resource.data.receiverId == request.auth.uid && resource.data.isRead == true;

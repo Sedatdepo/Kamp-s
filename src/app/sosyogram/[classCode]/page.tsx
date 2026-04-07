@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -94,14 +95,32 @@ export default function SociogramPage() {
     }, [isUserLoading, user, db, auth, classCode]);
 
     const handleLogin = async () => {
-        if (!currentClass || !db || !selectedStudentId) return;
+        if (!currentClass || !db || !selectedStudentId) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen öğrenci seçin.' });
+            return;
+        }
         setIsProcessing(true);
         try {
             const studentRef = doc(db, 'students', selectedStudentId);
             const studentSnap = await getDoc(studentRef);
             
-            if(studentSnap.exists() && studentSnap.data().password === enteredPassword.trim()) {
-                const student = { id: studentSnap.id, ...studentSnap.data() } as Student;
+            if (!studentSnap.exists()) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Öğrenci bulunamadı.' });
+                setIsProcessing(false);
+                return;
+            }
+            
+            const studentData = studentSnap.data();
+            let passwordMatches = false;
+
+            if (studentData.password) {
+                passwordMatches = studentData.password === enteredPassword.trim();
+            } else if (studentData.number === enteredPassword.trim()) {
+                passwordMatches = true;
+            }
+
+            if(passwordMatches) {
+                const student = { id: studentSnap.id, ...studentData } as Student;
                 if (student.positiveSelections?.length || student.negativeSelections?.length || student.leadershipSelections?.length) {
                     setError('Bu anketi daha önce doldurdunuz.');
                     setStep('error');
@@ -205,4 +224,3 @@ export default function SociogramPage() {
         </div>
     );
 }
-    
