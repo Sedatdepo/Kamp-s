@@ -51,7 +51,7 @@ export default function StudentMessagingPage() {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const authData = sessionStorage.getItem('student_portal_auth');
+        const authData = localStorage.getItem('student_portal_auth');
         if (authData) {
             try {
                 const { student: storedStudent } = JSON.parse(authData);

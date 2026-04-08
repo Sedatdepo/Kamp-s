@@ -29,7 +29,7 @@ export default function StudentProjectSelectionPage() {
 
     // 1. Initial load from session storage
     useEffect(() => {
-        const authData = sessionStorage.getItem('student_portal_auth');
+        const authData = localStorage.getItem('student_portal_auth');
         if (authData) {
             try {
                 const { student: storedStudent } = JSON.parse(authData);
@@ -63,9 +63,9 @@ export default function StudentProjectSelectionPage() {
                 setSelectedPreferences(newPrefs);
 
                 try {
-                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    const authData = JSON.parse(localStorage.getItem('student_portal_auth') || '{}');
                     authData.student = liveStudentData;
-                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                    localStorage.setItem('student_portal_auth', JSON.stringify(authData));
                 } catch (e) {
                     console.error("Could not update session storage on project selection page", e);
                 }
@@ -116,9 +116,9 @@ export default function StudentProjectSelectionPage() {
             });
             
             try {
-                const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                const authData = JSON.parse(localStorage.getItem('student_portal_auth') || '{}');
                 authData.student.projectPreferences = finalPreferences;
-                sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                localStorage.setItem('student_portal_auth', JSON.stringify(authData));
             } catch (e) {
                 console.error("Could not update session storage on project selection page", e);
             }

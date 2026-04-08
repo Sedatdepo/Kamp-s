@@ -1,15 +1,13 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
-import { Student, Class, TeacherProfile, Homework } from '@/lib/types';
-// EKSİK OLAN TÜM İKONLAR EKLENDİ (Users, AlertTriangle dahil)
-import { Loader2, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, X, Star, Grid, ListChecks, MessageCircle, Trophy, Vote, Users, AlertTriangle, Activity } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Student, Class, Homework } from '@/lib/types';
+import { Loader2, BookText, ClipboardList, Drama, FileSignature, MessagesSquare, GraduationCap, Megaphone, Award, X, Grid, ListChecks, MessageCircle, Trophy, Vote, Users, AlertTriangle, Activity } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/dashboard/Header';
 import Link from 'next/link';
@@ -45,21 +43,22 @@ export default function StudentPortalPage() {
         setDismissedNotifications(prev => [...prev, notificationId]);
     };
 
-    // Initial load from sessionStorage
     useEffect(() => {
-        const authData = sessionStorage.getItem('student_portal_auth');
+        // localStorage'dan okuma yapıyoruz
+        const authData = localStorage.getItem('student_portal_auth');
         if (authData) {
             try {
                 const { student: storedStudent } = JSON.parse(authData);
                 setStudent(storedStudent);
             } catch (e) {
-                console.error("Failed to parse student auth data from sessionStorage", e);
+                console.error("Failed to parse student auth data", e);
                 router.replace(`/giris/${classCode}`);
             }
+        } else {
+            router.replace(`/giris/${classCode}`);
         }
     }, [classCode, router]);
     
-    // Real-time listener for student data
     useEffect(() => {
         if (isUserLoading || !student?.id || !db) return;
 
@@ -86,12 +85,6 @@ export default function StudentPortalPage() {
     }, [db, currentClass?.id, student?.id]);
     const { data: allHomeworks, isLoading: homeworksLoading } = useCollection<Homework>(homeworksQuery);
 
-    const recentHomeworks = useMemo(() => {
-        if (!allHomeworks) return [];
-        return [...allHomeworks].sort((a,b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime()).slice(0, 3);
-    }, [allHomeworks]);
-
-
     const latestBehaviorLog = useMemo(() => {
         if (!student?.behaviorLogs || student.behaviorLogs.length === 0) return null;
         return [...student.behaviorLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -112,8 +105,7 @@ export default function StudentPortalPage() {
     const noNotifications = !(currentClass.isAnnouncementsPublished && currentClass.announcements && currentClass.announcements.length > 0 && !dismissedNotifications.includes(`announcement_${currentClass.announcements[0].id}`)) &&
                          !(currentClass.isProjectHomeworkPublished && hasAssignedProjects && !dismissedNotifications.includes('project_hw_assigned')) &&
                          !(!dismissedNotifications.includes('sociogram_active') && currentClass.isSociogramActive) &&
-                         !(!dismissedNotifications.includes(`behavior_${latestBehaviorLog?.id}`) && latestBehaviorLog) &&
-                         (!recentHomeworks || recentHomeworks.filter(hw => !dismissedNotifications.includes(`regular_hw_${hw.id}`) || !dismissedNotifications.includes(`performance_hw_${hw.id}`)).length === 0);
+                         !(!dismissedNotifications.includes(`behavior_${latestBehaviorLog?.id}`) && latestBehaviorLog);
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -163,23 +155,27 @@ export default function StudentPortalPage() {
                 </Card>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <ModuleCard title="Notlarım" icon={<GraduationCap className="text-emerald-500" />} href={`/portal/${classCode}/notlarim`} isPublished={currentClass.isGradesPublished} />
-                    <ModuleCard title="Mesajlar" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
-                    <ModuleCard title="Oturma Planı" icon={<Grid className="text-blue-500" />} href={`/view/seating-plan/${classCode}`} isPublished={currentClass.isSeatingPlanPublished} />
-                    <ModuleCard title="Nöbet Listesi" icon={<ListChecks className="text-green-500" />} href={`/view/duty-roster/${classCode}`} isPublished={currentClass.isDutyRosterPublished} />
+                    <ModuleCard title="Etkinlik Takip" icon={<Activity className="text-lime-500" />} href={`/portal/${classCode}/etkinlik-takip`} isPublished={currentClass.isActivityTrackingPublished !== false} />
+                    <ModuleCard title="Öğretmene Mesaj" icon={<MessagesSquare className="text-blue-500" />} href={`/portal/${classCode}/mesajlar`} isPublished={currentClass.isMessagesPublished} />
                     <ModuleCard title="Günlük Ödevler" icon={<BookText className="text-orange-500" />} href={`/portal/${classCode}/regular-homeworks`} isPublished={currentClass.isRegularHomeworkPublished} />
                     <ModuleCard title="Performans Ödevleri" icon={<Trophy className="text-yellow-500" />} href={`/portal/${classCode}/performance-homeworks`} isPublished={currentClass.isPerformanceHomeworkPublished} />
-                    <ModuleCard title="Proje Ödevim" icon={<ClipboardList className="text-purple-500" />} href={`/portal/${classCode}/project-homework`} isPublished={currentClass.isProjectHomeworkPublished} />
+                    
+                    <ModuleCard title="Proje Ödevi" icon={<ClipboardList className="text-purple-500" />} href={`/portal/${classCode}/project-homework`} isPublished={currentClass.isProjectHomeworkPublished} />
                     <ModuleCard title="Proje Tercihi" icon={<ListChecks className="text-indigo-500" />} href={`/portal/${classCode}/project-selection`} isPublished={currentClass.isProjectSelectionActive} />
                     <ModuleCard title="Sosyogram Anketi" icon={<Users className="text-teal-500" />} href={`/sosyogram/${classCode}`} isPublished={currentClass.isSociogramActive} />
                     <ModuleCard title="Kulüp Tercihi" icon={<Drama className="text-pink-500" />} href={`/portal/${classCode}/club-selection`} isPublished={currentClass.isClubSelectionActive} />
+                    
                     <ModuleCard title="Bilgi Formu" icon={<FileSignature className="text-rose-500" />} href={`/portal/${classCode}/bilgi-formu`} isPublished={currentClass.isInfoFormActive} />
                     <ModuleCard title="Risk Formu" icon={<AlertTriangle className="text-yellow-600" />} href={`/portal/${classCode}/risk-formu`} isPublished={currentClass.isRiskFormActive} />
                     <ModuleCard title="Başarılarım" icon={<Trophy className="text-yellow-500" />} href={`/portal/${classCode}/kahramanlar`} isPublished={currentClass.isGamificationActive} />
-                    <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                     <ModuleCard title="Sınıf Seçimi Oylaması" icon={<Vote className="text-red-500" />} href={`/oylama/${classCode}`} isPublished={currentClass.isElectionActive} />
+                    
                     <ModuleCard title="Duyurular" icon={<MessageCircle className="text-cyan-500" />} href={`/view/announcements/${classCode}`} isPublished={currentClass.isAnnouncementsPublished} />
-                    <ModuleCard title="Etkinlik Takip" icon={<Activity className="text-lime-500" />} href={`/portal/${classCode}/etkinlik-takip`} isPublished={currentClass.isActivityTrackingPublished} />
+                    <ModuleCard title="Notlarım" icon={<GraduationCap className="text-emerald-500" />} href={`/portal/${classCode}/notlarim`} isPublished={currentClass.isGradesPublished} />
+                    <ModuleCard title="Oturma Planı" icon={<Grid className="text-blue-500" />} href={`/view/seating-plan/${classCode}`} isPublished={currentClass.isSeatingPlanPublished} />
+                    <ModuleCard title="Nöbet Listesi" icon={<ListChecks className="text-green-500" />} href={`/view/duty-roster/${classCode}`} isPublished={currentClass.isDutyRosterPublished} />
+                    
+                    <ModuleCard title="Seçim Sonuçları" icon={<Users className="text-purple-500" />} href={`/view/election/${classCode}`} isPublished={currentClass.isElectionPublished} />
                 </div>
             </main>
             <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-10">

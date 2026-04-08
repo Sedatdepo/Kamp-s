@@ -12,8 +12,8 @@ export default function StudentPortalLayout({ children }: { children: ReactNode 
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        // This effect runs on the client-side
-        const authData = sessionStorage.getItem('student_portal_auth');
+        // localStorage'a geçiyoruz
+        const authData = localStorage.getItem('student_portal_auth');
         if (!authData) {
             router.replace(`/giris/${classCode}`);
             return;

@@ -154,7 +154,7 @@ export default function StudentInfoFormPage() {
     const watchEvSahipligi = form.watch("evSahipligi");
 
     useEffect(() => {
-        const authData = sessionStorage.getItem('student_portal_auth');
+        const authData = localStorage.getItem('student_portal_auth');
         if (authData) {
             try {
                 const { student: storedStudent } = JSON.parse(authData);
@@ -174,9 +174,9 @@ export default function StudentInfoFormPage() {
                 const liveStudentData = { id: docSnap.id, ...docSnap.data() } as Student;
                 setStudent(liveStudentData);
                 try {
-                    const authData = JSON.parse(sessionStorage.getItem('student_portal_auth') || '{}');
+                    const authData = JSON.parse(localStorage.getItem('student_portal_auth') || '{}');
                     authData.student = liveStudentData;
-                    sessionStorage.setItem('student_portal_auth', JSON.stringify(authData));
+                    localStorage.setItem('student_portal_auth', JSON.stringify(authData));
                 } catch (e) {
                     console.error("Could not update session storage on info form page", e);
                 }

@@ -5,14 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
 import { Student, Class } from '@/lib/types';
-import { Loader2, User as UserIcon, Key, LogIn } from 'lucide-react';
+import { Loader2, User as UserIcon, Hash, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/Logo';
-import { signInAnonymously, type User } from 'firebase/auth';
+import { signInAnonymously } from 'firebase/auth';
 
 export default function StudentLoginPage() {
     const params = useParams();
@@ -27,7 +27,7 @@ export default function StudentLoginPage() {
     const [error, setError] = useState<string | null>(null);
     
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [enteredPassword, setEnteredPassword] = useState('');
+    const [enteredNumber, setEnteredNumber] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
@@ -82,8 +82,8 @@ export default function StudentLoginPage() {
             toast({ variant: 'destructive', title: 'Hata', description: 'Giriş sistemi hazır değil.' });
             return;
         }
-        if (!selectedStudentId || !enteredPassword.trim()) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve şifrenizi girin.' });
+        if (!selectedStudentId || !enteredNumber.trim()) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen adınızı seçin ve okul numaranızı girin.' });
             return;
         }
         
@@ -100,43 +100,26 @@ export default function StudentLoginPage() {
             }
 
             const studentData = studentSnap.data();
-            let passwordMatches = false;
-            let shouldSetInitialPassword = false;
-
-            // Önce kayıtlı şifreyi kontrol et
-            if (studentData.password) {
-                passwordMatches = String(studentData.password) === enteredPassword.trim();
-            }
             
-            // Eğer kayıtlı şifre eşleşmezse veya yoksa, okul numarasını dene
-            if (!passwordMatches && String(studentData.number) === enteredPassword.trim()) {
-                passwordMatches = true;
-                shouldSetInitialPassword = true; // Şifreyi okul numarası olarak kaydet
-            }
-
-            if (!passwordMatches) {
-                toast({ variant: 'destructive', title: 'Hata', description: 'Girilen şifre yanlış.' });
+            // TÜM KURALLARI KALDIRDIK: Sadece okul numarası eşleşmesi yeterli
+            if (String(studentData.number) !== enteredNumber.trim()) {
+                toast({ variant: 'destructive', title: 'Hata', description: 'Girdiğiniz okul numarası sistemdeki ile eşleşmiyor.' });
                 setIsProcessing(false);
                 return;
             }
             
             const student = { id: studentSnap.id, ...studentData } as Student;
 
-            const updates: { [key: string]: any } = { authUid: user.uid };
-            if (shouldSetInitialPassword) {
-                updates.password = studentData.number;
-                updates.needsPasswordChange = true;
-            }
-
-            await updateDoc(studentRef, updates);
+            // Auth kaydı ve oturum başlatma
+            await updateDoc(studentRef, { authUid: user.uid });
             
-            const studentForSession = { ...student, ...updates };
-            sessionStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
+            const studentForSession = { ...student, authUid: user.uid };
+            localStorage.setItem('student_portal_auth', JSON.stringify({ student: studentForSession, classCode }));
             router.push(`/portal/${classCode}`);
 
         } catch (e) {
-            console.error("Login or student query failed:", e);
-            toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Giriş yapılamadı. Bilgilerinizi kontrol edip tekrar deneyin.' });
+            console.error("Login failed:", e);
+            toast({ variant: 'destructive', title: 'Giriş Hatası', description: 'Bir sorun oluştu. Lütfen tekrar deneyin.' });
         } finally {
             setIsProcessing(false);
         }
@@ -152,7 +135,6 @@ export default function StudentLoginPage() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0f14] p-4 font-sans text-white">
             <div className="w-full max-w-md flex flex-col items-center">
-                 {/* Logo - Kartın tam üstünde */}
                 <div className="mb-4 transform scale-110">
                     <Logo />
                 </div>
@@ -164,7 +146,7 @@ export default function StudentLoginPage() {
                 <Card className="w-full shadow-2xl border-white/10 bg-slate-900/50 backdrop-blur-sm text-white">
                     <CardHeader>
                         <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline text-white"><UserIcon /> Öğrenci Girişi</CardTitle>
-                        <CardDescription className="text-center text-slate-400">Portala erişmek için bilgilerinizi girin.</CardDescription>
+                        <CardDescription className="text-center text-slate-400">Adını seç ve okul numaranı yazarak giriş yap.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-4">
@@ -176,19 +158,20 @@ export default function StudentLoginPage() {
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-800 border-slate-700 text-white">
                                         {students.map(student => (
-                                            <SelectItem key={student.id} value={student.id} className="focus:bg-slate-700 focus:text-white">({student.number}) {student.name}</SelectItem>
+                                            <SelectItem key={student.id} value={student.id} className="focus:bg-slate-700 focus:text-white">{student.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="relative">
-                                <Key className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                <Hash className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                                 <Input 
-                                    type="password"
-                                    placeholder="Şifre (Genellikle okul numaranız)" 
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="Okul Numaran" 
                                     className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-cyan-500"
-                                    value={enteredPassword}
-                                    onChange={(e) => setEnteredPassword(e.target.value)}
+                                    value={enteredNumber}
+                                    onChange={(e) => setEnteredNumber(e.target.value)}
                                 />
                             </div>
                             <Button 
@@ -208,4 +191,3 @@ export default function StudentLoginPage() {
         </div>
     );
 }
-    

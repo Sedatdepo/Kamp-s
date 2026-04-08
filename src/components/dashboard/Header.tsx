@@ -38,7 +38,8 @@ export function Header({ notificationCount, studentMode = false, studentData = n
   }, []);
   
   const handleStudentLogout = () => {
-    sessionStorage.removeItem('student_portal_auth');
+    // localStorage'dan siliyoruz
+    localStorage.removeItem('student_portal_auth');
     const pathParts = window.location.pathname.split('/');
     const classCode = pathParts[2];
     router.replace(`/giris/${classCode}`);
