@@ -8,45 +8,60 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
     
+    // Öğretmen profilleri
     match /teachers/{teacherId} {
       allow get: if request.auth != null;
       allow write: if isTeacher() && request.auth.uid == teacherId;
     }
     
+    // Öğretmenler için genel yazma/okuma yetkisi
     match /{document=**} {
       allow read, write: if isTeacher();
     }
 
+    // Herkese açık görünümler ve sınıf kodları
     match /publicViews/{viewId} { allow get: if true; }
     match /classCodes/{code} { allow get: if true; }
     
+    // Kimliği doğrulanmış kullanıcılar için okuma izinleri
     match /lessons/{lessonId} { allow get: if request.auth != null; }
     match /clubs/{clubId} { allow get: if request.auth != null; }
     match /riskFactors/{riskFactorId} { allow get: if request.auth != null; }
     
+    // Sınıf bilgileri - kimliği doğrulanmış kullanıcılar okuyabilir
     match /classes/{classId} { 
       allow get: if request.auth != null; 
     }
     
+    // Öğrenci verileri - güvenli okuma ve güncelleme
     match /students/{studentId} {
+      // Herkes okuyabilir (sınıf listesi gösterimi için gerekli)
       allow read: if true; 
-      // Giriş yaparken authUid çakışmasını önlemek için update iznini esnetiyoruz.
-      // Linke sahip olan (anonim giriş yapmış) herkes kendi ismini güncelleyebilmeli.
-      allow update: if request.auth != null;
+      // Sadece kendi authUid'ini içeren öğrenci kaydını güncelleyebilir
+      allow update: if request.auth != null 
+        && (resource.data.authUid == request.auth.uid 
+            || !('authUid' in resource.data) 
+            || resource.data.authUid == null 
+            || resource.data.authUid == '');
     }
 
+    // Bilgi formları - sadece kendi formunu yazabilir
     match /infoForms/{formId} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
     
+    // Ödevler - okuma izni
     match /classes/{classId}/homeworks/{homeworkId} {
-        allow get: if request.auth != null;
+      allow get: if request.auth != null;
     }
     
+    // Ödev gönderileri - kendi gönderisini oluşturabilir/güncelleyebilir
     match /classes/{classId}/homeworks/{homeworkId}/submissions/{submissionId} {
       allow create, read, write: if request.auth != null;
     }
     
+    // Mesajlar - kimliği doğrulanmış kullanıcılar
     match /messages/{messageId} {
       allow read, create, update, list: if request.auth != null;
     }

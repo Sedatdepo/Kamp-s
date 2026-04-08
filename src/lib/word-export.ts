@@ -1,5 +1,6 @@
 import { saveAs } from 'file-saver';
-import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, GenerateMaterialOutput, StudentReportOutput } from './types';
+import { Student, InfoForm, TeacherProfile, Criterion, Class, Lesson, RiskFactor, Election, Candidate, RosterItem, GradingScores, DailyPlan, AnnualPlanEntry, AnnualPlan, DilekceDocument, Homework, Submission, Question, DisciplineRecord, Club, SociogramSurvey, SociogramAnalysisOutput, GuidanceReferralRecord, ObservationRecord, TimetableCell, ElectionType, ActiveGradingTab, ActiveTerm, StudentReportOutput } from './types';
+import type { GenerateMaterialOutput } from '@/ai/flows/generate-material-flow';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA } from './grading-defaults';
@@ -171,7 +172,7 @@ export function exportTimetableToRtf({ schedule, periods, days, teacherName, sch
                 </td>
                 <td class="no-border center" style="width:50%;">
                     <br/><br/>
-                    <span class="bold">${teacherProfile?.principalName || '...'}</span><br/>
+                    <span class="bold">...</span><br/>
                     Okul Müdürü
                 </td>
             </tr>
@@ -497,20 +498,20 @@ export function exportGeneratedMaterialToRtf({ content, teacherProfile }: Export
         <h3>DERS PLANI</h3>
         <h4>1. Ders Saati</h4>
         <p><b>Hedef:</b> ${content.lessonPlan.hour1.objective}</p>
-        <ul>${content.lessonPlan.hour1.steps.map(step => `<li>${step}</li>`).join('')}</ul>
+        <ul>${content.lessonPlan.hour1.steps.map((step: string) => `<li>${step}</li>`).join('')}</ul>
         <h4>2. Ders Saati</h4>
         <p><b>Hedef:</b> ${content.lessonPlan.hour2.objective}</p>
-        <ul>${content.lessonPlan.hour2.steps.map(step => `<li>${step}</li>`).join('')}</ul>
+        <ul>${content.lessonPlan.hour2.steps.map((step: string) => `<li>${step}</li>`).join('')}</ul>
     `;
 
     const slidesHtml = `
         <h3>SUNUM SLAYTLARI</h3>
-        ${content.slides.map((slide, i) => `
+        ${content.slides.map((slide: any, i: number) => `
             <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; page-break-inside: avoid;">
                 <p><b>Slayt ${i + 1}: ${slide.title || ''}</b></p>
                 ${slide.subtitle ? `<p><i>${slide.subtitle}</i></p>` : ''}
                 ${slide.content ? `<p>${slide.content}</p>` : ''}
-                ${slide.points ? `<ul>${slide.points.map(p => `<li>${p}</li>`).join('')}</ul>` : ''}
+                ${slide.points ? `<ul>${slide.points.map((p: string) => `<li>${p}</li>`).join('')}</ul>` : ''}
                 ${slide.question ? `<p><b>Soru:</b> ${slide.question}</p>` : ''}
                 ${slide.options ? `<p>Seçenekler: ${slide.options.join(', ')}</p>` : ''}
             </div>
@@ -521,7 +522,7 @@ export function exportGeneratedMaterialToRtf({ content, teacherProfile }: Export
         <h3>BİLGİ KARTLARI</h3>
         <table border="1" style="width:100%; border-collapse: collapse;">
             <tr><th>Soru</th><th>Cevap</th></tr>
-            ${content.flashcardsData.map(fc => `
+            ${content.flashcardsData.map((fc: any) => `
                 <tr>
                     <td style="padding: 5px;">${fc.q}</td>
                     <td style="padding: 5px;">${fc.a}</td>
@@ -726,9 +727,11 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
     const filename = `Ogrenci_Bilgi_Formu_${studentName.replace(/ /g, '_')}.rtf`;
     const schoolName = teacherProfile?.schoolName || "..................";
 
+    const r = record as any;
     const fields = [
         // Personal
         { label: 'Adı Soyadı', value: studentName },
+        { label: 'TC Kimlik No', value: record.tcKimlikNo || '' },
         { label: 'Doğum Tarihi', value: record.birthDate || '' },
         { label: 'Doğum Yeri', value: record.birthPlace || '' },
         { label: 'Kan Grubu', value: record.bloodType || '' },
@@ -736,31 +739,19 @@ export function exportStudentInfoFormToRtf({ record, studentName, teacherProfile
         { label: 'Telefon', value: record.studentPhone || '' },
         { label: 'E-posta', value: record.studentEmail || '' },
         { label: 'Adres', value: (record.address || '').replace(/\n/g, '<br/>') },
-        { label: 'Yabancı Dil', value: record.foreignLanguage || '' },
         // Health
         { label: 'Sürekli Hastalık/Alerji', value: record.healthIssues || '' },
         { label: 'Geçmiş Önemli Hastalık/Ameliyat', value: record.pastIllnesses || '' },
-        { label: 'Kullandığı Cihaz/Protez', value: record.healthDevice || '' },
-        // Socio-economic
-        { label: 'Hobiler', value: record.hobbies || '' },
-        { label: 'Bir İşte Çalışıyor mu?', value: record.isWorking === 'yes' ? 'Evet' : 'Hayır' },
-        { label: 'Okula Ulaşım Şekli', value: record.commutesToSchoolBy || '' },
-        { label: 'Oturulan Ev Kira Mı?', value: record.isHomeRented === 'yes' ? 'Evet' : 'Hayır' },
-        { label: 'Kendine Ait Odası Var Mı?', value: record.hasOwnRoom === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Kullandığı İlaç', value: record.medication || '' },
+        { label: 'Engel Durumu', value: record.disabilityInfo || '' },
         // Family
-        { label: 'Veli Telefonu', value: record.guardianPhone || '' },
-        { label: 'Anne Hayatta mı?', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Anne Durumu', value: record.motherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
         { label: 'Anne Eğitim / Meslek', value: `${record.motherEducation || 'N/A'} / ${record.motherJob || 'N/A'}` },
-        { label: 'Baba Hayatta mı?', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
+        { label: 'Anne Telefon', value: record.motherPhone || '' },
+        { label: 'Baba Durumu', value: record.fatherStatus === 'alive' ? 'Hayatta' : 'Vefat Etti' },
         { label: 'Baba Eğitim / Meslek', value: `${record.fatherEducation || 'N/A'} / ${record.fatherJob || 'N/A'}` },
-        { label: 'Kiminle Yaşıyor?', value: record.familyLivesWith || '' },
-        { label: 'Kardeş Bilgileri', value: record.siblingsInfo || '' },
-        { label: 'Üvey Kardeşi Var Mı?', value: record.hasStepSibling === 'yes' ? 'Evet' : 'Hayır' },
-        { label: 'Ailenin Gelir Düzeyi', value: record.economicStatus || '' },
-        { label: 'Ailenin Derslere Tutumu', value: record.parentalAttitude || '' },
-        // Special Status
-        { label: 'Engel Durumu', value: record.hasDisability === 'yes' ? 'Evet' : 'Hayır' },
-        { label: 'Şehit/Gazi Çocuğu Mu?', value: record.isMartyrVeteranChild === 'yes' ? 'Evet' : 'Hayır' },
+        { label: 'Baba Telefon', value: record.fatherPhone || '' },
+        { label: 'Kardeş Sayısı', value: record.siblings?.length?.toString() || '0' },
     ];
     
     let tableRows = fields.map(field => `<tr><td style="width:30%; padding: 5px; font-weight: bold; background-color: #f2f2f2;">${field.label}</td><td style="padding: 5px;">${field.value}</td></tr>`).join('');
@@ -1703,8 +1694,8 @@ export function exportStudentDevelopmentReportToRtf_manual({ student, infoForm, 
             <tr><td>Anne Eğitim / Meslek:</td><td>${(infoForm?.motherEducation || 'N/A') + ' / ' + (infoForm?.motherJob || 'N/A')}</td></tr>
             <tr><td>Baba Durumu:</td><td>${infoForm?.fatherStatus || 'N/A'}</td></tr>
             <tr><td>Baba Eğitim / Meslek:</td><td>${(infoForm?.fatherEducation || 'N/A') + ' / ' + (infoForm?.fatherJob || 'N/A')}</td></tr>
-            <tr><td>Kardeş Bilgileri:</td><td>${infoForm?.siblingsInfo || 'N/A'}</td></tr>
-            <tr><td>Ailenin Ekonomik Durumu:</td><td>${infoForm?.economicStatus || 'N/A'}</td></tr>
+            <tr><td>Kardeş Sayısı:</td><td>${infoForm?.siblings?.length || 'N/A'}</td></tr>
+            <tr><td>Baba Mesleği:</td><td>${infoForm?.fatherJob || 'N/A'}</td></tr>
         </table>
     `;
 
@@ -1794,7 +1785,7 @@ export function exportStudentDevelopmentReportToRtf_manual({ student, infoForm, 
             <tr>
                 <td>${format(new Date(dr.date), 'dd.MM.yyyy')}</td>
                 <td>${dr.formData?.phase1Data?.behaviorType ? (dr.formData.phase1Data.label || dr.formData.phase1Data.behaviorType) : 'Belirtilmemiş'}</td>
-                <td>${phaseMap[dr.currentPhase - 1] || 'Bilinmiyor'}</td>
+                <td>${phaseMap[(dr.currentPhase ?? 1) - 1] || 'Bilinmiyor'}</td>
             </tr>
         `;
     }).join('');
@@ -1813,9 +1804,10 @@ export function exportStudentDevelopmentReportToRtf_manual({ student, infoForm, 
     const observationSection = `
         <h3>G. ÖĞRETMEN GÖZLEM VE DEĞERLENDİRMELERİ</h3>
         ${aiReport ? `
-            <p><b>Akademik Durum:</b> ${aiReport.academicStatus}</p>
+            <p><b>1. Dönem Değerlendirmesi:</b> ${aiReport.term1Analysis}</p>
+            <p><b>2. Dönem Değerlendirmesi:</b> ${aiReport.term2Analysis}</p>
             <p><b>Sosyal ve Davranışsal Durum:</b> ${aiReport.socialAndBehavioralStatus}</p>
-            <p><b>Risk Analizi:</b> ${aiReport.riskAnalysis}</p>
+            <p><b>Risk Analizi:</b> ${aiReport.overallRiskAnalysis}</p>
             <p><b>Güçlü Yönler:</b></p>
             <p>${aiReport.strengths.replace(/\n/g, '<br>')}</p>
             <p><b>Tavsiyeler:</b></p>
