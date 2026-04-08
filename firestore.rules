@@ -37,9 +37,9 @@ service cloud.firestore {
     match /students/{studentId} {
       // Herkes okuyabilir (sınıf listesi gösterimi için gerekli)
       allow read: if true; 
-      // Sadece kendi authUid'ini içeren öğrenci kaydını güncelleyebilir
       allow update: if request.auth != null 
         && (resource.data.authUid == request.auth.uid 
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid'])
             || !('authUid' in resource.data) 
             || resource.data.authUid == null 
             || resource.data.authUid == '');
