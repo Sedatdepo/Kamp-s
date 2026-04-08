@@ -345,7 +345,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
       const allIds = filteredKazanims.map(k => k!.id);
       if (areAllFilteredKazanimsSelected) {
           // Deselect all visible
-          setBepSelections(prev => {
+          setBepSelections((prev: any) => {
               const newState = { ...prev };
               allIds.forEach(id => delete newState[id]);
               return newState;
@@ -362,7 +362,7 @@ export function BepTab({ teacherProfile, currentClass }: { teacherProfile: Teach
                 };
               }
           });
-          setBepSelections(prev => ({ ...prev, ...newSelections }));
+          setBepSelections((prev: any) => ({ ...prev, ...newSelections }));
       }
   };
 

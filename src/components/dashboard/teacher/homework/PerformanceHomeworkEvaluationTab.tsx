@@ -158,7 +158,7 @@ const PerformanceHomeworkCard = ({ homework, students, submissions, classId, onS
                                 {students.map(student => {
                                     const submission = submissions.find(s => s.studentId === student.id);
                                     const studentScores = scores[student.id] || {};
-                                    const totalScore = homework.rubric?.reduce((sum, c) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
+                                    const totalScore = homework.rubric?.reduce((sum: number, c: any) => sum + (Number(studentScores?.[c.label]) || 0), 0) || 0;
                                     
                                     return (
                                         <TableRow key={student.id} className={!submission ? 'bg-yellow-50/50' : ''}>

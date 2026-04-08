@@ -229,7 +229,7 @@ export function GradingToolTab({
                         criteria={perfCriteria} 
                         scoreKey="scores1"
                         activeTerm={activeTerm}
-                        onScoresChange={handleScoreChange}
+                        onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores1')}
                         onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores1', perfCriteria)}
                         onSave={() => handleSaveScores('scores1', perfCriteria)}
                         teacherProfile={teacherProfile}
@@ -242,7 +242,7 @@ export function GradingToolTab({
                         criteria={perfCriteria} 
                         scoreKey="scores2"
                         activeTerm={activeTerm}
-                        onScoresChange={handleScoreChange}
+                        onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'scores2')}
                         onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'scores2', perfCriteria)}
                         onSave={() => handleSaveScores('scores2', perfCriteria)}
                         teacherProfile={teacherProfile}
@@ -257,7 +257,7 @@ export function GradingToolTab({
                 criteria={projCriteria}
                 scoreKey="projectScores"
                 activeTerm={2} // Projects are always 2nd term
-                onScoresChange={handleScoreChange}
+                onScoresChange={(studentId, criteriaId, value) => handleScoreChange(studentId, criteriaId, value, 'projectScores')}
                 onTotalScoreChange={(studentId, value) => handleTotalScoreChange(studentId, value, 'projectScores', projCriteria)}
                 onSave={() => handleSaveScores('projectScores', projCriteria)}
                 teacherProfile={teacherProfile}

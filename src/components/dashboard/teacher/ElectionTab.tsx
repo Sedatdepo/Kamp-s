@@ -67,10 +67,10 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
   const { electionDocuments = [] } = localDb;
   
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [electionData, setElectionData] = useState(currentClass?.election || {
-      type: 'class_president',
-      candidates: [],
-      votedStudentIds: [],
+  const [electionData, setElectionData] = useState<{type: ElectionType; candidates: Candidate[]; votedStudentIds: string[]}>(currentClass?.election || {
+      type: 'class_president' as ElectionType,
+      candidates: [] as Candidate[],
+      votedStudentIds: [] as string[],
   });
 
   const teacherProfile = appUser?.type === 'teacher' ? appUser.profile : null;
@@ -195,7 +195,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
             runnerUpLabel: null,
         }
     };
-    return infoMap[electionType];
+    return infoMap[electionType as keyof typeof infoMap];
   }, [electionType]);
 
   const winner = sortedCandidates[0] || null;
@@ -218,7 +218,7 @@ export function ElectionTab({ students, currentClass }: ElectionTabProps) {
     }
     exportElectionResultsToRtf({
         electionResult: { winner, runnerUp, allCandidates: sortedCandidates },
-        electionType,
+        electionType: electionType as ElectionType,
         currentClass,
         students,
         teacherProfile

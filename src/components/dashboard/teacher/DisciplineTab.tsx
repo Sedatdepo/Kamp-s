@@ -112,13 +112,14 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
             description: '',
             witnesses: '',
             evidence: '',
-        }
+        },
+        data: null
     }), [currentClass?.id, teacherProfile]);
 
     const [currentRecord, setCurrentRecord] = useState<DisciplineRecord>(createNewRecord());
     
     const phase = currentRecord?.currentPhase || 1;
-    const formData = currentRecord?.formData || {};
+    const formData = currentRecord?.formData || ({} as any);
 
     const sortedStudents = useMemo(() => {
         return [...students].sort((a, b) => a.number.localeCompare(b.number, 'tr', { numeric: true }));
@@ -150,7 +151,7 @@ export function DisciplineTab({ students, currentClass, teacherProfile }: { stud
     };
     
     const handlePrevPhase = () => {
-        setCurrentRecord(prev => ({...prev, currentPhase: Math.max(prev.currentPhase - 1, 1)}));
+        setCurrentRecord(prev => ({...prev, currentPhase: Math.max((prev.currentPhase || 1) - 1, 1)}));
     };
 
     const saveProcess = () => {

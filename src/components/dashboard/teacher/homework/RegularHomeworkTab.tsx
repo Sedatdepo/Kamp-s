@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Homework, Submission, Question, Student, Badge as BadgeType } from '@/lib/types';
+import { Homework, Submission, Question, Student, Badge as BadgeType, AwardedBadge } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookText, Clock, CalendarIcon, CheckCircle, Paperclip, Download, Send } from 'lucide-react';
 import { collection, doc, addDoc, query, where, updateDoc, increment, arrayUnion } from 'firebase/firestore';
@@ -136,14 +136,22 @@ export const HomeworkItem = ({ homework, student, classId }: { homework: Homewor
             const isLate = homework.dueDate && new Date() > new Date(homework.dueDate);
             if (!isLate) {
                 const studentRef = doc(db, 'students', student.id);
-                const currentBadges: string[] = student.badges || [];
+                const currentBadges: AwardedBadge[] = student.badges || [];
                 
                 const updates: any = { behaviorScore: increment(10) };
                 
                 let toastDescription = "+10 Davranış Puanı kazanıldı!";
-                if (!currentBadges.includes('hw-master')) {
-                    updates.badges = arrayUnion('hw-master');
-                    toastDescription = "+10 Davranış Puanı ve 'Ödev Ustası' rozeti kazanıldı!"
+                const hasBadge = currentBadges.some(b => b.badgeId === '2' || b.badgeId === 'hw-master');
+                if (!hasBadge) {
+                    const newBadge: AwardedBadge = {
+                        id: `hwaw_${Date.now()}`,
+                        badgeId: '2', // ID of Ödev Canavarı
+                        name: 'Ödev Canavarı',
+                        icon: '⚡',
+                        dateAwarded: new Date().toISOString()
+                    };
+                    updates.badges = arrayUnion(newBadge);
+                    toastDescription = "+10 Davranış Puanı ve 'Ödev Canavarı' rozeti kazanıldı!"
                 }
 
                 await updateDoc(studentRef, updates);

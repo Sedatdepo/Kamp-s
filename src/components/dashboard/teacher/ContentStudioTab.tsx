@@ -28,6 +28,7 @@ import { Exam, ExamInfo, ExamTheme } from '@/lib/types';
 import { ExamPaper } from './ExamPaper';
 import { useAuth } from '@/hooks/useAuth';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { writeBatch, collection, doc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -356,7 +357,7 @@ const RenderedMaterial = ({ content }: { content: GenerateMaterialOutput }) => (
 );
 
 
-const ExamBuilderComponent = ({ classes, students }: { classes: Class[], students: Student[] }) => {
+const ExamBuilderComponent = ({ classes, students, teacherProfile }: { classes: Class[], students: Student[], teacherProfile: TeacherProfile | null }) => {
     const { appUser, storage, db } = useAuth();
     const { toast } = useToast();
 
@@ -488,8 +489,8 @@ const ExamBuilderComponent = ({ classes, students }: { classes: Class[], student
                     text: currentExam.examInfo.title,
                     assignedDate: new Date().toISOString(),
                     dueDate: date ? new Date(date).toISOString() : null,
-                    teacherName: appUser?.profile?.name,
-                    lessonName: appUser?.profile?.branch,
+                    teacherName: teacherProfile?.name,
+                    lessonName: teacherProfile?.branch,
                     rubric: null, 
                     assignedStudents: studentsByClass[classId],
                     seenBy: [],
@@ -593,7 +594,7 @@ export function ContentStudioTab({ teacherProfile, classes, students }: ContentS
                 <MaterialCreator teacherProfile={teacherProfile} />
             </TabsContent>
             <TabsContent value="exam" className="mt-4">
-                <ExamBuilderComponent classes={classes} students={students} />
+                <ExamBuilderComponent classes={classes} students={students} teacherProfile={teacherProfile} />
             </TabsContent>
             <TabsContent value="edebiyat-asistan" className="mt-4">
                 <EdebiyatSinavAsistaniTab />

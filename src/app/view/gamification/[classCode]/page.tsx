@@ -91,11 +91,13 @@ const PublicGamificationView = ({ data }: { data: PublicGamificationData }) => {
                             <TableCell className="font-bold">{index + 4}</TableCell>
                             <TableCell>{student.name}</TableCell>
                             <TableCell className="flex gap-1 flex-wrap">
-                                {student.badges?.map(badgeId => (
-                                    <span key={badgeId} className="text-lg" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
-                                    {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
+                                {student.badges?.map(awardedBadge => {
+                                    const badgeDef = AVAILABLE_BADGES.find(b => b.id === awardedBadge.badgeId);
+                                    return (
+                                    <span key={awardedBadge.id} className="text-lg" title={badgeDef?.name || awardedBadge.name}>
+                                    {badgeDef?.icon || awardedBadge.icon || '🏅'}
                                     </span>
-                                ))}
+                                )})}
                             </TableCell>
                             <TableCell className="text-right font-semibold"><Badge variant="secondary">{student.behaviorScore}</Badge></TableCell>
                         </TableRow>

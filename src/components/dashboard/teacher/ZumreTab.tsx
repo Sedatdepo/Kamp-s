@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { generateMeetingAgendaItem } from '@/ai/flows/generate-meeting-agenda-item-flow';
 import { generateMeetingDecisions } from '@/ai/flows/generate-meeting-decisions-flow';
 import { Loader2 } from 'lucide-react';
-import { SENARYOLAR, SABLONLAR, KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
+import { KARAR_HAVUZU, GUNDEM_MADDELERI_DEFAULT } from '@/lib/zumre-senaryolari';
 import { TeacherProfile, ZumreDocument } from '@/lib/types';
 import { useDatabase } from '@/hooks/use-database';
 import { RecordManager } from './RecordManager';
@@ -72,9 +72,9 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         mudurYardimcisi: teacherProfile?.principalName || "",
         sinifRehberOgretmeni: teacherProfile?.name || "",
         katilimcilar: VARSAYILAN_BRANSLAR.map(b => ({ brans: b, adSoyad: (b === "Zümre Başkanı" ? teacherProfile?.departmentHeadName || teacherProfile?.name : "") || '' })),
-        gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m })),
+        gundemMaddeleri: GUNDEM_MADDELERI_DEFAULT.map(m => ({ madde: m.text })),
         gorusmeler: GUNDEM_MADDELERI_DEFAULT.map(() => ({ detay: '', keywords: '' })),
-        kararlar: Object.values(KARAR_HAVUZU).slice(0,4).join('\n'),
+        kararlar: KARAR_HAVUZU.slice(0,4).map(k => k.text).join('\n'),
         okulAdi: teacherProfile?.schoolName || "",
     }), [teacherProfile]);
     
@@ -218,15 +218,10 @@ export default function ZumreTab({ teacherProfile }: { teacherProfile: TeacherPr
         const gundemHtml = data.gundemMaddeleri.map((item, index) => `<p style="margin: 0; padding: 2px 0;">${index + 1}. ${item.madde}</p>`).join('');
         const gorusmelerHtml = data.gundemMaddeleri.map((item, index) => {
             const gorusme = data.gorusmeler[index];
-            let opinionsHtml = '';
-            if (gorusme?.opinions && gorusme.opinions.length > 0) {
-                opinionsHtml = '<ul>' + gorusme.opinions.map(op => `<li><b>${op.name}:</b> ${op.text}</li>`).join('') + '</ul>';
-            }
             return `
                 <div style="margin-top: 15px;">
                     <p style="margin:0; font-weight: bold;">${index + 1}. ${item.madde}</p>
                     <div style="text-indent: 0; margin-top: 5px;">${(gorusme?.detay || 'Görüşülmedi.')}</div>
-                    ${opinionsHtml}
                 </div>
             `;
         }).join('');

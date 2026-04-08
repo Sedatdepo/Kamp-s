@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Student, Class, TeacherProfile } from '@/lib/types';
+import { Student, Class, TeacherProfile, Criterion, GradingScores } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, addDoc, updateDoc, deleteDoc, collection, writeBatch, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';

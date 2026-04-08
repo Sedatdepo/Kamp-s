@@ -252,7 +252,7 @@ export const ClassGuidanceAssistant = () => {
 
   const updateReportField = (reportType: 'term' | 'endYear', field: string, value: any) => {
     const setter = reportType === 'term' ? setTermReportData : setEndYearReportData;
-    setter(prev => ({ ...prev, [field]: value }));
+    setter((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const updateTableItem = (reportType: 'term' | 'endYear', table: 'envanterler' | 'rehberlik' | 'veli', id: number, field: string, value: any) => {
@@ -535,7 +535,7 @@ export const ClassGuidanceAssistant = () => {
             <section key={tableName} className="mb-8">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-gray-800 underline text-sm uppercase">{sectionTitle}</h3>
-                <Button variant="outline" onClick={() => addRow(reportType, tableName)} className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"><Plus className="w-3 h-3" /> Ekle</Button>
+                <Button variant="outline" onClick={() => addRow(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli')} className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"><Plus className="w-3 h-3" /> Ekle</Button>
               </div>
               <div className="border rounded-lg overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
@@ -556,12 +556,12 @@ export const ClassGuidanceAssistant = () => {
                       return (
                         <tr key={row.id} className="group hover:bg-gray-50 transition-colors">
                           <td className="p-2 text-center text-gray-500">{index + 1}</td>
-                          <td className="p-1"><Input value={row.name} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'name', e.target.value)} className="border-0 bg-transparent focus-visible:ring-0 h-8" placeholder="Çalışma adı..." /></td>
-                          <td className="p-1"><Input type="number" min="0" value={row.col1} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col1', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
-                          <td className="p-1"><Input type="number" min="0" value={row.col2} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col2', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
-                          {isVeli && <td className="p-1"><Input type="number" min="0" value={row.col3} onChange={(e) => updateTableItem(reportType, tableName, row.id, 'col3', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>}
+                          <td className="p-1"><Input value={row.name} onChange={(e) => updateTableItem(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli', row.id, 'name', e.target.value)} className="border-0 bg-transparent focus-visible:ring-0 h-8" placeholder="Çalışma adı..." /></td>
+                          <td className="p-1"><Input type="number" min="0" value={row.col1} onChange={(e) => updateTableItem(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli', row.id, 'col1', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
+                          <td className="p-1"><Input type="number" min="0" value={row.col2} onChange={(e) => updateTableItem(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli', row.id, 'col2', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>
+                          {isVeli && <td className="p-1"><Input type="number" min="0" value={row.col3} onChange={(e) => updateTableItem(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli', row.id, 'col3', e.target.value)} className="text-center border-0 bg-transparent focus-visible:ring-0 h-8" /></td>}
                           <td className="p-2 text-center font-bold text-gray-700 bg-gray-50/50">{total}</td>
-                          <td className="p-1 text-center"><button onClick={() => removeRow(reportType, tableName, row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-4 h-4" /></button></td>
+                          <td className="p-1 text-center"><button onClick={() => removeRow(reportType, tableName as 'envanterler' | 'rehberlik' | 'veli', row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-4 h-4" /></button></td>
                         </tr>
                       );
                     })}
@@ -681,7 +681,7 @@ export const ClassGuidanceAssistant = () => {
             </div>
         )}
         {activeTab === 'termReport' && renderReportUI('term')}
-        {activeTab === 'endyear' && renderReportUI('year')}
+        {activeTab === 'endyear' && renderReportUI('endYear')}
       </div>
     </div>
   );

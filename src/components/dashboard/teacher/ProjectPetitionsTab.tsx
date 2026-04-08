@@ -30,7 +30,7 @@ export function ProjectPetitionsTab({ classId, teacherProfile, currentClass, les
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2025-2026');
-  const [students, setStudents] = useState<Partial<Student>[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
 
   const studentsQuery = useMemoFirebase(() => (classId && db ? query(collection(db, 'students'), where('classId', '==', classId)) : null), [classId, db]);
   const { data: fetchedStudents } = useCollection<Student>(studentsQuery);

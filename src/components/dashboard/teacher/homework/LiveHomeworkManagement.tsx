@@ -225,8 +225,8 @@ export const LiveHomeworkManagement = ({ classId, currentClass, teacherProfile, 
 
             const homeworkData: Partial<Homework> = {
                 text: text || '',
-                dueDate: dueDate ? dueDate.toISOString() : null,
-                file: fileData,
+                dueDate: dueDate ? dueDate.toISOString() : undefined,
+                file: fileData || undefined,
                 questions: questions || [],
                 link: link.trim() || '',
                 linkText: linkText.trim() || '',

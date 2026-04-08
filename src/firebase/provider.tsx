@@ -5,6 +5,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -36,7 +37,9 @@ export interface FirebaseContextState {
 export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
+  db: Firestore;
   auth: Auth;
+  storage: FirebaseStorage | null;
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -126,10 +129,17 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('Firebase core services not available. Check FirebaseProvider props.');
   }
 
+  let storage: FirebaseStorage | null = null;
+  try {
+    storage = getStorage(context.firebaseApp!);
+  } catch { }
+
   return {
     firebaseApp: context.firebaseApp,
     firestore: context.firestore,
+    db: context.firestore,
     auth: context.auth,
+    storage,
     user: context.user,
     isUserLoading: context.isUserLoading,
     userError: context.userError,

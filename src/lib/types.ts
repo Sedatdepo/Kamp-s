@@ -585,17 +585,18 @@ export interface DisciplineRecord extends Archivable {
     studentName?: string; // Add studentName for easy access
     currentPhase?: number;
     formData?: {
-        studentInfo?: any; // Add studentInfo to formData
+        studentInfo?: any;
         phase1Data?: any;
-        incidentDate: string;
-        incidentTime: string;
-        location: string;
-        description: string;
-        witnesses: string;
-        evidence: string;
+        incidentDate?: string;
+        incidentTime?: string;
+        location?: string;
+        description?: string;
+        witnesses?: string;
+        evidence?: string;
         defense?: string;
         decision?: string;
         sanction?: string;
+        [key: string]: any;
     };
 }
 
@@ -660,6 +661,7 @@ export interface Badge {
   description: string;
   icon: string;
   cost?: number; 
+  dateAwarded?: string;
 }
 
 

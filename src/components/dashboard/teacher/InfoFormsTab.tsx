@@ -56,7 +56,7 @@ const InfoFormDetailDialog = ({ form, studentName, isOpen, onClose, onExport, te
             { name: "hasOwnRoom", label: "Kendine Ait Odası Var mı?" },
         ]},
         { section: "Aile Bilgileri", fields: [
-            { name: "guardianPhone", label: "Veli Telefonu" },
+            { name: "fatherPhone", label: "Baba Telefonu" },
             { name: "motherStatus", label: "Anne Hayatta mı?" }, { name: "motherEducation", label: "Anne Eğitimi" }, { name: "motherJob", label: "Anne Mesleği" },
             { name: "fatherStatus", label: "Baba Hayatta mı?" }, { name: "fatherEducation", label: "Baba Eğitimi" }, { name: "fatherJob", label: "Baba Mesleği" },
             { name: "familyLivesWith", label: "Kiminle Yaşıyor?" }, { name: "siblingsInfo", label: "Kardeş Bilgileri" },
@@ -194,7 +194,7 @@ export function StudentInfoFormTab({ students, currentClass, teacherProfile }: {
                                 return (
                                     <TableRow key={student.id}>
                                         <TableCell>{student.name} ({student.number})</TableCell>
-                                        <TableCell>{form?.guardianPhone || '-'}</TableCell>
+                                        <TableCell>{form?.fatherPhone || form?.motherPhone || '-'}</TableCell>
                                         <TableCell className="text-center font-bold">{riskScore}</TableCell>
                                         <TableCell className="text-center">
                                             {isSubmitted ? (

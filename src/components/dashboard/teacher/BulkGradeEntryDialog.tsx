@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Student, GradingScores, Criterion, DisciplineRecord, Homework, Submission } from '@/lib/types';
-import { doc, collection, query, where, addDoc, writeBatch } from 'firebase/firestore';
+import { doc, collection, query, where, addDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -240,7 +240,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
             const homeworksColRef = collection(db, 'classes', student.classId, 'homeworks');
             const q = query(homeworksColRef, where('assignmentType', '==', 'performance'));
             const homeworksSnapshot = await getDocs(q);
-            const performanceHomeworks = homeworksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Homework));
+            const performanceHomeworks = homeworksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Homework));
 
             let performanceGrades: number[] = [];
             for (const hw of performanceHomeworks) {
@@ -450,7 +450,7 @@ export function BulkGradeEntryDialog({ isOpen, setIsOpen, students, teacherBranc
                         <TableCell>{student.number}</TableCell>
                         <TableCell className="font-medium flex items-center gap-2">
                            {student.name}
-                           {criticalStudentIds.includes(student.id) && <AlertCircle className="h-4 w-4 text-orange-500" title="Bu öğrencinin notu, 45-50 aralığında kaldığı için ortalamayı düşürecek şekilde AI tarafından otomatik olarak ayarlandı."/>}
+                           {criticalStudentIds.includes(student.id) && <span title="Bu öğrencinin notu, 45-50 aralığında kaldığı için ortalamayı düşürecek şekilde AI tarafından otomatik olarak ayarlandı."><AlertCircle className="h-4 w-4 text-orange-500" /></span>}
                         </TableCell>
                         {renderStudentGradeCells(student)}
                     </TableRow>

@@ -25,7 +25,7 @@ export function ClubPetitionsTab({ classId, teacherProfile, currentClass, clubs,
     const [teacherName, setTeacherName] = useState('');
     const [schoolName, setSchoolName] = useState('');
     const [academicYear, setAcademicYear] = useState('2025-2026');
-    const [students, setStudents] = useState<Partial<Student>[]>([]);
+    const [students, setStudents] = useState<any[]>([]);
 
     useEffect(() => {
         if (teacherProfile) {

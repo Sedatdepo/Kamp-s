@@ -46,7 +46,7 @@ const RegularHomeworkCard = ({ homework, students, submissions, classId, onScore
         submissions.forEach(sub => {
             const localChanges = localSubmissions[sub.id];
             if (localChanges) {
-                const originalSub = submissions.find(s => s.id === sub.id) || {};
+                const originalSub = submissions.find(s => s.id === sub.id) || {} as Partial<Submission>;
                 const updates: { [key: string]: any } = {};
 
                 const localGrade = localChanges.grade === undefined ? null : localChanges.grade;

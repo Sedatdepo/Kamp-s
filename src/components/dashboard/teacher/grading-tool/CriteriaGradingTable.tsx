@@ -65,7 +65,7 @@ export function CriteriaGradingTable({
   const handleExport = () => {
     if (!currentClass || !teacherProfile) return;
     
-    let activeTab: ActiveGradingTab;
+    let activeTab: 1 | 2 | 3 | 4;
     if (scoreKey === 'scores1') activeTab = 1;
     else if (scoreKey === 'scores2') activeTab = 2;
     else if (scoreKey === 'projectScores') activeTab = 3;
@@ -125,16 +125,16 @@ export function CriteriaGradingTable({
                   {criteria.map(c => (
                     <TableCell key={c.id} className="text-center">
                       <CriteriaInput
-                        value={scores?.[c.id] || ''}
+                        value={String(scores?.[c.id] ?? '')}
                         onChange={(e) => onScoresChange(student.id, c.id, e.target.value === '' ? null : parseInt(e.target.value, 10))}
                         max={c.max}
-                        disabled={isManualTotal}
+                        disabled={!!isManualTotal}
                       />
                     </TableCell>
                   ))}
                   <TableCell className="text-center font-bold text-lg">
                     <TotalScoreInput
-                        value={total ?? ''}
+                        value={String(total ?? '')}
                         onChange={(e) => onTotalScoreChange(student.id, e.target.value === '' ? null : parseInt(e.target.value, 10))}
                     />
                   </TableCell>

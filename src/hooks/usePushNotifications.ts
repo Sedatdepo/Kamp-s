@@ -43,8 +43,8 @@ export const usePushNotifications = () => {
                 setNotificationPermissionGranted(true);
                 
                 let userRef;
-                if (appUser.type === 'student') {
-                    userRef = doc(db, 'students', appUser.data.id);
+                if (appUser.type === 'student_session') {
+                    userRef = doc(db, 'students', (appUser as any).data.uid);
                 } else if (appUser.type === 'teacher') {
                     userRef = doc(db, 'teachers', appUser.data.uid);
                 }
@@ -99,8 +99,8 @@ export const usePushNotifications = () => {
             const currentToken = await getFCMToken(); // Get the token for this device
             if (currentToken) {
                 let userRef;
-                if (appUser.type === 'student') {
-                    userRef = doc(db, 'students', appUser.data.id);
+                if (appUser.type === 'student_session') {
+                    userRef = doc(db, 'students', (appUser as any).data.uid);
                 } else if (appUser.type === 'teacher') {
                     userRef = doc(db, 'teachers', appUser.data.uid);
                 }

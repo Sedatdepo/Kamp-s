@@ -247,7 +247,7 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
     // Sync local state with data from useDatabase
     useEffect(() => {
         if (!dbLoading) {
-            setLocalAssignments([...assignmentsData, ...(localDb.performanceAssignments || [])]);
+            setLocalAssignments([...(assignmentsData as any[]), ...(localDb.performanceAssignments || [])]);
         }
     }, [localDb.performanceAssignments, dbLoading]);
     
@@ -330,10 +330,10 @@ export const HomeworkLibrary = ({ classId, teacherProfile, classes, students }: 
 
     const handleSaveNewRubric = (newRubric: any) => {
         const key = `custom_${Date.now()}`;
-        setRubrics(prev => ({ ...prev, [key]: newRubric }));
+        setRubrics((prev: any) => ({ ...prev, [key]: newRubric }));
     };
     const handleSaveRubric = (key: string, rubric: any) => {
-        setRubrics(prev => ({ ...prev, [key]: rubric }));
+        setRubrics((prev: any) => ({ ...prev, [key]: rubric }));
         toast({title: 'Kriterler Güncellendi'});
     };
     

@@ -530,7 +530,7 @@ export function TeacherDashboard() {
           case 'kazanimlar': tabContent = <KazanımlarTab />; break;
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
-          case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass} />; break;
+          case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass ?? null} />; break;
           default: tabContent = null;
         }
         return (
@@ -550,7 +550,7 @@ export function TeacherDashboard() {
     }
     
     if (!selectedClassId) {
-        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
+        return <ClassSelectionScreen onSelectClass={handleSelectClass} classes={orderedClasses || []} students={allStudents || []} loading={classesLoading} setOrderedClasses={setAndStoreOrderedClasses as React.Dispatch<React.SetStateAction<Class[]>>} setActiveTab={setActiveTab} setIsProfileOpen={setIsProfileOpen} initialTab={initialMainTab} />;
     }
     
     if (centralDataLoading && activeTab !== 'dashboard') {
@@ -610,20 +610,20 @@ export function TeacherDashboard() {
     }
     
     switch(activeTab) {
-        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile!} students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass} /></Suspense>; break;
-        case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []} lessons={lessons || []} />; break;
-        case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
-        case 'forms': tabContent = <InfoFormsTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass} students={studentsForSelectedClass} />; break;
-        case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass} />; break;
-        case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} classes={classes || []} />; break;
-        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass} clubs={clubs || []} />; break;
-        case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
-        case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass} />; break;
-        case 'activity-tracking': tabContent = <ActivityTrackingTab students={studentsForSelectedClass} currentClass={currentClass} teacherProfile={teacherProfile} />; break;
+        case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass ?? null} teacherProfile={teacherProfile} />; break;
+        case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile!} students={studentsForSelectedClass} currentClass={currentClass ?? null} />; break;
+        case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass ?? null} /></Suspense>; break;
+        case 'election': tabContent = <ElectionTab students={studentsForSelectedClass} currentClass={currentClass ?? null} />; break;
+        case 'homework': tabContent = <HomeworkTab classId={selectedClassId!} currentClass={currentClass ?? null} teacherProfile={teacherProfile} students={studentsForSelectedClass} classes={classes || []} lessons={lessons || []} />; break;
+        case 'risks': tabContent = <RiskMapTab classId={selectedClassId!} teacherProfile={teacherProfile} currentClass={currentClass ?? null} riskFactors={riskFactors || []} students={studentsForSelectedClass} />; break;
+        case 'forms': tabContent = <InfoFormsTab teacherProfile={teacherProfile} currentClass={currentClass ?? null} students={studentsForSelectedClass} />; break;
+        case 'communication': tabContent = <CommunicationTab classId={selectedClassId!} currentClass={currentClass ?? null} />; break;
+        case 'discipline': tabContent = <DisciplineTab students={studentsForSelectedClass} currentClass={currentClass ?? null} teacherProfile={teacherProfile} />; break;
+        case 'exam-analysis': tabContent = <ExamAnalysisTab students={studentsForSelectedClass} currentClass={currentClass ?? null} teacherProfile={teacherProfile} classes={classes || []} />; break;
+        case 'social-club': tabContent = <SocialClubTab students={studentsForSelectedClass} teacherId={teacherId} currentClass={currentClass ?? null} clubs={clubs || []} />; break;
+        case 'gamification': tabContent = <SinifKahramanlariTab students={studentsForSelectedClass} currentClass={currentClass ?? null} teacherProfile={teacherProfile} />; break;
+        case 'sociogram': tabContent = <SociogramTab students={studentsForSelectedClass} currentClass={currentClass ?? null} />; break;
+        case 'activity-tracking': tabContent = <ActivityTrackingTab students={studentsForSelectedClass} currentClass={currentClass ?? null} teacherProfile={teacherProfile} />; break;
         default: tabContent = <div>Bilinmeyen sekme</div>;
     }
 

@@ -195,9 +195,9 @@ export function PerformanceHomeworkTab() {
   const { appUser, db } = useAuth();
   const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
-  if (appUser?.type !== 'student') return null;
+  if (appUser?.type !== 'student_session') return null;
 
-  const classId = appUser.data.classId;
+  const classId = (appUser.data as any).classId;
 
   const homeworksQuery = useMemoFirebase(() => {
     if (!db || !classId) return null;
@@ -238,7 +238,7 @@ export function PerformanceHomeworkTab() {
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {sortedHomeworks.length > 0 ? (
             sortedHomeworks.map((hw) => (
-              <HomeworkItem key={hw.id} homework={hw} student={appUser.data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
+              <HomeworkItem key={hw.id} homework={hw} student={(appUser as any).data} classId={classId} onSelect={() => setSelectedHomework(hw)} />
             ))
           ) : (
             <div className="text-center py-10 bg-muted/50 rounded-lg">

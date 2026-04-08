@@ -68,7 +68,7 @@ const App = () => {
     return classData ? classData.kazanimlar : [];
   }, [curriculum, selectedClass]);
   
-  const [qSettings, setQSettings] = useState({
+  const [qSettings, setQSettings] = useState<Record<string, { id: string; label: string; active: boolean; count: number }>>({
     multipleChoice: { id: 'multipleChoice', label: 'Çoktan Seçmeli', active: true, count: 5 },
     classic: { id: 'classic', label: 'Klasik', active: true, count: 5 },
     fillInBlank: { id: 'fillInBlank', label: 'Boşluk Doldurma', active: false, count: 4 }
@@ -110,9 +110,9 @@ const App = () => {
     } else if (section === 'text_content') {
        if (index !== null) newResult.text_content[index][key] = value;
     } else if (section === 'questions') {
-      newResult.questions[index][key] = value;
+      if (index !== null) newResult.questions[index][key] = value;
     } else if (section === 'glossary') {
-      newResult.glossary[index][key] = value;
+      if (index !== null) newResult.glossary[index][key] = value;
     }
     setEditableResult(newResult);
   };
@@ -395,7 +395,7 @@ const App = () => {
                         <Label className="block text-xs font-semibold text-gray-500 mb-1">Hedef Kazanım</Label>
                          <select className="w-full p-2 text-xs border rounded-lg focus:ring-1 focus:ring-orange-500 bg-white outline-none disabled:bg-gray-100 h-24" value={selectedOutcome} onChange={e => setSelectedOutcome(e.target.value)} disabled={!selectedClass} multiple={false}>
                             <option value="">Önce sınıf seçin...</option>
-                            {kazanimOptions.map((kazanim: string, index: number) => <option key={index} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
+                            {(kazanimOptions as string[]).map((kazanim: string, index: number) => <option key={index} value={kazanim}>{kazanim.substring(0, 100)}...</option>)}
                         </select>
                     </div>
                 </CardContent>

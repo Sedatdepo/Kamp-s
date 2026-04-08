@@ -97,9 +97,9 @@ export default function TimetableTab({ classes, lessons }: { classes: Class[], l
       periods,
       days: DAYS,
       teacherName: schoolInfo.classTeacherName || 'Öğretmen',
-      schoolName: schoolInfo.schoolName,
-      dutyDay: schoolInfo.dutyDay,
-      dutyPlace: schoolInfo.dutyPlace,
+      schoolName: schoolInfo.schoolName || '',
+      dutyDay: schoolInfo.dutyDay || '',
+      dutyPlace: schoolInfo.dutyPlace || '',
     });
   };
 

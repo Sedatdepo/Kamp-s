@@ -56,7 +56,7 @@ async function seedDatabase(db: Firestore, teacherId: string) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore: db, storage } = useFirebase();
+  const { auth, firestore: db, storage } = useFirebase() as any;
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           async (docSnap) => {
             if (docSnap.exists()) {
               await seedDatabase(db, firebaseUser.uid);
-              const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as TeacherProfile;
+              const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as unknown as TeacherProfile;
               setAppUser({ type: 'teacher', data: firebaseUser, profile });
               setLoading(false);
             } else {

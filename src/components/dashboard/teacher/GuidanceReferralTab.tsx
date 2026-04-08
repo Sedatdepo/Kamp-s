@@ -22,16 +22,18 @@ import { exportGuidanceReferralToRtf } from '@/lib/word-export';
 
 const formSchema = z.object({
   id: z.string(),
-  studentName: z.string().min(1, "Öğrenci adı gerekli"),
-  className: z.string(),
+  name: z.string(),
   date: z.string(),
-  studentNumber: z.string(),
-  reason: z.string(),
-  observations: z.string(),
-  otherInfo: z.string(),
-  studiesDone: z.string(),
-  referrerName: z.string(),
-  referrerTitle: z.string(),
+  data: z.any(),
+  studentName: z.string().min(1, "Öğrenci adı gerekli"),
+  className: z.string().optional(),
+  studentNumber: z.string().optional(),
+  reason: z.string().optional(),
+  observations: z.string().optional(),
+  otherInfo: z.string().optional(),
+  studiesDone: z.string().optional(),
+  referrerName: z.string().optional(),
+  referrerTitle: z.string().optional(),
   referrerSignature: z.string().optional(),
 });
 
@@ -58,10 +60,12 @@ export function GuidanceReferralTab({ teacherProfile, currentClass }: { teacherP
       referrerName: teacherProfile?.name || '',
       referrerTitle: 'Sınıf Rehber Öğretmeni',
       referrerSignature: '',
+      name: '',
+      data: null,
   }), [currentClass, teacherProfile]);
 
-  const form = useForm<GuidanceReferralRecord>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(formSchema) as any,
   });
 
   const handleNewRecord = useCallback(() => {

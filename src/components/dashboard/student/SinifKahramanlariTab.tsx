@@ -94,13 +94,14 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
   const handleBadgeClick = async (student: Student, badge: any) => {
     if (!db) return;
 
-    const isOwned = student.badges?.includes(badge.id);
+    const isOwned = student.badges?.some(b => b.badgeId === badge.id);
     const studentRef = doc(db, 'students', student.id);
 
     try {
       if (isOwned) {
+        const updatedBadges = student.badges?.filter(b => b.badgeId !== badge.id) || [];
         await updateDoc(studentRef, {
-          badges: arrayRemove(badge.id)
+          badges: updatedBadges
         });
         toast({
           title: "Rozet Geri Alındı!",
@@ -108,8 +109,9 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
           variant: "destructive"
         });
       } else {
+        const newBadge = { id: `aw_${Date.now()}`, badgeId: badge.id, name: badge.name, icon: badge.icon, dateAwarded: new Date().toISOString() };
         await updateDoc(studentRef, {
-          badges: arrayUnion(badge.id)
+          badges: arrayUnion(newBadge)
         });
         toast({
           title: "Rozet Kazanıldı!",
@@ -166,11 +168,13 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
                       <Badge variant="secondary">{student.behaviorScore || 100}</Badge>
                     </TableCell>
                     <TableCell className="flex gap-1 flex-wrap">
-                      {student.badges?.map(badgeId => (
-                        <span key={badgeId} className="text-lg" title={AVAILABLE_BADGES.find(b => b.id === badgeId)?.name}>
-                          {AVAILABLE_BADGES.find(b => b.id === badgeId)?.icon || '🏅'}
+                      {student.badges?.map(awardedBadge => {
+                        const badgeDef = AVAILABLE_BADGES.find(b => b.id === awardedBadge.badgeId);
+                        return (
+                        <span key={awardedBadge.id} className="text-lg" title={badgeDef?.name || awardedBadge.name}>
+                          {badgeDef?.icon || awardedBadge.icon || '🏅'}
                         </span>
-                      ))}
+                      )})}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" onClick={() => openStudentModal(student)}>
@@ -242,7 +246,7 @@ export function SinifKahramanlariTab({ students }: { students: Student[] }) {
                 <ScrollArea className="h-[300px] pr-4">
                   <div className="grid grid-cols-2 gap-3">
                     {AVAILABLE_BADGES.map((badge) => {
-                      const isOwned = selectedStudent.badges?.includes(badge.id);
+                      const isOwned = selectedStudent.badges?.some(b => b.badgeId === badge.id);
                       return (
                         isOwned ? (
                             <AlertDialog key={badge.id}>
