@@ -1,0 +1,21 @@
+{
+  "subject": "Matematik",
+  "grade": "11",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: TRİGONOMETRİ VE NİCELİKLER",
+      "outcomes": [
+        {
+          "code": "MAT.11.1.1",
+          "statement": "Trigonometrik referans fonksiyonların özelliklerine ilişkin muhakeme yapabilme.",
+          "subOutcomes": [
+            "a) Birim çember ve periyodik özellikler ele alınır.",
+            "b) Trigonometrik denklemler ve grafik yorumlama incelenir."
+          ]
+        }
+      ]
+    }
+  ]
+}

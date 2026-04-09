@@ -1,0 +1,21 @@
+{
+  "subject": "Fizik",
+  "grade": "12",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: DALGA MEKANİĞİ VE MODERN FİZİK",
+      "outcomes": [
+        {
+          "code": "FİZ.12.1.1",
+          "statement": "Planck sabitinin modern fiziğin doğuşundaki etkisini çözümleyebilme.",
+          "subOutcomes": [
+            "a) Siyah cisim ışıması ve fotoelektrik olay incelenir.",
+            "b) Kuantum dünyasına giriş ve atom altı parçacıklar tartışılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

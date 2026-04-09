@@ -1,0 +1,35 @@
+{
+  "subject": "Fizik",
+  "grade": "11",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: KUVVET VE HAREKET",
+      "outcomes": [
+        {
+          "code": "FİZ.11.1.1",
+          "statement": "Newton Hareket Yasaları ile ilgili tümevarımsal akıl yürütebilme.",
+          "subOutcomes": [
+            "a) İvmelenme ve kuvvet ilişkisi matematiksel modellerle ele alınır.",
+            "b) Sürtünmeli yüzeylerde hareket analizi yapılır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: ELEKTRİK VE MANYETİZMA",
+      "outcomes": [
+        {
+          "code": "FİZ.11.2.1",
+          "statement": "Elektriksel kuvvet ve manyetik alan etkileşimlerine yönelik bilimsel çıkarım.",
+          "subOutcomes": [
+            "a) Coulomb yasası ve elektriksel alan kavramları incelenir.",
+            "b) Akım ve manyetik alan ilişkisi tartışılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

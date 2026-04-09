@@ -1,0 +1,21 @@
+{
+  "subject": "Felsefe",
+  "grade": "11",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: TEKNOLOJİ VE FELSEFEYE GİRİŞ",
+      "outcomes": [
+        {
+          "code": "FEL.11.1.1",
+          "statement": "Teknolojinin etik ve felsefi boyutlarını sorgulayabilme.",
+          "subOutcomes": [
+            "a) Yapay zeka ve dijitalleşmenin insan onuru üzerindeki etkisi tartışılır.",
+            "b) Bilgi toplumunun felsefi temelleri ele alınır."
+          ]
+        }
+      ]
+    }
+  ]
+}
