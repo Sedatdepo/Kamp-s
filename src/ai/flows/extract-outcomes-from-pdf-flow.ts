@@ -59,7 +59,7 @@ export async function extractOutcomesFromPdf(input: ExtractOutcomesInput): Promi
       const { output } = await ai.generate({
         prompt: prompt,
         output: { schema: ExtractedOutcomesSchema },
-        model: 'googleai/gemini-2.5-flash',
+        model: 'googleai/gemini-1.5-flash',
       });
       return output!;
     }
