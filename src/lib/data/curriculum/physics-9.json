@@ -1,0 +1,43 @@
+{
+  "subject": "Fizik",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: FİZİK BİLİMİ VE KARİYER KEŞFİ",
+      "outcomes": [
+        {
+          "code": "FİZ.9.1.1",
+          "statement": "Fizik biliminin tanımına yönelik tümevarımsal akıl yürütebilme.",
+          "subOutcomes": [
+            "a) Fiziğin alt dalları ile ilgili kavramsal tanımlamalara değinilir.",
+            "b) Fiziğin diğer disiplinlerle ilişkisi tartışılır."
+          ]
+        },
+        {
+          "code": "FİZ.9.1.2",
+          "statement": "Bilimsel araştırma süreçlerinde merak düzeyini artırabilme.",
+          "subOutcomes": [
+            "a) Gözlem ve deneyin fizik bilimindeki yeri vurgulanır.",
+            "b) Teknolojik gelişmelerin fizik bilimine katkısı ele alınır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: KUVVET VE HAREKET",
+      "outcomes": [
+        {
+          "code": "FİZ.9.2.1",
+          "statement": "Konum, alınan yol, yer değiştirme, sürat ve hız kavramlarını analiz edebilme.",
+          "subOutcomes": [
+            "a) Tek boyutta sabit ivmeli hareket analiz edilir.",
+            "b) Grafik okuma ve yorumlama becerileri geliştirilir."
+          ]
+        }
+      ]
+    }
+  ]
+}

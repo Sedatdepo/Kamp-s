@@ -1,0 +1,35 @@
+{
+  "subject": "Matematik",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: SAYILAR VE NİCELİKLER",
+      "outcomes": [
+        {
+          "code": "MAT.9.1.1",
+          "statement": "Gerçek sayıların üslü ve köklü gösterimleriyle yapılan işlemlere dair muhakeme yapabilme.",
+          "subOutcomes": [
+            "a) Üslü ve köklü ifadelerin özellikleri günlük hayat problemlerine uygulanır.",
+            "b) Sayı sistemleri arasındaki geçişler ele alınır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: ALGORİTMA VE PROBLEMLER",
+      "outcomes": [
+        {
+          "code": "MAT.9.2.1",
+          "statement": "Algoritmik düşünme becerilerini problem çözme süreçlerine aktarabilme.",
+          "subOutcomes": [
+            "a) Mantık ve kümeler teorisi temelinde problem çözme stratejileri geliştirilir.",
+            "b) Basit algoritma tasarımı ve akış şemaları incelenir."
+          ]
+        }
+      ]
+    }
+  ]
+}

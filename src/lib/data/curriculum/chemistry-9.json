@@ -1,0 +1,35 @@
+{
+  "subject": "Kimya",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: KİMYA BİLİMİ VE ETKİLEŞİM",
+      "outcomes": [
+        {
+          "code": "KİM.9.1.1",
+          "statement": "Kimya biliminin sembolik dilini oluşturmaya yönelik tümdengelimsel akıl yürütebilme.",
+          "subOutcomes": [
+            "a) Element ve bileşik kavramları, özellikleri ve sembolleri ele alınır.",
+            "b) Laboratuvarda güvenlik kuralları ve temel malzemeler tanıtılır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: ATOM VE PERİYODİK SİSTEM",
+      "outcomes": [
+        {
+          "code": "KİM.9.2.1",
+          "statement": "Atom modellerinin tarihsel gelişimini analiz edebilme.",
+          "subOutcomes": [
+            "a) Dalton, Thomson, Rutherford ve Bohr atom modelleri incelenir.",
+            "b) Modern atom teorisine giriş yapılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

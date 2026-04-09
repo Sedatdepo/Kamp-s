@@ -1,0 +1,35 @@
+{
+  "subject": "Türk Dili ve Edebiyatı",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: EDEBİYATIN DOĞASI VE İNSAN",
+      "outcomes": [
+        {
+          "code": "TDE.9.1.1",
+          "statement": "Edebiyatın güzel sanatlar içindeki yerini muakeme edebilme.",
+          "subOutcomes": [
+            "a) Dilin işlevleri ve edebiyatın diğer sanat dallarıyla ilişkisi ele alınır.",
+            "b) Metinlerin sınıflandırılmasına yönelik temel bilgiler verilir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: DİLİN ZENGİNLİĞİ VE ANLATIM",
+      "outcomes": [
+        {
+          "code": "TDE.9.2.1",
+          "statement": "Metnin dil ve anlatım özelliklerini analiz edebilme.",
+          "subOutcomes": [
+            "a) Kelimelerin anlam özellikleri ve cümle yapısı incelenir.",
+            "b) Yazım ve noktalama kurallarının metindeki işlevi sorgulanır."
+          ]
+        }
+      ]
+    }
+  ]
+}
