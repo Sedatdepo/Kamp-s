@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import biologyData from '@/lib/data/curriculum/biyoloji-9.json';
+import biologyData from '@/lib/data/curriculum/biology-9.json';
 
 export default function MaarifModeliTab() {
   return (
