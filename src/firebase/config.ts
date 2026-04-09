@@ -1,9 +1,8 @@
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyDo0CIiWNUvUjW0VguH6WYpcALevB_l-KE",
+  authDomain: "campusconnect2-62535271-e4eb6.firebaseapp.com",
+  projectId: "campusconnect2-62535271-e4eb6",
+  storageBucket: "campusconnect2-62535271-e4eb6.firebasestorage.app",
+  messagingSenderId: "851910040324",
+  appId: "1:851910040324:web:83470c8f857723772c4e51"
 };
