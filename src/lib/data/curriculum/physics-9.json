@@ -11,16 +11,33 @@
           "code": "FİZ.9.1.1",
           "statement": "Fizik biliminin tanımına yönelik tümevarımsal akıl yürütebilme.",
           "subOutcomes": [
-            "a) Fiziğin alt dalları ile ilgili kavramsal tanımlamalara değinilir.",
-            "b) Fiziğin diğer disiplinlerle ilişkisi tartışılır."
+            "a) Fizik biliminin doğası ve kapsamı ele alınır.",
+            "b) Gözlem, deney ve teorinin fizik bilimindeki yeri vurgulanır."
           ]
         },
         {
           "code": "FİZ.9.1.2",
-          "statement": "Bilimsel araştırma süreçlerinde merak düzeyini artırabilme.",
+          "statement": "Fizik biliminin alt dallarını sınıflandırabilme.",
           "subOutcomes": [
-            "a) Gözlem ve deneyin fizik bilimindeki yeri vurgulanır.",
-            "b) Teknolojik gelişmelerin fizik bilimine katkısı ele alınır."
+            "a) Mekanik, elektromanyetizma, termodinamik dalları incelenir.",
+            "b) Optik, katıhal fiziği, atom ve nükleer fizik dalları tanıtılır.",
+            "c) Fiziğin diğer disiplinlerle (biyoloji, tıp, mühendislik) ilişkisi kurulur."
+          ]
+        },
+        {
+          "code": "FİZ.9.1.3",
+          "statement": "Fizik bilimine katkıda bulunmuş bilim insanlarının deneyimlerini yansıtabilme.",
+          "subOutcomes": [
+            "a) Newton, Einstein, Curie gibi isimlerin çalışmaları ele alınır.",
+            "b) Bilimsel çalışma yöntemleri ve etik değerler vurgulanır."
+          ]
+        },
+        {
+          "code": "FİZ.9.1.4",
+          "statement": "Bilim ve teknoloji kurumlarındaki kariyer olanaklarını sorgulayabilme.",
+          "subOutcomes": [
+            "a) CERN, NASA, TÜBİTAK, ASELSAN gibi kurumlar tanıtılır.",
+            "b) Fizik eğitimi sonrası yönelebilecek meslek alanları incelenir."
           ]
         }
       ]
@@ -31,10 +48,78 @@
       "outcomes": [
         {
           "code": "FİZ.9.2.1",
-          "statement": "Konum, alınan yol, yer değiştirme, sürat ve hız kavramlarını analiz edebilme.",
+          "statement": "Temel ve türetilmiş nicelikleri sınıflandırabilme.",
           "subOutcomes": [
-            "a) Tek boyutta sabit ivmeli hareket analiz edilir.",
-            "b) Grafik okuma ve yorumlama becerileri geliştirilir."
+            "a) Skaler ve vektörel nicelik ayrımı yapılır.",
+            "b) SI birim sistemi ve ölçme araçları tanıtılır."
+          ]
+        },
+        {
+          "code": "FİZ.9.2.2",
+          "statement": "Vektörel niceliklerde toplama işlemini gerçekleştirebilme.",
+          "subOutcomes": [
+            "a) Vektörlerin uç uca ekleme yöntemiyle toplanması işlenir.",
+            "b) Bileşke vektör kavramı üzerinde durulur."
+          ]
+        },
+        {
+          "code": "FİZ.9.2.3",
+          "statement": "Kuvvet kavramını ve doğadaki temel kuvvetleri açıklayabilme.",
+          "subOutcomes": [
+            "a) Temas gerektiren ve gerektirmeyen kuvvetler ayrılır.",
+            "b) Kütle çekim, elektromanyetik, güçlü ve zayıf nükleer kuvvetler tanıtılır."
+          ]
+        },
+        {
+          "code": "FİZ.9.2.4",
+          "statement": "Hareketin temel kavramlarını ve hareket türlerini açıklayabilme.",
+          "subOutcomes": [
+            "a) Konum, alınan yol, yer değiştirme, sürat ve hız kavramları analiz edilir.",
+            "b) Doğrusal, dairesel ve titreşim hareketleri örneklenir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "3. ÜNİTE: AKIŞKANLAR",
+      "outcomes": [
+        {
+          "code": "FİZ.9.3.1",
+          "statement": "Basınca yönelik çıkarımlarda bulunabilme.",
+          "subOutcomes": [
+            "a) Katı, sıvı ve gaz basıncı kavramları ele alınır.",
+            "b) Basıncın günlük hayattaki ve teknolojideki uygulamaları incelenir."
+          ]
+        },
+        {
+          "code": "FİZ.9.3.2",
+          "statement": "Sıvılarda kaldırma kuvvetine yönelik çıkarımlarda bulunabilme.",
+          "subOutcomes": [
+            "a) Arşimet İlkesi ve yüzme, askıda kalma, batma durumları analiz edilir.",
+            "b) Gemilerin ve denizaltıların çalışma prensibi örneklenir."
+          ]
+        },
+        {
+          "code": "FİZ.9.3.3",
+          "statement": "Bernoulli İlkesi'ne yönelik genelleme yapabilme.",
+          "subOutcomes": [
+            "a) Akışkanların hızı ve basıncı arasındaki ilişki incelenir.",
+            "b) Uçak kanatlarının yapısı ve rüzgarlı havada kapıların çarpması örneklenir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "4. ÜNİTE: ENERJİ",
+      "outcomes": [
+        {
+          "code": "FİZ.9.4.1",
+          "statement": "İç enerji, ısı ve sıcaklık ilişkisini tümevarımsal olarak açıklama.",
+          "subOutcomes": [
+            "a) Isı transfer yolları (iletim, konveksiyon, ışıma) incelenir.",
+            "b) Isıl denge ve hal değişimi kavramları üzerinde durulur."
           ]
         }
       ]

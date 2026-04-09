@@ -5,14 +5,56 @@
   "units": [
     {
       "id": 1,
-      "title": "1. ÜNİTE: DALGA MEKANİĞİ VE MODERN FİZİK",
+      "title": "1. ÜNİTE: KUVVET VE HAREKET",
       "outcomes": [
         {
           "code": "FİZ.12.1.1",
-          "statement": "Planck sabitinin modern fiziğin doğuşundaki etkisini çözümleyebilme.",
+          "statement": "Tork, denge ve kütle merkezi kavramlarını kullanarak sistem analizi yapabilme.",
           "subOutcomes": [
-            "a) Siyah cisim ışıması ve fotoelektrik olay incelenir.",
-            "b) Kuantum dünyasına giriş ve atom altı parçacıklar tartışılır."
+            "a) Moment (tork) dengesi ve basit makinelerin verimliliği ele alınır.",
+            "b) Çizgisel ve açısal momentum korunumu ile çarpışmalar analiz edilir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: ENERJİ",
+      "outcomes": [
+        {
+          "code": "FİZ.12.2.1",
+          "statement": "Yay sarkacı ve basit sarkaç hareketlerini enerji ve zaman boyutunda çözümleyebilme.",
+          "subOutcomes": [
+            "a) Esneklik potansiyel enerjisi ve yay sabiti (k) ilişkisi incelenir.",
+            "b) Mekanik enerji korunumu ve enerji verimliliği projeleri kurgulanır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "3. ÜNİTE: DALGALAR",
+      "outcomes": [
+        {
+          "code": "FİZ.12.3.1",
+          "statement": "Işığın dalga doğasını, girişim ve kırınım olaylarını analiz edebilme.",
+          "subOutcomes": [
+            "a) Su dalgalarında ve ışıkta (Young deneyi) girişim desenleri incelenir.",
+            "b) Elektromanyetik dalgaların spektrumu ve kullanım alanları tartışılır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "4. ÜNİTE: MADDE VE DOĞASI",
+      "outcomes": [
+        {
+          "code": "FİZ.12.4.1",
+          "statement": "Siyah cisim ışıması, fotoelektrik etki ve Modern Fizik prensiplerini analiz edebilme.",
+          "subOutcomes": [
+            "a) Planck sabiti ve enerjinin kuantalı yapısı vurgulanır.",
+            "b) Standart model, atom altı parçacıklar (kuarklar vb.) ve nükleer enerji teknolojileri ele alınır."
           ]
         }
       ]

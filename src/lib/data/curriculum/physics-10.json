@@ -1,0 +1,64 @@
+{
+  "subject": "Fizik",
+  "grade": "10",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: KUVVET VE HAREKET",
+      "outcomes": [
+        {
+          "code": "FİZ.10.1.1",
+          "statement": "Sabit ivmeli hareket, serbest düşme ve iki boyutta hareket kavramlarını analiz edebilme.",
+          "subOutcomes": [
+            "a) Yer çekimi ivmesinin hareket üzerindeki etkisi incelenir.",
+            "b) Yatay ve eğik atış hareketleri modelleme yoluyla açıklanır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. ÜNİTE: ENERJİ",
+      "outcomes": [
+        {
+          "code": "FİZ.10.2.1",
+          "statement": "İş, güç ve mekanik enerji korunumu ilkesini çözümleyebilme.",
+          "subOutcomes": [
+            "a) Potansiyel ve kinetik enerji dönüşümleri nicel olarak hesaplanır.",
+            "b) Enerji kaynakları ve verimlilik kavramları etik boyutuyla tartışılır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "3. ÜNİTE: ELEKTRİK",
+      "outcomes": [
+        {
+          "code": "FİZ.10.3.1",
+          "statement": "Ohm Yasası ve elektrik devrelerini analiz edebilme.",
+          "subOutcomes": [
+            "a) Dirençlerin seri ve paralel bağlanması durumlarını incelenir.",
+            "b) Üreteçlerin bağlanması ve devrelerdeki güç hesaplamaları yapılır.",
+            "c) Topraklama ve elektriksel güvenlik önlemleri vurgulanır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "4. ÜNİTE: DALGALAR",
+      "outcomes": [
+        {
+          "code": "FİZ.10.4.1",
+          "statement": "Dalga kavramını, yayılma özelliklerini ve kaynakla ilişkisini açıklayabilme.",
+          "subOutcomes": [
+            "a) Atma ve periyodik dalga ayrımı yapılarak sınıflandırma yapılır.",
+            "b) Su dalgalarında yansıma, kırılma ve rezonans olayları incelenir."
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -9,10 +9,11 @@
       "outcomes": [
         {
           "code": "FİZ.11.1.1",
-          "statement": "Newton Hareket Yasaları ile ilgili tümevarımsal akıl yürütebilme.",
+          "statement": "Newton Hareket Yasaları, sürtünme ve limit hız kavramlarını analiz edebilme.",
           "subOutcomes": [
-            "a) İvmelenme ve kuvvet ilişkisi matematiksel modellerle ele alınır.",
-            "b) Sürtünmeli yüzeylerde hareket analizi yapılır."
+            "a) Eğik düzlem ve birbirine bağlı kütlelerde hareket incelenir.",
+            "b) Serbest düşme ve limit hız kavramları hava direnciyle ilişkilendirilir.",
+            "c) Düzgün çembersel hareket ve merkezcil kuvvet analiz edilir."
           ]
         }
       ]
@@ -23,10 +24,39 @@
       "outcomes": [
         {
           "code": "FİZ.11.2.1",
-          "statement": "Elektriksel kuvvet ve manyetik alan etkileşimlerine yönelik bilimsel çıkarım.",
+          "statement": "Elektriksel kuvvet, alan ve manyetik etkileşimleri çözümleyebilme.",
           "subOutcomes": [
-            "a) Coulomb yasası ve elektriksel alan kavramları incelenir.",
-            "b) Akım ve manyetik alan ilişkisi tartışılır."
+            "a) Coulomb yasası, elektriksel potansiyel ve sığaçlar (kondansatör) incelenir.",
+            "b) Akım ve manyetik alan ilişkisi, indüksiyon ve öz-indüksiyon akımları analiz edilir.",
+            "c) Transformatörlerin çalışma prensibi ve enerji iletimindeki rolü tartışılır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "3. ÜNİTE: MADDE VE DOĞASI",
+      "outcomes": [
+        {
+          "code": "FİZ.11.3.1",
+          "statement": "Yarı iletkenlik ve süper iletkenlik teknolojilerine yönelik çıkarımda bulunabilme.",
+          "subOutcomes": [
+            "a) P-N eklemleri, diyotlar ve transistörlerin temel çalışma mantığı ele alınır.",
+            "b) Süper iletkenlerin kritik sıcaklık ve manyetik levitasyon özellikleri incelenir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "4. ÜNİTE: OPTİK",
+      "outcomes": [
+        {
+          "code": "FİZ.11.4.1",
+          "statement": "Işığın doğası, aydınlanma ve yansıma olaylarını analiz edebilme.",
+          "subOutcomes": [
+            "a) Düzlem ve küresel aynalarda görüntü oluşumları ve çizimleri yapılır.",
+            "b) Işığın kırılması, Snell yasası, tam yansıma ve merceklerin özellikleri incelenir."
           ]
         }
       ]
