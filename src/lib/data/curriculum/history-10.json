@@ -1,0 +1,21 @@
+{
+  "subject": "Tarih",
+  "grade": "10",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: YERLEŞME VE DEVLEŞME SÜRECİNDE SELÇUKLU TÜRKİYESİ",
+      "outcomes": [
+        {
+          "code": "TAR.10.1.1",
+          "statement": "Anadolu'nun Türkleşme sürecini analiz edebilme.",
+          "subOutcomes": [
+            "a) Malazgirt sonrası kurulan beylikler ve Haçlı seferlerinin etkisi incelenir.",
+            "b) Moğol istilası ve sonrasında Anadolu'daki değişim ele alınır."
+          ]
+        }
+      ]
+    }
+  ]
+}

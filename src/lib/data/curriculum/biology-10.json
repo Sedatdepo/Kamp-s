@@ -1,0 +1,21 @@
+{
+  "subject": "Biyoloji",
+  "grade": "10",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: EKOSİSTEM EKOLOJİSİ VE GÜNCEL ÇEVRE SORUNLARI",
+      "outcomes": [
+        {
+          "code": "BİY.10.1.1",
+          "statement": "Ekosistemin yapısını ve sürdürülebilirliğini analiz edebilme.",
+          "subOutcomes": [
+            "a) Madde ve enerji akışının ekosistem dengesindeki önemi vurgulanır.",
+            "b) Biyoçeşitlilik üzerindeki tehditler ve çözüm önerileri tartışılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

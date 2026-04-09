@@ -1,0 +1,21 @@
+{
+  "subject": "Coğrafya",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: COĞRAFYANIN DOĞASI VE SİSTEMLER",
+      "outcomes": [
+        {
+          "code": "COĞ.9.1.1",
+          "statement": "Coğrafya biliminin konusu, bölümleri ve diğer bilimlerle ilişkisini çözümleyebilme.",
+          "subOutcomes": [
+            "a) Coğrafyanın inceleme alanı ve doğal/beşerî sistemler vurgulanır.",
+            "b) Mekânsal bilgi teknolojilerinin (CBS, GPS) güncel hayattaki yeri ele alınır."
+          ]
+        }
+      ]
+    }
+  ]
+}

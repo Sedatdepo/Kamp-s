@@ -1,0 +1,21 @@
+{
+  "subject": "Felsefe",
+  "grade": "10",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: FELSEFEYİ TANIMA",
+      "outcomes": [
+        {
+          "code": "FEL.10.1.1",
+          "statement": "Felsefi düşüncenin özelliklerini analiz edebilme.",
+          "subOutcomes": [
+            "a) Merak, sorgulama ve rasyonellik kavramları ele alınır.",
+            "b) Felsefenin insan ve toplum hayatındaki rolü tartışılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

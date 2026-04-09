@@ -8,19 +8,60 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Subjects available in the system
-const AVAILABLE_SUBJECTS = [
-  { id: 'biology-9', name: 'Biyoloji (9. Sınıf)', path: 'biology-9' },
-  { id: 'physics-9', name: 'Fizik (9. Sınıf)', path: 'physics-9' },
-  { id: 'chemistry-9', name: 'Kimya (9. Sınıf)', path: 'chemistry-9' },
-  { id: 'math-9', name: 'Matematik (9. Sınıf)', path: 'math-9' },
-  { id: 'literature-9', name: 'Türk Dili ve Edebiyatı (9. Sınıf)', path: 'literature-9' },
+// Grade options
+const GRADES = [
+  { id: '9', name: '9. Sınıf' },
+  { id: '10', name: '10. Sınıf' },
+  { id: '11', name: '11. Sınıf' },
+  { id: '12', name: '12. Sınıf' },
 ];
 
+// Comprehensive Subject Registry
+const SUBJECTS_REGISTRY: Record<string, { id: string, name: string }[]> = {
+  '9': [
+    { id: 'biology-9', name: 'Biyoloji' },
+    { id: 'physics-9', name: 'Fizik' },
+    { id: 'chemistry-9', name: 'Kimya' },
+    { id: 'math-9', name: 'Matematik' },
+    { id: 'literature-9', name: 'Türk Dili ve Edebiyatı' },
+    { id: 'geography-9', name: 'Coğrafya' },
+    { id: 'history-9', name: 'Tarih' },
+  ],
+  '10': [
+    { id: 'biology-10', name: 'Biyoloji' },
+    { id: 'physics-10', name: 'Fizik' },
+    { id: 'chemistry-10', name: 'Kimya' },
+    { id: 'math-10', name: 'Matematik' },
+    { id: 'literature-10', name: 'Türk Dili ve Edebiyatı' },
+    { id: 'history-10', name: 'Tarih' },
+    { id: 'philosophy-10', name: 'Felsefe' },
+  ],
+  '11': [
+    { id: 'biology-11', name: 'Biyoloji' },
+    { id: 'physics-11', name: 'Fizik' },
+    { id: 'math-11', name: 'Matematik' },
+    { id: 'philosophy-11', name: 'Felsefe' },
+  ],
+  '12': [
+    { id: 'biology-12', name: 'Biyoloji' },
+    { id: 'math-12', name: 'Matematik' },
+    { id: 'history-12', name: 'İnkılap Tarihi' },
+  ],
+};
+
 export default function MaarifModeliTab() {
+  const [selectedGrade, setSelectedGrade] = useState<string>('9');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('biology-9');
   const [curriculumData, setCurriculumData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Auto-select first subject when grade changes
+  useEffect(() => {
+    const subjects = SUBJECTS_REGISTRY[selectedGrade] || [];
+    if (subjects.length > 0 && !subjects.find(s => s.id === selectedSubjectId)) {
+      setSelectedSubjectId(subjects[0].id);
+    }
+  }, [selectedGrade]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -54,13 +95,26 @@ export default function MaarifModeliTab() {
                 <p className="text-sm text-muted-foreground italic">Türkiye Yüzyılı Maarif Modeli kapsamında güncel kazanımlar.</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger className="w-full sm:w-[140px] bg-background">
+                  <SelectValue placeholder="Sınıf" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GRADES.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                <SelectTrigger className="w-[280px] bg-background">
+                <SelectTrigger className="w-full sm:w-[220px] bg-background">
                   <SelectValue placeholder="Ders Seçiniz" />
                 </SelectTrigger>
                 <SelectContent>
-                  {AVAILABLE_SUBJECTS.map((sub) => (
+                  {(SUBJECTS_REGISTRY[selectedGrade] || []).map((sub) => (
                     <SelectItem key={sub.id} value={sub.id}>
                       {sub.name}
                     </SelectItem>

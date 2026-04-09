@@ -1,0 +1,21 @@
+{
+  "subject": "Tarih",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. ÜNİTE: TARİH VE ZAMAN",
+      "outcomes": [
+        {
+          "code": "TAR.9.1.1",
+          "statement": "Tarih öğrenmenin birey ve toplum üzerindeki etkilerini analiz edebilme.",
+          "subOutcomes": [
+            "a) Tarihsel bilincin milli kimlik oluşumundaki yeri vurgulanır.",
+            "b) Zaman algısı ve takvim sistemleri ele alınır."
+          ]
+        }
+      ]
+    }
+  ]
+}
