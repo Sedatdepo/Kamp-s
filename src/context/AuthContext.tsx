@@ -27,31 +27,37 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const publicRoutes = ['/', '/auth/register'];
 
 async function seedDatabase(db: Firestore, teacherId: string) {
-    const teacherRef = doc(db, 'teachers', teacherId);
-    const teacherSnap = await getDoc(teacherRef);
-    if (!teacherSnap.exists()) return;
+    try {
+        const teacherRef = doc(db, 'teachers', teacherId);
+        const teacherSnap = await getDoc(teacherRef);
+        if (!teacherSnap.exists()) return;
 
-    const teacherData = teacherSnap.data();
-    const updates: Partial<TeacherProfile> = {};
+        const teacherData = teacherSnap.data();
+        const updates: Partial<TeacherProfile> = {};
 
-    if (!teacherData.perfCriteria) updates.perfCriteria = INITIAL_PERF_CRITERIA;
-    if (!teacherData.projCriteria) updates.projCriteria = INITIAL_PROJ_CRITERIA;
-    if (!teacherData.behaviorCriteria) updates.behaviorCriteria = INITIAL_BEHAVIOR_CRITERIA;
-    if (!teacherData.badgeCriteria) updates.badgeCriteria = INITIAL_BADGES;
-    if (!teacherData.reportConfig) {
-        updates.reportConfig = {
-            schoolName: teacherData.schoolName || "",
-            teacherName: teacherData.name || "",
-            principalName: teacherData.principalName || "",
-            academicYear: "2024-2025",
-            semester: "1",
-            lessonName: teacherData.branch || "",
-            date: new Date().toLocaleDateString('tr-TR')
-        };
-    }
-    
-    if (Object.keys(updates).length > 0) {
-        await setDoc(teacherRef, updates, { merge: true });
+        if (!teacherData.perfCriteria) updates.perfCriteria = INITIAL_PERF_CRITERIA;
+        if (!teacherData.projCriteria) updates.projCriteria = INITIAL_PROJ_CRITERIA;
+        if (!teacherData.behaviorCriteria) updates.behaviorCriteria = INITIAL_BEHAVIOR_CRITERIA;
+        if (!teacherData.badgeCriteria) updates.badgeCriteria = INITIAL_BADGES;
+        
+        if (!teacherData.reportConfig) {
+            updates.reportConfig = {
+                schoolName: teacherData.schoolName || "",
+                teacherName: teacherData.name || "",
+                principalName: teacherData.principalName || "",
+                academicYear: "2024-2025",
+                semester: "1",
+                lessonName: teacherData.branch || "",
+                date: new Date().toLocaleDateString('tr-TR')
+            };
+        }
+        
+        if (Object.keys(updates).length > 0) {
+            // Use setDoc with merge instead of update to ensure we don't crash if doc somehow changed
+            await setDoc(teacherRef, updates, { merge: true });
+        }
+    } catch (error) {
+        console.error("Seed database error:", error);
     }
 }
 
@@ -90,28 +96,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (firebaseUser) {
-        setLoading(true); // Start loading when user is found
+        setLoading(true);
         const teacherRef = doc(db, 'teachers', firebaseUser.uid);
+
+        // Run seed check once outside of snapshot to avoid infinite loop
+        seedDatabase(db, firebaseUser.uid);
 
         userUnsubscribeRef.current = onSnapshot(
           teacherRef,
-          async (docSnap) => {
+          (docSnap) => {
             if (docSnap.exists()) {
-              await seedDatabase(db, firebaseUser.uid);
               const profile = { id: docSnap.id, uid: docSnap.id, ...docSnap.data() } as unknown as TeacherProfile;
               setAppUser({ type: 'teacher', data: firebaseUser, profile });
-              setLoading(false);
             } else {
-              // Not a teacher. Treat as an anonymous/student session.
-              // This keeps the user authenticated to satisfy security rules.
               setAppUser({ type: 'student_session', data: firebaseUser });
-              setLoading(false);
             }
+            setLoading(false);
           },
           (error) => {
             console.error("Error fetching teacher profile:", error);
             setAppUser(null);
-            setLoading(false); // Stop loading on error
+            setLoading(false);
           }
         );
       } else {
