@@ -200,7 +200,19 @@ export default function StudentInfoFormPage() {
         setIsSaving(true);
         try {
             const infoFormRef = doc(db, 'infoForms', student.id);
-            const infoFormData = { ...data, studentId: student.id, submitted: true, authUid: student.authUid };
+            
+            // Create the data object, ensuring authUid is not undefined
+            const rawData = { 
+                ...data, 
+                studentId: student.id, 
+                submitted: true, 
+                authUid: student.authUid || null 
+            };
+
+            // Firestore doesn't accept undefined values. Remove them.
+            // Using JSON trick to recursively remove undefined nested values as well
+            const infoFormData = JSON.parse(JSON.stringify(rawData));
+            
             await setDoc(infoFormRef, infoFormData, { merge: true });
             toast({ title: 'Başarıyla Kaydedildi!', description: 'Bilgi formunuz güncellendi.' });
             router.push(`/portal/${classCode}`);
