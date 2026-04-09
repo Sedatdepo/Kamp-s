@@ -9,7 +9,7 @@ import { INITIAL_BEHAVIOR_CRITERIA, INITIAL_PERF_CRITERIA, INITIAL_PROJ_CRITERIA
 // We are generating an HTML string and telling the browser to save it as an .rtf file.
 // Word and other text editors can correctly interpret this HTML-like structure as a rich text document.
 // This provides maximum compatibility, especially with older versions like Word 2003.
-const generateHtmlShell = (content: string, title: string) => {
+const generateHtmlShell = (content: string, title: string, orientation: 'portrait' | 'landscape' = 'portrait', customStyles: string = '') => {
   return `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
@@ -17,8 +17,8 @@ const generateHtmlShell = (content: string, title: string) => {
       <title>${title}</title>
       <style>
         @page {
-          size: A4 portrait;
-          margin: 0.7in;
+          size: A4 ${orientation};
+          margin: 0.5in;
         }
         body {
           font-family: 'Times New Roman', Times, serif;
@@ -47,6 +47,7 @@ const generateHtmlShell = (content: string, title: string) => {
         .word-export-desk-container { vertical-align: top; }
         .word-export-desk { width: 100%; border: 1.5px solid #d97706; background-color: #fef3c7; border-collapse: collapse; }
         .word-export-seat { width: 50%; height: 50px; border: 1px solid #d97706; padding: 4px; text-align: center; vertical-align: middle; font-size: 11px; }
+        ${customStyles}
       </style>
     </head>
     <body>
@@ -1489,18 +1490,18 @@ export function exportRiskMapToRtf({ students, riskFactors, currentClass, teache
     };
 
     const tableHeader = `
-        <tr>
-            <th class="horizontal" style="width:5%;">S.No</th>
-            <th class="horizontal" style="width:10%;">Okul No</th>
-            <th class="horizontal" style="width:25%;">Adı Soyadı</th>
-            ${riskFactors.map(factor => `<th>${factor.label}</th>`).join('')}
-            <th class="horizontal">Risk Puanı</th>
+        <tr class="risk-header">
+            <th class="horizontal" style="width:3%;">S.No</th>
+            <th class="horizontal" style="width:7%;">No</th>
+            <th class="horizontal" style="width:20%;">Adı Soyadı</th>
+            ${riskFactors.map(factor => `<th class="vertical-label">${factor.label}</th>`).join('')}
+            <th class="horizontal" style="width:5%;">Puan</th>
         </tr>
     `;
     const dataRows = students.map((s, index) => {
         const riskScore = getRiskScore(s.risks);
         return `
-            <tr>
+            <tr class="risk-row">
                 <td class="center">${index + 1}</td>
                 <td class="center">${s.number}</td>
                 <td>${s.name}</td>
@@ -1513,8 +1514,21 @@ export function exportRiskMapToRtf({ students, riskFactors, currentClass, teache
         `;
     }).join('');
 
+    const riskStyles = `
+        .risk-header th { font-size: 7pt; height: 100px; }
+        .risk-row td { font-size: 8pt; }
+        .vertical-label { 
+            mso-rotate: 90; 
+            white-space: nowrap; 
+            width: 25px;
+            height: 100px;
+            vertical-align: bottom;
+            padding-bottom: 5px;
+        }
+    `;
+
     const content = `${header}<table><thead>${tableHeader}</thead><tbody>${dataRows}</tbody></table>${footer}`;
-    const finalHtml = generateHtmlShell(content, title);
+    const finalHtml = generateHtmlShell(content, title, 'landscape', riskStyles);
     downloadRtf(finalHtml, `${title.replace(/ /g, '_')}.rtf`);
 }
 
