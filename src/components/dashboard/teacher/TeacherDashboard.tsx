@@ -522,7 +522,7 @@ export function TeacherDashboard() {
 
   const renderContent = () => {
     let tabContent;
-    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'meb-club', 'timetable', 'bep'];
+    const fullPageTabs: ActiveTab[] = ['dilekce', 'zumre', 'veli-toplantisi', 'sok', 'kazanimlar', 'meb-club', 'timetable', 'bep', 'maarif-modeli'];
     if (!selectedClassId && fullPageTabs.includes(activeTab)) {
         switch(activeTab) {
           case 'dilekce': tabContent = <DilekceTab teacherProfile={teacherProfile} />; break;
