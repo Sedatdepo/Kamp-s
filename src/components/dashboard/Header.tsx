@@ -138,7 +138,8 @@ export function Header({ notificationCount, studentMode = false, studentData = n
              <Skeleton className="h-9 w-9 rounded-full bg-slate-800" />
           )}
         </div>
-      </header>
+      </div>
+    </header>
       {!studentMode && appUser?.type === 'teacher' && appUser.profile && (
         <ProfileDialog 
             isOpen={isProfileOpen} 
