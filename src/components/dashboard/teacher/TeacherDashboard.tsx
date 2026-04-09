@@ -56,9 +56,10 @@ const ZumreTab = dynamic(() => import('@/components/dashboard/teacher/ZumreTab')
 const ExamAnalysisTab = dynamic(() => import('@/components/dashboard/teacher/ExamAnalysisTab').then(mod => mod.ExamAnalysisTab), { loading: LoadingSpinner });
 const TimetableTab = dynamic(() => import('@/components/dashboard/teacher/TimetableTab').then(mod => mod.default), { loading: LoadingSpinner });
 const SinifKahramanlariTab = dynamic(() => import('@/components/dashboard/teacher/SinifKahramanlariTab').then(mod => mod.SinifKahramanlariTab), { loading: LoadingSpinner });
+const MaarifModeliTab = dynamic(() => import('@/components/dashboard/teacher/MaarifModeliTab').then(mod => mod.default), { loading: LoadingSpinner });
 
 
-type ActiveTab = "activity-tracking" | "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable";
+type ActiveTab = "activity-tracking" | "dashboard" | "students" | "grading" | "planning" | "election" | "homework" | "risks" | "forms" | "communication" | "dilekce" | "discipline" | "bep" | "zumre" | "veli-toplantisi" | "sok" | "kazanimlar" | "exam-analysis" | "meb-club" | "social-club" | "gamification" | "sociogram" | "timetable" | "maarif-modeli";
 
 const MenuCard = ({ icon, title, description, onClick, isDisabled, notificationCount }: { icon: React.ReactNode, title: string, description: string, onClick: () => void, isDisabled?: boolean, notificationCount?: number }) => {
   return (
@@ -382,7 +383,7 @@ function ClassSelectionScreen({
                     <MenuCard icon={<Users2 />} title="Zümre Tutanağı" description="Zümre toplantısı tutanakları oluşturun." onClick={() => setActiveTab('zumre')} />
                     <MenuCard icon={<Users />} title="ŞÖK Tutanağı" description="Şube öğretmenler kurulu tutanakları." onClick={() => setActiveTab('sok')} />
                     <MenuCard icon={<BookText />} title="Veli Toplantısı Tutanağı" description="Veli toplantısı gündem ve kararları." onClick={() => setActiveTab('veli-toplantisi')} />
-                    <MenuCard icon={<Target />} title="Kazanımlar" description="Ders kazanımlarını yönetin." onClick={() => setActiveTab('kazanimlar')} />
+                    <MenuCard icon={<Target />} title="Kazanımlar (Maarif Modeli)" description="Yeni müfredat kazanımlarını yönetin." onClick={() => setActiveTab('maarif-modeli')} />
                     <MenuCard icon={<Trophy />} title="Kulüp Evrak" description="Sosyal etkinlik ve kulüp yönetimi." onClick={() => setActiveTab('meb-club')} />
                     <MenuCard icon={<Clock />} title="Ders Programı" description="Haftalık ders programı oluşturun." onClick={() => setActiveTab('timetable')} />
                  </div>
@@ -408,6 +409,7 @@ const TABS_CONFIG = {
   "veli-toplantisi": { label: "Veli Toplantısı", icon: Users },
   "sok": { label: "ŞÖK Tutanağı", icon: Users },
   "kazanimlar": { label: "Kazanımlar", icon: Target },
+  "maarif-modeli": { label: "Maarif Modeli Müfredat", icon: Sparkles },
   "exam-analysis": { label: "Sınav Analizi", icon: BarChart3 },
   "meb-club": { label: "Kulüp Evrak", icon: Trophy },
   "social-club": { label: "Sosyal Kulüpler", icon: Drama },
@@ -531,6 +533,7 @@ export function TeacherDashboard() {
           case 'meb-club': tabContent = <MebClubTab classes={classes || []} allStudents={allStudents || []} teacherProfile={teacherProfile} />; break;
           case 'timetable': tabContent = <TimetableTab classes={classes || []} lessons={lessons || []} />; break;
           case 'bep': tabContent = <BepTab teacherProfile={teacherProfile} currentClass={currentClass ?? null} />; break;
+          case 'maarif-modeli': tabContent = <MaarifModeliTab />; break;
           default: tabContent = null;
         }
         return (

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, ReactNode } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
 import { FirebaseClientProvider, useFirestore } from '@/firebase';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { DatabaseContext, initialDb, type Database } from '@/hooks/use-database';
 
@@ -87,9 +88,11 @@ function DatabaseProvider({ children }: { children: React.ReactNode }) {
 function ClientProviders({ children }: { children: React.ReactNode }) {
     return (
         <FirebaseClientProvider>
-            <AuthProvider>
-              <DatabaseProvider>{children}</DatabaseProvider>
-            </AuthProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <DatabaseProvider>{children}</DatabaseProvider>
+                </AuthProvider>
+            </ThemeProvider>
         </FirebaseClientProvider>
     );
 }

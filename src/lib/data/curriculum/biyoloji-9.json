@@ -1,0 +1,43 @@
+{
+  "subject": "Biyoloji",
+  "grade": "9",
+  "model": "Türkiye Yüzyılı Maarif Modeli",
+  "units": [
+    {
+      "id": 1,
+      "title": "1. TEMA: YAŞAM",
+      "outcomes": [
+        {
+          "code": "BİY.9.1.1",
+          "statement": "Biyolojideki dönüm noktalarının insan hayatına katkılarını sorgulayabilme.",
+          "subOutcomes": [
+            "a) Biyoloji biliminin gelişim süreci ve bu sürece katkı sağlayan önemli olaylar/kişiler ele alınır.",
+            "b) Biyolojideki gelişimlerin tarım, tıp ve sanayi gibi alanlardaki etkisi sorgulanır."
+          ]
+        },
+        {
+          "code": "BİY.9.1.2",
+          "statement": "Canlıların ortak özelliklerini, bu özelliklerin tüm canlılarda bulunma nedenlerini sorgulama.",
+          "subOutcomes": [
+            "a) Biyokimyasal süreçlerin (solunum, beslenme vb.) ortaklığına değinilir.",
+            "b) Homeostazi, organizasyon ve uyum gibi kavramlar temel düzeyde ele alınır."
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2. TEMA: ORGANİZASYON",
+      "outcomes": [
+        {
+          "code": "BİY.9.2.1",
+          "statement": "Hücreyi canlılığın temel birimi olarak analiz edebilme.",
+          "subOutcomes": [
+            "a) Hücre teorisinin gelişimi ve temel prensipleri açıklanır.",
+            "b) Prokaryot ve ökaryot hücre yapısı arasındaki farklar karşılaştırılır."
+          ]
+        }
+      ]
+    }
+  ]
+}

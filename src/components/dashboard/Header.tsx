@@ -12,7 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
-import { LogOut, User, Star } from 'lucide-react';
+import { LogOut, User, Star, Sun, Moon } from 'lucide-react';
+import { useTheme, branchThemes } from '@/components/providers/ThemeProvider';
 import { ProfileDialog } from './teacher/ProfileDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/icons/Logo';
@@ -33,9 +34,21 @@ export function Header({ notificationCount, studentMode = false, studentData = n
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
+  const { theme, toggleTheme, setBranchColor } = useTheme();
+  
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Update branch color based on teacher profile
+  useEffect(() => {
+    if (!studentMode && appUser?.type === 'teacher' && appUser.profile?.branch) {
+      const color = branchThemes[appUser.profile.branch] || branchThemes.default;
+      setBranchColor(color);
+    } else if (studentMode) {
+        setBranchColor(branchThemes.default); // Or specific student portal color
+    }
+  }, [appUser, studentMode, setBranchColor]);
   
   const handleStudentLogout = () => {
     // localStorage'dan siliyoruz
@@ -51,7 +64,7 @@ export function Header({ notificationCount, studentMode = false, studentData = n
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-white/10 bg-[#0a0f14] px-4 sm:px-6 shadow-lg w-full">
+      <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6 shadow-sm w-full">
         <div className="flex items-center">
             <div className="scale-[0.4] sm:scale-[0.5] origin-left">
               <Logo hideSlogan={true} />
@@ -66,7 +79,19 @@ export function Header({ notificationCount, studentMode = false, studentData = n
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleTheme} 
+            className="rounded-full"
+          >
+            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </Button>
+
+          <div className="h-8 w-px bg-border mx-1" />
+
+          <div className="flex items-center gap-4">
           {isClient && (studentMode || appUser) ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -83,20 +108,20 @@ export function Header({ notificationCount, studentMode = false, studentData = n
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-white/10 text-white">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="flex flex-col">
-                    <span className="font-semibold text-white">{userName}</span>
-                    <span className="text-xs text-slate-400">{userRole} {studentData ? ` - No: ${studentData.number}` : ''}</span>
+                    <span className="font-semibold">{userName}</span>
+                    <span className="text-xs text-muted-foreground">{userRole} {studentData ? ` - No: ${studentData.number}` : ''}</span>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuSeparator />
                   
                   {!studentMode && (
                     <>
-                      <DropdownMenuItem onClick={() => setProfileOpen(true)} className="focus:bg-white/5 focus:text-white cursor-pointer">
+                      <DropdownMenuItem onClick={() => setProfileOpen(true)} className="cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
                         <span>Profil</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-white/10" />
+                      <DropdownMenuSeparator />
                     </>
                   )}
 
