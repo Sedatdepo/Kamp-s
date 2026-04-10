@@ -30,20 +30,11 @@ const QuestionOutputSchema = z.object({
 });
 export type QuestionOutput = z.infer<typeof QuestionOutputSchema>;
 
-
-export async function generateQuestion(input: GenerateQuestionInput): Promise<QuestionOutput> {
-  const generateQuestionFlow = ai.defineFlow(
-    {
-      name: 'generateQuestionFlow',
-      inputSchema: GenerateQuestionInputSchema,
-      outputSchema: QuestionOutputSchema,
-    },
-    async (input) => {
-        const prompt = ai.definePrompt({
-            name: 'generateQuestionPrompt',
-            input: { schema: GenerateQuestionInputSchema },
-            output: { schema: QuestionOutputSchema },
-            prompt: `Sen bir eğitim teknolojileri uzmanısın ve MEB müfredatına hakim, yaratıcı bir soru yazarsın.
+export const generateQuestionPrompt = ai.definePrompt({
+  name: 'generateQuestionPrompt',
+  input: { schema: GenerateQuestionInputSchema },
+  output: { schema: QuestionOutputSchema },
+  prompt: `Sen bir eğitim teknolojileri uzmanısın ve MEB müfredatına hakim, yaratıcı bir soru yazarsın.
 Aşağıda verilen KAZANIM ve SORU TİPİ'ne uygun bir sınav sorusu oluştur.
 
 KAZANIM: {{{kazanim}}}
@@ -67,12 +58,20 @@ Kurallar:
   - 'options' ve 'correctAnswer' alanlarını boş bırak.
 - Üretilen soru nesnesi, belirtilen JSON formatına tam olarak uymalıdır.
 `,
-        });
+});
 
-        const { output } = await prompt(input);
-        return output!;
-    }
-  );
+export const generateQuestionFlow = ai.defineFlow(
+  {
+    name: 'generateQuestionFlow',
+    inputSchema: GenerateQuestionInputSchema,
+    outputSchema: QuestionOutputSchema,
+  },
+  async (input) => {
+      const { output } = await generateQuestionPrompt(input);
+      return output!;
+  }
+);
 
+export async function generateQuestion(input: GenerateQuestionInput): Promise<QuestionOutput> {
   return await generateQuestionFlow(input);
 }
