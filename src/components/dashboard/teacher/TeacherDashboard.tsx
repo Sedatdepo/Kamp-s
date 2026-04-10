@@ -7,8 +7,9 @@ import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/Header';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles, Activity } from 'lucide-react';
+import { School, Loader2, ChevronDown, Users, ArrowLeft, Plus, Trash2, Edit, BookText, Vote, Grid, ClipboardList, List, Gauge, MessageCircle, FileSignature, Home, FileHeart, ClipboardCheck, Scale, Target, FolderKanban, Users2, User, FileQuestion, BarChart3, Drama, Trophy, Share2, MessagesSquare, Clock, Sparkles, Activity, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Class, Student, TeacherProfile, Lesson, RiskFactor, Club, Message } from '@/lib/types';
 import { doc, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { ProfileDialog } from './ProfileDialog';
 import { CommunicationTab } from '@/components/dashboard/teacher/CommunicationTab';
 import { StudentManagementTab } from '@/components/dashboard/teacher/StudentManagementTab';
@@ -624,13 +626,83 @@ export function TeacherDashboard() {
     }
     
     if (activeTab === 'dashboard') {
+      const allModules = [
+        { id: 'students', icon: <Users />, title: "Öğrenci Yönetimi", description: "Liste, devamsızlık ve oturma planı." },
+        { id: 'grading', icon: <Gauge />, title: "Değerlendirme Aracı", description: "Performans, proje ve davranış notları." },
+        { id: 'gamification', icon: <Trophy />, title: "Sınıf Kahramanları", description: "Puan ve rozetlerle sınıfı motive edin." },
+        { id: 'sociogram', icon: <Share2 />, title: "Sosyogram", description: "Sınıf içi ilişki haritasını çıkarın." },
+        { id: 'communication', icon: <MessagesSquare />, title: "İletişim Paneli", description: "Duyurular ve öğrenci mesajları.", notificationCount: unreadMessagesCount },
+        { id: 'planning', icon: <ClipboardList />, title: "Yıllık Plan", description: "Yıllık plan ve günlük plan oluşturun." },
+        { id: 'exam-analysis', icon: <BarChart3 />, title: "Sınav Analizi", description: "Sınav sonuçlarını ve kazanımlarını analiz et." },
+        { id: 'election', icon: <Vote />, title: "Seçim Modülü", description: "Sınıf başkanlığı ve temsilci seçimi." },
+        { id: 'homework', icon: <BookText />, title: "Ödevler & Projeler", description: "Ödev ve proje yönetimi." },
+        { id: 'risks', icon: <List />, title: "Sınıf Risk Haritası", description: "Risk haritası ve istatistiklerini görüntüleyin." },
+        { id: 'forms', icon: <FileSignature />, title: "Bilgi Formları", description: "Öğrenci bilgi formu durumlarını takip edin." },
+        { id: 'discipline', icon: <Scale />, title: "Disiplin Süreci", description: "MEB yönetmeliğine uygun süreç takibi." },
+        { id: 'social-club', icon: <Drama />, title: "Sosyal Kulüpler", description: "Kulüp ve sosyal etkinlik atamaları." },
+        { id: 'activity-tracking', icon: <Activity />, title: "Etkinlik Takip", description: "Öğrenci etkinliklerini takip edin." },
+      ];
+
+
+      const visibleModuleIds = currentClass?.visibleModules || allModules.map(m => m.id);
+      const visibleModules = allModules.filter(m => visibleModuleIds.includes(m.id));
+
+      const handleToggleModule = async (moduleId: string) => {
+        if (!currentClass || !db) return;
+        const currentVisible = currentClass.visibleModules || allModules.map(m => m.id);
+        let nextVisible;
+        if (currentVisible.includes(moduleId)) {
+            nextVisible = currentVisible.filter(id => id !== moduleId);
+        } else {
+            nextVisible = [...currentVisible, moduleId];
+        }
+        try {
+            await updateDoc(doc(db, 'classes', currentClass.id), { visibleModules: nextVisible });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Pano ayarları güncellenemedi.' });
+        }
+      };
+
       return (
         <div className="grid gap-6">
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                         <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
-                         <div className="flex items-center gap-2">
+                    <div className="flex justify-between items-center text-wrap gap-4">
+                         <div className="space-y-1">
+                            <h1 className="text-2xl font-headline">{currentClass?.name || 'Sınıf Paneli'}</h1>
+                            <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
+                         </div>
+                         <div className="flex flex-wrap items-center gap-2">
+                             <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" className="h-9">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Pano Ayarları
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>Pano Görünüm Ayarları</DialogTitle>
+                                        <DialogDescription>Dashboard üzerinde görünmesini istediğiniz modülleri buradan seçebilirsiniz.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+                                        {allModules.map(m => (
+                                            <div key={m.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-primary/10 p-2 rounded text-primary">
+                                                        {React.cloneElement(m.icon as React.ReactElement, { className: "w-4 h-4" })}
+                                                    </div>
+                                                    <span className="text-sm font-medium">{m.title}</span>
+                                                </div>
+                                                <Switch 
+                                                    checked={visibleModuleIds.includes(m.id)}
+                                                    onCheckedChange={() => handleToggleModule(m.id)}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </DialogContent>
+                             </Dialog>
                             <Button variant="outline" onClick={() => handleSelectClass(null)} className="h-9">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Sınıf Seçimine Dön
@@ -652,30 +724,26 @@ export function TeacherDashboard() {
                             </DropdownMenu>
                          </div>
                     </div>
-                    <CardDescription>Sınıfınıza ait modüllere aşağıdan erişebilirsiniz.</CardDescription>
                 </CardHeader>
             </Card>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <MenuCard icon={<Users />} title="Öğrenci Yönetimi" description="Liste, devamsızlık ve oturma planı." onClick={() => setActiveTab('students')} />
-                <MenuCard icon={<Gauge />} title="Değerlendirme Aracı" description="Performans, proje ve davranış notları." onClick={() => setActiveTab('grading')} />
-                <MenuCard icon={<Trophy />} title="Sınıf Kahramanları" description="Puan ve rozetlerle sınıfı motive edin." onClick={() => setActiveTab('gamification')} />
-                <MenuCard icon={<Share2 />} title="Sosyogram" description="Sınıf içi ilişki haritasını çıkarın." onClick={() => setActiveTab('sociogram')} />
-                <MenuCard icon={<MessagesSquare />} title="İletişim Paneli" description="Duyurular ve öğrenci mesajları." onClick={() => setActiveTab('communication')} notificationCount={unreadMessagesCount} />
-                <MenuCard icon={<ClipboardList />} title="Yıllık Plan" description="Yıllık plan ve günlük plan oluşturun." onClick={() => setActiveTab('planning')} />
-                <MenuCard icon={<BarChart3 />} title="Sınav Analizi" description="Sınav sonuçlarını ve kazanımlarını analiz et." onClick={() => setActiveTab('exam-analysis')} />
-                <MenuCard icon={<Vote />} title="Seçim Modülü" description="Sınıf başkanlığı ve temsilci seçimi." onClick={() => setActiveTab('election')} />
-                <MenuCard icon={<BookText />} title="Ödevler & Projeler" description="Ödev ve proje yönetimi." onClick={() => setActiveTab('homework')} />
-                <MenuCard icon={<List />} title="Sınıf Risk Haritası" description="Risk haritası ve istatistiklerini görüntüleyin." onClick={() => setActiveTab('risks')} />
-                <MenuCard icon={<FileSignature />} title="Bilgi Formları" description="Öğrenci bilgi formu durumlarını takip edin." onClick={() => setActiveTab('forms')} />
-                <MenuCard icon={<Scale />} title="Disiplin Süreci" description="MEB yönetmeliğine uygun süreç takibi." onClick={() => setActiveTab('discipline')} />
-                <MenuCard icon={<Drama />} title="Sosyal Kulüpler" description="Kulüp ve sosyal etkinlik atamaları." onClick={() => setActiveTab('social-club')} />
-                <MenuCard icon={<Activity />} title="Etkinlik Takip" description="Öğrenci etkinliklerini takip edin." onClick={() => setActiveTab('activity-tracking')} />
+                {visibleModules.map(m => (
+                    <MenuCard 
+                        key={m.id}
+                        icon={m.icon} 
+                        title={m.title} 
+                        description={m.description} 
+                        onClick={() => setActiveTab(m.id as any)}
+                        notificationCount={m.notificationCount}
+                    />
+                ))}
             </div>
         </div>
       );
     }
     
     switch(activeTab) {
+
         case 'students': tabContent = <StudentManagementTab students={studentsForSelectedClass} classes={classes || []} currentClass={currentClass ?? null} teacherProfile={teacherProfile} />; break;
         case 'grading': tabContent = <GradingToolTab classId={selectedClassId!} teacherProfile={teacherProfile!} students={studentsForSelectedClass} currentClass={currentClass ?? null} />; break;
         case 'planning': tabContent = <Suspense fallback={<div>Yükleniyor...</div>}><AnnualPlanTab teacherProfile={teacherProfile} currentClass={currentClass ?? null} /></Suspense>; break;

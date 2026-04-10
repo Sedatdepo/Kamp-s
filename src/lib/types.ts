@@ -238,7 +238,9 @@ export interface Class {
   sociogramSurvey?: SociogramSurvey;
   isActivityTrackingPublished?: boolean;
   canStudentEditActivityTracking?: boolean;
+  visibleModules?: string[];
 }
+
 
 export type GradingScores = {
   // Standard exam score (for non-literature teachers OR final calculated score)
