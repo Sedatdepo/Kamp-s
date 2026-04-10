@@ -120,9 +120,22 @@ function ClassSelectionScreen({
     const teacherId = appUser?.type === 'teacher' ? appUser.data.uid : '';
 
     const [newClassName, setNewClassName] = useState('');
+    const [newClassColor, setNewClassColor] = useState('#3498db'); // Default blue
     const [editingClass, setEditingClass] = useState<Class | null>(null);
     const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
     const [draggedClassId, setDraggedClassId] = useState<string | null>(null);
+
+    const PREDEFINED_COLORS = [
+        { name: 'Mavi', value: '#3498db' },
+        { name: 'Yeşil', value: '#27ae60' },
+        { name: 'Kırmızı', value: '#e74c3c' },
+        { name: 'Turuncu', value: '#f39c12' },
+        { name: 'Mor', value: '#9b59b6' },
+        { name: 'Koyu Mavi', value: '#2c3e50' },
+        { name: 'Turkuaz', value: '#1abc9c' },
+        { name: 'Pembe', value: '#e91e63' }
+    ];
+
 
     const handleAddClass = async () => {
         if (!newClassName.trim() || !teacherId || !db) return;
@@ -136,6 +149,7 @@ function ClassSelectionScreen({
             
             batch.set(newClassRef, {
                 name: newClassName,
+                color: newClassColor,
                 teacherId: teacherId,
                 isProjectSelectionActive: false,
                 isRiskFormActive: false,
@@ -163,8 +177,11 @@ function ClassSelectionScreen({
     const handleUpdateClass = async () => {
         if (!editingClass || !editingClass.name.trim() || !db) return;
         try {
-            await updateDoc(doc(db, 'classes', editingClass.id), { name: editingClass.name });
-            toast({ title: 'Sınıf adı güncellendi' });
+            await updateDoc(doc(db, 'classes', editingClass.id), { 
+                name: editingClass.name,
+                color: editingClass.color 
+            });
+            toast({ title: 'Sınıf güncellendi' });
             setEditingClass(null);
         } catch(error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Sınıf güncellenemedi.' });
@@ -277,9 +294,28 @@ function ClassSelectionScreen({
                                     onChange={(e) => setNewClassName(e.target.value)}
                                     placeholder="Sınıf Adı (örn. 9/A)"
                                 />
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Sınıf Kartı Rengi</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {PREDEFINED_COLORS.map((c) => (
+                                            <button
+                                                key={c.value}
+                                                type="button"
+                                                className={cn(
+                                                    "w-8 h-8 rounded-full border-2 transition-all",
+                                                    newClassColor === c.value ? "border-primary scale-110" : "border-transparent"
+                                                )}
+                                                style={{ backgroundColor: c.value }}
+                                                onClick={() => setNewClassColor(c.value)}
+                                                title={c.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                                 <DialogClose asChild>
                                     <Button onClick={handleAddClass} className="w-full">Oluştur</Button>
                                 </DialogClose>
+
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -310,9 +346,9 @@ function ClassSelectionScreen({
                                     draggedClassId === cls.id ? 'opacity-50' : 'opacity-100'
                                 )}
                             >
-                                <Card className="flex flex-col hover:shadow-lg transition-shadow h-full">
+                                <Card className="flex flex-col hover:shadow-lg transition-shadow h-full border-t-4" style={{ borderTopColor: cls.color || '#3b82f6' }}>
                                     <div className="flex-1 p-6 cursor-pointer" onClick={() => onSelectClass(cls.id)}>
-                                        <CardTitle>{cls.name}</CardTitle>
+                                        <CardTitle className="transition-colors group-hover:text-primary">{cls.name}</CardTitle>
                                         <CardDescription className="mt-1">Sınıf Kodu: {cls.code}</CardDescription>
                                     </div>
                                     <CardContent className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4 relative">
@@ -330,11 +366,38 @@ function ClassSelectionScreen({
                                                     </Button>
                                                 </DialogTrigger>
                                                 <DialogContent>
-                                                    <DialogHeader><DialogTitle>Sınıf Adını Düzenle</DialogTitle></DialogHeader>
-                                                    <Input defaultValue={cls.name} onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : { ...cls, name: e.target.value })}/>
+                                                    <DialogHeader><DialogTitle>Sınıf Bilgilerini Düzenle</DialogTitle></DialogHeader>
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium">Sınıf Adı</label>
+                                                            <Input 
+                                                                defaultValue={cls.name} 
+                                                                onChange={(e) => setEditingClass(prev => prev ? {...prev, name: e.target.value} : { ...cls, name: e.target.value })}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium">Sınıf Kartı Rengi</label>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {PREDEFINED_COLORS.map((c) => (
+                                                                    <button
+                                                                        key={c.value}
+                                                                        type="button"
+                                                                        className={cn(
+                                                                            "w-8 h-8 rounded-full border-2 transition-all",
+                                                                            (editingClass?.color || cls.color) === c.value ? "border-primary scale-110" : "border-transparent"
+                                                                        )}
+                                                                        style={{ backgroundColor: c.value }}
+                                                                        onClick={() => setEditingClass(prev => prev ? {...prev, color: c.value} : { ...cls, color: c.value })}
+                                                                        title={c.name}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <DialogClose asChild>
                                                         <Button onClick={handleUpdateClass}>Kaydet</Button>
                                                     </DialogClose>
+
                                                 </DialogContent>
                                             </Dialog>
                                             <AlertDialog>

@@ -209,6 +209,7 @@ export interface Message {
 export interface Class {
   id: string;
   name:string;
+  color?: string;
   teacherId: string;
   code: string;
   isProjectSelectionActive?: boolean;
