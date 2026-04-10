@@ -60,26 +60,6 @@ export const decisionsFlow = ai.defineFlow(
 export async function generateMeetingDecisions(
   input: GenerateMeetingDecisionsInput
 ): Promise<GenerateMeetingDecisionsOutput> {
-
-        **Metin Stili ve Çıktı Kuralları:**
-        1.  Her bir karar, bir numara ile başlamalıdır (1., 2., 3. ...).
-        2.  Kesinlikle resmi bir dil kullan. ("...yapılmasına karar verilmiştir.", "...gerektiği vurgulandı.", "...konusunda mutabık kalındı.")
-        3.  Her gündem maddesi için en az bir ilgili karar üretmeye çalış.
-        4.  "Açılış ve yoklama" gibi maddeler için "Toplantının ... tarafından açıldığı ve yapılan yoklamada ... kişinin hazır bulunduğu görüldü." gibi standart bir karar yaz.
-        5.  "Dilek ve temenniler" ve "Kapanış" gibi maddeler için de uygun, standart kapanış kararları yaz.
-        6.  Öğrenci başarısı, devamsızlık, ölçme-değerlendirme gibi temel maddeler için yönetmeliklere uygun, genel geçer ve mantıklı kararlar üret.
-        7.  Kararlar, birbirinden ayrı maddeler halinde, her biri yeni bir satırda olacak şekilde formatlanmalıdır.
-
-        Oluşturacağın metni 'generatedDecisions' alanına yerleştir.
-      `;
-
-      const { output } = await ai.generate({
-        prompt: prompt,
-        output: { schema: GenerateMeetingDecisionsOutputSchema },
-      });
-      return output!;
-    }
-  );
-
   return await decisionsFlow(input);
 }
+

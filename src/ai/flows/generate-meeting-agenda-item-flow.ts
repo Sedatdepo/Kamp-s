@@ -59,20 +59,6 @@ export const meetingAgendaFlow = ai.defineFlow(
 export async function generateMeetingAgendaItem(
   input: GenerateMeetingAgendaItemInput
 ): Promise<GenerateMeetingAgendaItemOutput> {
-        2.  **Anahtar Kelimeler:** Aşağıda verilen anahtar kelimeleri veya cümleleri, oluşturduğun metnin içinde mutlaka anlamlı bir şekilde kullanmalısın. Anahtar Kelimeler: "${input.keywords || 'Belirtilmemiş'}"
-        3.  **Resmi Üslup:** Metin, bir devlet okulunda hazırlanan resmi bir tutanağa eklenebilecek kalitede ve uzunlukta olmalı. ("yapıldı", "edildi", "görüşüldü", "belirtildi", "vurgulandı", "kararlaştırıldı" gibi edilgen ve resmi fiiller kullan.)
-        4.  **Detaylandırma:** Tek bir cümle yazma. Maddeyi detaylandır, farklı yönlerini ele al, olası çözümleri veya tartışma noktalarını belirt.
-
-        Oluşturacağın metni 'generatedText' alanına yerleştir.
-      `;
-
-      const { output } = await ai.generate({
-        prompt: prompt,
-        output: { schema: GenerateMeetingAgendaItemOutputSchema },
-      });
-      return output!;
-    }
-  );
-
   return await meetingAgendaFlow(input);
 }
+
